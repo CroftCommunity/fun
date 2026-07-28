@@ -1,0 +1,19 @@
+{
+  "name": "horizontal-match-basic",
+  "seed": 42,
+  "colors": 6,
+  "board": [
+    "00102",
+    "34523",
+    "45345",
+    "53453",
+    "34534"
+  ],
+  "moves": [ [0, 2, 0, 3] ],
+  "expect": {
+    "move_legal": [true],
+    "step0_cleared": [ [[0, 0], [0, 1], [0, 2]] ],
+    "step0_score": [30],
+    "final_state_hash": "19b5572f09fdc2db5238db77eb8bd5340a74590fa163302480111106006a7e0e"
+  }
+}

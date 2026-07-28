@@ -1,0 +1,16 @@
+[package]
+name = "match3-core"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Deterministic, headless match-3 engine (P1). Board, match/clear/gravity/refill, seeded RNG, state hash. No specials, no network."
+
+[dependencies]
+rand.workspace = true
+rand_chacha.workspace = true
+serde = { workspace = true }
+serde_json.workspace = true
+sha2.workspace = true
+hex.workspace = true
+thiserror.workspace = true

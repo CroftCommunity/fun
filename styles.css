@@ -1,0 +1,44 @@
+/* Minimal baseline for the fun.croft.ing skeleton. The real design system
+   (own playful identity on croft-pwa's token architecture) lands in the
+   front-end plan Phase 2 — this is just a legible placeholder. */
+:root {
+  color-scheme: light dark;
+  --bg: #faf8f4;
+  --fg: #1c1a17;
+  --muted: #6b6560;
+  --accent: #2f7d5b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16140f;
+    --fg: #f2 efe8;
+    --fg: #f2efe8;
+    --muted: #a29a90;
+    --accent: #6fd3a3;
+  }
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.55 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+.shell {
+  max-width: 42rem;
+  padding: 2rem 1.5rem;
+  text-align: center;
+}
+h1 {
+  color: var(--accent);
+  font-size: 2.25rem;
+  margin: 0 0 0.5rem;
+}
+.soon {
+  color: var(--muted);
+}

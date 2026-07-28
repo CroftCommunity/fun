@@ -1,0 +1,7 @@
+# Rust build output
+/target
+# web build output + deps (added in the front-end plan Phase 1)
+/dist
+/node_modules
+# per-machine
+.DS_Store

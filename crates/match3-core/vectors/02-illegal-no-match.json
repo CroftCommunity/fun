@@ -1,0 +1,19 @@
+{
+  "name": "illegal-no-match",
+  "seed": 42,
+  "colors": 6,
+  "board": [
+    "00102",
+    "34523",
+    "45345",
+    "53453",
+    "34534"
+  ],
+  "moves": [ [0, 3, 0, 4] ],
+  "expect": {
+    "move_legal": [false],
+    "step0_cleared": [ [] ],
+    "step0_score": [0],
+    "final_state_hash": "e3f90e911156866c397427c519bdcce3599f8e9323ca5c68b9ceeb8aaaa7b4e6"
+  }
+}

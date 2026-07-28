@@ -1,0 +1,45 @@
+# fun — the Croft games pond (fun.croft.ing). A determinism-first game shelf.
+#
+# Per the per-pond build discipline (discovery/beta/croft/build-order-and-ponds-roadmap.md)
+# and the plans under plans/: determinism-first, red-first. Versions are pinned
+# exactly (`=x.y.z`) and Cargo.lock is committed, matching alpha/Proofs/lineage-groups.
+#
+# Members: per-game deterministic cores (match3-core promoted from the discovery
+# spike; solitaire-core is the first new game) + their wasm browser bindings +
+# shared substrate crates (pond-docformat = P2 version policy, pond-outcome = P8
+# verifiable outcomes). Substrate + solitaire crates start as compiling
+# empty-but-real stubs (master-plan Phase 1), filled in their named phases.
+[workspace]
+resolver = "2"
+members = [
+    "crates/match3-core",
+    "crates/solitaire-core",
+    "crates/pond-docformat",
+    "crates/pond-outcome",
+    "crates/match3-wasm",
+    "crates/solitaire-wasm",
+]
+
+[workspace.package]
+edition = "2021"
+version = "0.0.0"
+publish = false
+license = "MIT OR Apache-2.0"
+
+[workspace.dependencies]
+# Determinism: seeded ChaCha20, same primitive lineage-core uses.
+rand = "=0.8.6"
+rand_chacha = "=0.3.1"
+
+# Serialization (golden vectors, board state, documents) + hashing (state hash).
+serde = { version = "=1.0.228", features = ["derive"] }
+serde_json = "=1.0.145"
+sha2 = "=0.10.9"
+hex = "=0.4.3"
+thiserror = "=2.0.18"
+
+# internal crates
+match3-core = { path = "crates/match3-core" }
+solitaire-core = { path = "crates/solitaire-core" }
+pond-docformat = { path = "crates/pond-docformat" }
+pond-outcome = { path = "crates/pond-outcome" }

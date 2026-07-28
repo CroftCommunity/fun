@@ -1,0 +1,12 @@
+{
+  "name": "fun-croft-ing",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "fun.croft.ing — the Croft games pond. A determinism-first, local-first game shelf (Rust cores compiled to wasm, vanilla TS drawer UI).",
+  "scripts": {
+    "build": "node build.mjs",
+    "serve": "node --experimental-default-type=module -e \"import('node:http').then(async({default:h})=>{const{readFile}=await import('node:fs/promises');const{join,extname}=await import('node:path');const t={'.html':'text/html','.css':'text/css','.js':'text/javascript','.json':'application/json','.wasm':'application/wasm'};h.createServer(async(q,s)=>{try{const p=join('dist',q.url==='/'?'index.html':q.url);s.setHeader('content-type',t[extname(p)]||'application/octet-stream');s.end(await readFile(p))}catch{s.statusCode=404;s.end('not found')}}).listen(4180,()=>console.log('http://localhost:4180'))})\""
+  },
+  "//": "Rust/cargo drives the game cores + tests; this is the web skeleton. The front-end plan Phase 1 adds esbuild, Vitest, Playwright + @axe-core/playwright, ESLint, tsc, and a service worker (matching croft-pwa)."
+}

@@ -1,0 +1,7 @@
+[package]
+name = "pond-outcome"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "P8 verifiable-outcome record: a self-checking result produced by replaying a move list against a game core's state hash. Local-only. Stub until master-plan Phase 6."

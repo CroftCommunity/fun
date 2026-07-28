@@ -1,0 +1,7 @@
+[package]
+name = "solitaire-wasm"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Browser (wasm-bindgen) binding over solitaire-core: new_game/legal_moves/play_move/is_won + serde-JSON board state for the drawer UI. Stub until front-end plan Phase 3."

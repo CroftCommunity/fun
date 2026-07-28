@@ -1,0 +1,18 @@
+{
+  "name": "blocker-clear",
+  "seed": 7,
+  "colors": 6,
+  "board": [
+    "11213",
+    "A4524",
+    "53453",
+    "34534"
+  ],
+  "moves": [ [0, 2, 0, 3] ],
+  "expect": {
+    "move_legal": [true],
+    "step0_cleared": [ [[0, 0], [0, 1], [0, 2]] ],
+    "step0_score": [50],
+    "final_state_hash": "b076e0479b24de31663585bc2e07a5438614eafb6a5a58112b21343d2ea56895"
+  }
+}
