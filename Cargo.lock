@@ -236,6 +236,12 @@ dependencies = [
 [[package]]
 name = "solitaire-core"
 version = "0.0.0"
+dependencies = [
+ "hex",
+ "rand",
+ "rand_chacha",
+ "sha2",
+]
 
 [[package]]
 name = "solitaire-wasm"

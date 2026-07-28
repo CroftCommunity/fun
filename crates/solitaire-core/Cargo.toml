@@ -4,4 +4,10 @@ edition.workspace = true
 version.workspace = true
 publish.workspace = true
 license.workspace = true
-description = "Deterministic, headless Klondike draw-1 solitaire engine. Seeded deal, legal-move predicate, win detection, state hash. Stub until master-plan Phase 4."
+description = "Deterministic, headless Klondike draw-1 solitaire engine. Seeded deal, legal-move predicate, win detection, state hash."
+
+[dependencies]
+rand.workspace = true
+rand_chacha.workspace = true
+sha2.workspace = true
+hex.workspace = true
