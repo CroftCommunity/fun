@@ -1,0 +1,12 @@
+{
+  "name": "draw + recycle cycle (seed 0)",
+  "seed": 0,
+  "moves": [
+    "Draw", "Draw", "Draw", "Draw", "Draw", "Draw", "Draw", "Draw",
+    "Draw", "Draw", "Draw", "Draw", "Draw", "Draw", "Draw", "Draw",
+    "Draw", "Draw", "Draw", "Draw", "Draw", "Draw", "Draw", "Draw",
+    "Draw", "Draw", "Draw", "Draw"
+  ],
+  "final_state_hash": "d522615d9c2b0719ac96ddc12f04a7085cc89711a58f121a635fcf8e4b96c3ee",
+  "notes": "24 draws empty the stock; the 25th recycles the waste; 3 more draw from the recycled stock. Exercises T1 (draw + recycle) deterministically."
+}

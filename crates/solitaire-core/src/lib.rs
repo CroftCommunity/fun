@@ -6,16 +6,19 @@
 //! `(seed, move list)` fully determines every state; replaying reproduces the
 //! same [`state_hash`].
 //!
-//! **Build status:** the deterministic deal + state hash are implemented and
-//! green (deal-determinism corpus). The legal-move engine (T1–T5) is grown
-//! red-first next; until then only [`GameState::new_game`] and [`state_hash`]
-//! are wired.
+//! **Build status:** the deterministic deal, `state_hash`, and the full
+//! legal-move engine (T1–T5 [`GameState::play_move`] / [`GameState::legal_moves`])
+//! are implemented and green (deal corpus + tie-break unit tests + golden
+//! vectors).
 
 pub mod board;
 pub mod card;
+pub mod engine;
 pub mod hash;
 pub mod rng;
+pub mod vectors;
 
 pub use board::{GameState, TableauCard, TABLEAU_PILES};
 pub use card::{Card, Color};
+pub use engine::{Move, MoveError};
 pub use hash::state_hash;

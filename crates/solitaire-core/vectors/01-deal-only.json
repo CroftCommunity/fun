@@ -1,0 +1,7 @@
+{
+  "name": "deal-only (seed 0)",
+  "seed": 0,
+  "moves": [],
+  "final_state_hash": "0d9891bc9da048e150ffb5574e4423d0a38b3328db9c463e26d8deb5a3b5f662",
+  "notes": "Just the deal. Anchors the deterministic deal for seed 0 (native == wasm)."
+}
