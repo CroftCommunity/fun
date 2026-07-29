@@ -39,9 +39,8 @@ Plans: `plans/2026-07-28-games-drawer-solitaire-ui.md` (front-end),
       board and focus falls back to the board root).
 
 ## Identity (Phase E follow-ups)
-- [ ] Self-hosted **display webfont** (the result headline currently falls back
-      to a system rounded face; `--font-display` names Fredoka/Baloo 2). Add an
-      `@font-face` + build copy, keeping it offline/self-hosted per the standard.
+- [x] Self-hosted **display webfont** — Fredoka (SIL OFL), latin subset, weight
+      600, `font-display: swap`, `assets/fonts/`. Used on headlines + guide.
 
 ## Deploy / ops
 - [ ] Consider adding an `@live` smoke check against `fun.croft.ing` once a

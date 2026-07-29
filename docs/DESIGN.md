@@ -96,16 +96,14 @@ board in **both** themes.
 
 ## Type
 
-Body/UI is the system UI stack. `--font-display` names playful rounded faces
-(Fredoka / Baloo 2) with a system fallback and is used for the result-screen
-headline; a self-hosted display webfont is a future enhancement (kept out of
-this phase to stay offline and dependency-free). The mono stack carries the
-verifiable `final_hash`.
+Body/UI is the system UI stack. `--font-display` is **Fredoka** (SIL OFL),
+**self-hosted** — a latin-subset `woff2` at `assets/fonts/fredoka-600.woff2`
+(weight 600, `font-display: swap`, license in `assets/fonts/Fredoka-OFL.txt`),
+so it stays offline and dependency-free with a system rounded fallback. Used for
+the result-screen headline and the how-to guide headings. The mono stack carries
+the verifiable `final_hash`.
 
 ## Not in this phase
 
-- A self-hosted display webfont (the wordmark/headline currently fall back to
-  the system rounded face).
-- A win **cascade** animation (front-plan polish).
 - Match-3 / cribbage board styling (those games arrive later and reuse these
   tokens).

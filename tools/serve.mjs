@@ -15,6 +15,8 @@ const TYPES = {
   ".json": "application/json",
   ".wasm": "application/wasm",
   ".map": "application/json",
+  ".woff2": "font/woff2",
+  ".jpg": "image/jpeg",
 };
 
 createServer(async (req, res) => {
