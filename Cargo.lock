@@ -244,6 +244,12 @@ dependencies = [
 [[package]]
 name = "solitaire-wasm"
 version = "0.0.0"
+dependencies = [
+ "pond-outcome",
+ "serde",
+ "serde_json",
+ "solitaire-core",
+]
 
 [[package]]
 name = "syn"

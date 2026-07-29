@@ -50,6 +50,12 @@ await build({
 await cp(join(root, "styles.css"), join(dist, "styles.css"));
 if (await exists(join(root, "CNAME"))) await cp(join(root, "CNAME"), join(dist, "CNAME"));
 
+// The solitaire wasm binding (built by `npm run build:wasm` with the rustup
+// toolchain — see tools/build-wasm.sh). Copied to /solitaire.wasm for fetch.
+const wasm = join(root, "target/wasm32-unknown-unknown/release/solitaire_wasm.wasm");
+if (await exists(wasm)) await cp(wasm, join(dist, "solitaire.wasm"));
+else console.warn("note: solitaire.wasm not built yet — run `npm run build:wasm` (Phase D needs it)");
+
 for (const id of PAGES) {
   const dir = id ? join(dist, id) : dist;
   await mkdir(dir, { recursive: true });

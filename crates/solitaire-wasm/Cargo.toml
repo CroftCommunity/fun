@@ -4,4 +4,13 @@ edition.workspace = true
 version.workspace = true
 publish.workspace = true
 license.workspace = true
-description = "Browser (wasm-bindgen) binding over solitaire-core: new_game/legal_moves/play_move/is_won + serde-JSON board state for the drawer UI. Stub until front-end plan Phase 3."
+description = "Browser binding over solitaire-core for the drawer UI: raw C-ABI + serde-JSON (no wasm-bindgen). Holds one game, typed play_* exports, board/legal-moves/hash/outcome JSON via an output buffer."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+solitaire-core = { workspace = true }
+pond-outcome = { workspace = true }
+serde = { workspace = true }
+serde_json.workspace = true

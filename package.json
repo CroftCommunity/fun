@@ -6,6 +6,7 @@
   "description": "fun.croft.ing — the Croft games pond. A determinism-first, local-first game shelf (Rust cores compiled to wasm, vanilla TS slide-out drawer UI).",
   "scripts": {
     "build": "node build.mjs",
+    "build:wasm": "bash tools/build-wasm.sh",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "unit": "vitest run",
