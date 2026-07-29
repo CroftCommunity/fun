@@ -36,13 +36,14 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # Build the wasm binding first — the unit suite's verify-orchestration
+      # tests load the real solitaire_wasm.wasm, so it must exist before `unit`.
+      - run: npm run build:wasm
       # Cheap correctness gate before publishing.
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run unit
-      # Build the wasm binding, then the static site (build.mjs copies the wasm
-      # + daily-pack.json + CNAME into dist/).
-      - run: npm run build:wasm
+      # Static site (build.mjs copies the wasm + daily-pack.json + CNAME into dist/).
       - run: node build.mjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
