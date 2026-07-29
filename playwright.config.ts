@@ -7,9 +7,11 @@ export default defineConfig({
   use: { baseURL: "http://localhost:4180" },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: "node build.mjs && node tools/serve.mjs",
+    // Build the solitaire wasm first — Phase D's board fetches /solitaire.wasm,
+    // which build.mjs only copies once the artifact exists.
+    command: "npm run build:wasm && node build.mjs && node tools/serve.mjs",
     url: "http://localhost:4180",
     reuseExistingServer: false,
-    timeout: 60_000,
+    timeout: 120_000,
   },
 });

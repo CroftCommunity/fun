@@ -1,9 +1,10 @@
-//! The game catalog the drawer lists. Solitaire and match-3 are `soon` until
-//! their front-end modules land (front-plan Phase 4 / Phase 7); the placeholder
-//! is playable now to exercise the chrome.
+//! The game catalog the drawer lists. Solitaire is playable (front-plan Phase 4);
+//! match-3 is `soon` until its module lands (front-plan Phase 7); the placeholder
+//! is playable to exercise the chrome.
 
 import type { GameEntry } from "./contract.js";
 import { placeholderModule } from "./games/placeholder.js";
+import { solitaireModule } from "./games/solitaire.js";
 
 export const REGISTRY: readonly GameEntry[] = [
   {
@@ -13,7 +14,7 @@ export const REGISTRY: readonly GameEntry[] = [
     status: "playable",
     load: placeholderModule,
   },
-  { id: "solitaire", title: "Solitaire", icon: "♠", status: "soon" },
+  { id: "solitaire", title: "Solitaire", icon: "♠", status: "playable", load: solitaireModule },
   { id: "match3", title: "Match-3", icon: "🍬", status: "soon" },
 ];
 

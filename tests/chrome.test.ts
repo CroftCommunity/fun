@@ -58,7 +58,7 @@ describe("games drawer chrome", () => {
   });
 
   it("shows a coming-soon panel for a not-yet-playable game", () => {
-    document.body.dataset.game = "solitaire";
+    document.body.dataset.game = "match3";
     const chrome = boot();
     expect(chrome.mountedModule()).toBeNull();
     expect(document.querySelector(".welcome")?.textContent).toMatch(/coming soon/i);

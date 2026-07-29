@@ -17,14 +17,27 @@ once and every game reuses it. Shelf order: **solitaire → match-3 → cribbage
 crates/
   match3-core/       deterministic match-3 engine (promoted from the discovery spike; self-contained
                      with its RULES.md + vectors/) — green, red-first
-  solitaire-core/    Klondike draw-1 engine (stub → built in the master plan Phase 4)
-  pond-docformat/    P2 versioned document envelope (saves / codes / outcomes)   [stub]
-  pond-outcome/      P8 verifiable-outcome record (replay → state hash)           [stub]
+  solitaire-core/    Klondike draw-1 engine (master-plan Phase 4) — green
+  solitaire-solver/  build-time Klondike solver + winnable-daily pack generator (Phase S) — green
+  pond-docformat/    P2 versioned document envelope (saves / codes / outcomes) — built
+  pond-outcome/      P8 verifiable-outcome record (replay → state hash)         — built
   match3-wasm/       browser binding over match3-core                            [stub]
-  solitaire-wasm/    browser binding over solitaire-core (serde-JSON board)      [stub]
-app/  src/           the games drawer UI (vanilla TS + esbuild) — front-end plan
+  solitaire-wasm/    browser binding over solitaire-core (raw C-ABI + serde-JSON) — built
+games/solitaire/     daily-pack.json — the winnable-daily deals + win-path fixture (payload[0])
+src/                 the games drawer UI (vanilla TS + esbuild); solitaire is playable at /solitaire/
 plans/               the phase-plans governing this repo
 ```
+
+## Solitaire (playable — front-plan Phase 4)
+
+`/solitaire/` is a real Klondike draw-1 game over the wasm binding: tap a source → the core's legal
+targets glow → tap a target to move; double-tap auto-sends to a foundation; the stock draws and
+recycles. Daily deal by default (a winnable seed from `daily-pack.json`, UTC rollover), with a
+free-play toggle (`?seed=<n>` for deterministic runs). Undo and an "I'm stuck" control exist; a
+"Declare assistance used" setting (on by default) records whether undo/hints were used. A win leads
+with a verification-forward screen — "Cleared clean ✓ — verifiable" — the full `pond-outcome` record,
+moves-to-clear, one-tap re-verify (replays the record through the core), and a `?r=` share link that
+re-verifies the shared result before display (deflated, so even a long win stays a portable URL).
 
 ## Build
 

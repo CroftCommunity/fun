@@ -134,3 +134,200 @@ body.fullscreen .drawer {
 body.fullscreen .play-area {
   padding: 0;
 }
+
+/* ---- solitaire board (front-plan Phase 4) ----
+   Functional layout on the neutral token baseline; the playful felt/card
+   identity is Phase 2/E and restyles these same tokens + classes. */
+.sol-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+.sol-controls button,
+.sol-result-controls button,
+.sol-result-controls .sol-share {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--fg);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.7rem;
+  text-decoration: none;
+}
+.sol-modes {
+  display: flex;
+  gap: 0.25rem;
+}
+.sol-controls button[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+.sol-assist-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.sol-moves {
+  margin-left: auto;
+  color: var(--muted);
+}
+.sol-status {
+  min-height: 1.4em;
+  margin: 0.75rem 0 0;
+  color: var(--muted);
+}
+
+.sol-top {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  margin-bottom: 1.25rem;
+}
+.sol-foundations {
+  display: flex;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+.sol-tableau {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(3.2rem, 1fr));
+  gap: 0.5rem;
+  align-items: start;
+}
+.sol-pile {
+  position: relative;
+  min-height: 14rem;
+}
+
+/* Cards, stock, waste, foundations share the slot footprint. */
+.sol-card,
+.sol-stock,
+.sol-foundation,
+.sol-slot {
+  width: 3.2rem;
+  height: 4.6rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0.25rem 0.35rem;
+}
+.sol-pile .sol-card {
+  position: absolute;
+  left: 0;
+  cursor: pointer;
+}
+.sol-waste .sol-card {
+  cursor: pointer;
+}
+.sol-card.red {
+  color: #b3123b;
+}
+.sol-card.black {
+  color: #16140f;
+}
+@media (prefers-color-scheme: dark) {
+  .sol-card.red {
+    color: #ff7a9c;
+  }
+  .sol-card.black {
+    color: #f2efe8;
+  }
+}
+.sol-card .sol-suit {
+  align-self: flex-end;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+.sol-card.back {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--accent),
+    var(--accent) 4px,
+    var(--surface) 4px,
+    var(--surface) 8px
+  );
+  border-color: var(--accent);
+}
+.sol-stock,
+.sol-slot.empty {
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+.sol-foundation {
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+}
+.sol-foundation .sol-rank {
+  font-weight: 600;
+}
+
+/* Selection + legal-target highlighting (delegated from the core). */
+.sol-card.selected,
+.sol-foundation.selected {
+  outline: 3px solid var(--accent);
+  outline-offset: 1px;
+}
+.legal-target {
+  box-shadow: 0 0 0 3px var(--accent);
+  border-color: var(--accent);
+}
+
+/* Verification-forward result screen. */
+.sol-result {
+  max-width: 34rem;
+}
+.sol-headline {
+  margin: 0 0 0.5rem;
+}
+.sol-verify-badge {
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+.sol-verify-badge.ok {
+  border-color: var(--accent);
+}
+.sol-verify-badge.fail {
+  border-color: #b3123b;
+  color: #b3123b;
+}
+.sol-record {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0 0 1rem;
+}
+.sol-record dt {
+  color: var(--muted);
+}
+.sol-record dd {
+  margin: 0;
+}
+.sol-record .sol-hash {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.8rem;
+  word-break: break-all;
+}
+.sol-result-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.sol-loading,
+.sol-error {
+  color: var(--muted);
+  padding: 1rem 0;
+}
