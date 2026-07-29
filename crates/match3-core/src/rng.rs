@@ -24,10 +24,16 @@ impl DetRng {
     }
 
     /// Uniform index in `0..len`. Panics if `len == 0`. Counts as one draw.
+    ///
+    /// Samples a fixed-width **`u32`** range, not `usize`: `usize` is 32-bit on
+    /// `wasm32` and 64-bit native, and `rand`'s `gen_range` consumes the stream
+    /// differently per width, which would break native==wasm determinism. Color
+    /// counts fit `u32`.
     pub fn index(&mut self, len: usize) -> usize {
         assert!(len > 0, "index over empty range");
         self.draws += 1;
-        self.inner.gen_range(0..len)
+        let len = u32::try_from(len).expect("index range fits u32");
+        self.inner.gen_range(0..len) as usize
     }
 
     /// Number of draws consumed so far (folded into the state hash).
