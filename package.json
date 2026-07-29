@@ -9,6 +9,7 @@
     "build:wasm": "bash tools/build-wasm.sh",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
+    "preunit": "npm run build:wasm",
     "unit": "vitest run",
     "e2e": "playwright test",
     "serve": "node build.mjs && node tools/serve.mjs",
