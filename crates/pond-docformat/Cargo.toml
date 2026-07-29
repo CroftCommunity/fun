@@ -4,4 +4,9 @@ edition.workspace = true
 version.workspace = true
 publish.workspace = true
 license.workspace = true
-description = "P2 version-and-unknown-field document policy: one versioned, forward-tolerant envelope for saves, deal/level codes, and outcome records. Stub until master-plan Phase 5."
+description = "P2 version-and-unknown-field document policy: one versioned, forward-tolerant envelope for saves, deal/level codes, and outcome records. Fail-loud on unsupported versions."
+
+[dependencies]
+serde = { workspace = true }
+serde_json.workspace = true
+thiserror.workspace = true
