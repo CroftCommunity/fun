@@ -1,29 +1,7 @@
-/* Functional token + chrome baseline for the games drawer (front-plan Phase 1).
-   The distinctive playful identity is Phase 2; this is a clean, accessible
-   starting layer built on a token structure Phase 2 can restyle. */
-:root {
-  color-scheme: light dark;
-  --bg: #faf8f4;
-  --surface: #ffffff;
-  --fg: #1c1a17;
-  --muted: #6b6560;
-  --accent: #2f7d5b;
-  --accent-fg: #ffffff;
-  --border: #e2ddd4;
-  --radius: 10px;
-  --drawer-w: 16rem;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #16140f;
-    --surface: #201d17;
-    --fg: #f2efe8;
-    --muted: #a29a90;
-    --accent: #6fd3a3;
-    --accent-fg: #10221a;
-    --border: #322d25;
-  }
-}
+/* fun.croft.ing components (front-plan Phase 2 / delivery Phase E).
+   Colours come only from tokens.css via var() — no raw hex here (enforced by
+   tests/tokens.test.ts). Theme is driven by [data-theme] on <html>, set
+   pre-paint by an inline script and toggled from the chrome header. */
 * {
   box-sizing: border-box;
 }
@@ -31,8 +9,8 @@ body {
   margin: 0;
   min-height: 100vh;
   background: var(--bg);
-  color: var(--fg);
-  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--ink);
+  font: var(--t-body, 16px) / 1.55 var(--font-body);
 }
 
 .visually-hidden {
@@ -46,6 +24,8 @@ body {
   white-space: nowrap;
   border: 0;
 }
+
+/* --- chrome header + drawer --- */
 .chrome-header {
   display: flex;
   gap: 0.5rem;
@@ -60,24 +40,25 @@ body {
   cursor: pointer;
   border: 1px solid var(--border);
   background: var(--surface);
-  color: var(--fg);
+  color: var(--ink);
   border-radius: var(--radius);
   padding: 0.4rem 0.7rem;
   text-decoration: none;
 }
-.chrome-header .newtab {
+.chrome-header .theme-toggle {
   margin-left: auto;
 }
+.chrome-header .newtab {
+  margin-left: 0;
+}
 :focus-visible {
-  outline: 3px solid var(--accent);
+  outline: 3px solid var(--focus);
   outline-offset: 2px;
 }
 
 .drawer {
   position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
+  inset: 0 auto 0 0;
   width: var(--drawer-w);
   background: var(--surface);
   border-right: 1px solid var(--border);
@@ -98,7 +79,7 @@ body {
   padding: 0.6rem 0.8rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  color: var(--fg);
+  color: var(--ink);
   text-decoration: none;
   background: var(--bg);
 }
@@ -108,7 +89,7 @@ body {
 .badge {
   margin-left: auto;
   font-size: 0.72rem;
-  color: var(--accent-fg);
+  color: var(--accent-ink);
   background: var(--accent);
   border-radius: 999px;
   padding: 0.05rem 0.5rem;
@@ -118,7 +99,7 @@ body {
   padding: 1.5rem;
 }
 .welcome {
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 .placeholder-game {
   padding: 1.5rem;
@@ -132,12 +113,13 @@ body.fullscreen .drawer {
   display: none;
 }
 body.fullscreen .play-area {
-  padding: 0;
+  padding: 0.75rem;
 }
 
-/* ---- solitaire board (front-plan Phase 4) ----
-   Functional layout on the neutral token baseline; the playful felt/card
-   identity is Phase 2/E and restyles these same tokens + classes. */
+/* ---- solitaire: the felt table ----
+   The board is a felt play surface; cards are warm ivory with classic suits;
+   the brass accent marks legal targets and actions, moss marks the verifiable
+   win, rust a failed verification. */
 .sol-controls {
   display: flex;
   flex-wrap: wrap;
@@ -152,7 +134,7 @@ body.fullscreen .play-area {
   cursor: pointer;
   border: 1px solid var(--border);
   background: var(--surface);
-  color: var(--fg);
+  color: var(--ink);
   border-radius: var(--radius);
   padding: 0.4rem 0.7rem;
   text-decoration: none;
@@ -164,7 +146,7 @@ body.fullscreen .play-area {
 .sol-controls button[aria-pressed="true"] {
   border-color: var(--accent);
   background: var(--accent);
-  color: var(--accent-fg);
+  color: var(--accent-ink);
 }
 .sol-assist-label {
   display: inline-flex;
@@ -173,14 +155,20 @@ body.fullscreen .play-area {
 }
 .sol-moves {
   margin-left: auto;
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 .sol-status {
   min-height: 1.4em;
   margin: 0.75rem 0 0;
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 
+.sol-board {
+  background: var(--felt);
+  border-radius: var(--radius);
+  padding: 1rem;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 12%), 0 2px 8px rgb(0 0 0 / 18%);
+}
 .sol-top {
   display: flex;
   gap: 0.6rem;
@@ -203,106 +191,125 @@ body.fullscreen .play-area {
   min-height: 14rem;
 }
 
-/* Cards, stock, waste, foundations share the slot footprint. */
 .sol-card,
 .sol-stock,
 .sol-foundation,
 .sol-slot {
   width: 3.2rem;
   height: 4.6rem;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--fg);
+  border-radius: var(--r-card);
   font: inherit;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   padding: 0.25rem 0.35rem;
 }
-.sol-pile .sol-card {
+.sol-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--suit-black);
+}
+.sol-card.red {
+  color: var(--suit-red);
+}
+.sol-card.black {
+  color: var(--suit-black);
+}
+.sol-pile .sol-card,
+.sol-waste .sol-card {
   position: absolute;
   left: 0;
   cursor: pointer;
 }
 .sol-waste .sol-card {
-  cursor: pointer;
+  position: static;
 }
-.sol-card.red {
-  color: #b3123b;
-}
-.sol-card.black {
-  color: #16140f;
-}
-@media (prefers-color-scheme: dark) {
-  .sol-card.red {
-    color: #ff7a9c;
-  }
-  .sol-card.black {
-    color: #f2efe8;
-  }
+.sol-card .sol-rank {
+  font-weight: 700;
 }
 .sol-card .sol-suit {
   align-self: flex-end;
   font-size: 1.1rem;
   line-height: 1;
 }
-.sol-card.back {
+/* Card back + a full stock: a woven brass-on-felt motif (decorative). */
+.sol-card.back,
+.sol-stock {
   background: repeating-linear-gradient(
-    45deg,
-    var(--accent),
-    var(--accent) 4px,
-    var(--surface) 4px,
-    var(--surface) 8px
-  );
-  border-color: var(--accent);
+      45deg,
+      var(--accent) 0 3px,
+      transparent 3px 8px
+    ),
+    var(--felt);
+  border: 1px solid var(--accent);
 }
-.sol-stock,
-.sol-slot.empty {
-  cursor: pointer;
-  align-items: center;
-  justify-content: center;
-  color: var(--muted);
-}
+/* Empty placeholders read as card outlines cut into the felt. */
+.sol-slot.empty,
 .sol-foundation {
+  background: rgb(255 255 255 / 6%);
+  border: 1px dashed var(--felt-ink);
+  color: var(--felt-ink);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.sol-stock {
   cursor: pointer;
   align-items: center;
   justify-content: center;
+}
+/* Stock count / recycle glyph rides a solid chip so it stays legible on the
+   woven back. */
+.sol-stock .sol-pip {
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--r-pill, 999px);
+  padding: 0.05rem 0.45rem;
+  font-weight: 700;
+}
+.sol-foundation .sol-suit {
+  font-size: 1.2rem;
 }
 .sol-foundation .sol-rank {
-  font-weight: 600;
+  font-weight: 700;
 }
 
 /* Selection + legal-target highlighting (delegated from the core). */
 .sol-card.selected,
 .sol-foundation.selected {
-  outline: 3px solid var(--accent);
+  outline: 3px solid var(--focus);
   outline-offset: 1px;
 }
 .legal-target {
-  box-shadow: 0 0 0 3px var(--accent);
+  box-shadow: 0 0 0 3px var(--accent), 0 0 10px 2px var(--accent);
   border-color: var(--accent);
 }
 
-/* Verification-forward result screen. */
+/* --- verification-forward result screen --- */
 .sol-result {
   max-width: 34rem;
 }
 .sol-headline {
   margin: 0 0 0.5rem;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  letter-spacing: 0.01em;
 }
 .sol-verify-badge {
   margin: 0 0 1rem;
   padding: 0.6rem 0.8rem;
   border-radius: var(--radius);
   border: 1px solid var(--border);
+  background: var(--surface);
 }
 .sol-verify-badge.ok {
-  border-color: var(--accent);
+  border-color: var(--active);
+  border-left: 4px solid var(--active);
 }
 .sol-verify-badge.fail {
-  border-color: #b3123b;
-  color: #b3123b;
+  border-color: var(--danger);
+  border-left: 4px solid var(--danger);
+  color: var(--danger);
 }
 .sol-record {
   display: grid;
@@ -311,13 +318,13 @@ body.fullscreen .play-area {
   margin: 0 0 1rem;
 }
 .sol-record dt {
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 .sol-record dd {
   margin: 0;
 }
 .sol-record .sol-hash {
-  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 0.8rem;
   word-break: break-all;
 }
@@ -326,8 +333,11 @@ body.fullscreen .play-area {
   flex-wrap: wrap;
   gap: 0.5rem;
 }
+.sol-result-controls .sol-share {
+  border-color: var(--accent);
+}
 .sol-loading,
 .sol-error {
-  color: var(--muted);
+  color: var(--ink-muted);
   padding: 1rem 0;
 }

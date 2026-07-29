@@ -1,0 +1,78 @@
+/*
+ * fun.croft.ing — the games pond's brand tokens (front-plan Phase 2 / delivery
+ * Phase E).
+ *
+ * THIS IS THE ONLY FILE ALLOWED TO CONTAIN RAW HEX. Components (styles.css) and
+ * app code reference these semantic custom properties, never literal colours —
+ * enforced by tests/tokens.test.ts. New colours are added HERE with a recorded
+ * contrast ratio, never invented inline (docs/DESIGN.md).
+ *
+ * Identity: a playful *card table* in the Croft family. A green **felt** play
+ * surface (kin to Croft's Dark Moss), warm **ivory cards** with classic red /
+ * black suits, a **brass-gold** accent for actions, a brighter **moss** for the
+ * verifiable win, and a **rust** for a failed verification. Same token *roles*
+ * as croft-pwa's tectonic palette, re-cast for a game shelf.
+ *
+ * Every text/UI pair below clears WCAG AA (≥4.5:1 body, ≥3:1 large/UI) in both
+ * themes; ratios are recorded here and asserted by tests/tokens.test.ts — the
+ * numbers are load-bearing, not decoration.
+ */
+
+:root {
+  /* --- Light theme (default): "the table by a sunny window" --- */
+  --bg: #eef0e8;          /* soft sage page                       */
+  --surface: #fbf7ee;     /* raised UI panels (header, drawer, cards) */
+  --ink: #1b201c;         /* primary text            (bg 14.38:1) */
+  --ink-muted: #54605a;   /* captions, move counter  (bg  5.71:1) */
+  --accent: #c8a11f;      /* brass-gold — primary action fill      */
+  --accent-ink: #1b201c;  /* text/icon on --accent   (6.75:1)      */
+  --active: #2f6b45;      /* moss — the verifiable win / success   */
+  --active-ink: #fbf7f0;  /* text/icon on --active   (5.94:1)      */
+  --link: #2f6b45;        /* moss link on the page   (bg  5.52:1)  */
+  --danger: #9b3016;      /* rust — a failed verification          */
+  --danger-ink: #fbf7f0;  /* text/icon on --danger   (6.94:1)      */
+  --felt: #1f5c3f;        /* the felt table (board play surface)   */
+  --felt-ink: #eaf2ea;    /* labels/hints on felt    (felt 6.91:1) */
+  --focus: #2f6b45;       /* focus ring — moss       (bg  5.52:1)  */
+  --border: #c7bda6;      /* hairline dividers — decorative        */
+  --card: #fbf7ee;        /* playing-card face                     */
+  --suit-red: #b3123b;    /* ♦ ♥ on a card           (card 6.41:1) */
+  --suit-black: #1b201c;  /* ♣ ♠ on a card           (card 15.47:1)*/
+
+  /* Type roles (self-hostable display + system UI fallback). */
+  --font-display: "Fredoka", "Baloo 2", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Radii + layout scale. */
+  --radius: 10px;
+  --r-card: 8px;
+  --drawer-w: 16rem;
+
+  /* PWA/browser chrome colour — the felt, kept in sync by src/theme.ts. */
+  --theme-color: #1f5c3f;
+}
+
+[data-theme="dark"] {
+  /* --- Dark theme: "the same table at night" — same roles, re-tuned. --- */
+  --bg: #15130f;          /* deep warm black                      */
+  --surface: #221f18;     /* raised UI panels                     */
+  --ink: #f2efe8;         /* primary text            (bg 16.16:1) */
+  --ink-muted: #a7a096;   /* captions                (bg  7.17:1) */
+  --accent: #d9b53c;      /* brass-gold, lightened for dark        */
+  --accent-ink: #15130f;  /* dark ink on --accent    (9.39:1)      */
+  --active: #5e9873;      /* moss, lightened                       */
+  --active-ink: #15130f;  /* dark ink on --active    (5.49:1)      */
+  --link: #7fc79a;        /* moss link, lightened    (bg  9.31:1)  */
+  --danger: #de6a48;      /* rust, lightened for dark              */
+  --danger-ink: #15130f;  /* dark ink on --danger    (5.53:1)      */
+  --felt: #123f2b;        /* deeper felt                           */
+  --felt-ink: #dfeadf;    /* labels/hints on felt    (felt 9.58:1) */
+  --focus: #d9b53c;       /* focus ring — gold       (bg  9.39:1)  */
+  --border: #3a352b;      /* hairline dividers                     */
+  --card: #ece4d3;        /* playing-card face (light, as real cards) */
+  --suit-red: #a8113a;    /* ♦ ♥ on a card           (card 5.92:1) */
+  --suit-black: #1b201c;  /* ♣ ♠ on a card           (card 13.07:1)*/
+
+  --theme-color: #123f2b;
+}

@@ -3,7 +3,7 @@
 // (`/<id>/index.html`) plus the home page (`/`). Per-game static pages give
 // clean, shareable, new-tab-able URLs with no client router or Pages 404 hack.
 import { build } from "esbuild";
-import { cp, mkdir, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -13,6 +13,10 @@ const dist = join(root, "dist");
 // Pages: "" is the home/drawer page (no game mounted). The rest are per-game
 // entry pages whose <body data-game> tells the chrome what to mount.
 const PAGES = ["", "placeholder", "solitaire", "match3"];
+
+// Pre-paint theme resolution: set [data-theme] before first paint so the felt
+// table never flashes the wrong theme. Same rule as src/theme.ts resolveTheme.
+const THEME_INIT = `(function(){try{var s=localStorage.getItem('fun-theme');var d=(s==='light'||s==='dark')?s:(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',d);}catch(e){}})();`;
 
 function page(gameId) {
   const dataAttr = gameId ? ` data-game="${gameId}"` : "";
@@ -25,6 +29,8 @@ function page(gameId) {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${title}</title>
     <meta name="description" content="fun.croft.ing — the Croft games pond, a determinism-first local-first game shelf." />
+    <meta name="theme-color" content="#1f5c3f" />
+    <script>${THEME_INIT}</script>
     <link rel="stylesheet" href="${base}styles.css" />
   </head>
   <body${dataAttr}>
@@ -47,7 +53,11 @@ await build({
   outfile: join(dist, "app.js"),
 });
 
-await cp(join(root, "styles.css"), join(dist, "styles.css"));
+// One stylesheet: tokens (the only hex) then components. The pre-paint script
+// has already set [data-theme] by the time this loads.
+const tokensCss = await readFile(join(root, "tokens.css"), "utf8");
+const stylesCss = await readFile(join(root, "styles.css"), "utf8");
+await writeFile(join(dist, "styles.css"), `${tokensCss}\n${stylesCss}`);
 if (await exists(join(root, "CNAME"))) await cp(join(root, "CNAME"), join(dist, "CNAME"));
 
 // The solitaire wasm binding (built by `npm run build:wasm` with the rustup

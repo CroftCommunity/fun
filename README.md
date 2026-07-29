@@ -39,6 +39,15 @@ with a verification-forward screen — "Cleared clean ✓ — verifiable" — th
 moves-to-clear, one-tap re-verify (replays the record through the core), and a `?r=` share link that
 re-verifies the shared result before display (deflated, so even a long win stays a portable URL).
 
+## Identity (light/dark)
+
+The pond has its own playful **card-table** identity on croft-pwa's token architecture: a green **felt**
+play surface, warm **ivory cards** with classic red/black suits, a **brass-gold** accent, moss for the
+verifiable win, rust for a failed verification. `tokens.css` is the only file with raw hex; every
+text/UI pair clears WCAG AA in both light and dark (asserted by `tests/tokens.test.ts`, and axe runs in
+both themes in `tests/theme.spec.ts`). A header toggle (`☾`/`☀`) flips the theme with no flash of the
+wrong one (pre-paint inline script). Full palette, roles, and recorded ratios: `docs/DESIGN.md`.
+
 ## Build
 
 ```sh

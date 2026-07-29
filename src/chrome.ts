@@ -6,6 +6,7 @@
 
 import type { GameModule, PresentationMode } from "./contract.js";
 import { findGame, REGISTRY } from "./registry.js";
+import { applyTheme, currentTheme, toggleTheme } from "./theme.js";
 
 /** Test-facing handle to the running chrome. */
 export interface Chrome {
@@ -71,12 +72,31 @@ export function boot(root: HTMLElement = document.body): Chrome {
   });
   fullscreenBtn.textContent = "⤢";
 
+  // Theme toggle (Phase E). Pre-paint set [data-theme]; sync the manifest colour
+  // and reflect the current theme on the control.
+  applyTheme(currentTheme());
+  const themeBtn = el("button", {
+    class: "theme-toggle",
+    "aria-pressed": String(currentTheme() === "dark"),
+    "aria-label": "Toggle light or dark theme",
+  });
+  const paintThemeBtn = (): void => {
+    const dark = currentTheme() === "dark";
+    themeBtn.textContent = dark ? "☀" : "☾";
+    themeBtn.setAttribute("aria-pressed", String(dark));
+  };
+  paintThemeBtn();
+  themeBtn.addEventListener("click", () => {
+    toggleTheme();
+    paintThemeBtn();
+  });
+
   const heading = el(
     "h1",
     { class: "visually-hidden" },
     gameId ? `fun.croft.ing — ${gameId}` : "fun.croft.ing — games",
   );
-  const header = el("header", { class: "chrome-header" }, heading, toggle, fullscreenBtn);
+  const header = el("header", { class: "chrome-header" }, heading, toggle, fullscreenBtn, themeBtn);
   if (gameId) {
     header.append(
       el(

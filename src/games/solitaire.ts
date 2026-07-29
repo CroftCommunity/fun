@@ -474,7 +474,9 @@ export function solitaireModule(): GameModule {
         cardButton(board.wasteTop.suit, board.wasteTop.rank, { "data-el": "waste" }),
       );
     } else {
-      waste.append(el("div", { class: "sol-slot empty", "aria-label": "Waste empty" }, ""));
+      // Decorative empty placeholder — the waste is never a drop target, so it
+      // carries no accessible name (a generic element may not be aria-labelled).
+      waste.append(el("div", { class: "sol-slot empty" }));
     }
 
     const foundations = el("div", { class: "sol-foundations", role: "group", "aria-label": "Foundations" });
@@ -528,7 +530,11 @@ export function solitaireModule(): GameModule {
             col.append(c);
             offset += 1.7;
           } else {
-            const back = el("div", { class: "sol-card back", "aria-label": "Face-down card" });
+            const back = el("div", {
+              class: "sol-card back",
+              role: "img",
+              "aria-label": "Face-down card",
+            });
             back.style.top = `${offset}rem`;
             col.append(back);
             offset += 0.8;
