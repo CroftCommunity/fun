@@ -1,0 +1,60 @@
+name: Deploy fun.croft.ing
+
+# Build the static shelf (Rust -> wasm, then esbuild) and publish dist/ to
+# GitHub Pages. The wasm must be built first — /solitaire.wasm and
+# /daily-pack.json are fetched at runtime, and build.mjs only copies the wasm
+# once the artifact exists (same order the Playwright webServer uses locally).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; a newer push supersedes an in-flight run.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # We do not run Playwright here, so skip the browser download.
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # Cheap correctness gate before publishing.
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run unit
+      # Build the wasm binding, then the static site (build.mjs copies the wasm
+      # + daily-pack.json + CNAME into dist/).
+      - run: npm run build:wasm
+      - run: node build.mjs
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
