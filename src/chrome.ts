@@ -99,6 +99,7 @@ export function boot(root: HTMLElement = document.body): Chrome {
   const header = el("header", { class: "chrome-header" }, heading, toggle, fullscreenBtn, themeBtn);
   if (gameId) {
     header.append(
+      el("a", { href: `/how-to/?game=${gameId}`, class: "how-to-link" }, "How to play"),
       el(
         "a",
         { href: `/${gameId}/`, target: "_blank", rel: "noopener", class: "newtab", "aria-label": "Open this game in a new tab" },

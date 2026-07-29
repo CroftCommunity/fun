@@ -48,6 +48,18 @@ text/UI pair clears WCAG AA in both light and dark (asserted by `tests/tokens.te
 both themes in `tests/theme.spec.ts`). A header toggle (`☾`/`☀`) flips the theme with no flash of the
 wrong one (pre-paint inline script). Full palette, roles, and recorded ratios: `docs/DESIGN.md`.
 
+Each game has a **How to play** guide (a header link → `/how-to/?game=<id>`) with generated screenshots
+and a plain walkthrough — starting with the interaction model (you tap a source then a destination; you
+don't drag). Hints (on by default) point at a legal move; with hints off, "I'm stuck" ends the game and
+says whether a move was available. Both are **shelf standards** every game meets.
+
+## Building a game
+
+`docs/BUILDING-GAMES.md` is the living build guide + standards: the module contract, determinism-first
+core → wasm, verifiable outcomes, tap-first input (the core decides legality), identity/tokens with
+WCAG-AA in both themes, the shared hints/assistance settings, and the How-to-play user-guide standard.
+It ends with a new-game checklist. Screenshots regenerate from the built app via `npm run guide:shots`.
+
 ## Build
 
 ```sh

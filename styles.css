@@ -51,6 +51,15 @@ body {
 .chrome-header .newtab {
   margin-left: 0;
 }
+.chrome-header .how-to-link {
+  font: inherit;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.7rem;
+  text-decoration: none;
+}
 :focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 2px;
@@ -284,6 +293,38 @@ body.fullscreen .play-area {
   box-shadow: 0 0 0 3px var(--accent), 0 0 10px 2px var(--accent);
   border-color: var(--accent);
 }
+/* Hint: a distinct moss highlight (source dashed, target ringed) so it reads
+   apart from the brass selection glow. */
+.hint-from {
+  outline: 3px dashed var(--active);
+  outline-offset: 1px;
+}
+.hint-to {
+  box-shadow: 0 0 0 3px var(--active), 0 0 12px 3px var(--active);
+  border-color: var(--active);
+}
+
+/* Settings disclosure + contextual result note. */
+.sol-settings {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.2rem 0.5rem;
+  background: var(--surface);
+}
+.sol-settings summary {
+  cursor: pointer;
+  padding: 0.2rem 0;
+}
+.sol-setting {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0;
+}
+.sol-note {
+  margin: 0 0 1rem;
+  color: var(--ink-muted);
+}
 
 /* --- verification-forward result screen --- */
 .sol-result {
@@ -340,4 +381,65 @@ body.fullscreen .play-area {
 .sol-error {
   color: var(--ink-muted);
   padding: 1rem 0;
+}
+
+/* --- How to play guide (the reusable game user-guide standard) --- */
+.play-area .panel {
+  max-width: 44rem;
+  margin: 0 auto 1.25rem;
+  padding: 1.25rem 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.play-area .panel h1 {
+  margin-top: 0;
+  font-family: var(--font-display);
+}
+.play-area .panel h2 {
+  margin-top: 0;
+  font-family: var(--font-display);
+}
+.guide-toc ul {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.guide-toc a {
+  display: inline-block;
+  padding: 0.2rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--link);
+  text-decoration: none;
+}
+.guide-steps {
+  padding-left: 1.4rem;
+}
+.guide-steps li {
+  margin-bottom: 0.5rem;
+}
+.guide-note {
+  border-left: 3px solid var(--accent);
+  padding-left: 0.75rem;
+  color: var(--ink-muted);
+}
+.guide-shot {
+  margin: 1rem 0 0;
+}
+.guide-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 420px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+}
+.guide-shot figcaption {
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+  margin-top: 0.4rem;
 }

@@ -19,6 +19,10 @@ cribbage. Plan: `plans/2026-07-27-games-pond-fun-crofting.md` (master Phase 8).
 - [ ] Verifiable outcome via the shared `pond-docformat` / `pond-outcome`
       substrate (already built) + a share/verify surface like solitaire's.
 - [ ] Flip `registry.ts` match-3 to `status: "playable"`; wiring E2E.
+- [ ] Meet the shelf standards in `docs/BUILDING-GAMES.md`: tap-first input with
+      core-driven highlighting, the shared hints/assistance settings, and a
+      "How to play" guide (`src/games/match3-howto.ts` + guide-shots + the
+      registry entry).
 
 ## Deferred design (owner balance decisions)
 - [ ] Cascade multipliers, par/levels, and specials — plain match-3 (no

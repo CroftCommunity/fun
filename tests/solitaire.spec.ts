@@ -136,6 +136,52 @@ test("win path: replay the fixture → verifiable clean-clear + share link round
   await shared.close();
 });
 
+test("New deal deals a different game (the up-turned cards change)", async ({ page }) => {
+  await page.goto("/solitaire/?seed=0");
+  await ready(page);
+
+  const before = await page.evaluate(() => window.__solitaire!.game.currentHash());
+  await page.locator(".sol-new").click();
+  await page.waitForFunction((h) => window.__solitaire!.game.currentHash() !== h, before);
+  const after = await page.evaluate(() => window.__solitaire!.game.currentHash());
+  expect(after).not.toBe(before);
+});
+
+test("Hint points at a legal move and marks the game assisted", async ({ page }) => {
+  await page.goto("/solitaire/?seed=0");
+  await ready(page);
+
+  await page.locator(".sol-hint").click();
+  // A hint highlights exactly one target to move toward…
+  await expect(page.locator(".hint-to")).toHaveCount(1);
+  await expect(page.locator(".sol-status")).toContainText(/hint/i);
+  // …and using a hint counts as assistance in the outcome record.
+  const assisted = await page.evaluate(
+    () => (window.__solitaire!.game.outcome("abandoned", true) as { payload: { assistance: boolean | null } }).payload.assistance,
+  );
+  expect(assisted).toBe(true);
+});
+
+test("with hints off, 'I'm stuck' ends the game and reports whether a move existed", async ({
+  page,
+}) => {
+  await page.goto("/solitaire/?seed=0");
+  await ready(page);
+
+  // Disable hints in settings — the control flips to "I'm stuck".
+  await page.locator(".sol-settings summary").click();
+  await page.locator(".sol-set-hints").uncheck();
+  const stuck = page.locator(".sol-stuck");
+  await expect(stuck).toBeVisible();
+  await stuck.click();
+
+  // The game ends as a Stuck outcome, and honestly notes a move was available
+  // (seed 0's opening always has at least a draw).
+  await expect(page.locator(".sol-result")).toBeVisible();
+  await expect(page.locator(".sol-record")).toContainText("Stuck");
+  await expect(page.locator(".sol-note")).toContainText(/move was still available/i);
+});
+
 test("full-screen keeps the board mounted and playable", async ({ page }) => {
   await page.goto("/solitaire/?seed=0");
   await ready(page);

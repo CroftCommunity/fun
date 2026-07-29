@@ -5,14 +5,23 @@ known follow-ups deferred out of the delivery slice, roughly in priority order.
 Plans: `plans/2026-07-28-games-drawer-solitaire-ui.md` (front-end),
 `plans/2026-07-27-games-pond-fun-crofting.md` (pond master).
 
+## Shipped since the delivery slice
+- [x] **New deal** fully redeals (was re-dealing the fixed daily seed).
+- [x] **Hint** control (points at a legal move, counts as assistance) + the
+      shared **Enable hints** / **Declare assistance** settings; hints-off flips
+      the control to **"I'm stuck"** which ends the game and reports whether a
+      move was available. Standard, see `docs/BUILDING-GAMES.md` §6.
+- [x] **How to play** guide (`/how-to/?game=solitaire`) with generated
+      screenshots + sync tests. Standard, see `docs/BUILDING-GAMES.md` §7.
+
 ## Gameplay / input
 - [ ] **Drag-and-drop** as a fast-follow (tap-to-move stays as the accessible
       floor). Front-plan Phase 7.
-- [ ] **Hint** control (counts as assistance, like undo). Called out in the
-      UI/UX research; not yet built.
 - [ ] **Win cascade** animation on clear (the classic flourish).
 - [ ] Auto-play obvious foundation moves (opt-in) — convenience, must not change
       the recorded move list's verifiability.
+- [ ] Guide screenshots: the `select`/`hint` shots show the whole board; a
+      cropped/zoomed capture would make the highlight clearer.
 
 ## Solver / daily pack (Phase S follow-ups)
 - [ ] **Short-line tuning** — the solver sometimes returns long draw-heavy

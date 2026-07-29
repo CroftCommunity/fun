@@ -233,6 +233,16 @@ pub extern "C" fn play_tableau_to_tableau(from: u32, count: u32, to: u32) -> u32
     })
 }
 
+/// Mark the current game as having used assistance (e.g. a hint was shown).
+/// Undo already sets this; hints call it explicitly so the outcome record
+/// reflects that the clear was not unaided.
+#[no_mangle]
+pub extern "C" fn mark_assistance() {
+    if let Some(s) = session_mut() {
+        s.assistance_used = true;
+    }
+}
+
 /// Undo the last applied move (marks assistance used). `1` if undone, `0` if
 /// there was nothing to undo.
 #[no_mangle]

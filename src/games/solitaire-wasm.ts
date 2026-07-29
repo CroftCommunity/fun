@@ -46,6 +46,7 @@ interface Exports {
   play_waste_to_tableau(pile: number): number;
   play_tableau_to_foundation(pile: number): number;
   play_tableau_to_tableau(from: number, count: number, to: number): number;
+  mark_assistance(): void;
   undo(): number;
   outcome_json(ifUnfinished: number, declare: number): number;
 }
@@ -92,6 +93,10 @@ export class Solitaire {
   }
   undo(): boolean {
     return this.x.undo() === 1;
+  }
+  /** Mark the game as assisted (a hint was shown). */
+  markAssistance(): void {
+    this.x.mark_assistance();
   }
   outcome(unfinished: "abandoned" | "stuck", declareAssistance: boolean): unknown {
     const ptr = this.x.outcome_json(unfinished === "stuck" ? 1 : 0, declareAssistance ? 1 : 0);

@@ -23,3 +23,5 @@ Status: **not started, gated.** Third on the shelf (solitaire → match-3 →
 - [ ] `cribbage-wasm` binding + `src/games/cribbage.ts` board UI on the shared
       tokens + chrome contract.
 - [ ] Add to `src/registry.ts`.
+- [ ] Meet the shelf standards in `docs/BUILDING-GAMES.md` (tap-first input,
+      hints/assistance settings, a "How to play" guide), adapted for two players.

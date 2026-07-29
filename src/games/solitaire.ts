@@ -6,7 +6,7 @@
 //! record shown on a verification-forward result screen, shareable via `?r=`.
 
 import type { GameModule } from "../contract.js";
-import { Solitaire, type BoardView, type SolMove } from "./solitaire-wasm.js";
+import { Solitaire, type BoardView, type CardView, type SolMove } from "./solitaire-wasm.js";
 import {
   dailySeed,
   decodeRecord,
@@ -16,6 +16,12 @@ import {
   type OutcomeEnvelope,
   type VerifyResult,
 } from "./solitaire-outcome.js";
+import {
+  declareAssistanceEnabled,
+  hintsEnabled,
+  setDeclareAssistance,
+  setHintsEnabled,
+} from "../settings.js";
 
 declare global {
   interface Window {
@@ -64,6 +70,12 @@ function el<K extends keyof HTMLElementTagNameMap>(
 // ---------- what the player tapped ----------
 
 type Source = { kind: "waste" } | { kind: "tableau"; pile: number; index: number };
+type Hint =
+  | { kind: "draw" }
+  | { kind: "wasteToFoundation"; suit: number }
+  | { kind: "tableauToFoundation"; pile: number; suit: number }
+  | { kind: "wasteToTableau"; pile: number }
+  | { kind: "tableauToTableau"; from: number; count: number; to: number };
 type Ctx =
   | { type: "stock" }
   | { type: "waste" }
@@ -117,6 +129,8 @@ function headline(env: OutcomeEnvelope, v: VerifyResult): string {
 export interface ResultScreenOpts {
   /** The `/solitaire/?r=…` share link (omitted on an already-shared view). */
   shareUrl?: string;
+  /** A contextual note (e.g. whether a move was still available on a Stuck). */
+  note?: string;
   /** Re-run verification and rebuild the screen. */
   onReverify?: () => void;
   /** Start a fresh game. */
@@ -148,6 +162,8 @@ export function renderResultScreen(
     ? "Verified ✓ — re-checked by replaying every move against the core."
     : `Verification failed — expected hash ${verification.expected}, replay produced ${verification.actual}.`;
   section.append(badge);
+
+  if (opts.note) section.append(el("p", { class: "sol-note" }, opts.note));
 
   const dl = el("dl", { class: "sol-record" });
   const row = (term: string, value: string, cls = ""): void => {
@@ -201,8 +217,9 @@ export function solitaireModule(): GameModule {
   let mode: "daily" | "free" = "daily";
   let seed = 0n;
   let selected: Source | null = null;
-  let declareAssistance = true;
+  let hint: Hint | null = null;
   let stuckDeclared = false;
+  let stuckNote = "";
   let moveCount = 0;
 
   const statusEl = el("p", { class: "sol-status", role: "status", "aria-live": "polite" });
@@ -401,6 +418,148 @@ export function solitaireModule(): GameModule {
     return b;
   };
 
+  // --- hints ---
+
+  const cardName = (c: CardView): string => `${RANK_NAME[c.rank]} of ${SUIT_NAME[c.suit]}`;
+
+  /** The most useful legal move to point at, in priority order, or null if the
+   *  game is a genuine dead end (no legal move — not even a draw). */
+  const bestHint = (): Hint | null => {
+    const moves = game!.legalMoves();
+    const board = game!.board();
+    if (moves.includes("WasteToFoundation") && board.wasteTop) {
+      return { kind: "wasteToFoundation", suit: board.wasteTop.suit };
+    }
+    for (const m of moves) {
+      if (typeof m === "object" && "TableauToFoundation" in m) {
+        const top = board.tableau[m.TableauToFoundation.pile]!.at(-1)?.card;
+        if (top) return { kind: "tableauToFoundation", pile: m.TableauToFoundation.pile, suit: top.suit };
+      }
+    }
+    const t2t = moves.filter(
+      (m): m is Extract<SolMove, { TableauToTableau: unknown }> =>
+        typeof m === "object" && "TableauToTableau" in m,
+    );
+    // Prefer a move that reveals a face-down card or empties a column.
+    const productive = t2t.find((m) => {
+      const from = board.tableau[m.TableauToTableau.from]!;
+      const remaining = from.length - m.TableauToTableau.count;
+      return remaining === 0 || !from[remaining - 1]!.faceUp;
+    });
+    const pick = productive ?? t2t[0];
+    if (pick) return { kind: "tableauToTableau", ...pick.TableauToTableau };
+    for (const m of moves) {
+      if (typeof m === "object" && "WasteToTableau" in m) {
+        return { kind: "wasteToTableau", pile: m.WasteToTableau.pile };
+      }
+    }
+    if (moves.includes("Draw")) return { kind: "draw" };
+    return null;
+  };
+
+  const describeHint = (h: Hint): string => {
+    const board = game!.board();
+    switch (h.kind) {
+      case "draw":
+        return "draw a card from the stock.";
+      case "wasteToFoundation":
+        return board.wasteTop
+          ? `send the ${cardName(board.wasteTop)} up to its foundation.`
+          : "send the waste card up to its foundation.";
+      case "tableauToFoundation": {
+        const top = board.tableau[h.pile]!.at(-1)?.card;
+        return top
+          ? `send the ${cardName(top)} up to its foundation.`
+          : `send column ${h.pile + 1}'s top card up to its foundation.`;
+      }
+      case "wasteToTableau":
+        return board.wasteTop
+          ? `move the ${cardName(board.wasteTop)} onto column ${h.pile + 1}.`
+          : `move the waste card onto column ${h.pile + 1}.`;
+      case "tableauToTableau":
+        return `move ${h.count} card${h.count === 1 ? "" : "s"} from column ${h.from + 1} onto column ${h.to + 1}.`;
+    }
+  };
+
+  const applyHintStyles = (): void => {
+    if (!container || !hint || !game) return;
+    const root = container.querySelector<HTMLElement>(".sol-board");
+    if (!root) return;
+    const glow = (sel: string, cls: "hint-from" | "hint-to"): void => {
+      root.querySelector(sel)?.classList.add(cls);
+    };
+    const pileTarget = (p: number): void => {
+      const slot = root.querySelector(`[data-el="slot"][data-pile="${p}"]`);
+      if (slot) {
+        slot.classList.add("hint-to");
+      } else {
+        const cards = root.querySelectorAll(`[data-el="card"][data-pile="${p}"]`);
+        cards[cards.length - 1]?.classList.add("hint-to");
+      }
+    };
+    switch (hint.kind) {
+      case "draw":
+        glow('[data-el="stock"]', "hint-to");
+        break;
+      case "wasteToFoundation":
+        glow('[data-el="waste"]', "hint-from");
+        glow(`[data-el="foundation"][data-suit="${hint.suit}"]`, "hint-to");
+        break;
+      case "tableauToFoundation": {
+        const pile = game.board().tableau[hint.pile]!;
+        glow(`[data-el="card"][data-pile="${hint.pile}"][data-index="${pile.length - 1}"]`, "hint-from");
+        glow(`[data-el="foundation"][data-suit="${hint.suit}"]`, "hint-to");
+        break;
+      }
+      case "wasteToTableau":
+        glow('[data-el="waste"]', "hint-from");
+        pileTarget(hint.pile);
+        break;
+      case "tableauToTableau": {
+        const from = game.board().tableau[hint.from]!;
+        glow(`[data-el="card"][data-pile="${hint.from}"][data-index="${from.length - hint.count}"]`, "hint-from");
+        pileTarget(hint.to);
+        break;
+      }
+    }
+  };
+
+  const endStuck = (note: string): void => {
+    selected = null;
+    hint = null;
+    stuckNote = note;
+    stuckDeclared = true;
+    render(true);
+  };
+
+  // Hints ON: point at the best legal move (counts as assistance); a genuine
+  // dead end ends the game as Stuck.
+  const showHint = (): void => {
+    if (!game || !container) return;
+    selected = null;
+    const h = bestHint();
+    if (!h) {
+      endStuck("No legal moves left — a genuine dead end.");
+      return;
+    }
+    game.markAssistance();
+    hint = h;
+    setStatus(`Hint: ${describeHint(h)} (a hint counts as assistance)`);
+    applySelectionStyles(); // clears any prior glow (selected is null)
+    applyHintStyles();
+  };
+
+  // Hints OFF: "I'm stuck" ends the game, honestly reporting whether a legal
+  // move was still available when the player gave up.
+  const declareStuck = (): void => {
+    if (!game) return;
+    endStuck(
+      bestHint()
+        ? "You ended the game while a legal move was still available."
+        : "You ended the game — there were no legal moves left.",
+    );
+  };
+
   const renderControls = (): HTMLElement => {
     const bar = el("div", { class: "sol-controls" });
 
@@ -410,16 +569,17 @@ export function solitaireModule(): GameModule {
       { type: "button", class: "sol-mode-daily", "aria-pressed": String(mode === "daily") },
       "Today’s deal",
     );
-    const free = el(
+    // "New deal" always deals a fresh random game (free play), so the up-turned
+    // cards change on every click — a daily "New deal" would re-deal the same
+    // fixed seed and appear to do nothing.
+    const fresh = el(
       "button",
-      { type: "button", class: "sol-mode-free", "aria-pressed": String(mode === "free") },
-      "Free play",
+      { type: "button", class: "sol-new", "aria-pressed": String(mode === "free") },
+      "New deal",
     );
-    const fresh = el("button", { type: "button", class: "sol-new" }, "New deal");
     daily.addEventListener("click", () => void startDeal("daily"));
-    free.addEventListener("click", () => void startDeal("free"));
-    fresh.addEventListener("click", () => void startDeal(mode));
-    modes.append(daily, free, fresh);
+    fresh.addEventListener("click", () => void startDeal("free"));
+    modes.append(daily, fresh);
 
     const undoBtn = el("button", { type: "button", class: "sol-undo" }, "Undo");
     undoBtn.addEventListener("click", () => {
@@ -431,24 +591,45 @@ export function solitaireModule(): GameModule {
       render(true);
     });
 
-    const stuckBtn = el("button", { type: "button", class: "sol-stuck" }, "I’m stuck");
-    stuckBtn.addEventListener("click", () => {
-      stuckDeclared = true;
-      selected = null;
-      render(true);
-    });
+    // Hints on → "Hint" points at a legal move (counts as assistance); the
+    // control flips to "I'm stuck" (ends the game) when hints are off.
+    const hints = hintsEnabled();
+    const actionBtn = el(
+      "button",
+      { type: "button", class: hints ? "sol-hint" : "sol-stuck" },
+      hints ? "Hint" : "I’m stuck",
+    );
+    actionBtn.addEventListener("click", hints ? showHint : declareStuck);
 
-    const assistWrap = el("label", { class: "sol-assist-label" });
-    const assist = el("input", { type: "checkbox", class: "sol-assist" });
-    (assist as HTMLInputElement).checked = declareAssistance;
-    assist.addEventListener("change", () => {
-      declareAssistance = (assist as HTMLInputElement).checked;
-    });
-    assistWrap.append(assist, document.createTextNode(" Declare assistance used"));
+    // Settings (standard across games), persisted; both on by default.
+    const setting = (
+      checked: boolean,
+      label: string,
+      cls: string,
+      onChange: (on: boolean) => void,
+    ): HTMLElement => {
+      const wrap = el("label", { class: "sol-setting" });
+      const input = el("input", { type: "checkbox", class: cls });
+      (input as HTMLInputElement).checked = checked;
+      input.addEventListener("change", () => onChange((input as HTMLInputElement).checked));
+      wrap.append(input, document.createTextNode(` ${label}`));
+      return wrap;
+    };
+    const settings = el("details", { class: "sol-settings" });
+    settings.append(
+      el("summary", {}, "Settings"),
+      setting(hints, "Enable hints", "sol-set-hints", (on) => {
+        setHintsEnabled(on);
+        render(); // relabel the action control (Hint ↔ I'm stuck)
+      }),
+      setting(declareAssistanceEnabled(), "Declare assistance used", "sol-set-assist", (on) => {
+        setDeclareAssistance(on);
+      }),
+    );
 
     const counter = el("span", { class: "sol-moves" }, `Moves: ${moveCount}`);
 
-    bar.append(modes, undoBtn, stuckBtn, assistWrap, counter);
+    bar.append(modes, undoBtn, actionBtn, settings, counter);
     return bar;
   };
 
@@ -566,8 +747,8 @@ export function solitaireModule(): GameModule {
     const root = container.querySelector<HTMLElement>(".sol-board");
     if (!root) return;
     root
-      .querySelectorAll(".legal-target")
-      .forEach((e) => e.classList.remove("legal-target"));
+      .querySelectorAll(".legal-target, .hint-from, .hint-to")
+      .forEach((e) => e.classList.remove("legal-target", "hint-from", "hint-to"));
     root.querySelectorAll(".selected").forEach((e) => e.classList.remove("selected"));
     if (!selected) return;
     const selEl =
@@ -592,13 +773,18 @@ export function solitaireModule(): GameModule {
 
   const presentResult = async (kind: "won" | "stuck"): Promise<void> => {
     if (!container || !game) return;
-    const env = game.outcome(kind === "stuck" ? "stuck" : "abandoned", declareAssistance) as OutcomeEnvelope;
+    const env = game.outcome(
+      kind === "stuck" ? "stuck" : "abandoned",
+      declareAssistanceEnabled(),
+    ) as OutcomeEnvelope;
     container.replaceChildren(el("div", { class: "sol-loading" }, "Preparing your verifiable result…"));
     const shareUrl = await shareUrlFor(env);
     if (disposed || !container) return;
+    const note = kind === "stuck" ? stuckNote : undefined;
     const build = (): HTMLElement =>
       renderResultScreen(env, verify(env), {
         shareUrl,
+        note,
         onReverify: () => container!.replaceChildren(build()),
         onPlayAgain: () => void startDeal(mode),
       });
@@ -638,7 +824,9 @@ export function solitaireModule(): GameModule {
     }
     mode = nextMode;
     stuckDeclared = false;
+    stuckNote = "";
     selected = null;
+    hint = null;
     moveCount = 0;
     setStatus("");
     game.newGame(seed);
