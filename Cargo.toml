@@ -18,6 +18,7 @@ members = [
     "crates/pond-outcome",
     "crates/match3-wasm",
     "crates/solitaire-wasm",
+    "crates/solitaire-solver",
     "crates/xbuild",
 ]
 

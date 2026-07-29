@@ -242,6 +242,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "solitaire-solver"
+version = "0.0.0"
+dependencies = [
+ "pond-docformat",
+ "serde",
+ "serde_json",
+ "solitaire-core",
+]
+
+[[package]]
 name = "solitaire-wasm"
 version = "0.0.0"
 dependencies = [

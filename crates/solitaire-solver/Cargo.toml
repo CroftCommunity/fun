@@ -1,0 +1,13 @@
+[package]
+name = "solitaire-solver"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Build-time Klondike draw-1 solver: budgeted DFS that finds a winning line if one exists, used to generate a byte-identically-regenerable winnable-daily-seed pack (and the winning-line fixture the board UI's win-path E2E replays)."
+
+[dependencies]
+solitaire-core = { workspace = true }
+pond-docformat = { workspace = true }
+serde = { workspace = true }
+serde_json.workspace = true
