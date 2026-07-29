@@ -1,0 +1,13 @@
+[package]
+name = "xbuild"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Native+wasm cross-build determinism harness (master-plan Phase 2): raw C-ABI exports that compute game state hashes, built to wasm32-unknown-unknown and checked against the locked native golden hashes via node (check.mjs)."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+solitaire-core = { workspace = true }

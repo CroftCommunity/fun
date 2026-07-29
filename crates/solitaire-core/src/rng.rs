@@ -27,12 +27,19 @@ impl DetRng {
 
     /// Uniform index in `0..len`. Counts as one draw.
     ///
+    /// Samples a fixed-width **`u32`** range, not a `usize` range: `usize` is
+    /// 32-bit on `wasm32` and 64-bit on native, and `rand`'s `gen_range`
+    /// consumes the stream differently per width — which would make the deal
+    /// diverge between native and wasm builds (a cross-build determinism bug
+    /// caught by the master-plan Phase 2 harness). Deck/board sizes fit `u32`.
+    ///
     /// # Panics
-    /// Panics if `len == 0`.
+    /// Panics if `len == 0` or `len` does not fit in a `u32`.
     pub fn index(&mut self, len: usize) -> usize {
         assert!(len > 0, "index over empty range");
         self.draws += 1;
-        self.inner.gen_range(0..len)
+        let len = u32::try_from(len).expect("index range fits u32");
+        self.inner.gen_range(0..len) as usize
     }
 
     /// In-place Fisher–Yates shuffle, top index down (RULES.md → "the

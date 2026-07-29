@@ -18,6 +18,7 @@ members = [
     "crates/pond-outcome",
     "crates/match3-wasm",
     "crates/solitaire-wasm",
+    "crates/xbuild",
 ]
 
 [workspace.package]
@@ -27,9 +28,11 @@ publish = false
 license = "AGPL-3.0-only"
 
 [workspace.dependencies]
-# Determinism: seeded ChaCha20, same primitive lineage-core uses.
-rand = "=0.8.6"
-rand_chacha = "=0.3.1"
+# Determinism: seeded ChaCha20, same primitive lineage-core uses. default-features
+# off drops `std`/`getrandom` (we only ever seed_from_u64) so the cores cross-compile
+# to wasm32-unknown-unknown, which has no OS entropy backend for getrandom.
+rand = { version = "=0.8.6", default-features = false }
+rand_chacha = { version = "=0.3.1", default-features = false }
 
 # Serialization (golden vectors, board state, documents) + hashing (state hash).
 serde = { version = "=1.0.228", features = ["derive"] }
