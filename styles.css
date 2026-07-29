@@ -173,6 +173,9 @@ body.fullscreen .play-area {
 }
 
 .sol-board {
+  /* Card footprint — shrinks on narrow screens (see the media query below). */
+  --sol-cw: 3.2rem;
+  --sol-ch: 4.6rem;
   background: var(--felt);
   border-radius: var(--radius);
   padding: 1rem;
@@ -191,8 +194,8 @@ body.fullscreen .play-area {
 }
 .sol-tableau {
   display: grid;
-  grid-template-columns: repeat(7, minmax(3.2rem, 1fr));
-  gap: 0.5rem;
+  grid-template-columns: repeat(7, minmax(var(--sol-cw), 1fr));
+  gap: 0.4rem;
   align-items: start;
 }
 .sol-pile {
@@ -204,8 +207,8 @@ body.fullscreen .play-area {
 .sol-stock,
 .sol-foundation,
 .sol-slot {
-  width: 3.2rem;
-  height: 4.6rem;
+  width: var(--sol-cw);
+  height: var(--sol-ch);
   border-radius: var(--r-card);
   font: inherit;
   display: flex;
@@ -442,4 +445,56 @@ body.fullscreen .play-area {
   font-size: 0.8125rem;
   color: var(--ink-muted);
   margin-top: 0.4rem;
+}
+
+/* Win cascade — decorative, aria-hidden, reduced-motion opt-out. */
+.sol-cascade {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 50;
+}
+.sol-cascade span {
+  position: absolute;
+  top: -2rem;
+  font-size: 1.9rem;
+  color: var(--ink);
+  animation: sol-fall 1.5s ease-in forwards;
+}
+.sol-cascade span.red {
+  color: var(--suit-red);
+}
+@keyframes sol-fall {
+  to {
+    transform: translateY(108vh) rotate(540deg);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sol-cascade {
+    display: none;
+  }
+}
+
+/* Narrow screens: shrink the card footprint so the 7-column board fits with no
+   horizontal overflow. */
+@media (max-width: 32rem) {
+  .sol-board {
+    --sol-cw: 2.4rem;
+    --sol-ch: 3.5rem;
+    padding: 0.5rem;
+  }
+  .sol-top {
+    gap: 0.3rem;
+  }
+  .sol-tableau {
+    gap: 0.25rem;
+  }
+  .sol-card .sol-suit {
+    font-size: 0.9rem;
+  }
+  .sol-card .sol-rank {
+    font-size: 0.85rem;
+  }
 }

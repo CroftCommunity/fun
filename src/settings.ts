@@ -7,6 +7,7 @@
 
 const HINTS_KEY = "fun-hints";
 const ASSIST_KEY = "fun-declare-assistance";
+const AUTOPLAY_KEY = "fun-autoplay";
 
 /** Pure resolver: an explicit stored "on"/"off" wins; otherwise the default. */
 export function resolveBool(stored: string | null, fallback: boolean): boolean {
@@ -46,4 +47,14 @@ export function declareAssistanceEnabled(): boolean {
 }
 export function setDeclareAssistance(on: boolean): void {
   write(ASSIST_KEY, on);
+}
+
+/** Auto-play cards to the foundations when it is provably safe — **off by
+ *  default** (opt-in). Safe moves are obvious, so this is a convenience, not
+ *  assistance. */
+export function autoPlayEnabled(): boolean {
+  return read(AUTOPLAY_KEY, false);
+}
+export function setAutoPlay(on: boolean): void {
+  write(AUTOPLAY_KEY, on);
 }

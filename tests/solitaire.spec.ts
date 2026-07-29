@@ -200,6 +200,29 @@ test("dragging a card onto a legal target moves it (drag as well as tap)", async
   expect(foundationTop).toBe(1); // the Ace landed on its foundation
 });
 
+test("auto-play (opt-in) sends safe cards to the foundations", async ({ page }) => {
+  await page.goto("/solitaire/?seed=0");
+  await ready(page);
+
+  await page.locator(".sol-settings summary").click();
+  await page.locator(".sol-set-autoplay").check();
+  await page.locator(".sol-stock").click(); // seed 0: draws the Ace of Hearts
+
+  const board = await page.evaluate(() => window.__solitaire!.game.board());
+  expect(board.foundations[2]).toBe(1); // Ace of Hearts auto-played to its foundation
+  expect(board.wasteCount).toBe(0);
+});
+
+test("the board fits a narrow phone with no horizontal overflow", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 780 });
+  await page.goto("/solitaire/?seed=0");
+  await ready(page);
+  const noOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+  );
+  expect(noOverflow).toBe(true);
+});
+
 test("full-screen keeps the board mounted and playable", async ({ page }) => {
   await page.goto("/solitaire/?seed=0");
   await ready(page);

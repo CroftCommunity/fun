@@ -17,8 +17,10 @@ import {
   type VerifyResult,
 } from "./solitaire-outcome.js";
 import {
+  autoPlayEnabled,
   declareAssistanceEnabled,
   hintsEnabled,
+  setAutoPlay,
   setDeclareAssistance,
   setHintsEnabled,
 } from "../settings.js";
@@ -221,6 +223,7 @@ export function solitaireModule(): GameModule {
   let stuckDeclared = false;
   let stuckNote = "";
   let moveCount = 0;
+  let cascadeEl: HTMLElement | null = null;
 
   const statusEl = el("p", { class: "sol-status", role: "status", "aria-live": "polite" });
   const setStatus = (msg: string): void => {
@@ -334,11 +337,49 @@ export function solitaireModule(): GameModule {
 
   // --- actions ---
 
+  const sameColorOther = [3, 2, 1, 0]; // ♣→♠, ♦→♥, ♥→♦, ♠→♣
+
+  /** A card is provably safe to auto-send to its foundation when it can never be
+   *  needed in the tableau: Aces/2s always, else both opposite-colour
+   *  foundations are within one rank and the same-colour other suit within two. */
+  const safeToFoundation = (card: CardView, f: readonly number[]): boolean => {
+    if (card.rank <= 2) return true;
+    const opp = isRed(card.suit) ? [0, 3] : [1, 2];
+    return (
+      f[opp[0]!]! >= card.rank - 1 &&
+      f[opp[1]!]! >= card.rank - 1 &&
+      f[sameColorOther[card.suit]!]! >= card.rank - 2
+    );
+  };
+
+  /** Opt-in: repeatedly play any safe foundation move the core offers. These are
+   *  obvious moves, so they are a convenience, not assistance. */
+  const autoPlaySafe = (): void => {
+    if (!game || !autoPlayEnabled()) return;
+    for (let guard = 0; guard < 60; guard += 1) {
+      const board = game.board();
+      const play = (m: SolMove): boolean => game!.play(m) === "applied";
+      const move = game.legalMoves().find((m) => {
+        if (m === "WasteToFoundation") {
+          return board.wasteTop ? safeToFoundation(board.wasteTop, board.foundations) : false;
+        }
+        if (typeof m === "object" && "TableauToFoundation" in m) {
+          const top = board.tableau[m.TableauToFoundation.pile]!.at(-1)?.card;
+          return top ? safeToFoundation(top, board.foundations) : false;
+        }
+        return false;
+      });
+      if (!move || !play(move)) break;
+      moveCount += 1;
+    }
+  };
+
   const applyMove = (move: SolMove): void => {
     const status = game!.play(move);
     if (status === "applied") {
       moveCount += 1;
       setStatus("");
+      autoPlaySafe();
     } else {
       setStatus("That move is not legal.");
     }
@@ -348,8 +389,12 @@ export function solitaireModule(): GameModule {
 
   const doDraw = (): void => {
     const status = game!.play("Draw");
-    if (status === "applied") moveCount += 1;
-    else setStatus("Nothing left to draw.");
+    if (status === "applied") {
+      moveCount += 1;
+      autoPlaySafe();
+    } else {
+      setStatus("Nothing left to draw.");
+    }
     selected = null;
     render(true);
   };
@@ -626,6 +671,9 @@ export function solitaireModule(): GameModule {
       setting(declareAssistanceEnabled(), "Declare assistance used", "sol-set-assist", (on) => {
         setDeclareAssistance(on);
       }),
+      setting(autoPlayEnabled(), "Auto-play safe cards to foundations", "sol-set-autoplay", (on) => {
+        setAutoPlay(on);
+      }),
     );
 
     const counter = el("span", { class: "sol-moves" }, `Moves: ${moveCount}`);
@@ -815,8 +863,34 @@ export function solitaireModule(): GameModule {
     }
   };
 
+  // A brief celebratory cascade over the felt on a win. Decorative and
+  // aria-hidden; skipped under reduced-motion; removed on unmount.
+  const playCascade = (): void => {
+    try {
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    } catch {
+      return;
+    }
+    const glyphs = ["♣", "♦", "♥", "♠"];
+    const layer = el("div", { class: "sol-cascade", "aria-hidden": "true" });
+    for (let i = 0; i < 24; i += 1) {
+      const s = el("span", {}, glyphs[i % 4]!);
+      if (i % 4 === 1 || i % 4 === 2) s.className = "red";
+      s.style.left = `${(i * 4.15) % 100}%`;
+      s.style.animationDelay = `${(i % 8) * 0.08}s`;
+      layer.append(s);
+    }
+    document.body.append(layer);
+    cascadeEl = layer;
+    setTimeout(() => {
+      layer.remove();
+      if (cascadeEl === layer) cascadeEl = null;
+    }, 1900);
+  };
+
   const presentResult = async (kind: "won" | "stuck"): Promise<void> => {
     if (!container || !game) return;
+    if (kind === "won") playCascade();
     const env = game.outcome(
       kind === "stuck" ? "stuck" : "abandoned",
       declareAssistanceEnabled(),
@@ -967,6 +1041,8 @@ export function solitaireModule(): GameModule {
     unmount(): void {
       disposed = true;
       delete window.__solitaire;
+      cascadeEl?.remove();
+      cascadeEl = null;
       container?.replaceChildren();
       container = null;
       game = null;
