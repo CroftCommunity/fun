@@ -412,6 +412,7 @@ export function solitaireModule(): GameModule {
       type: "button",
       class: `sol-card ${isRed(suit) ? "red" : "black"}`,
       "aria-label": `${RANK_NAME[rank]} of ${SUIT_NAME[suit]}, face up`,
+      draggable: "true", // drag-and-drop fast-follow; tapping still works
       ...dataset,
     });
     b.append(el("span", { class: "sol-rank" }, RANK_SHORT[rank]!), el("span", { class: "sol-suit" }, SUIT_SYM[suit]!));
@@ -736,6 +737,49 @@ export function solitaireModule(): GameModule {
       if (!btn) return;
       const ctx = ctxFromEl(btn);
       if (ctx && (ctx.type === "waste" || ctx.type === "card")) autoToFoundation(ctx);
+    });
+
+    // Drag-and-drop (fast-follow): the same source→target resolution as tapping,
+    // so the core still decides legality. Tapping remains the accessible floor.
+    let dragSource: Source | null = null;
+    boardEl.addEventListener("dragstart", (e: DragEvent) => {
+      const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-el="card"], [data-el="waste"]');
+      const ctx = btn ? ctxFromEl(btn) : null;
+      const src = ctx ? isSelectable(ctx) : null;
+      if (!src) {
+        e.preventDefault();
+        return;
+      }
+      dragSource = src;
+      selected = src;
+      hint = null;
+      applySelectionStyles(); // glow the legal drop targets
+      e.dataTransfer?.setData("text/plain", "card");
+      if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
+    });
+    boardEl.addEventListener("dragover", (e: DragEvent) => {
+      if (dragSource) e.preventDefault(); // allow a drop; legality is checked on drop
+    });
+    boardEl.addEventListener("drop", (e: DragEvent) => {
+      if (!dragSource) return;
+      e.preventDefault();
+      const btn = (e.target as HTMLElement).closest<HTMLElement>("[data-el]");
+      const ctx = btn ? ctxFromEl(btn) : null;
+      const move = ctx ? findMove(dragSource, ctx) : null;
+      dragSource = null;
+      if (move) {
+        applyMove(move);
+      } else {
+        selected = null;
+        applySelectionStyles();
+        setStatus("No legal move there.");
+      }
+    });
+    boardEl.addEventListener("dragend", () => {
+      if (!dragSource) return; // a successful drop already cleared it
+      dragSource = null;
+      selected = null;
+      applySelectionStyles();
     });
 
     boardEl.append(top, tableau);

@@ -62,8 +62,8 @@ export const SOLITAIRE_GUIDE: Guide = {
         {
           kind: "shot",
           name: "solitaire-select",
-          alt: "A selected card outlined in gold, with its one legal destination column highlighted by a gold ring.",
-          caption: "Tap a card and its legal destinations glow. Tap a glowing spot to move there.",
+          alt: "The waste card selected with a gold outline and its legal foundation highlighted by a gold ring.",
+          caption: "Tap a card and its legal destinations glow gold. Tap one to move there.",
         },
         {
           kind: "note",
@@ -105,8 +105,8 @@ export const SOLITAIRE_GUIDE: Guide = {
         {
           kind: "shot",
           name: "solitaire-hint",
-          alt: "The Hint control has highlighted a source card and its destination with a green ring, with a status line describing the suggested move.",
-          caption: "Hint points at a move (in green) and explains it below the board.",
+          alt: "The Hint control highlighting the waste Ace and its matching foundation in green as the suggested move.",
+          caption: "Hint highlights a move in green — here, sending the Ace up to its foundation. A line below the board spells it out.",
         },
       ],
     },

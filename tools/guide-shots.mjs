@@ -29,10 +29,12 @@ if (!existsSync(join(dist, "solitaire.wasm"))) {
 mkdirSync(outDir, { recursive: true });
 
 // Each shot drives the built game into the state the guide describes, then
-// captures it. Keep the names in sync with the `shot` blocks in the guides.
+// captures it. `clip` element-crops the shot so the highlight reads clearly;
+// omit it for a full-page capture. Keep names in sync with the guides' `shot`s.
 const SHOTS = [
   {
     name: "solitaire-board",
+    clip: ".sol-board",
     async run(page) {
       await page.goto(`${origin}/solitaire/?seed=0`, { waitUntil: "networkidle" });
       await page.waitForSelector(".sol-board");
@@ -40,25 +42,29 @@ const SHOTS = [
   },
   {
     name: "solitaire-select",
+    clip: ".sol-top",
     async run(page) {
       await page.goto(`${origin}/solitaire/?seed=0`, { waitUntil: "networkidle" });
       await page.waitForSelector(".sol-board");
-      await page.click(".sol-stock"); // draw so the waste has a playable card
-      await page.click('[data-el="waste"]'); // select it -> its legal target glows
+      await page.click(".sol-stock"); // draw so the waste has a playable card (the Ace)
+      await page.click('[data-el="waste"]'); // select it -> its legal foundation glows gold
       await page.waitForSelector(".legal-target");
     },
   },
   {
     name: "solitaire-hint",
+    clip: ".sol-top",
     async run(page) {
       await page.goto(`${origin}/solitaire/?seed=0`, { waitUntil: "networkidle" });
       await page.waitForSelector(".sol-board");
+      await page.click(".sol-stock"); // draw first, so the hint is a real move (Ace -> foundation)
       await page.click(".sol-hint");
       await page.waitForSelector(".hint-to");
     },
   },
   {
     name: "solitaire-win",
+    clip: ".sol-result",
     async run(page) {
       await page.goto(`${origin}/solitaire/?seed=0`, { waitUntil: "networkidle" });
       await page.waitForSelector(".sol-board");
@@ -86,11 +92,12 @@ try {
     });
     const page = await context.newPage();
     await shot.run(page);
-    await page.screenshot({
+    const target = shot.clip ? page.locator(shot.clip) : page;
+    await target.screenshot({
       path: join(outDir, `${shot.name}.jpg`),
       type: "jpeg",
       quality: 82,
-      fullPage: true,
+      ...(shot.clip ? {} : { fullPage: true }),
     });
     await context.close();
     console.log(`guide-shots: wrote assets/guide/${shot.name}.jpg`);

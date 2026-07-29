@@ -182,6 +182,24 @@ test("with hints off, 'I'm stuck' ends the game and reports whether a move exist
   await expect(page.locator(".sol-note")).toContainText(/move was still available/i);
 });
 
+test("dragging a card onto a legal target moves it (drag as well as tap)", async ({ page }) => {
+  await page.goto("/solitaire/?seed=0");
+  await ready(page);
+
+  await page.locator(".sol-stock").click(); // seed 0: waste top becomes the Ace of Hearts
+  const suit = await page.evaluate(() => window.__solitaire!.game.board().wasteTop!.suit);
+  const before = await page.evaluate(() => window.__solitaire!.game.currentHash());
+
+  await page
+    .locator('[data-el="waste"]')
+    .dragTo(page.locator(`.sol-foundation[data-suit="${suit}"]`));
+
+  const after = await page.evaluate(() => window.__solitaire!.game.currentHash());
+  expect(after).not.toBe(before);
+  const foundationTop = await page.evaluate((s) => window.__solitaire!.game.board().foundations[s], suit);
+  expect(foundationTop).toBe(1); // the Ace landed on its foundation
+});
+
 test("full-screen keeps the board mounted and playable", async ({ page }) => {
   await page.goto("/solitaire/?seed=0");
   await ready(page);
