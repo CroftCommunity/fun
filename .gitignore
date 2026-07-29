@@ -1,7 +1,11 @@
 # Rust build output
 /target
-# web build output + deps (added in the front-end plan Phase 1)
+# web build output + deps
 /dist
 /node_modules
+# Playwright artifacts
+/test-results
+/playwright-report
+/.last-run.json
 # per-machine
 .DS_Store

@@ -1,22 +1,64 @@
-// Minimal static build for the fun.croft.ing skeleton (master-plan Phase 1).
-//
-// Copies the static entry files into dist/. This is the honest minimal build:
-// it produces a deployable static site with zero dependencies, so `npm run
-// build` exits 0 before the toolchain is installed. The front-end plan
-// (2026-07-28-games-drawer-solitaire-ui.md) Phase 1 replaces this with an
-// esbuild pipeline (TS bundling, per-game entry pages, service worker) — same
-// build.mjs entry point, real bundler.
-import { cp, mkdir, rm } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
+// Static build for fun.croft.ing (front-plan Phase 1): esbuild-bundle the
+// vanilla-TS chrome into one app.js, then emit a per-game static entry page
+// (`/<id>/index.html`) plus the home page (`/`). Per-game static pages give
+// clean, shareable, new-tab-able URLs with no client router or Pages 404 hack.
+import { build } from "esbuild";
+import { cp, mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const dist = join(root, "dist");
-const staticFiles = ["index.html", "styles.css"];
+
+// Pages: "" is the home/drawer page (no game mounted). The rest are per-game
+// entry pages whose <body data-game> tells the chrome what to mount.
+const PAGES = ["", "placeholder", "solitaire", "match3"];
+
+function page(gameId) {
+  const dataAttr = gameId ? ` data-game="${gameId}"` : "";
+  const title = gameId ? `Croft · fun — ${gameId}` : "Croft · fun";
+  const base = gameId ? "/" : "./"; // per-game pages live one dir deep
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${title}</title>
+    <meta name="description" content="fun.croft.ing — the Croft games pond, a determinism-first local-first game shelf." />
+    <link rel="stylesheet" href="${base}styles.css" />
+  </head>
+  <body${dataAttr}>
+    <script type="module" src="${base}app.js"></script>
+  </body>
+</html>
+`;
+}
 
 await rm(dist, { recursive: true, force: true });
 await mkdir(dist, { recursive: true });
-for (const file of staticFiles) {
-  await cp(join(root, file), join(dist, file));
+
+await build({
+  entryPoints: [join(root, "src/main.ts")],
+  bundle: true,
+  format: "esm",
+  target: "es2022",
+  minify: true,
+  sourcemap: true,
+  outfile: join(dist, "app.js"),
+});
+
+await cp(join(root, "styles.css"), join(dist, "styles.css"));
+if (await exists(join(root, "CNAME"))) await cp(join(root, "CNAME"), join(dist, "CNAME"));
+
+for (const id of PAGES) {
+  const dir = id ? join(dist, id) : dist;
+  await mkdir(dir, { recursive: true });
+  await writeFile(join(dir, "index.html"), page(id));
 }
-console.log(`built ${staticFiles.length} files -> dist/`);
+
+console.log(`built app.js + ${PAGES.length} pages -> dist/`);
+
+async function exists(p) {
+  const { access } = await import("node:fs/promises");
+  return access(p).then(() => true).catch(() => false);
+}

@@ -3,10 +3,27 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "fun.croft.ing — the Croft games pond. A determinism-first, local-first game shelf (Rust cores compiled to wasm, vanilla TS drawer UI).",
+  "description": "fun.croft.ing — the Croft games pond. A determinism-first, local-first game shelf (Rust cores compiled to wasm, vanilla TS slide-out drawer UI).",
   "scripts": {
     "build": "node build.mjs",
-    "serve": "node --experimental-default-type=module -e \"import('node:http').then(async({default:h})=>{const{readFile}=await import('node:fs/promises');const{join,extname}=await import('node:path');const t={'.html':'text/html','.css':'text/css','.js':'text/javascript','.json':'application/json','.wasm':'application/wasm'};h.createServer(async(q,s)=>{try{const p=join('dist',q.url==='/'?'index.html':q.url);s.setHeader('content-type',t[extname(p)]||'application/octet-stream');s.end(await readFile(p))}catch{s.statusCode=404;s.end('not found')}}).listen(4180,()=>console.log('http://localhost:4180'))})\""
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "unit": "vitest run",
+    "e2e": "playwright test",
+    "serve": "node build.mjs && node tools/serve.mjs",
+    "test": "npm run typecheck && npm run lint && npm run unit && npm run build"
   },
-  "//": "Rust/cargo drives the game cores + tests; this is the web skeleton. The front-end plan Phase 1 adds esbuild, Vitest, Playwright + @axe-core/playwright, ESLint, tsc, and a service worker (matching croft-pwa)."
+  "devDependencies": {
+    "@axe-core/playwright": "^4.10.1",
+    "@eslint/js": "^9.17.0",
+    "@playwright/test": "^1.49.1",
+    "@types/node": "^22.10.5",
+    "esbuild": "^0.24.2",
+    "eslint": "^9.17.0",
+    "globals": "^15.14.0",
+    "jsdom": "^25.0.1",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.19.1",
+    "vitest": "^2.1.8"
+  }
 }
