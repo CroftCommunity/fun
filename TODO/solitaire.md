@@ -13,15 +13,15 @@ Plans: `plans/2026-07-28-games-drawer-solitaire-ui.md` (front-end),
       move was available. Standard, see `docs/BUILDING-GAMES.md` §6.
 - [x] **How to play** guide (`/how-to/?game=solitaire`) with generated
       screenshots + sync tests. Standard, see `docs/BUILDING-GAMES.md` §7.
+- [x] **Drag-and-drop** (fast-follow) — drop resolves through the same
+      source→target matching as tapping; tap remains the accessible floor.
+- [x] Cropped/zoomed guide screenshots (select/hint crop to the top row; hint
+      taken after a draw so it points at a real Ace→foundation move).
 
 ## Gameplay / input
-- [ ] **Drag-and-drop** as a fast-follow (tap-to-move stays as the accessible
-      floor). Front-plan Phase 7.
 - [ ] **Win cascade** animation on clear (the classic flourish).
 - [ ] Auto-play obvious foundation moves (opt-in) — convenience, must not change
       the recorded move list's verifiability.
-- [ ] Guide screenshots: the `select`/`hint` shots show the whole board; a
-      cropped/zoomed capture would make the highlight clearer.
 
 ## Solver / daily pack (Phase S follow-ups)
 - [ ] **Short-line tuning** — the solver sometimes returns long draw-heavy
