@@ -464,6 +464,37 @@ body.fullscreen .play-area {
   outline: 3px solid var(--focus);
   outline-offset: 1px;
 }
+/* Objective toggle (target-score vs clear-the-blockers), sharing the control
+   button styling; the pressed one uses the accent like the board-mode buttons. */
+.m3-objectives {
+  display: flex;
+  gap: 0.25rem;
+}
+/* A fixed blocker tile: same footprint as a gem, visibly locked and non-clickable. */
+.m3-blocker {
+  width: var(--m3-gem);
+  height: var(--m3-gem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--m3-gem) * 0.6);
+  line-height: 1;
+  color: var(--ink-muted);
+  background: repeating-linear-gradient(
+    45deg,
+    var(--border),
+    var(--border) 3px,
+    var(--surface) 3px,
+    var(--surface) 6px
+  );
+  border: 1px solid var(--ink-muted);
+  border-radius: var(--r-card);
+  cursor: default;
+}
+.m3-hud .m3-blockers-left {
+  color: var(--ink);
+  font-weight: 700;
+}
 @media (max-width: 32rem) {
   .m3-board {
     --m3-gem: 1.9rem;

@@ -5,7 +5,7 @@ import type { Guide } from "../how-to.js";
 
 export const MATCH3_GUIDE: Guide = {
   title: "How to play match-3",
-  lede: "Swap adjacent gems to line up three or more of the same kind. You have a fixed number of swaps to score as high as you can — hit the targets to earn stars. Every result is a record anyone can re-verify.",
+  lede: "Swap adjacent gems to line up three or more of the same kind. Two objectives share the board: score as high as you can for stars (Target score), or clear every blocker in as few swaps as you can (Clear blockers). Every result is a record anyone can re-verify.",
   entries: [
     {
       testid: "howto-goal",
@@ -32,6 +32,25 @@ export const MATCH3_GUIDE: Guide = {
         {
           kind: "prose",
           text: "Each gem has both a colour and a shape (circle, triangle, square, diamond, star, plus), so they stay distinct however you see colour. A line of three or more of the same gem — across or down — clears and scores. When gems clear, those above fall to fill the gap and new gems drop in, which can set off chain reactions for extra points.",
+        },
+      ],
+    },
+    {
+      testid: "howto-blockers",
+      title: "Two objectives: Target score and Clear blockers",
+      toc: "Objectives",
+      blocks: [
+        {
+          kind: "prose",
+          text: "The buttons above the board pick your objective. Target score is the classic mode: bank as many points as you can within your swap budget for one, two, or three stars. Clear blockers gives you a board with locked tiles you cannot swap; a match made next to a blocker chips it away, and you win the moment every blocker is gone.",
+        },
+        {
+          kind: "steps",
+          items: [
+            "Blockers do not move and cannot be swapped — clear the gems beside them.",
+            "A match next to a blocker removes one layer; these boards use single-layer blockers, so one adjacent match clears each.",
+            "You are graded on how few swaps it takes to clear them all — the daily board is always solvable.",
+          ],
         },
       ],
     },

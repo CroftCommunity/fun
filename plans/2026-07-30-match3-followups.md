@@ -95,7 +95,11 @@ Do them safest → owner-gated, each shipped green + deployed on its own commit:
   corpus vectors' final boards are live, so the reshuffle never fires on them
   (verified explicitly). Pure op + post-move invariant pinned in
   `tests/reshuffle.rs`.
-- [ ] **Item 3** — owner decision, then the chosen mode as a full slice.
+- [x] **Item 3** — clear-the-blockers, shipped 2026-07-30 as a full slice across
+  four green commits: 3a core (`deal_blockers` + `blockers_remaining`), 3b the
+  `match3-solver` crate + committed winnable-daily pack, 3c the mode-aware binding
+  (`new_blockers_game`, `Match3Blockers` outcome kind), 3d the UI objective toggle
+  + blocker tiles + blockers-left HUD + verifiable clear result + how-to.
 - [ ] **Item 4** — reference/fraction tuning with versioning handled, or a
   recorded re-defer.
 

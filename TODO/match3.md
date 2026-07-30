@@ -37,9 +37,19 @@ Round-2 follow-ups (plan: `plans/2026-07-30-match3-followups.md`):
       untouched (no draws), so no golden vector's final board deadlocked → no
       locked hash changed. Unit-tested in `tests/reshuffle.rs`; RULES.md updated.
 
+- [x] **Variant objective — clear-the-blockers** (owner-picked 2026-07-30). A
+      second objective sharing the 8×8 engine: deal 6 single-layer blockers, win
+      by clearing them all, graded on swaps-to-clear. New `match3-solver` crate
+      (budgeted blocker-damage-first DFS) generates a byte-identically
+      regenerable winnable-daily pack (`games/match3/blockers-pack.json`, 365
+      seeds + fixture). Binding is mode-aware (`new_blockers_game`,
+      `Match3Blockers` outcome kind `match3-blockers`); UI adds an objective
+      toggle, blocker tiles, a blockers-left HUD, and a verifiable clear result;
+      how-to documents it. `?mode=blockers` opens it directly.
+
 Deferred (each is a real chunk or an owner call, not a quick polish):
-- [ ] **Variant objectives** (clear-the-blockers / jelly / ingredients) and
-      **specials** (striped / wrapped / colour-bomb) — new modes + balance
-      decisions reserved for the owner.
+- [ ] **Other variant objectives** (jelly / ingredients) and **specials**
+      (striped / wrapped / colour-bomb) — further new modes + balance decisions
+      reserved for the owner.
 - [ ] **Tune the reference/fractions** — greedy is a rough par; a stronger
       reference (beam/lookahead) or retuned fractions, best driven by real play.

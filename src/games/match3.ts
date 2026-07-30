@@ -5,7 +5,7 @@
 //! `pond-outcome` record is shown, shareable via `?r=`.
 
 import type { GameModule } from "../contract.js";
-import { Match3, type BoardView, type Frame, type Swap } from "./match3-wasm.js";
+import { Match3, type BoardView, type Frame, type Mode, type Swap } from "./match3-wasm.js";
 import {
   decodeRecord,
   encodeRecord,
@@ -29,12 +29,30 @@ declare global {
       refresh: () => void;
       legalMoves: () => Swap[];
       seed: bigint;
+      objective: Mode;
     };
   }
 }
 
 const GEM_GLYPH = ["●", "▲", "■", "◆", "★", "✚"];
 const GEM_NAME = ["circle", "triangle", "square", "diamond", "star", "plus"];
+const BLOCKER_GLYPH = "▦";
+
+/** The clear-the-blockers winnable-daily pack payload (inside the doc envelope). */
+interface BlockersPack {
+  /** Winnable seeds, indexed by date at runtime. */
+  seeds: number[];
+  /** One winnable deal + its clearing line (the win-path fixture). */
+  fixture: { seed: number; moves: Swap[] };
+}
+
+/** Fetch and unwrap the clear-the-blockers pack served at `/match3-blockers-pack.json`. */
+async function fetchBlockersPack(): Promise<BlockersPack> {
+  const res = await fetch("/match3-blockers-pack.json");
+  if (!res.ok) throw new Error(`match3-blockers-pack.json: ${res.status}`);
+  const env = (await res.json()) as { payload: BlockersPack };
+  return env.payload;
+}
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -51,8 +69,15 @@ const starString = (stars: number): string => "★★★☆☆☆".slice(3 - sta
 
 // ---------- the result screen (pure DOM) ----------
 
+const isBlockers = (env: M3Envelope): boolean => env.kind === "match3-blockers";
+
 function headline(env: M3Envelope, v: VerifyResult): string {
   if (!v.ok) return "Verification FAILED — this result does not check out";
+  if (isBlockers(env)) {
+    return env.payload.result === "Won"
+      ? `All blockers cleared in ${env.payload.move_count} swaps — verifiable`
+      : "Ran out of swaps — blockers remain";
+  }
   const stars = env.payload.stars ?? 0;
   if (env.payload.result === "Won") return `Cleared with ${starString(stars)} — verifiable`;
   return "Under target — didn’t reach 1★ this time";
@@ -90,8 +115,11 @@ export function renderResultScreen(
     dl.append(el("dt", {}, term), el("dd", cls ? { class: cls } : {}, value));
   };
   row("Result", rec.result);
-  row("Score", String(rec.score ?? 0));
-  row("Stars", starString(rec.stars ?? 0));
+  if (!isBlockers(env)) {
+    // Target-score metrics; clear-the-blockers is graded on swaps-to-clear alone.
+    row("Score", String(rec.score ?? 0));
+    row("Stars", starString(rec.stars ?? 0));
+  }
   row("Swaps used", String(rec.move_count));
   row("Seed", String(rec.seed));
   row("Final hash", rec.final_hash, "sol-hash");
@@ -131,6 +159,8 @@ export function match3Module(): GameModule {
   let disposed = false;
 
   let mode: "daily" | "free" = "daily";
+  let objective: Mode = "target-score";
+  let blockersPack: BlockersPack | null = null;
   let seed = 0n;
   let selected: { r: number; c: number } | null = null;
   let hint: Swap | null = null;
@@ -184,10 +214,16 @@ export function match3Module(): GameModule {
     return null;
   };
 
-  const gameOver = (): boolean => !!game && (game.movesLeft() === 0 || game.legalMoves().length === 0);
+  // The round is over when the budget or legal moves run out, or — in
+  // clear-the-blockers — the moment every blocker is cleared (the objective is met).
+  const gameOver = (): boolean =>
+    !!game &&
+    (game.movesLeft() === 0 ||
+      game.legalMoves().length === 0 ||
+      (objective === "blockers" && game.isWon()));
 
   // One animation frame board (decorative + aria-hidden). Empty cells are holes
-  // mid-cascade; letters would be blockers (not present on v1 boards).
+  // mid-cascade; letters are blockers (clear-the-blockers boards).
   const renderFrame = (rows: Frame): HTMLElement => {
     const boardEl = el("div", { class: "m3-board m3-animating", tabindex: "-1", "aria-hidden": "true" });
     rows.forEach((row) => {
@@ -201,7 +237,7 @@ export function match3Module(): GameModule {
         } else if (ch === ".") {
           rowEl.append(el("span", { class: "m3-gem m3-hole" }));
         } else {
-          rowEl.append(el("span", { class: "m3-gem m3-blocker" }, "▨"));
+          rowEl.append(el("span", { class: "m3-blocker" }, BLOCKER_GLYPH));
         }
       }
       boardEl.append(rowEl);
@@ -325,6 +361,28 @@ export function match3Module(): GameModule {
     fresh.addEventListener("click", () => void startGame("free"));
     modes.append(daily, fresh);
 
+    // Objective toggle: score-in-moves vs clear-the-blockers. Switching restarts
+    // the current board mode under the chosen objective.
+    const objectives = el("div", { class: "m3-objectives", role: "group", "aria-label": "Objective" });
+    const switchObjective = (next: Mode): void => {
+      if (objective === next) return;
+      objective = next;
+      void startGame(mode);
+    };
+    const scoreBtn = el(
+      "button",
+      { type: "button", class: "m3-obj-score", "aria-pressed": String(objective === "target-score") },
+      "Target score",
+    );
+    const blockBtn = el(
+      "button",
+      { type: "button", class: "m3-obj-blockers", "aria-pressed": String(objective === "blockers") },
+      "Clear blockers",
+    );
+    scoreBtn.addEventListener("click", () => switchObjective("target-score"));
+    blockBtn.addEventListener("click", () => switchObjective("blockers"));
+    objectives.append(scoreBtn, blockBtn);
+
     const hints = hintsEnabled();
     const actionBtn = el(
       "button",
@@ -358,16 +416,28 @@ export function match3Module(): GameModule {
       }),
     );
 
-    const hud = el(
-      "div",
-      { class: "m3-hud" },
-      el("span", { class: `m3-score${scoreBumped ? " bump" : ""}` }, `Score ${board.score}`),
-      el("span", { class: "m3-moves" }, `Swaps left ${board.movesLeft}`),
-      el("span", { class: "m3-stars", "aria-label": `${board.stars} of 3 stars` }, starString(board.stars)),
-      el("span", { class: "m3-target" }, `Targets ${board.targets.join(" / ")}`),
-    );
+    const hud =
+      board.mode === "blockers"
+        ? el(
+            "div",
+            { class: "m3-hud" },
+            el(
+              "span",
+              { class: "m3-blockers-left", "aria-label": `${board.blockersRemaining} of ${board.blockersTotal} blockers left` },
+              `Blockers left ${board.blockersRemaining} of ${board.blockersTotal}`,
+            ),
+            el("span", { class: "m3-moves" }, `Swaps left ${board.movesLeft}`),
+          )
+        : el(
+            "div",
+            { class: "m3-hud" },
+            el("span", { class: `m3-score${scoreBumped ? " bump" : ""}` }, `Score ${board.score}`),
+            el("span", { class: "m3-moves" }, `Swaps left ${board.movesLeft}`),
+            el("span", { class: "m3-stars", "aria-label": `${board.stars} of 3 stars` }, starString(board.stars)),
+            el("span", { class: "m3-target" }, `Targets ${board.targets.join(" / ")}`),
+          );
 
-    bar.append(modes, actionBtn, settings);
+    bar.append(modes, objectives, actionBtn, settings);
     const wrap = el("div");
     wrap.append(bar, hud);
     return wrap;
@@ -377,7 +447,17 @@ export function match3Module(): GameModule {
     const boardEl = el("div", { class: "m3-board", tabindex: "-1" });
     board.cells.forEach((row, r) => {
       const rowEl = el("div", { class: "m3-row" });
-      row.forEach((color, c) => rowEl.append(gemButton(color, r, c)));
+      row.forEach((color, c) => {
+        // A blocker is a fixed, non-swappable tile (not a `.m3-gem`, so taps and
+        // drags skip it); its neighbours' matches clear it.
+        if (board.blockers[r]?.[c]) {
+          rowEl.append(
+            el("span", { class: "m3-blocker", role: "img", "aria-label": `blocker, row ${r + 1} column ${c + 1}` }, BLOCKER_GLYPH),
+          );
+        } else {
+          rowEl.append(gemButton(color, r, c));
+        }
+      });
       boardEl.append(rowEl);
     });
     boardEl.addEventListener("click", (e) => {
@@ -483,7 +563,8 @@ export function match3Module(): GameModule {
   const presentResult = async (): Promise<void> => {
     if (!container || !game) return;
     const env = game.outcome(declareAssistanceEnabled()) as M3Envelope;
-    if ((env.payload.stars ?? 0) >= 1) playCascade();
+    const passed = env.kind === "match3-blockers" ? env.payload.result === "Won" : (env.payload.stars ?? 0) >= 1;
+    if (passed) playCascade();
     container.replaceChildren(el("div", { class: "sol-loading" }, "Preparing your verifiable result…"));
     const shareUrl = await shareUrlFor(env);
     if (disposed || !container) return;
@@ -509,21 +590,57 @@ export function match3Module(): GameModule {
     applyGlow();
   }
 
+  // Pick the seed for a clear-the-blockers board — always from the winnable pack
+  // (daily = the day's seed; free = a pack seed chosen from the day + a nonce),
+  // so a blocker board is guaranteed clearable. An explicit `seedOverride` (a
+  // shared/`?seed=` deal) is trusted as-is.
+  const blockersSeed = (pack: BlockersPack, nextMode: "daily" | "free"): bigint => {
+    const i =
+      nextMode === "daily"
+        ? dayIndexUTC(new Date()) % pack.seeds.length
+        : Number(randomSeed() % BigInt(pack.seeds.length));
+    return BigInt(pack.seeds[i]!);
+  };
+
   async function startGame(nextMode: "daily" | "free", seedOverride?: bigint): Promise<void> {
     if (!game || disposed) return;
+    if (objective === "blockers" && !blockersPack) {
+      try {
+        blockersPack = await fetchBlockersPack();
+      } catch {
+        showLoadError("Today’s clear-the-blockers board could not be loaded.");
+        return;
+      }
+      if (disposed || !game) return;
+    }
     mode = nextMode;
-    seed =
-      seedOverride ??
-      (nextMode === "daily" ? BigInt(dayIndexUTC(new Date())) : randomSeed());
+    if (objective === "blockers") {
+      seed = seedOverride ?? blockersSeed(blockersPack!, nextMode);
+      game.newBlockersGame(seed);
+    } else {
+      seed = seedOverride ?? (nextMode === "daily" ? BigInt(dayIndexUTC(new Date())) : randomSeed());
+      game.newGame(seed);
+    }
     selected = null;
     hint = null;
     lastScore = 0;
     scoreBumped = false;
     setStatus("");
-    game.newGame(seed);
     exposeHook();
     render();
   }
+
+  const showLoadError = (msg: string): void => {
+    if (!container) return;
+    const box = el("div", { class: "sol-error" });
+    const b = el("button", { type: "button", class: "sol-mode-free" }, "Play target-score instead");
+    b.addEventListener("click", () => {
+      objective = "target-score";
+      void startGame("daily");
+    });
+    box.append(el("p", {}, msg), b);
+    container.replaceChildren(box);
+  };
 
   const showShared = async (payload: string): Promise<void> => {
     if (!container) return;
@@ -553,6 +670,7 @@ export function match3Module(): GameModule {
       refresh: () => render(),
       legalMoves: () => game!.legalMoves(),
       seed,
+      objective,
     };
   };
 
@@ -578,6 +696,8 @@ export function match3Module(): GameModule {
           await showShared(shared);
           return;
         }
+        // `?mode=blockers` opens the clear-the-blockers objective directly.
+        if (url.searchParams.get("mode") === "blockers") objective = "blockers";
         const seedParam = url.searchParams.get("seed");
         if (seedParam !== null) {
           await startGame("free", BigInt(seedParam));

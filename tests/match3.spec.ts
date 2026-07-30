@@ -144,6 +144,42 @@ test("with hints off, 'I'm done' ends the round", async ({ page }) => {
   await expect(page.locator(".sol-result")).toBeVisible();
 });
 
+test("the Clear-blockers objective deals a blocker board with the blocker HUD", async ({ page }) => {
+  await page.goto("/match3/?seed=7");
+  await ready(page);
+  await expect(page.locator(".m3-obj-score")).toHaveAttribute("aria-pressed", "true");
+
+  // Switch objective via the toggle — this fetches the winnable-daily pack.
+  await page.locator(".m3-obj-blockers").click();
+  await expect(page.locator(".m3-hud")).toContainText(/blockers left/i);
+  await expect(page.locator(".m3-obj-blockers")).toHaveAttribute("aria-pressed", "true");
+  // The deal carries the six fixed, non-swappable blocker tiles.
+  await expect(page.locator(".m3-blocker")).toHaveCount(6);
+  expect(await page.evaluate(() => window.__match3!.objective)).toBe("blockers");
+  // The new blocker tiles + objective toggle stay accessible.
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
+test("clearing every blocker is a verifiable win (blockers mode)", async ({ page }) => {
+  // The committed pack fixture: seed 30 clears in a single swap [4,4]→[5,4].
+  await page.goto("/match3/?mode=blockers&seed=30");
+  await ready(page);
+  await expect(page.locator(".m3-blocker")).toHaveCount(6);
+
+  await page.evaluate(() => {
+    const h = window.__match3!;
+    h.game.play([4, 4, 5, 4]);
+    h.refresh();
+  });
+
+  const result = page.locator(".sol-result");
+  await expect(result).toBeVisible();
+  await expect(result.locator(".sol-verify-badge.ok")).toBeVisible();
+  await expect(result).toContainText(/all blockers cleared/i);
+  // The record leads with swaps-to-clear, not stars/score.
+  await expect(result.locator(".sol-record")).toContainText(/swaps used/i);
+});
+
 test("the board has no axe violations in light and dark", async ({ page }) => {
   await page.goto("/match3/?seed=7");
   await ready(page);
