@@ -11,6 +11,7 @@ pub mod vectors;
 
 pub use board::{Board, BoardError, Cell};
 pub use engine::{
-    apply_gravity, clear_cells, deal, find_matches, has_legal_move, legal_swaps, reference_score,
-    refill, reshuffle_if_dead, swap_legal, ClearOutcome, Game, MoveReport, Pos, StepReport,
+    apply_gravity, blockers_remaining, clear_cells, deal, deal_blockers, find_matches,
+    has_legal_move, legal_swaps, reference_score, refill, reshuffle_if_dead, swap_legal,
+    ClearOutcome, Game, MoveReport, Pos, StepReport,
 };

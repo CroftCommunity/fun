@@ -314,6 +314,49 @@ pub fn deal(seed: u64, width: usize, height: usize, colors: usize) -> Board {
     fill_no_initial_match(&mut rng, width, height, colors)
 }
 
+/// A seeded starting deal for **clear-the-blockers**: a settled, no-initial-
+/// match board carrying `blockers` single-layer `Blocker` cells and at least one
+/// legal swap, deterministic from `seed`. A gem fill is drawn, then `blockers`
+/// distinct cells are converted to `Blocker(1)`; the fill is redrawn (advancing
+/// the RNG) if the placement leaves no legal move — rare, but the guarantee
+/// keeps a daily board from being a dead start. Blockers never match, so the
+/// board stays match-free.
+#[must_use]
+pub fn deal_blockers(
+    seed: u64,
+    width: usize,
+    height: usize,
+    colors: usize,
+    blockers: usize,
+) -> Board {
+    let mut rng = DetRng::from_seed(seed);
+    let cell_count = width * height;
+    let n = blockers.min(cell_count);
+    for _ in 0..64 {
+        let mut board = fill_no_initial_match(&mut rng, width, height, colors);
+        // Distinct cell positions, drawn in RNG order (dedup by retrying a draw).
+        let mut chosen: BTreeSet<usize> = BTreeSet::new();
+        while chosen.len() < n {
+            chosen.insert(rng.index(cell_count));
+        }
+        for idx in &chosen {
+            board.set(idx / width, idx % width, Cell::Blocker(1));
+        }
+        if has_legal_move(&board) {
+            return board;
+        }
+    }
+    fill_no_initial_match(&mut rng, width, height, colors)
+}
+
+/// How many `Blocker` cells remain — the clear-the-blockers objective is met
+/// when this reaches `0`. Counts cells, not layers. Refill only produces gems,
+/// so this is monotone non-increasing under play.
+#[must_use]
+pub fn blockers_remaining(board: &Board) -> u32 {
+    u32::try_from(board.cells().iter().filter(|c| c.is_blocker()).count()).unwrap_or(u32::MAX)
+}
+
 /// A greedy reference playout: from the `seed` deal, play the highest-scoring
 /// legal swap each turn for `budget` swaps, and return the total score. Used to
 /// set **per-deal** star targets (fractions of this) — a deterministic function
