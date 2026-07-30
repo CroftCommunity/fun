@@ -30,11 +30,14 @@ Round-2 follow-ups (plan: `plans/2026-07-30-match3-followups.md`):
       `state_hash`, golden vectors untouched); `play_swap_traced` exposes the
       frames as JSON; the UI steps through clear→fall→refill (reduced-motion skips
       to settled; input gated during the animation).
+- [x] **Reshuffle on a mid-run deadlock** — `reshuffle_if_dead` in the core: after
+      a move settles into a board with no legal swap, deterministically permute the
+      gems (rng draws, blockers fixed) to a live, match-free board; folds into
+      `state_hash` so `Match3::replay` reshuffles identically. A live board is
+      untouched (no draws), so no golden vector's final board deadlocked → no
+      locked hash changed. Unit-tested in `tests/reshuffle.rs`; RULES.md updated.
 
 Deferred (each is a real chunk or an owner call, not a quick polish):
-- [ ] **Reshuffle on a mid-run deadlock** — to stay verifiable it must live in
-      the core's move resolution (so replay reshuffles identically), which
-      touches the golden-vector determinism anchor. Rare on 8×8/6.
 - [ ] **Variant objectives** (clear-the-blockers / jelly / ingredients) and
       **specials** (striped / wrapped / colour-bomb) — new modes + balance
       decisions reserved for the owner.

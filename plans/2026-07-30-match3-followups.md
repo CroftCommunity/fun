@@ -90,8 +90,11 @@ Do them safest → owner-gated, each shipped green + deployed on its own commit:
 - [x] **Item 1** — `play_move_traced` + traced binding + animated UI + tests.
   Shipped 2026-07-30. Golden vectors unchanged; `play_move` refactored to share a
   behaviour-identical inner with the traced path.
-- [ ] **Item 2** — deadlock reshuffle in `play_move` + re-locked/explained vectors
-  + `RULES.md`.
+- [x] **Item 2** — deadlock reshuffle in `play_move` + `RULES.md`. Shipped
+  2026-07-30. Empirical re-lock result: **no golden vector changed** — all three
+  corpus vectors' final boards are live, so the reshuffle never fires on them
+  (verified explicitly). Pure op + post-move invariant pinned in
+  `tests/reshuffle.rs`.
 - [ ] **Item 3** — owner decision, then the chosen mode as a full slice.
 - [ ] **Item 4** — reference/fraction tuning with versioning handled, or a
   recorded re-defer.

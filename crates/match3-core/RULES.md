@@ -56,6 +56,15 @@ A move swaps two cells. Resolution order:
    c. gravity;
    d. refill.
    Each iteration is one **cascade step**; step 0 is the one triggered directly by the swap.
+4. **Deadlock reshuffle.** After the cascade settles, if the board has **no legal swap**, reshuffle:
+   deterministically permute the gem cells (a Fisher-Yates shuffle consuming `rng` draws in order,
+   **blockers stay fixed**) into a board that has a legal swap and no rest-matches, retrying up to 64
+   times. A board that already has a legal swap is left untouched and consumes **no draws**, so a
+   still-live move is byte-identical to the pre-reshuffle engine. Because the reshuffle lives here (not
+   in the UI) and folds into the state hash, `Match3::replay` — which just re-applies `play_move` — is
+   reproduced exactly, so the outcome stays verifiable. The reshuffle is unit-tested in
+   `tests/reshuffle.rs`; on the shipped 8×8/6 deal a post-move deadlock is astronomically rare, so no
+   golden vector's final board is deadlocked (adding the reshuffle changed no locked hash).
 
 ## Tie-break tables (the fully-specified, cross-build-stable order)
 

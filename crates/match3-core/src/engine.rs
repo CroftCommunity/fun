@@ -214,6 +214,44 @@ pub fn legal_swaps(board: &Board) -> Vec<(Pos, Pos)> {
     out
 }
 
+/// Escape a mid-run deadlock. If `board` has no legal swap, deterministically
+/// permute its **gems** (a Fisher-Yates shuffle consuming `rng` draws; blockers
+/// never move) into a board that has a legal swap and no rest-matches, retrying
+/// up to a bound. A live board is returned untouched, consuming **no draws** —
+/// so a normal, still-live move is byte-identical to the pre-reshuffle engine.
+///
+/// Living inside the core (not the UI) is what keeps the outcome verifiable:
+/// `Game::play_move` calls this after every move, so `Match3::replay` reshuffles
+/// identically. Returns whether the board ends with a legal move (`false` only
+/// if the gem multiset admits none at all — impossible on a real 8×8/6 grid).
+#[must_use]
+pub fn reshuffle_if_dead(board: &mut Board, rng: &mut DetRng) -> bool {
+    if has_legal_move(board) {
+        return true;
+    }
+    // The mutable gem positions (blockers stay fixed; a settled board has no holes).
+    let positions: Vec<Pos> = (0..board.height)
+        .flat_map(|r| (0..board.width).map(move |c| (r, c)))
+        .filter(|&(r, c)| board.get(r, c).is_gem())
+        .collect();
+    for _ in 0..64 {
+        let mut values: Vec<Cell> = positions.iter().map(|&(r, c)| board.get(r, c)).collect();
+        // Fisher-Yates from the top; each step consumes exactly one rng draw so
+        // the shuffle folds into the state hash and replays identically.
+        for i in (1..values.len()).rev() {
+            let j = rng.index(i + 1);
+            values.swap(i, j);
+        }
+        for (&(r, c), &v) in positions.iter().zip(values.iter()) {
+            board.set(r, c, v);
+        }
+        if find_matches(board).is_empty() && has_legal_move(board) {
+            return true;
+        }
+    }
+    has_legal_move(board)
+}
+
 /// Whether any legal swap exists (a dead board has none).
 #[must_use]
 pub fn has_legal_move(board: &Board) -> bool {
@@ -400,6 +438,15 @@ impl Game {
             if trace {
                 snapshots.push(self.board.clone());
             }
+        }
+
+        // The cascade has settled; if it settled into a dead board, reshuffle so
+        // the run continues. Deterministic (uses `self.rng`) and reproduced on
+        // replay because replay calls `play_move`. A live board is untouched.
+        let reshuffled = !has_legal_move(&self.board);
+        let _ = reshuffle_if_dead(&mut self.board, &mut self.rng);
+        if trace && reshuffled {
+            snapshots.push(self.board.clone());
         }
 
         (
