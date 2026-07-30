@@ -8,5 +8,5 @@ here="$(cd "$(dirname "$0")" && pwd)"
 fun="$(cd "$here/.." && pwd)"
 
 RUSTC="$(rustup which --toolchain stable rustc)" "$(rustup which --toolchain stable cargo)" build \
-  --manifest-path "$fun/Cargo.toml" -p solitaire-wasm -p match3-wasm --release \
+  --manifest-path "$fun/Cargo.toml" -p solitaire-wasm -p match3-wasm -p bubble-wasm --release \
   --target wasm32-unknown-unknown

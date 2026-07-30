@@ -14,6 +14,7 @@ resolver = "2"
 members = [
     "crates/bubble-core",
     "crates/bubble-solver",
+    "crates/bubble-wasm",
     "crates/match3-core",
     "crates/solitaire-core",
     "crates/pond-docformat",

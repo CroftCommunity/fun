@@ -121,6 +121,12 @@ impl Game {
         self.score
     }
 
+    /// The shot targets taken so far (the outcome proof passed to `attest`).
+    #[must_use]
+    pub fn shots(&self) -> &[Pos] {
+        &self.shots
+    }
+
     /// The board is cleared — the objective is met.
     #[must_use]
     pub fn is_won(&self) -> bool {
