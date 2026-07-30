@@ -48,13 +48,33 @@ Round-2 follow-ups (plan: `plans/2026-07-30-match3-followups.md`):
       toggle, blocker tiles, a blockers-left HUD, and a verifiable clear result;
       how-to documents it. `?mode=blockers` opens it directly.
 
-Deferred (each is a real chunk or an owner call, not a quick polish):
-- [ ] **Other variant objectives** (jelly / ingredients) and **specials**
-      (striped / wrapped / colour-bomb) — further new modes + balance decisions
-      reserved for the owner.
-- [~] **Tune the reference/fractions** — stronger reference **built**
-      (`reference_score_beam`: a beam playout, deterministic, ≥ greedy, strictly
-      better on some seeds) but the switch is **held**: `targets_for` still uses
-      the greedy par so no shared result re-grades. The fraction retune waits for
-      real play data; adopting the beam is a `Match3::VERSION` bump (procedure in
-      RULES.md + plan). Stale doc figure fixed (par fractions are 30/60/90%).
+## Candy-Crush parity program (roadmap: `plans/2026-07-30-match3-parity-roadmap.md`)
+
+Owner walk-through 2026-07-30 turned the deferred backlog into a committed parity
+program. Decisions (register continues from the round-1 plan's D1/D2):
+
+- **D3 — third objective = jelly** (ingredients/order/timed become later parity
+  objectives, confirm before build).
+- **D4 — specials = full parity**: striped, wrapped, colour bomb, the 2×2 fish,
+  **and the combo matrix**.
+- **D5 — par retuned now** (no users): star tiers = a ladder of deterministic
+  players (greedy/beam/deeper) baked into a committed par table; LLM subagents used
+  offline only to calibrate the rungs, never on the verify path.
+- **D6 — in-browser AI hint/coach** = backlog (advisory feature, later).
+
+Order: jelly → specials (phased) → par ladder (trails specials), with a cheap
+beam-based par table landing early. Full phasing, DoD, and risks in the roadmap.
+
+- [ ] **Track A — jelly objective** (A1 core+vectors → A2 solver+pack → A3 binding
+      → A4 UI+how-to). The next slice to build; reuses the blockers template.
+- [ ] **Track P-now — cheap par table** from the beam player (baked, verifiable).
+- [ ] **Track B — specials**: B0 foundation (special-gem + shape detection) → B1
+      striped → B2 wrapped → B3 colour bomb → B4 fish (seeded targeting) → B5 combo
+      matrix → B6 specials-aware solver/par.
+- [ ] **Track C — par ladder**: C1 player ladder + par table → C2 offline LLM
+      calibration study → C3 re-par after specials.
+- [ ] **Track D — parity completeness** (confirm each first): ingredients,
+      order/mixed, timed objectives; more obstacle families (licorice, chocolate,
+      meringue, locks, timed bombs).
+- [ ] **Backlog — in-browser AI hint/coach** (D6): advisory "show a strong line" /
+      smarter hints; design after the parity spine lands.
