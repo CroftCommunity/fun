@@ -50,6 +50,7 @@ interface Exports {
   new_game(lo: number, hi: number): void;
   new_blockers_game(lo: number, hi: number): void;
   new_jelly_game(lo: number, hi: number): void;
+  target_daily_seed(day_index: number): number;
   board_json(): number;
   legal_moves_json(): number;
   current_hash(): number;
@@ -97,6 +98,11 @@ export class Match3 {
   /** Start a clear-the-jelly game on `seed` (deal a winnable jelly board). */
   newJellyGame(seed: bigint): void {
     this.x.new_jelly_game(Number(seed & 0xffff_ffffn), Number((seed >> 32n) & 0xffff_ffffn));
+  }
+  /** The target-score daily seed for `dayIndex` — a seed from the baked par table
+   *  (so its stars use the player-ladder par, not the free-play fallback). */
+  targetDailySeed(dayIndex: number): number {
+    return this.x.target_daily_seed(dayIndex);
   }
   board(): BoardView {
     return JSON.parse(this.read(this.x.board_json())) as BoardView;

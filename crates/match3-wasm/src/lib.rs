@@ -16,7 +16,7 @@ use match3_core::{
     jelly_remaining, legal_swaps, reference_score, Cell, Game as M3Game,
 };
 use pond_outcome::{attest, Game, Outcome, Replayed};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 // --- level config (see plans/2026-07-30-match3-playable.md) ---
 const WIDTH: usize = 8;
@@ -37,13 +37,80 @@ enum Mode {
     Jelly,
 }
 
-/// Per-deal 1★ / 2★ / 3★ score thresholds, as fractions of the deterministic
-/// greedy reference score for the seed (30% / 60% / 90%): 1★ is a gentle
-/// "cleared it" bar, 3★ near the greedy reference. A pure function of the seed,
-/// so play-time and verify-time agree without a shipped par table.
-fn targets_for(seed: u64) -> [u64; 3] {
+// --- the baked par table (parity Track P-now / C1) ---
+//
+// The target-score star thresholds come from a player ladder (weak / greedy /
+// beam) computed offline and embedded here, so play-time and verify-time look up
+// the same par without running the slow strong player live. Daily seeds are in
+// the table; a free-play / `?seed=` board off the table falls back to the cheap
+// live greedy tiers (consistent per seed, since membership is fixed).
+
+static PAR_TABLE_JSON: &[u8] = include_bytes!("../../../games/match3/par-pack.json");
+
+#[derive(Deserialize)]
+struct ParEntry {
+    seed: u64,
+    tiers: [u64; 3],
+}
+#[derive(Deserialize)]
+struct ParPayload {
+    entries: Vec<ParEntry>,
+}
+#[derive(Deserialize)]
+struct ParEnvelope {
+    payload: ParPayload,
+}
+
+/// The embedded par table `(seed, tiers)`, parsed once. Never panics: a parse
+/// failure yields an empty table, so every seed falls back to live tiers.
+fn par_table() -> &'static [(u64, [u64; 3])] {
+    static mut TABLE: Option<Vec<(u64, [u64; 3])>> = None;
+    // SAFETY: single-threaded wasm; host calls are sequential.
+    unsafe {
+        let p = core::ptr::addr_of_mut!(TABLE);
+        if (*p).is_none() {
+            let parsed = serde_json::from_slice::<ParEnvelope>(PAR_TABLE_JSON)
+                .map(|e| {
+                    e.payload
+                        .entries
+                        .into_iter()
+                        .map(|x| (x.seed, x.tiers))
+                        .collect()
+                })
+                .unwrap_or_default();
+            *p = Some(parsed);
+        }
+        (*p).as_deref().unwrap_or(&[])
+    }
+}
+
+/// Cheap live fallback tiers for off-table (free-play) seeds: 30% / 60% / 90% of
+/// the greedy reference. Kept for boards not in the baked ladder table.
+fn fallback_tiers(seed: u64) -> [u64; 3] {
     let par = reference_score(seed, WIDTH, HEIGHT, COLORS, MOVE_BUDGET).max(10);
     [par * 3 / 10, par * 3 / 5, par * 9 / 10]
+}
+
+/// Per-deal 1★ / 2★ / 3★ thresholds: the baked ladder tiers if the seed is in the
+/// daily par table, else the live greedy fallback. A pure function of the seed,
+/// so play-time and verify-time agree.
+fn targets_for(seed: u64) -> [u64; 3] {
+    par_table()
+        .iter()
+        .find(|(s, _)| *s == seed)
+        .map_or_else(|| fallback_tiers(seed), |&(_, tiers)| tiers)
+}
+
+/// The target-score daily seed for `day_index` — a seed from the baked par table
+/// (so its par is the ladder, not the fallback). `0` if the table is empty.
+#[no_mangle]
+pub extern "C" fn target_daily_seed(day_index: u32) -> u32 {
+    let table = par_table();
+    if table.is_empty() {
+        return 0;
+    }
+    let i = (day_index as usize) % table.len();
+    u32::try_from(table[i].0).unwrap_or(0)
 }
 
 fn star_count(score: u64, targets: [u64; 3]) -> u8 {

@@ -641,7 +641,13 @@ export function match3Module(): GameModule {
       seed = seedOverride ?? packSeed(packCache.jelly!, nextMode);
       game.newJellyGame(seed);
     } else {
-      seed = seedOverride ?? (nextMode === "daily" ? BigInt(dayIndexUTC(new Date())) : randomSeed());
+      // Target-score daily uses a seed from the baked par table (ladder tiers);
+      // free-play is a random seed (off-table → live fallback tiers).
+      seed =
+        seedOverride ??
+        (nextMode === "daily"
+          ? BigInt(game.targetDailySeed(dayIndexUTC(new Date())))
+          : randomSeed());
       game.newGame(seed);
     }
     selected = null;

@@ -137,6 +137,30 @@ describe("clear-the-jelly verify-orchestration (real wasm)", () => {
   });
 });
 
+describe("target-score par table (real wasm)", () => {
+  it("serves the baked ladder tiers for a daily (in-table) seed", async () => {
+    const game = await loadReal();
+    const pack = JSON.parse(await readFile("games/match3/par-pack.json", "utf8")) as {
+      payload: { entries: { seed: number; tiers: [number, number, number] }[] };
+    };
+    const entry = pack.payload.entries.find((e) => e.seed === 7)!;
+    game.newGame(7n);
+    const board = game.board();
+    expect(board.mode).toBe("target-score");
+    expect(board.targets).toEqual(entry.tiers); // ladder, not the old 30/60/90%
+    // 3★ is a strong-but-attainable bar well above the old 90%-of-greedy.
+    expect(board.targets[2]).toBeGreaterThan(board.targets[1]);
+    expect(board.targets[1]).toBeGreaterThan(board.targets[0]);
+  });
+
+  it("exposes a target-score daily seed from the table", async () => {
+    const game = await loadReal();
+    const seed = game.targetDailySeed(0);
+    expect(seed).toBeGreaterThanOrEqual(0);
+    expect(seed).toBeLessThan(365); // the 365-seed contiguous par table
+  });
+});
+
 describe("result screen", () => {
   it("leads with the stars earned when won", () => {
     const el = renderResultScreen(envelope("Won", 2, 1200), { ok: true, expected: "h", actual: "h" }, {

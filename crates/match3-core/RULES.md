@@ -140,20 +140,26 @@ build target. That is the property P8 (score verification) and the follow-chain 
 `final_state_hash` is a regression + cross-build determinism anchor (locked once the engine is green — it is
 a recorded output, by construction not hand-derivable). Schema in `vectors/README.md`.
 
-## Per-deal par (the reference score) & versioning
+## Per-deal par (the star thresholds) & versioning
 
-Star targets scale to a **reference score** for the seed, so play-time and verify-time derive the same
-targets without a shipped par table. Two references live in the engine:
+Target-score star thresholds come from a **player ladder** — three deterministic players of increasing
+strength — so stars mean "you played as well as a {weak, competent, strong} solver":
 
-- `reference_score` — a greedy best-swap playout. Myopic (ignores cascades a lookahead would set up) but
-  cheap enough for the runtime path. **This is the shipped par**: the binding's `targets_for` uses it, and
-  the 1★/2★/3★ thresholds are 30% / 60% / 90% of it.
-- `reference_score_beam` — a less-myopic beam playout that also carries the greedy line, so it provably
-  scores at least `reference_score` and catches cascades greedy misses. Built and tested, but **not** wired
-  into the shipped targets: it is an analysis tool for a future, data-driven par.
+- **1★ = `random_score`** — a random-legal-move player (a gentle floor most players pass).
+- **2★ = `reference_score`** — the greedy best-swap playout (competent play).
+- **3★ = `reference_score_beam` (beam-8)** — a less-myopic beam that provably scores ≥ greedy
+  (strong-but-attainable). Deeper beams (16/32/64) keep climbing — there is no cheap near-optimal
+  ceiling — so they stay as headroom / the "100% reference", never a star bar.
 
-**Par is a rules version.** `verify` re-derives targets from the seed, so changing the reference or the
-fractions re-grades every past record. Any such change is a `Match3::VERSION` bump: keep the old par for
+The strong player is too slow to run live at verify time, so `par_tiers(seed)` (in `match3-solver`) is
+computed **offline** into a committed table (`games/match3/par-pack.json`, kind `match3-par-pack`), which
+the binding **embeds** (`include_bytes!`) and looks up. Daily target-score seeds are in the table; a
+free-play / `?seed=` board off the table falls back to the cheap live greedy tiers (30/60/90% of
+`reference_score`) — a pure function of the seed, so play-time and verify-time still agree.
+
+**Par is a rules version.** `verify` re-derives targets from the seed, so changing the ladder, the table,
+or the fallback re-grades every past record. With no users the par may change in place (`Match3::VERSION`
+stays 1); once records exist in the wild, any par change is a `VERSION` bump that keeps the old par for
 old-version records (read the version from the `pond-docformat` envelope). Do not change par silently.
 
 ## Out of P1 (explicit not-yet set)

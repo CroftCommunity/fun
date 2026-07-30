@@ -65,14 +65,20 @@ program. Decisions (register continues from the round-1 plan's D1/D2):
 Order: jelly → specials (phased) → par ladder (trails specials), with a cheap
 beam-based par table landing early. Full phasing, DoD, and risks in the roadmap.
 
-- [ ] **Track A — jelly objective** (A1 core+vectors → A2 solver+pack → A3 binding
-      → A4 UI+how-to). The next slice to build; reuses the blockers template.
-- [ ] **Track P-now — cheap par table** from the beam player (baked, verifiable).
+- [x] **Track A — jelly objective** — shipped (A1 core → A2 solver+pack → A3
+      binding → A4 UI+how-to). Playable at `/match3/`, winnable-daily, verifiable.
+- [x] **Mobile hardening** — a `mobile-webkit` e2e project (iOS engine + touch),
+      drag scoped to desktop, bigger phone tap targets. Both boards pass on mobile.
+- [x] **Track P-now / C1 — baked par table** — star tiers are the player ladder
+      (1★ random floor, 2★ greedy, 3★ beam-8), baked offline into
+      `games/match3/par-pack.json` and embedded in the binding; target-score daily
+      draws table seeds, free-play falls back to live greedy tiers. 3★ is no longer
+      trivial. Tunable knobs; no version bump (no users).
 - [ ] **Track B — specials**: B0 foundation (special-gem + shape detection) → B1
       striped → B2 wrapped → B3 colour bomb → B4 fish (seeded targeting) → B5 combo
-      matrix → B6 specials-aware solver/par.
-- [ ] **Track C — par ladder**: C1 player ladder + par table → C2 offline LLM
-      calibration study → C3 re-par after specials.
+      matrix → B6 specials-aware solver/par. **Next up.**
+- [ ] **Track C (rest) — par calibration**: C2 offline LLM calibration study of the
+      rung difficulty → C3 re-par after specials land.
 - [ ] **Track D — parity completeness** (confirm each first): ingredients,
       order/mixed, timed objectives; more obstacle families (licorice, chocolate,
       meringue, locks, timed bombs).
