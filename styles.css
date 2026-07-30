@@ -503,6 +503,33 @@ body.fullscreen .play-area {
     var(--surface);
   box-shadow: inset 0 0 0 2px rgb(120 200 255 / 55%);
 }
+/* A special candy: a normal swappable gem badged with its power. The badge is a
+   shape cue (not colour-only) so it reads without relying on hue; the a11y label
+   names the power. Created by a line-4 / L-T / line-5 match; blast is B1–B4. */
+.m3-gem.m3-special {
+  position: relative;
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.m3-gem.m3-special::after {
+  position: absolute;
+  right: 2px;
+  bottom: 0;
+  font-size: calc(var(--m3-gem) * 0.32);
+  line-height: 1;
+  color: var(--ink);
+}
+.m3-gem.m3-special-striped-h::after {
+  content: "═";
+}
+.m3-gem.m3-special-striped-v::after {
+  content: "║";
+}
+.m3-gem.m3-special-wrapped::after {
+  content: "◈";
+}
+.m3-gem.m3-special-color-bomb::after {
+  content: "✸";
+}
 @media (max-width: 32rem) {
   .m3-board {
     /* Bigger, more comfortable touch targets on phones — still fits a 360px

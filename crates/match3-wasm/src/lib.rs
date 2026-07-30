@@ -13,7 +13,7 @@
 
 use match3_core::{
     blockers_mode, blockers_remaining, deal, deal_blockers, deal_jelly, jelly_mode,
-    jelly_remaining, legal_swaps, reference_score, Cell, Game as M3Game,
+    jelly_remaining, legal_swaps, reference_score, Cell, Game as M3Game, SpecialKind,
 };
 use pond_outcome::{attest, Game, Outcome, Replayed};
 use serde::{Deserialize, Serialize};
@@ -275,6 +275,9 @@ struct BoardView {
     blockers: Vec<Vec<bool>>,
     /// Row-major jelly layers per cell (`0` = none), jelly mode.
     jelly: Vec<Vec<u8>>,
+    /// Row-major special-candy overlay: `""` (plain) / `"striped-h"` /
+    /// `"striped-v"` / `"wrapped"` / `"color-bomb"`. The UI badges + labels these.
+    specials: Vec<Vec<&'static str>>,
     score: u64,
     moves_left: usize,
     move_budget: usize,
@@ -308,6 +311,19 @@ fn board_view(s: &Session) -> BoardView {
     let jelly = (0..b.height)
         .map(|r| (0..b.width).map(|c| b.jelly_at(r, c)).collect())
         .collect();
+    let specials = (0..b.height)
+        .map(|r| {
+            (0..b.width)
+                .map(|c| match b.special_at(r, c) {
+                    None => "",
+                    Some(SpecialKind::StripedH) => "striped-h",
+                    Some(SpecialKind::StripedV) => "striped-v",
+                    Some(SpecialKind::Wrapped) => "wrapped",
+                    Some(SpecialKind::ColorBomb) => "color-bomb",
+                })
+                .collect()
+        })
+        .collect();
     BoardView {
         mode: match s.mode {
             Mode::TargetScore => "target-score",
@@ -319,6 +335,7 @@ fn board_view(s: &Session) -> BoardView {
         cells,
         blockers,
         jelly,
+        specials,
         score: s.game.score,
         moves_left: s.budget.saturating_sub(s.swaps.len()),
         move_budget: s.budget,

@@ -88,9 +88,10 @@ describe("clear-the-blockers verify-orchestration (real wasm)", () => {
 
   beforeAll(async () => {
     game = await loadReal();
-    // The committed pack fixture: seed 30 clears in a single swap.
-    game.newBlockersGame(30n);
-    game.play([4, 4, 5, 4]);
+    // The committed pack fixture (re-locked after the B0 specials pack regen):
+    // seed 19 clears in a single swap.
+    game.newBlockersGame(19n);
+    game.play([5, 5, 6, 5]);
     env = game.outcome(true) as M3Envelope;
   });
 

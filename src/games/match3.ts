@@ -38,6 +38,16 @@ const GEM_GLYPH = ["●", "▲", "■", "◆", "★", "✚"];
 const GEM_NAME = ["circle", "triangle", "square", "diamond", "star", "plus"];
 const BLOCKER_GLYPH = "▦";
 
+// Special candies (Track B0): a special is a normal swappable gem carrying a
+// power, drawn with a distinct badge + an a11y suffix (not colour-only). The key
+// matches the wasm `BoardView.specials` strings; the blast is added in B1–B4.
+const SPECIAL_NAME: Record<string, string> = {
+  "striped-h": "striped candy, clears its row",
+  "striped-v": "striped candy, clears its column",
+  wrapped: "wrapped candy",
+  "color-bomb": "colour bomb",
+};
+
 /** A winnable-daily pack payload (inside the doc envelope) — one per clear
  *  objective (blockers, jelly). Winnable seeds indexed by date + a win-path fixture. */
 interface Pack {
@@ -474,6 +484,17 @@ export function match3Module(): GameModule {
           if ((board.jelly[r]?.[c] ?? 0) > 0) {
             gem.classList.add("m3-jellied");
             gem.setAttribute("aria-label", `${gem.getAttribute("aria-label")}, on jelly`);
+          }
+          // A special candy is the same swappable gem with a power badge + an
+          // a11y suffix (the `.m3-special-*` class draws the badge; the shape
+          // cue is not colour-only). Interaction is unchanged.
+          const special = board.specials?.[r]?.[c] ?? "";
+          if (special) {
+            gem.classList.add("m3-special", `m3-special-${special}`);
+            gem.setAttribute(
+              "aria-label",
+              `${gem.getAttribute("aria-label")}, ${SPECIAL_NAME[special] ?? special}`,
+            );
           }
           rowEl.append(gem);
         }

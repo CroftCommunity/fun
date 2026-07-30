@@ -31,7 +31,7 @@ export const MATCH3_GUIDE: Guide = {
       blocks: [
         {
           kind: "prose",
-          text: "Each gem has both a colour and a shape (circle, triangle, square, diamond, star, plus), so they stay distinct however you see colour. A line of three or more of the same gem — across or down — clears and scores. When gems clear, those above fall to fill the gap and new gems drop in, which can set off chain reactions for extra points.",
+          text: "Each gem has both a colour and a shape (circle, triangle, square, diamond, star, plus), so they stay distinct however you see colour. A line of three or more of the same gem — across or down — clears and scores. When gems clear, those above fall to fill the gap and new gems drop in, which can set off chain reactions for extra points. Line up more than three — or bend the line into an L or T — and one gem becomes a special candy, marked with a badge and left on the board; its power arrives as match-3 grows.",
         },
       ],
     },
