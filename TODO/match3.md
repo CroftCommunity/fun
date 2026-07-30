@@ -24,10 +24,14 @@ star thresholds). Plan: `plans/2026-07-30-match3-playable.md`. Standards:
 - [x] **Win cascade + score-gain flash** — a gem cascade on a ≥1★ result
       (reduced-motion-aware) and a score bump when a swap scores.
 
+Round-2 follow-ups (plan: `plans/2026-07-30-match3-followups.md`):
+- [x] **Full step-by-step cascade animation** — additive `Game::play_move_traced`
+      emits a board snapshot per phase (same RNG → byte-identical final
+      `state_hash`, golden vectors untouched); `play_swap_traced` exposes the
+      frames as JSON; the UI steps through clear→fall→refill (reduced-motion skips
+      to settled; input gated during the animation).
+
 Deferred (each is a real chunk or an owner call, not a quick polish):
-- [ ] **Full step-by-step cascade animation** — needs a read-only preview /
-      stepping API in the binding (the core resolves a move atomically, so the
-      UI can't see the intermediate boards a clear→fall→refill animation needs).
 - [ ] **Reshuffle on a mid-run deadlock** — to stay verifiable it must live in
       the core's move resolution (so replay reshuffles identically), which
       touches the golden-vector determinism anchor. Rare on 8×8/6.

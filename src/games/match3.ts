@@ -5,7 +5,7 @@
 //! `pond-outcome` record is shown, shareable via `?r=`.
 
 import type { GameModule } from "../contract.js";
-import { Match3, type BoardView, type Swap } from "./match3-wasm.js";
+import { Match3, type BoardView, type Frame, type Swap } from "./match3-wasm.js";
 import {
   decodeRecord,
   encodeRecord,
@@ -137,6 +137,20 @@ export function match3Module(): GameModule {
   let cascadeEl: HTMLElement | null = null;
   let lastScore = 0;
   let scoreBumped = false;
+  let animating = false;
+
+  // Per-phase cascade animation cadence. A move emits swap + 3 frames per cascade
+  // step (clear/fall/refill), so a 1–3-step move runs ~0.3–0.8s.
+  const FRAME_MS = 80;
+  const delay = (ms: number): Promise<void> => new Promise((res) => setTimeout(res, ms));
+
+  const reducedMotion = (): boolean => {
+    try {
+      return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch {
+      return true; // no matchMedia (or it threw) → skip the animation, safely
+    }
+  };
 
   const statusEl = el("p", { class: "sol-status", role: "status", "aria-live": "polite" });
   const setStatus = (msg: string): void => {
@@ -172,16 +186,65 @@ export function match3Module(): GameModule {
 
   const gameOver = (): boolean => !!game && (game.movesLeft() === 0 || game.legalMoves().length === 0);
 
+  // One animation frame board (decorative + aria-hidden). Empty cells are holes
+  // mid-cascade; letters would be blockers (not present on v1 boards).
+  const renderFrame = (rows: Frame): HTMLElement => {
+    const boardEl = el("div", { class: "m3-board m3-animating", tabindex: "-1", "aria-hidden": "true" });
+    rows.forEach((row) => {
+      const rowEl = el("div", { class: "m3-row" });
+      for (const ch of row) {
+        if (ch >= "0" && ch <= "9") {
+          const color = Number(ch);
+          const g = el("span", { class: `m3-gem gem-${color}` });
+          g.textContent = GEM_GLYPH[color]!;
+          rowEl.append(g);
+        } else if (ch === ".") {
+          rowEl.append(el("span", { class: "m3-gem m3-hole" }));
+        } else {
+          rowEl.append(el("span", { class: "m3-gem m3-blocker" }, "▨"));
+        }
+      }
+      boardEl.append(rowEl);
+    });
+    return boardEl;
+  };
+
+  // Step through the per-phase snapshots, swapping just the board element so the
+  // HUD/controls stay put. Input is gated (`animating`) until the settled render.
+  const animateSnapshots = async (frames: Frame[]): Promise<void> => {
+    if (!container) return;
+    animating = true;
+    try {
+      for (const frame of frames) {
+        if (disposed || !container) return;
+        const current = container.querySelector<HTMLElement>(".m3-board");
+        if (!current) return;
+        current.replaceWith(renderFrame(frame));
+        await delay(FRAME_MS);
+      }
+    } finally {
+      animating = false;
+    }
+  };
+
   const applySwap = (s: Swap): void => {
-    game!.play(s);
+    // The core applies the whole move now (wasm state is settled immediately);
+    // the frames are only the intermediate boards the UI animates over.
+    const frames = game!.playTraced(s);
     selected = null;
     hint = null;
     setStatus("");
-    render();
+    if (reducedMotion() || frames.length === 0) {
+      render();
+      return;
+    }
+    void animateSnapshots(frames).then(() => {
+      if (!disposed) render();
+    });
   };
 
   const handleClick = (r: number, c: number): void => {
-    if (!game || gameOver()) return;
+    if (!game || animating || gameOver()) return;
     hint = null;
     if (!selected) {
       selected = { r, c };
@@ -208,7 +271,7 @@ export function match3Module(): GameModule {
   // --- hints ---
 
   const showHint = (): void => {
-    if (!game || gameOver()) return;
+    if (!game || animating || gameOver()) return;
     const moves = game.legalMoves();
     if (moves.length === 0) {
       render(); // no moves -> the game is over
@@ -328,7 +391,7 @@ export function match3Module(): GameModule {
     let dragFrom: { r: number; c: number } | null = null;
     boardEl.addEventListener("dragstart", (e: DragEvent) => {
       const btn = (e.target as HTMLElement).closest<HTMLElement>(".m3-gem");
-      if (!btn || gameOver()) {
+      if (!btn || animating || gameOver()) {
         e.preventDefault();
         return;
       }

@@ -96,6 +96,45 @@ test("dragging a gem onto a legal neighbour swaps it (drag as well as tap)", asy
   expect(after).toBeGreaterThan(before);
 });
 
+test("a swap animates the cascade, then settles to the core's board", async ({ page }) => {
+  await page.goto("/match3/?seed=7");
+  await ready(page);
+
+  const swap = await page.evaluate(() => window.__match3!.game.legalMoves()[0]!);
+  await page.locator(`.m3-gem[data-r="${swap[0]}"][data-c="${swap[1]}"]`).click();
+  await page.locator(`.m3-gem[data-r="${swap[2]}"][data-c="${swap[3]}"]`).click();
+
+  // The board animates (a transient non-interactive frame appears)…
+  await expect(page.locator(".m3-board.m3-animating")).toBeVisible();
+  // …then settles back to an interactive board with real gem buttons.
+  await expect(page.locator(".m3-board.m3-animating")).toHaveCount(0);
+  await expect(page.locator("button.m3-gem")).toHaveCount(64);
+
+  // The settled DOM matches the core's settled score (the wasm applied it at once).
+  const score = await page.evaluate(() => window.__match3!.game.board().score);
+  expect(score).toBeGreaterThan(0);
+  await expect(page.locator(".m3-hud .m3-score")).toContainText(String(score));
+});
+
+test("reduced-motion skips straight to the settled board (no animation)", async ({ browser }) => {
+  const context = await browser.newContext({ reducedMotion: "reduce" });
+  const page = await context.newPage();
+  await page.goto("/match3/?seed=7");
+  await ready(page);
+
+  const before = await page.evaluate(() => window.__match3!.game.board().score);
+  const swap = await page.evaluate(() => window.__match3!.game.legalMoves()[0]!);
+  await page.locator(`.m3-gem[data-r="${swap[0]}"][data-c="${swap[1]}"]`).click();
+  await page.locator(`.m3-gem[data-r="${swap[2]}"][data-c="${swap[3]}"]`).click();
+
+  // No animation frame is ever shown; the interactive board updates immediately.
+  await expect(page.locator("button.m3-gem")).toHaveCount(64);
+  expect(await page.locator(".m3-board.m3-animating").count()).toBe(0);
+  const after = await page.evaluate(() => window.__match3!.game.board().score);
+  expect(after).toBeGreaterThan(before);
+  await context.close();
+});
+
 test("with hints off, 'I'm done' ends the round", async ({ page }) => {
   await page.goto("/match3/?seed=7");
   await ready(page);

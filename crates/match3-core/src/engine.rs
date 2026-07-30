@@ -338,17 +338,40 @@ impl Game {
     /// Play a swap. If illegal, the board is unchanged and `legal == false`.
     /// If legal, swap then resolve to a stable board (the cascade loop).
     pub fn play_move(&mut self, from: Pos, to: Pos) -> MoveReport {
+        self.resolve_move(from, to, false).0
+    }
+
+    /// The same resolution as [`play_move`], but additionally returns a board
+    /// snapshot after **each cascade phase** (after the swap, then after every
+    /// clear / gravity / refill) so the UI can animate clear→fall→refill. The
+    /// RNG stream, final board, `state_hash`, and `MoveReport` are byte-identical
+    /// to [`play_move`] — the trace is a *view* of the one resolution, not a
+    /// second code path. An illegal move returns an empty snapshot list.
+    pub fn play_move_traced(&mut self, from: Pos, to: Pos) -> (MoveReport, Vec<Board>) {
+        self.resolve_move(from, to, true)
+    }
+
+    /// Shared move resolution. When `trace`, pushes a `board.clone()` after each
+    /// phase; otherwise the `Vec<Board>` is empty and the work is identical.
+    fn resolve_move(&mut self, from: Pos, to: Pos, trace: bool) -> (MoveReport, Vec<Board>) {
+        let mut snapshots = Vec::new();
         if !swap_legal(&self.board, from, to) {
-            return MoveReport {
-                legal: false,
-                steps: Vec::new(),
-                score_gained: 0,
-            };
+            return (
+                MoveReport {
+                    legal: false,
+                    steps: Vec::new(),
+                    score_gained: 0,
+                },
+                snapshots,
+            );
         }
 
         let tmp = self.board.get(from.0, from.1);
         self.board.set(from.0, from.1, self.board.get(to.0, to.1));
         self.board.set(to.0, to.1, tmp);
+        if trace {
+            snapshots.push(self.board.clone());
+        }
 
         let mut steps = Vec::new();
         let mut score_gained = 0u64;
@@ -366,14 +389,26 @@ impl Game {
                 blocker_layers_removed: out.blocker_layers_removed,
                 score_gained: step_score,
             });
+            if trace {
+                snapshots.push(self.board.clone());
+            }
             apply_gravity(&mut self.board);
+            if trace {
+                snapshots.push(self.board.clone());
+            }
             refill(&mut self.board, &mut self.rng, self.colors);
+            if trace {
+                snapshots.push(self.board.clone());
+            }
         }
 
-        MoveReport {
-            legal: true,
-            steps,
-            score_gained,
-        }
+        (
+            MoveReport {
+                legal: true,
+                steps,
+                score_gained,
+            },
+            snapshots,
+        )
     }
 }

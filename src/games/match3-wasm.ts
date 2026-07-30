@@ -22,6 +22,10 @@ export interface BoardView {
 /** A swap of two adjacent cells: `[fromRow, fromCol, toRow, toCol]`. */
 export type Swap = [number, number, number, number];
 
+/** One animation frame: a board as row strings (`.` empty, `0`-`9` gem,
+ *  `A`-`Z` blocker), the same encoding the core's `to_rows` emits. */
+export type Frame = string[];
+
 /** Move application status. */
 export type MoveStatus = "applied" | "illegal" | "bad";
 
@@ -36,6 +40,7 @@ interface Exports {
   moves_left(): number;
   is_won(): number;
   play_swap(r1: number, c1: number, r2: number, c2: number): number;
+  play_swap_traced(r1: number, c1: number, r2: number, c2: number): number;
   mark_assistance(): void;
   outcome_json(declare: number): number;
 }
@@ -95,5 +100,14 @@ export class Match3 {
 
   play(swap: Swap): MoveStatus {
     return STATUS[this.x.play_swap(swap[0], swap[1], swap[2], swap[3])]!;
+  }
+
+  /** Play a swap and return the per-phase board snapshots (each a list of row
+   *  strings: `.` empty, `0`-`9` gem, `A`-`Z` blocker) from the after-swap frame
+   *  through each clear/fall/refill to the settled board. Empty on an illegal /
+   *  budget-spent swap. The committed state matches `play` — this only adds the
+   *  intermediate frames the UI animates. */
+  playTraced(swap: Swap): Frame[] {
+    return JSON.parse(this.read(this.x.play_swap_traced(swap[0], swap[1], swap[2], swap[3]))) as Frame[];
   }
 }

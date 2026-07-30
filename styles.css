@@ -484,6 +484,35 @@ body.fullscreen .play-area {
     animation: none;
   }
 }
+/* Per-phase cascade animation: a decorative, non-interactive board stepping
+   through clear→fall→refill. Gems drop in; cleared cells become empty holes.
+   Reduced-motion skips the animation entirely in JS; this is belt-and-braces. */
+.m3-board.m3-animating .m3-gem {
+  cursor: default;
+  animation: m3-fall 0.14s ease-out;
+}
+.m3-board.m3-animating .m3-hole {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  animation: none;
+}
+@keyframes m3-fall {
+  from {
+    transform: translateY(-20%);
+    opacity: 0.3;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .m3-board.m3-animating .m3-gem {
+    animation: none;
+  }
+}
+
 /* Gem-coloured glyphs in the win cascade (beats the generic `.sol-cascade span`). */
 .sol-cascade .gem-0 {
   color: var(--gem-0);

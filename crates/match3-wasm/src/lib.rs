@@ -219,6 +219,37 @@ pub extern "C" fn play_swap(r1: u32, c1: u32, r2: u32, c2: u32) -> u32 {
     }
 }
 
+/// Play a swap and return the **per-phase board snapshots** as JSON — a list of
+/// boards, each a list of row strings (`.` empty, `0`-`9` gem, `A`-`Z` blocker),
+/// from the after-swap frame through each clear/fall/refill to the settled board.
+/// The committed state is the last snapshot (identical to [`play_swap`]). The UI
+/// animates the sequence. Illegal / bad-state / budget-spent → `"[]"` and the
+/// board is unchanged (no budget consumed), so the caller simply skips animating.
+#[no_mangle]
+pub extern "C" fn play_swap_traced(r1: u32, c1: u32, r2: u32, c2: u32) -> *const u8 {
+    let Some(s) = session_mut() else {
+        return set_out_str("[]");
+    };
+    if s.swaps.len() >= MOVE_BUDGET {
+        return set_out_str("[]"); // budget spent
+    }
+    let from = (r1 as usize, c1 as usize);
+    let to = (r2 as usize, c2 as usize);
+    if from.0 >= HEIGHT || from.1 >= WIDTH || to.0 >= HEIGHT || to.1 >= WIDTH {
+        return set_out_str("[]");
+    }
+    let (report, snapshots) = s.game.play_move_traced(from, to);
+    if !report.legal {
+        return set_out_str("[]");
+    }
+    s.swaps.push([r1 as u8, c1 as u8, r2 as u8, c2 as u8]);
+    let frames: Vec<Vec<String>> = snapshots.iter().map(match3_core::Board::to_rows).collect();
+    match serde_json::to_vec(&frames) {
+        Ok(bytes) => set_out(bytes),
+        Err(_) => set_out_str("[]"),
+    }
+}
+
 /// Mark the game assisted (a hint was shown), so the outcome reflects it.
 #[no_mangle]
 pub extern "C" fn mark_assistance() {
