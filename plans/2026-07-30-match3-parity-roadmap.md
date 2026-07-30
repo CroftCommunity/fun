@@ -117,13 +117,35 @@ lighter — firm them up when reached. "Vectors" = golden-vector corpus + re-loc
 ### Track P-now — a cheap par improvement early
 - **Goal:** honour D5 ("set par better now") without over-building before specials
   reset the bar.
-- **Work:** move `targets_for` off the live greedy call to a **baked par table**
-  generated offline by the **beam** player we already built (the first, weak/medium
-  rung), served like the winnable pack; free-play/off-table seeds fall back to a
-  cheap live reference. Decision to settle here: table-for-daily + live-fallback
-  vs a pure stronger live function (runtime cost) — recommendation: baked table.
-- **DoD:** daily par reflects the beam player; deterministic + byte-identically
-  regenerable; verify path is a lookup; existing target-score tests updated.
+- **Design (decided 2026-07-30):**
+  - **Ladder rungs → star tiers.** A beam-plateau measurement (avg over 16 seeds:
+    greedy 1964; beam-4 +27%; beam-8 +44%; beam-16 +53%; beam-32 +64%; beam-64
+    +71%) shows **no cheap near-optimal ceiling** — score keeps climbing with
+    search. So 3★ is a **mid** rung, not the deepest search. Provisional ladder
+    (tunable; validated later by the C2 calibration study): **1★ = a weak floor**
+    (a deterministic random-legal-move player — a gentle "you cleared it" bar most
+    players pass), **2★ = greedy** ("played competently"), **3★ = beam-8**
+    ("played well" — strong-but-attainable). beam-16…64 stay as headroom / the
+    "100% reference", never a star bar.
+  - **Delivery = a baked par table embedded in the wasm.** The beam is too slow to
+    run live at verify, so `par_tiers(seed)` is computed **offline** into a
+    committed table and **`include_bytes!`-embedded in the binding** (not fetched),
+    so `targets_for`/verify stay a pure, deterministic lookup on any device.
+  - **Target-score daily → a bounded pack.** Daily currently uses the raw
+    unbounded `dayIndexUTC` seed, which can't be pre-baked. Introduce a 365-seed
+    target-score daily pack (like blockers/jelly) so its seeds' par is in the
+    table; daily plays `pack[dayIndex % 365]`. **Free-play** (`?seed=`/random) is
+    off-table → falls back to the cheap live greedy tiers (consistent per seed:
+    the same seed always takes the same branch).
+  - **No version bump** (D5, no users): change par in place; `Match3::VERSION`
+    stays 1.
+- **Build increments:** (1) `par_tiers` ladder in `match3-solver` + rung tests;
+  (2) target-score daily pack + baked par table generator (committed, regen
+  drill); (3) embed the table + switch `targets_for` to lookup-else-fallback;
+  (4) UI target-score daily → pack seed; update target-score tests.
+- **DoD:** daily par reflects the ladder (3★ meaningfully hard, not trivial);
+  deterministic + byte-identically regenerable; verify is an embedded lookup;
+  existing target-score tests updated; no re-grading surprises.
 
 ### Track B — Specials (the long pole), phased
 - **B0 foundation:** the special-gem model (`Cell` gains special kinds, or a
