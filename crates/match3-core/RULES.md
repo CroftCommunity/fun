@@ -114,6 +114,10 @@ a determinism bug.
   - `+10` per gem cleared;
   - `+20` per blocker layer removed.
   - Score is accumulated across all cascade steps of the move.
+- **Special overlay (B0.2):** a cleared cell's `special` marker is **scrubbed**
+  with the gem (an `Empty` hole carries no marker). Activation of a *matched*
+  special (its blast) is B1+; B0 creation, which spawns a special on a survivor
+  cell of a qualifying match, is applied after the clear (B0.3–B0.4).
 
 ### T3 — Gravity (blockers are fixed shelves)
 
@@ -123,6 +127,10 @@ a determinism bug.
   of non-blocker cells bounded by blockers and/or the grid edges. Blockers never move.
 - Within a segment, all `Gem` cells fall to the **bottom** of that segment, preserving their relative order;
   the `Empty` cells collect at the **top** of the segment.
+- **Special overlay (B0.2):** a gem's `special` marker falls **with it** — the
+  overlay moves in lockstep with its gem (a special candy falls), unlike jelly,
+  which never moves. Vacated holes carry no marker. (Jelly stays fixed under the
+  cell; only the gem-attached special layer moves.)
 
 ### T4 — Refill
 

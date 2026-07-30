@@ -3,7 +3,7 @@
 
 use std::collections::BTreeSet;
 
-use crate::board::{Board, Cell};
+use crate::board::{Board, Cell, SpecialKind};
 use crate::hash::state_hash;
 use crate::rng::DetRng;
 
@@ -129,6 +129,9 @@ pub fn clear_cells(board: &mut Board, matched: &[Pos]) -> ClearOutcome {
             board.set_jelly(r, c, jelly - 1);
         }
         board.set(r, c, Cell::Empty);
+        // A cleared cell holds no special candy (the marker is scrubbed with the
+        // gem). Activation of a matched special lands in B1+; B0 only creates.
+        board.set_special(r, c, None);
     }
 
     let mut blocker_layers_removed = 0;
@@ -160,17 +163,22 @@ pub fn apply_gravity(board: &mut Board) {
             if !boundary {
                 continue;
             }
-            // Segment is the non-blocker rows [seg_start, r).
-            let gems: Vec<Cell> = (seg_start..r)
-                .map(|rr| board.get(rr, c))
-                .filter(|cell| cell.is_gem())
+            // Segment is the non-blocker rows [seg_start, r). Carry each gem's
+            // special marker with it as a `(cell, special)` pair so the two
+            // grids cannot desync — a special candy falls with its gem.
+            let gems: Vec<(Cell, Option<SpecialKind>)> = (seg_start..r)
+                .filter(|&rr| board.get(rr, c).is_gem())
+                .map(|rr| (board.get(rr, c), board.special_at(rr, c)))
                 .collect();
             let holes = (r - seg_start) - gems.len();
             for (i, rr) in (seg_start..r).enumerate() {
                 if i < holes {
                     board.set(rr, c, Cell::Empty);
+                    board.set_special(rr, c, None);
                 } else {
-                    board.set(rr, c, gems[i - holes]);
+                    let (cell, special) = gems[i - holes];
+                    board.set(rr, c, cell);
+                    board.set_special(rr, c, special);
                 }
             }
             seg_start = r + 1;
