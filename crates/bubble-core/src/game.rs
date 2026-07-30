@@ -7,7 +7,9 @@
 //! exactly from `(seed, targets)` — which is what makes the outcome verifiable
 //! ([`Bubble`] implements [`pond_outcome::Game`]).
 
-use crate::board::{Board, Pos};
+use std::collections::BTreeSet;
+
+use crate::board::{Board, Cell, Pos};
 use crate::clear_board_mode as mode;
 use crate::engine::{deal, is_cleared, shoot, ShotError, ShotReport};
 use crate::hash::state_hash;
@@ -18,7 +20,33 @@ use crate::rng::DetRng;
 /// not a mirror of the dealt colours. Deterministic.
 const LAUNCHER_SEED_XOR: u64 = 0x9E37_79B9_7F4A_7C15;
 
+/// The distinct bubble colours currently on the board, in ascending order
+/// (deterministic).
+fn present_colors(board: &Board) -> Vec<u8> {
+    let mut set = BTreeSet::new();
+    for cell in board.cells() {
+        if let Cell::Bubble(c) = cell {
+            set.insert(*c);
+        }
+    }
+    set.into_iter().collect()
+}
+
+/// Load the launcher with a colour that is **present on the board** (a
+/// deterministic pick over the present set), so a shot can always make progress
+/// — better gameplay than a purely random colour, and it keeps the board
+/// clearable, which is what makes the B4 winnable pack tractable. Returns `0`
+/// when the board is empty (the game is already won; the colour is unused).
+fn pick_color(board: &Board, rng: &mut DetRng) -> u8 {
+    let present = present_colors(board);
+    if present.is_empty() {
+        return 0;
+    }
+    present[rng.index(present.len())]
+}
+
 /// A single clear-the-board game: board + deterministic launcher + budget.
+#[derive(Clone)]
 pub struct Game {
     board: Board,
     colors: usize,
@@ -56,7 +84,7 @@ impl Game {
     ) -> Self {
         let d = deal(seed, width, height, rows_filled, colors);
         let mut launcher = DetRng::from_seed(seed ^ LAUNCHER_SEED_XOR);
-        let current = u8::try_from(launcher.index(colors)).expect("colour index fits u8");
+        let current = pick_color(&d.board, &mut launcher);
         Self {
             board: d.board,
             colors,
@@ -127,7 +155,7 @@ impl Game {
         let report = shoot(&mut self.board, target, self.current)?;
         self.score += report.score_gain;
         self.shots.push(target);
-        self.current = u8::try_from(self.launcher.index(self.colors)).expect("colour fits u8");
+        self.current = pick_color(&self.board, &mut self.launcher);
         Ok(report)
     }
 }
