@@ -5,7 +5,7 @@
 //! precedent, so gem-only boards hash unchanged), and authoring round-trips.
 
 use match3_core::board::{Board, Cell, SpecialKind};
-use match3_core::engine::{apply_gravity, clear_cells, refill, Game};
+use match3_core::engine::{apply_gravity, clear_cells, legal_swaps, refill, swap_legal, Game};
 use match3_core::hash::state_hash;
 use match3_core::rng::DetRng;
 
@@ -274,4 +274,54 @@ fn a_blast_scrubs_jelly_under_the_cells_it_clears() {
         report.steps[0].jelly_layers_removed >= 1,
         "blast scrubbed the jelly it passed"
     );
+}
+
+// --- B1.2: swap-activation (fire a striped by swapping it, no match needed) --
+
+fn striped_board() -> Board {
+    // A StripedH (colour 0) at (1,1); no line matches, and swapping it with any
+    // neighbour forms no match either — so only swap-activation can fire it.
+    Board::from_rows_with_specials(&["123", "405", "231"], &["...", ".H.", "..."]).expect("parses")
+}
+
+#[test]
+fn swap_legal_allows_firing_a_striped_without_a_match() {
+    let b = striped_board();
+    // No plain swap here makes a match, but swapping the striped is legal — it
+    // fires. (A control: a plain non-firing swap stays illegal.)
+    assert!(
+        swap_legal(&b, (1, 1), (1, 2)),
+        "swapping the striped is legal (it fires)"
+    );
+    assert!(
+        !swap_legal(&b, (0, 0), (0, 1)),
+        "a plain no-match swap is still illegal"
+    );
+}
+
+#[test]
+fn legal_swaps_includes_the_special_swap() {
+    let swaps = legal_swaps(&striped_board());
+    assert!(
+        swaps.iter().any(|&(f, t)| f == (1, 1) || t == (1, 1)),
+        "the striped at (1,1) can be swapped with a neighbour"
+    );
+}
+
+#[test]
+fn swapping_a_striped_fires_it_and_carries_the_marker() {
+    // Swap the StripedH (1,1)<->(1,2): no line match forms, but the striped —
+    // now carried to (1,2) — fires, clearing its row. If the swap failed to move
+    // the marker, the gem at (1,2) would be plain and nothing would fire.
+    let mut game = Game::new(striped_board(), 1, 6);
+    let report = game.play_move((1, 1), (1, 2));
+    assert!(report.legal, "the special swap is legal");
+    let cleared0 = &report.steps[0].cleared;
+    for c in 0..3 {
+        assert!(
+            cleared0.contains(&(1, c)),
+            "row-1 cell {c} cleared by the fired striped"
+        );
+    }
+    assert_eq!(report.steps[0].score_gained, 30, "row of 3 x 10");
 }

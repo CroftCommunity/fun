@@ -81,7 +81,8 @@ A move swaps two cells. Resolution order:
    Each iteration is one **cascade step**; step 0 is the one triggered directly by the swap.
 4. **Deadlock reshuffle.** After the cascade settles, if the board has **no legal swap**, reshuffle:
    deterministically permute the gem cells (a Fisher-Yates shuffle consuming `rng` draws in order,
-   **blockers stay fixed**) into a board that has a legal swap and no rest-matches, retrying up to 64
+   **blockers stay fixed**; a gem's **special marker travels with it**, so a shuffled special candy stays
+   in sync with its gem) into a board that has a legal swap and no rest-matches, retrying up to 64
    times. A board that already has a legal swap is left untouched and consumes **no draws**, so a
    still-live move is byte-identical to the pre-reshuffle engine. Because the reshuffle lives here (not
    in the UI) and folds into the state hash, `Match3::replay` — which just re-applies `play_move` — is
@@ -141,9 +142,12 @@ B2/B3; the 2×2 **fish** shape is deferred to B4.
 A striped candy **fires** a line blast when it is cleared by a match. Before the
 clear (T2), the matched set is expanded by activation:
 
-- **Trigger (B1 = match-activation):** a striped candy in the matched set fires.
-  (Swap-activation — firing a striped by swapping it with no line match — is
-  B1.2; wrapped/colour-bomb firing is B2/B3.)
+- **Trigger:** a striped candy fires when (a) it is in the matched set
+  (match-activation), or (b) it is **swapped** with an adjacent gem — the swap is
+  legal even with no line match, and fires the striped from its post-swap cell
+  (swap-activation, B1.2). Swapping carries the special marker with its gem.
+  Wrapped/colour-bomb firing is B2/B3; swapping two specials is the combo matrix
+  (B5) — B1 fires each independently.
 - **Blast region:** `StripedH` clears its entire **row**, `StripedV` its entire
   **column**. A **blocker** in the line is *not* cleared — it takes one layer of
   adjacency damage via T2 like any match. (Orientation = stripe direction;

@@ -324,12 +324,16 @@ fn blast_region(board: &Board, pos: Pos) -> Vec<Pos> {
 /// result is the full set of cells to clear this step, sorted. Deterministic —
 /// each striped fires at most once and the union is order-independent. Wrapped /
 /// colour-bomb do not fire yet (B2 / B3), so a matched wrapped/bomb just clears.
-fn activate(board: &Board, matched: &[Pos]) -> Vec<Pos> {
+fn activate(board: &Board, matched: &[Pos], seed: &[Pos]) -> Vec<Pos> {
     let mut to_clear: BTreeSet<Pos> = matched.iter().copied().collect();
     let mut fired: BTreeSet<Pos> = BTreeSet::new();
+    // Fire every striped in the matched set (match-activation, B1.1) plus any
+    // striped swapped into place this step (swap-activation, B1.2). A fired
+    // striped's own cell is in its blast region, so it clears too.
     let mut queue: Vec<Pos> = matched
         .iter()
         .copied()
+        .chain(seed.iter().copied())
         .filter(|&(r, c)| fires(board.special_at(r, c)))
         .collect();
     while let Some(cell) = queue.pop() {
@@ -453,6 +457,12 @@ pub fn swap_legal(board: &Board, from: Pos, to: Pos) -> bool {
     if !board.get(from.0, from.1).is_gem() || !board.get(to.0, to.1).is_gem() {
         return false;
     }
+    // B1.2 swap-activation: swapping a striped candy is legal even with no line
+    // match — the swap fires it. (Only firing kinds; wrapped/bomb swap-fire is
+    // B2/B3.) A board with no firing special takes the unchanged match-only path.
+    if fires(board.special_at(from.0, from.1)) || fires(board.special_at(to.0, to.1)) {
+        return true;
+    }
     let mut b = board.clone();
     let tmp = b.get(from.0, from.1);
     b.set(from.0, from.1, b.get(to.0, to.1));
@@ -499,15 +509,24 @@ pub fn reshuffle_if_dead(board: &mut Board, rng: &mut DetRng) -> bool {
         .filter(|&(r, c)| board.get(r, c).is_gem())
         .collect();
     for _ in 0..64 {
-        let mut values: Vec<Cell> = positions.iter().map(|&(r, c)| board.get(r, c)).collect();
+        // Shuffle the (gem, special-marker) pairs together so a special candy's
+        // marker travels with its gem — a bare `Vec<Cell>` shuffle would desync
+        // the overlay (leaving a marker on a moved gem). Markers are all `None`
+        // on a gem-only board, so this is byte-identical to the pre-specials
+        // reshuffle there.
+        let mut values: Vec<(Cell, Option<SpecialKind>)> = positions
+            .iter()
+            .map(|&(r, c)| (board.get(r, c), board.special_at(r, c)))
+            .collect();
         // Fisher-Yates from the top; each step consumes exactly one rng draw so
         // the shuffle folds into the state hash and replays identically.
         for i in (1..values.len()).rev() {
             let j = rng.index(i + 1);
             values.swap(i, j);
         }
-        for (&(r, c), &v) in positions.iter().zip(values.iter()) {
-            board.set(r, c, v);
+        for (&(r, c), &(cell, special)) in positions.iter().zip(values.iter()) {
+            board.set(r, c, cell);
+            board.set_special(r, c, special);
         }
         if find_matches(board).is_empty() && has_legal_move(board) {
             return true;
@@ -809,9 +828,16 @@ impl Game {
             );
         }
 
-        let tmp = self.board.get(from.0, from.1);
+        // Swap the two cells AND their special markers, so a special candy moves
+        // with its gem (a striped swapped into a match — or fired by the swap —
+        // carries its power). Markers are both `None` for a plain swap → no-op.
+        let tmp_cell = self.board.get(from.0, from.1);
+        let tmp_special = self.board.special_at(from.0, from.1);
         self.board.set(from.0, from.1, self.board.get(to.0, to.1));
-        self.board.set(to.0, to.1, tmp);
+        self.board
+            .set_special(from.0, from.1, self.board.special_at(to.0, to.1));
+        self.board.set(to.0, to.1, tmp_cell);
+        self.board.set_special(to.0, to.1, tmp_special);
         if trace {
             snapshots.push(self.board.clone());
         }
@@ -821,7 +847,17 @@ impl Game {
         let mut step_index = 0usize;
         loop {
             let matched = find_matches(&self.board);
-            if matched.is_empty() {
+            // Step 0 also seeds activation from a striped swapped into place: it
+            // fires even with no line match (B1.2). Later steps have no swap seed.
+            let seed: Vec<Pos> = if step_index == 0 {
+                [from, to]
+                    .into_iter()
+                    .filter(|&(r, c)| fires(self.board.special_at(r, c)))
+                    .collect()
+            } else {
+                Vec::new()
+            };
+            if matched.is_empty() && seed.is_empty() {
                 break;
             }
             // Which specials this step's shapes create — step 0 uses the swap so
@@ -836,7 +872,7 @@ impl Game {
             // B1 activation: expand the cleared set by the blasts of any striped
             // candy in the matched set (chained). No matched striped -> `activated`
             // == `matched`, so plain-gem and B0-creation play stay byte-identical.
-            let activated = activate(&self.board, &matched);
+            let activated = activate(&self.board, &matched, &seed);
             let out = clear_cells(&mut self.board, &activated);
             // Each placement cell survives as a special candy: clear_cells set it
             // Empty (and scrubbed its jelly + damaged adjacent blockers as part of
