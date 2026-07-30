@@ -15,7 +15,8 @@ Source narrative: `alpha/seeds/transcripts/raw/croft-games-pond-roadmap-browser-
 1. **Language:** Rust → wasm. Chosen for the native-plus-wasm cross-build determinism test the guide calls
    "essentially free," and to match the existing Cargo workspaces under `alpha/Proofs/`.
 2. **Specials in v1:** none. Plain match-3 only. All special tiles (striped / wrapped / colour-bomb) are in
-   the not-yet set.
+   the not-yet set. **Superseded by Track B0** (`plans/2026-07-30-match3-parity-roadmap.md`): the special
+   overlay is being introduced phase-by-phase — see "Special candies (overlay)" below. Fish (2×2) is B4.
 3. **One representative blocker:** yes — one **layered blocker** tile, so the layered-cell code path is
    exercised by something real in P1.
 
@@ -37,6 +38,23 @@ balance decision is smuggled in.
   A match that clears a cell scrubs **one** jelly layer beneath it (`clear_cells` reports
   `jelly_layers_removed`). The clear-the-jelly objective is met when no jelly remains. Jelly can only be
   removed, so the count is monotone non-increasing under play.
+
+### Special candies (overlay) — Track B0
+
+A **special candy** is a `Gem(color)` carrying a marker in a separate per-cell overlay (`special`, `None` =
+plain). It is created when a match forms a qualifying shape (the classification + creation tie-break tables
+are added with the shape-detection phases, B0.3–B0.4); its *activation* (the blast) lands later (B1–B4).
+The kinds (B0): `StripedH`, `StripedV` (from a line-4), `Wrapped` (from an L/T), `ColorBomb` (from a line-5).
+The 2×2 **fish** is deferred to B4 (it needs a new *match* definition, not just a sub-classification of
+existing line matches).
+
+Key invariant — **a special is its colour to the match/legality core.** Because the base cell stays
+`Gem(color)`, match detection (T1), swap legality, `legal_swaps`, `has_legal_move`, and the deadlock
+reshuffle see only the colour and are **byte-identical** to the pre-specials engine. The overlay governs
+only: clear (the marker is scrubbed when the cell clears), gravity (unlike jelly, the marker **moves with
+its gem** — a special candy falls), hashing (below), rendering, and activation. The overlay marks a cell
+**only where it holds a `Gem`**, and is cleared on clear/refill — it never marks a hole or a blocker. (The
+clear/gravity clauses are specified in T2/T3 as they are implemented in B0.2.)
 
 ## The deterministic RNG
 
@@ -125,11 +143,17 @@ a determinism bug.
              Empty        -> 0x00
              Gem(c)       -> 0x01, c(u8)
              Blocker(l)   -> 0x02, l(u8)
-        || IF any cell is jellied: "j\x00" || for each cell: jelly_layers(u8)
+        || IF any cell is jellied:     "j\x00" || for each cell: jelly_layers(u8)
+        || IF any cell has a special:  "s\x00" || for each cell: special_tag(u8)
 ```
 
-The jelly section is appended **only when some cell carries jelly**, so a gem-only board hashes exactly as
-it did before jelly existed — every pre-jelly golden vector stays valid without a re-lock.
+where `special_tag` is `0x00` (no special), `0x01` `StripedH`, `0x02` `StripedV`, `0x03` `Wrapped`,
+`0x04` `ColorBomb` (never renumber a shipped tag — it is part of the fingerprint).
+
+Both overlay sections are appended **only when some cell carries** that overlay, so a gem-only board hashes
+exactly as it did before the overlays existed — every pre-jelly / pre-specials golden vector stays valid
+without a re-lock. The order is fixed: cells, then the jelly section (if any), then the special section (if
+any), so a jelly-only board is unaffected by the special section and vice-versa.
 
 Replaying `(seed, initial board, moves)` MUST reproduce the identical `state_hash` on every run and on every
 build target. That is the property P8 (score verification) and the follow-chain leaderboard later depend on.
@@ -164,6 +188,7 @@ old-version records (read the version from the `pond-docformat` envelope). Do no
 
 ## Out of P1 (explicit not-yet set)
 
-Special tiles; cascade multipliers and par bands; level generation (P4); saves and share codes (their
+Special tiles (**now being added in Track B0** — see "Special candies (overlay)" above);
+cascade multipliers and par bands; level generation (P4); saves and share codes (their
 compatibility-matrix sustainment is P10); the P2 version-and-unknown-field document policy; anything
 network / iroh / resolver. P1 is a pure, headless, deterministic core.

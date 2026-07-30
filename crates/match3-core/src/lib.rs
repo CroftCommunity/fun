@@ -9,7 +9,7 @@ pub mod hash;
 pub mod rng;
 pub mod vectors;
 
-pub use board::{Board, BoardError, Cell};
+pub use board::{Board, BoardError, Cell, SpecialKind};
 
 /// Target-score mode parameters, shared by the binding and the par-table
 /// generator so play-time and the baked par agree.

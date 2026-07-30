@@ -25,6 +25,50 @@ impl Cell {
     }
 }
 
+/// A special-candy kind carried by a gem via the parallel `special` overlay
+/// (Track B0). A special is a `Cell::Gem(color)` marked with one of these — it
+/// still matches, swaps, and falls as its colour (the match/legality core never
+/// sees the overlay); the marker only governs clear, gravity-carry, hashing,
+/// rendering, and (from B1) activation. The 2×2 fish is deferred to B4.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum SpecialKind {
+    /// From a horizontal line-4 (clears its row when activated — B1).
+    StripedH,
+    /// From a vertical line-4 (clears its column when activated — B1).
+    StripedV,
+    /// From an L/T match (3×3 area blast when activated — B2).
+    Wrapped,
+    /// From a line-5 (clears a whole colour when activated — B3).
+    ColorBomb,
+}
+
+impl SpecialKind {
+    /// The stable hash tag byte (RULES.md "State hash"). `0x00` is reserved for
+    /// "no special", so kinds start at `0x01`. These bytes are part of the
+    /// verifiable fingerprint — never renumber a shipped value.
+    #[must_use]
+    pub fn tag(self) -> u8 {
+        match self {
+            SpecialKind::StripedH => 0x01,
+            SpecialKind::StripedV => 0x02,
+            SpecialKind::Wrapped => 0x03,
+            SpecialKind::ColorBomb => 0x04,
+        }
+    }
+
+    /// The authoring char for `from_rows_with_specials` / debug grids.
+    fn from_char(ch: char) -> Option<Option<SpecialKind>> {
+        match ch {
+            '.' => Some(None),
+            'H' => Some(Some(SpecialKind::StripedH)),
+            'V' => Some(Some(SpecialKind::StripedV)),
+            'W' => Some(Some(SpecialKind::Wrapped)),
+            'C' => Some(Some(SpecialKind::ColorBomb)),
+            _ => None,
+        }
+    }
+}
+
 /// Row-major grid. `row = 0` is the top; gravity pulls toward larger `row`.
 ///
 /// `jelly` is a parallel row-major grid of jelly layers per cell (`0` = none),
@@ -38,6 +82,12 @@ pub struct Board {
     pub height: usize,
     cells: Vec<Cell>,
     jelly: Vec<u8>,
+    /// Parallel row-major special-candy overlay (`None` = a plain gem). Like
+    /// `jelly` it is orthogonal to matching/legality, but unlike jelly it moves
+    /// *with* its gem under gravity (a special candy falls) — see `engine`. A
+    /// board with no specials appends nothing to the hash, so a gem-only board
+    /// hashes exactly as it did before the overlay existed.
+    special: Vec<Option<SpecialKind>>,
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -71,12 +121,36 @@ impl Board {
             });
         }
         let jelly = vec![0u8; want];
+        let special = vec![None; want];
         Ok(Self {
             width,
             height,
             cells,
             jelly,
+            special,
         })
+    }
+
+    /// The special-candy overlay, row-major (`None` = a plain gem).
+    #[must_use]
+    pub fn special(&self) -> &[Option<SpecialKind>] {
+        &self.special
+    }
+
+    /// The special kind on one cell (`None` = a plain gem).
+    #[inline]
+    #[must_use]
+    pub fn special_at(&self, row: usize, col: usize) -> Option<SpecialKind> {
+        self.special[self.idx(row, col)]
+    }
+
+    /// Set (or clear, with `None`) the special marker on one cell. Invariant:
+    /// a marker is only ever set where the cell is a `Gem`, and is cleared when
+    /// the cell clears/refills — the overlay never marks a hole or a blocker.
+    #[inline]
+    pub fn set_special(&mut self, row: usize, col: usize, kind: Option<SpecialKind>) {
+        let i = self.idx(row, col);
+        self.special[i] = kind;
     }
 
     /// Jelly layers per cell, row-major (`0` = no jelly).
@@ -161,6 +235,32 @@ impl Board {
                     other => return Err(BoardError::BadChar(other)),
                 };
                 board.set_jelly(r, c, layers);
+            }
+            if n != board.width {
+                return Err(BoardError::Ragged {
+                    row: r,
+                    got: n,
+                    width: board.width,
+                });
+            }
+        }
+        Ok(board)
+    }
+
+    /// Parse a char grid plus a parallel **special-overlay** grid
+    /// (`.` = plain, `H`/`V` = striped, `W` = wrapped, `C` = colour-bomb). The
+    /// two grids must have the same shape. Used by specials golden vectors.
+    pub fn from_rows_with_specials(
+        rows: &[&str],
+        special_rows: &[&str],
+    ) -> Result<Self, BoardError> {
+        let mut board = Board::from_rows(rows)?;
+        for (r, srow) in special_rows.iter().enumerate() {
+            let mut n = 0;
+            for (c, ch) in srow.chars().enumerate() {
+                n += 1;
+                let kind = SpecialKind::from_char(ch).ok_or(BoardError::BadChar(ch))?;
+                board.set_special(r, c, kind);
             }
             if n != board.width {
                 return Err(BoardError::Ragged {
