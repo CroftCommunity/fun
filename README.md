@@ -9,7 +9,7 @@ a portable artifact addressable at its own URL.
 `fun.croft.ing` presents games in a **slide-out drawer** over a persistent play area; each game can
 also go **full-screen** or **open in its own tab** (so every game has its own URL). A game is a module
 that implements one contract and renders chrome-agnostically into a mount point — the drawer is built
-once and every game reuses it. Shelf order: **solitaire → match-3 → cribbage**.
+once and every game reuses it. Shelf order: **solitaire → match-3 → bubble → cribbage**.
 
 ## Layout
 
@@ -23,8 +23,12 @@ crates/
   pond-outcome/      P8 verifiable-outcome record (replay → state hash)         — built
   match3-wasm/       browser binding over match3-core (raw C-ABI + serde-JSON)   — built
   solitaire-wasm/    browser binding over solitaire-core (raw C-ABI + serde-JSON) — built
+  bubble-core/       deterministic bubble-shooter engine (hex board, tap-target aim, pop/drop) — green
+  bubble-solver/     build-time clear-the-board solver + winnable-daily pack generator — green
+  bubble-wasm/       browser binding over bubble-core (raw C-ABI + serde-JSON)     — built
 games/solitaire/     daily-pack.json — a year of winnable daily seeds + a fixture win line (v2, seeds-lean)
-src/                 the games drawer UI (vanilla TS + esbuild); solitaire is playable at /solitaire/
+games/bubble/        daily-pack.json — a year of winnable clear-the-board seeds + a fixture clear line
+src/                 the games drawer UI (vanilla TS + esbuild); each game owns src/games/<game>/
 plans/               the phase-plans governing this repo
 ```
 
