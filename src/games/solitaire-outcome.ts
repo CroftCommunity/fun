@@ -29,17 +29,24 @@ export interface OutcomeEnvelope {
   payload: OutcomeRecord;
 }
 
-/** One entry in the winnable-daily pack. */
+/** One winnable deal with its verified winning line (the pack's fixture). */
 export interface PackEntry {
   seed: number;
   moves: SolMove[];
 }
 
-/** The `deal-pack` `pond-docformat` document served as a static asset. */
+/**
+ * The `deal-pack` `pond-docformat` document served as a static asset (v2,
+ * seeds-lean): a year of winnable seeds the runtime indexes by date, plus one
+ * `fixture` deal that keeps its line for the win-path E2E / guide.
+ */
 export interface DealPack {
   kind: string;
   version: number;
-  payload: PackEntry[];
+  payload: {
+    seeds: number[];
+    fixture: PackEntry;
+  };
 }
 
 /** The result of re-verifying a record by replay. */
@@ -117,10 +124,10 @@ export function dayIndexUTC(now: Date): number {
   return Math.floor(now.getTime() / MS_PER_DAY);
 }
 
-/** The seed for `now`'s daily deal: the UTC day index into the pack (wrapping). */
+/** The seed for `now`'s daily deal: the UTC day index into the seed list (wrapping). */
 export function dailySeed(pack: DealPack, now: Date): bigint {
-  const entry = pack.payload[dayIndexUTC(now) % pack.payload.length]!;
-  return BigInt(entry.seed);
+  const { seeds } = pack.payload;
+  return BigInt(seeds[dayIndexUTC(now) % seeds.length]!);
 }
 
 /**

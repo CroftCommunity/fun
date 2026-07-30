@@ -24,13 +24,15 @@ Plans: `plans/2026-07-28-games-drawer-solitaire-ui.md` (front-end),
       the recorded move list's verifiability.
 
 ## Solver / daily pack (Phase S follow-ups)
-- [ ] **Short-line tuning** — the solver sometimes returns long draw-heavy
-      winning lines (the current `pack[0]` fixture is 500 moves). Bias toward
-      shorter lines so the daily fixture and share payloads stay small.
-- [ ] **Scale the pack to a full year** of dated winnable seeds (currently 6),
-      keeping byte-identical regeneration (the P10 drill).
+- [x] **Short-line fixture** — the pack's fixture is now the shortest winning
+      line found among the winnable seeds (131 moves, was 500).
+- [x] **Full year of winnable seeds** — the pack (v2, seeds-lean) holds 365
+      unique winnable seeds + one fixture line; ~5 KB, byte-identically
+      regenerable (the P10 drill still passes).
 - [ ] Wire the bounded `is_hopeless` check to *confirm* a player-declared
       `Stuck` (optional).
+- [ ] The DFS itself still returns the first win found (foundation-first); a
+      true shortest-path search (IDDFS/A*) is a deeper future improvement.
 
 ## Responsive / a11y polish
 - [ ] Narrow-screen layout: tighten the tableau fan and keep stock/waste/

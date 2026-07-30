@@ -110,19 +110,22 @@ test("win path: replay the fixture → verifiable clean-clear + share link round
   await page.goto("/solitaire/?seed=0");
   await ready(page);
 
-  // Drive the binding with the win fixture (pack[0]), then re-render.
-  await page.evaluate(async () => {
+  // Drive the binding with the win fixture (seed the fixture's deal, replay its
+  // line), then re-render.
+  const moveCount = await page.evaluate(async () => {
     const pack = await (await fetch("/daily-pack.json")).json();
     const h = window.__solitaire!;
-    for (const move of pack.payload[0].moves) h.game.play(move);
+    h.game.newGame(BigInt(pack.payload.fixture.seed));
+    for (const move of pack.payload.fixture.moves) h.game.play(move);
     h.refresh();
+    return pack.payload.fixture.moves.length as number;
   });
 
   const result = page.locator(".sol-result");
   await expect(result).toBeVisible();
   await expect(result.locator(".sol-headline")).toContainText(/clean/i);
   await expect(result.locator(".sol-verify-badge.ok")).toBeVisible();
-  await expect(result.locator(".sol-record")).toContainText("500");
+  await expect(result.locator(".sol-record")).toContainText(String(moveCount));
 
   const shareHref = await page.locator(".sol-share").getAttribute("href");
   expect(shareHref).toContain("?r=");
@@ -132,7 +135,7 @@ test("win path: replay the fixture → verifiable clean-clear + share link round
   await shared.goto(shareHref!);
   await expect(shared.locator(".sol-result")).toBeVisible();
   await expect(shared.locator(".sol-verify-badge.ok")).toBeVisible();
-  await expect(shared.locator(".sol-record")).toContainText("500");
+  await expect(shared.locator(".sol-record")).toContainText(String(moveCount));
   await shared.close();
 });
 

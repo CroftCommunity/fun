@@ -72,7 +72,8 @@ const SHOTS = [
       await page.evaluate(async () => {
         const pack = await (await fetch("/daily-pack.json")).json();
         const h = window.__solitaire;
-        for (const move of pack.payload[0].moves) h.game.play(move);
+        h.game.newGame(BigInt(pack.payload.fixture.seed));
+        for (const move of pack.payload.fixture.moves) h.game.play(move);
         h.refresh();
       });
       await page.waitForSelector(".sol-result");

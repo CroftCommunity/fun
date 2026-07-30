@@ -23,7 +23,7 @@ crates/
   pond-outcome/      P8 verifiable-outcome record (replay → state hash)         — built
   match3-wasm/       browser binding over match3-core                            [stub]
   solitaire-wasm/    browser binding over solitaire-core (raw C-ABI + serde-JSON) — built
-games/solitaire/     daily-pack.json — the winnable-daily deals + win-path fixture (payload[0])
+games/solitaire/     daily-pack.json — a year of winnable daily seeds + a fixture win line (v2, seeds-lean)
 src/                 the games drawer UI (vanilla TS + esbuild); solitaire is playable at /solitaire/
 plans/               the phase-plans governing this repo
 ```

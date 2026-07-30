@@ -7,8 +7,9 @@
 //! it does not attempt to *prove* unwinnability, which is the expensive tail).
 //!
 //! [`generate_pack`] iterates a deterministic seed stream and collects the
-//! winnable ones with their lines — a **byte-identically regenerable** pack the
-//! runtime indexes by date (and the source of the board UI's win-path fixture).
+//! winnable **seeds** (the runtime only needs a seed per day) plus one shortest-
+//! line `fixture` — a **byte-identically regenerable** pack the runtime indexes
+//! by date (the fixture is the board UI's win-path source).
 
 use std::collections::HashSet;
 
@@ -26,6 +27,20 @@ pub struct PackEntry {
     pub seed: u64,
     /// A move list that replays to a win.
     pub moves: Vec<Move>,
+}
+
+/// The winnable-daily pack. The runtime only needs a **seed** per day (the
+/// player plays the deal themselves), so the pack stores a list of winnable
+/// seeds — cheap to scale to a full year — plus one `fixture` entry that keeps
+/// its winning line for tests and the board's win-path E2E. Storing a line per
+/// day would make the served asset multiple megabytes; seeds keep it tiny.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Pack {
+    /// Winnable seeds, indexed by date at runtime (`seeds[dayIndex % len]`).
+    pub seeds: Vec<u64>,
+    /// One winnable deal with its verified line — the shortest found, so the
+    /// fixture (and its replay/share) stays small.
+    pub fixture: PackEntry,
 }
 
 /// Find a winning line for `seed` within `node_budget` search nodes, or `None`.
@@ -93,32 +108,36 @@ fn dfs(
 }
 
 /// Generate a winnable-daily pack: walk the deterministic seed stream
-/// `master_seed, master_seed+1, …`, keep the first `count` seeds the solver
-/// wins within `node_budget` (stopping after `max_seeds` attempts). Deterministic
-/// → byte-identically regenerable.
+/// `master_seed, master_seed+1, …`, keep the first `count` seeds the solver wins
+/// within `node_budget` (stopping after `max_seeds` attempts). The `fixture` is
+/// the winnable deal with the **shortest** found line. Deterministic →
+/// byte-identically regenerable.
 #[must_use]
-pub fn generate_pack(
-    master_seed: u64,
-    count: usize,
-    node_budget: u64,
-    max_seeds: u64,
-) -> Vec<PackEntry> {
-    let mut out = Vec::new();
+pub fn generate_pack(master_seed: u64, count: usize, node_budget: u64, max_seeds: u64) -> Pack {
+    let mut seeds = Vec::new();
+    let mut fixture: Option<PackEntry> = None;
     let mut i = 0u64;
-    while out.len() < count && i < max_seeds {
+    while seeds.len() < count && i < max_seeds {
         let seed = master_seed.wrapping_add(i);
         if let Some(moves) = find_win(seed, node_budget) {
-            out.push(PackEntry { seed, moves });
+            if fixture.as_ref().is_none_or(|f| moves.len() < f.moves.len()) {
+                fixture = Some(PackEntry { seed, moves });
+            }
+            seeds.push(seed);
         }
         i += 1;
     }
-    out
+    Pack {
+        seeds,
+        fixture: fixture.expect("at least one winnable seed in the stream"),
+    }
 }
 
-/// Serialize a pack through the `pond-docformat` envelope (`kind = "deal-pack"`).
+/// Serialize a pack through the `pond-docformat` envelope (`kind = "deal-pack"`,
+/// version 2 — the seeds-lean format).
 ///
 /// # Errors
 /// Propagates [`pond_docformat::DocError`] on a serialization failure.
-pub fn pack_to_doc(pack: &[PackEntry]) -> Result<Vec<u8>, pond_docformat::DocError> {
-    pond_docformat::write("deal-pack", 1, &pack)
+pub fn pack_to_doc(pack: &Pack) -> Result<Vec<u8>, pond_docformat::DocError> {
+    pond_docformat::write("deal-pack", 2, pack)
 }

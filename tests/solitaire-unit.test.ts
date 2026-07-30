@@ -68,10 +68,10 @@ describe("share encode/decode", () => {
   it("survives a large move list (the win fixture) round-trip, compactly", async () => {
     const pack = await loadPack();
     const env = wonEnvelope(false);
-    env.payload.moves = pack.payload[0]!.moves as SolMove[];
+    env.payload.moves = pack.payload.fixture.moves as SolMove[];
     env.payload.move_count = env.payload.moves.length;
     const encoded = await encodeRecord(env);
-    // Deflated: a 500-move win must stay far under any practical URL limit.
+    // Deflated: even a long win must stay far under any practical URL limit.
     expect(encoded.length).toBeLessThan(4000);
     expect(await decodeRecord(encoded)).toEqual(env);
   });
@@ -84,12 +84,12 @@ describe("daily-seed selection", () => {
     expect(dayIndexUTC(new Date("1970-01-02T23:59:59Z"))).toBe(1);
   });
 
-  it("indexes the pack by UTC day, wrapping on the pack length", async () => {
+  it("indexes the pack by UTC day, wrapping on the seed count", async () => {
     const pack = await loadPack();
     const date = new Date("1970-01-01T12:00:00Z"); // day 0
-    expect(dailySeed(pack, date)).toBe(BigInt(pack.payload[0]!.seed));
-    const wrap = new Date((pack.payload.length * 86400000) + 12 * 3600000); // day == len -> index 0
-    expect(dailySeed(pack, wrap)).toBe(BigInt(pack.payload[0]!.seed));
+    expect(dailySeed(pack, date)).toBe(BigInt(pack.payload.seeds[0]!));
+    const wrap = new Date(pack.payload.seeds.length * 86400000 + 12 * 3600000); // day == len -> index 0
+    expect(dailySeed(pack, wrap)).toBe(BigInt(pack.payload.seeds[0]!));
   });
 });
 
@@ -99,10 +99,9 @@ describe("verify-orchestration (real wasm)", () => {
 
   beforeAll(async () => {
     game = await loadReal();
-    const pack = await loadPack();
-    const p0 = pack.payload[0]!;
-    game.newGame(BigInt(p0.seed));
-    for (const m of p0.moves as SolMove[]) game.play(m);
+    const { fixture } = (await loadPack()).payload;
+    game.newGame(BigInt(fixture.seed));
+    for (const m of fixture.moves as SolMove[]) game.play(m);
     expect(game.isWon()).toBe(true);
     winEnv = game.outcome("abandoned", true) as OutcomeEnvelope;
     expect(winEnv.payload.result).toBe("Won");
