@@ -19,7 +19,8 @@ use std::collections::HashSet;
 
 use match3_core::{
     blockers_mode, blockers_remaining, deal_blockers, deal_jelly, jelly_mode, jelly_remaining,
-    legal_swaps, Game, MoveReport,
+    legal_swaps, random_score, reference_score, reference_score_beam, target_score_mode, Game,
+    MoveReport,
 };
 use serde::{Deserialize, Serialize};
 
@@ -226,4 +227,72 @@ pub fn pack_to_doc(pack: &Pack) -> Result<Vec<u8>, pond_docformat::DocError> {
 /// Propagates [`pond_docformat::DocError`] on a serialization failure.
 pub fn jelly_pack_to_doc(pack: &Pack) -> Result<Vec<u8>, pond_docformat::DocError> {
     write_pack(pack, "match3-jelly-pack")
+}
+
+// --- target-score par table (parity Track P-now / C1) ---
+
+/// The 1★/2★/3★ score thresholds for a target-score `seed`, from the **player
+/// ladder** (weak / medium / strong), so stars mean "you played as well as a
+/// {weak, competent, strong} solver". Deterministic. Strong is too slow to run
+/// live at verify, so this is computed **offline** into the baked par table.
+///
+/// Rungs (provisional, tunable — validated later by the offline model-calibration
+/// study): **1★ = a random-legal-move player** (a gentle floor most players pass),
+/// **2★ = greedy** (competent), **3★ = a beam-8 playout** (strong-but-attainable;
+/// deeper beams stay as headroom, never a star bar). Tiers are forced strictly
+/// increasing so 0–3 stars are always distinct.
+#[must_use]
+pub fn par_tiers(seed: u64) -> [u64; 3] {
+    use target_score_mode as m;
+    let weak = random_score(seed, m::WIDTH, m::HEIGHT, m::COLORS, m::MOVE_BUDGET);
+    let medium = reference_score(seed, m::WIDTH, m::HEIGHT, m::COLORS, m::MOVE_BUDGET);
+    let strong = reference_score_beam(seed, m::WIDTH, m::HEIGHT, m::COLORS, m::MOVE_BUDGET, 8);
+    // weak <= medium <= strong holds by construction (beam carries greedy); nudge
+    // the rare tie so the thresholds are strictly increasing.
+    let t1 = weak.min(medium);
+    let t2 = medium.max(t1 + 1);
+    let t3 = strong.max(t2 + 1);
+    [t1, t2, t3]
+}
+
+/// One target-score deal's par: its seed and the baked star thresholds.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ParEntry {
+    /// The deal seed.
+    pub seed: u64,
+    /// 1★ / 2★ / 3★ score thresholds.
+    pub tiers: [u64; 3],
+}
+
+/// The baked target-score par table — the daily seeds and their ladder tiers.
+/// Embedded in the binding so play-time and verify-time look up the same par
+/// without running the (slow) strong player live.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ParPack {
+    /// Par per daily seed; the runtime indexes seeds by date (`seeds[dayIndex % len]`).
+    pub entries: Vec<ParEntry>,
+}
+
+/// Generate the target-score par table over the deterministic seed stream
+/// `master_seed, master_seed+1, …` (`count` entries). Byte-identically regenerable.
+#[must_use]
+pub fn generate_par_pack(master_seed: u64, count: usize) -> ParPack {
+    let entries = (0..count as u64)
+        .map(|i| {
+            let seed = master_seed.wrapping_add(i);
+            ParEntry {
+                seed,
+                tiers: par_tiers(seed),
+            }
+        })
+        .collect();
+    ParPack { entries }
+}
+
+/// Serialize the par table (`kind = "match3-par-pack"`, v1).
+///
+/// # Errors
+/// Propagates [`pond_docformat::DocError`] on a serialization failure.
+pub fn par_pack_to_doc(pack: &ParPack) -> Result<Vec<u8>, pond_docformat::DocError> {
+    pond_docformat::write("match3-par-pack", 1, pack)
 }

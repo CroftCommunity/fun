@@ -224,3 +224,101 @@ fn generate_jelly_pack_file() {
         path.display()
     );
 }
+
+// --- target-score par table (parity Track P-now / C1) ---
+
+use match3_core::{reference_score, target_score_mode};
+use match3_solver::{generate_par_pack, par_pack_to_doc, par_tiers, ParPack};
+
+const PAR_MASTER: u64 = 0;
+const PAR_COUNT: usize = 365;
+
+fn par_pack_path() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../games/match3/par-pack.json")
+}
+
+fn read_committed_par() -> ParPack {
+    let bytes = fs::read(par_pack_path())
+        .expect("run the `generate_par_pack_file` (ignored) test first to create the table");
+    pond_docformat::read_as(&bytes, "match3-par-pack", 1).expect("valid par pack v1 envelope")
+}
+
+#[test]
+fn par_tiers_is_deterministic_and_strictly_increasing() {
+    let a = par_tiers(7);
+    let b = par_tiers(7);
+    assert_eq!(a, b, "same seed => same tiers");
+    assert!(
+        a[0] < a[1] && a[1] < a[2],
+        "tiers strictly increasing: {a:?}"
+    );
+}
+
+#[test]
+fn par_3star_is_harder_than_the_old_90pct_of_greedy() {
+    use target_score_mode as m;
+    for seed in 0..12u64 {
+        let greedy = reference_score(seed, m::WIDTH, m::HEIGHT, m::COLORS, m::MOVE_BUDGET);
+        let tiers = par_tiers(seed);
+        // The strong rung is at least the greedy score, so 3★ clears the old bar
+        // (90% of greedy) by a real margin — 3★ is no longer trivial.
+        assert!(
+            tiers[2] >= greedy,
+            "seed {seed}: 3★ {} >= greedy {greedy}",
+            tiers[2]
+        );
+        assert!(
+            tiers[2] > greedy * 9 / 10,
+            "seed {seed}: 3★ beats the old 90% bar"
+        );
+    }
+}
+
+#[test]
+fn committed_par_pack_is_wellformed() {
+    let pack = read_committed_par();
+    assert_eq!(pack.entries.len(), PAR_COUNT, "a full year of par entries");
+    let unique: HashSet<u64> = pack.entries.iter().map(|e| e.seed).collect();
+    assert_eq!(unique.len(), pack.entries.len(), "seeds are unique");
+    for e in &pack.entries {
+        assert!(
+            e.tiers[0] < e.tiers[1] && e.tiers[1] < e.tiers[2],
+            "entry {e:?} increasing"
+        );
+    }
+    // Spot-check a couple of entries against a fresh recompute (not stale).
+    for e in pack.entries.iter().take(3) {
+        assert_eq!(
+            e.tiers,
+            par_tiers(e.seed),
+            "committed tiers match recompute"
+        );
+    }
+}
+
+#[test]
+#[ignore = "P10 regeneration drill — recomputes the ladder (slow)"]
+fn par_pack_regenerates_byte_identical() {
+    let pack = generate_par_pack(PAR_MASTER, PAR_COUNT);
+    let bytes = par_pack_to_doc(&pack).expect("serialize");
+    let committed = fs::read(par_pack_path()).expect("read committed");
+    assert_eq!(
+        bytes, committed,
+        "par table must regenerate byte-identically"
+    );
+}
+
+#[test]
+#[ignore = "generator — writes games/match3/par-pack.json"]
+fn generate_par_pack_file() {
+    let pack = generate_par_pack(PAR_MASTER, PAR_COUNT);
+    let bytes = par_pack_to_doc(&pack).expect("serialize");
+    let path = par_pack_path();
+    fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+    fs::write(&path, &bytes).expect("write");
+    println!(
+        "wrote {} par entries to {}",
+        pack.entries.len(),
+        path.display()
+    );
+}

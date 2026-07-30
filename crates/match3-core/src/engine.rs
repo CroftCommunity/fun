@@ -479,6 +479,27 @@ pub fn reference_score_beam(
     best
 }
 
+/// A **weak** reference playout: from the `seed` deal, play a *random* legal swap
+/// each turn for `budget` swaps, and return the total score. The random choice is
+/// a separate seeded stream (tagged off `seed`), so it is deterministic and
+/// independent of the refill stream. Used as the gentle 1★ floor of the par
+/// ladder — "even careless play clears this bar".
+#[must_use]
+pub fn random_score(seed: u64, width: usize, height: usize, colors: usize, budget: usize) -> u64 {
+    let mut game = Game::new(deal(seed, width, height, colors), seed, colors);
+    // A distinct stream for move *choice* (the game's own rng drives refills).
+    let mut pick = DetRng::from_seed(seed ^ 0x0072_616e_646d); // "randm" tag
+    for _ in 0..budget {
+        let swaps = legal_swaps(&game.board);
+        if swaps.is_empty() {
+            break;
+        }
+        let (from, to) = swaps[pick.index(swaps.len())];
+        game.play_move(from, to);
+    }
+    game.score
+}
+
 // --- The game ---------------------------------------------------------------
 
 /// A game is a board plus the seeded refill stream, colour count, and score.
