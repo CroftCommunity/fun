@@ -185,7 +185,8 @@ test("with hints off, 'I'm stuck' ends the game and reports whether a move exist
   await expect(page.locator(".sol-note")).toContainText(/move was still available/i);
 });
 
-test("dragging a card onto a legal target moves it (drag as well as tap)", async ({ page }) => {
+test("dragging a card onto a legal target moves it (drag as well as tap)", async ({ page }, testInfo) => {
+  test.skip(Boolean(testInfo.project.use.hasTouch), "HTML5 drag-and-drop is desktop-only; touch uses tap");
   await page.goto("/solitaire/?seed=0");
   await ready(page);
 

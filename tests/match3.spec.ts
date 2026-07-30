@@ -84,7 +84,8 @@ test("playing out the budget yields a verifiable record; share round-trips", asy
   await shared.close();
 });
 
-test("dragging a gem onto a legal neighbour swaps it (drag as well as tap)", async ({ page }) => {
+test("dragging a gem onto a legal neighbour swaps it (drag as well as tap)", async ({ page }, testInfo) => {
+  test.skip(Boolean(testInfo.project.use.hasTouch), "HTML5 drag-to-swap is desktop-only; touch uses tap");
   await page.goto("/match3/?seed=7");
   await ready(page);
   const before = await page.evaluate(() => window.__match3!.game.board().score);
