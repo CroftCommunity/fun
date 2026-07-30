@@ -74,9 +74,21 @@ beam-based par table landing early. Full phasing, DoD, and risks in the roadmap.
       `games/match3/par-pack.json` and embedded in the binding; target-score daily
       draws table seeds, free-play falls back to live greedy tiers. 3★ is no longer
       trivial. Tunable knobs; no version bump (no users).
-- [ ] **Track B — specials**: B0 foundation (special-gem + shape detection) → B1
-      striped → B2 wrapped → B3 colour bomb → B4 fish (seeded targeting) → B5 combo
-      matrix → B6 specials-aware solver/par. **Next up.**
+- [ ] **Track B — specials** (plan: `plans/2026-07-30-match3-b0-specials.md`):
+  - [x] **B0 foundation — special-gem model + shape detection.** A special is a
+        `Gem(color)` + a parallel `special` overlay marker (kept the match/legality
+        core byte-identical; hash appends a special section only when present, so
+        pre-specials vectors did not re-lock). `find_runs` + `creations_for`
+        classify a match's shape (line-4 → striped H/V, L/T → wrapped, line-5 →
+        colour bomb; priority bomb > wrapped > striped) and create the special at a
+        deterministic placement (the swapped candy on step 0, else junction/median).
+        Golden vectors 04–07; the specials-creation rules shifted scoring, so the
+        three committed packs were regenerated (all 365 seeds stayed winnable,
+        byte-identical). Rendered with a power badge + a11y label. **No activation
+        yet** (the blast is B1+). The **2×2 fish is deferred to B4** (it needs a new
+        *match* definition, not a sub-classification of line matches).
+  - [ ] B1 striped → B2 wrapped → B3 colour bomb → B4 fish (2×2 + seeded targeting)
+        → B5 combo matrix → B6 specials-aware solver/par. **Next up: B1.**
 - [ ] **Track C (rest) — par calibration**: C2 offline LLM calibration study of the
       rung difficulty → C3 re-par after specials land.
 - [ ] **Track D — parity completeness** (confirm each first): ingredients,

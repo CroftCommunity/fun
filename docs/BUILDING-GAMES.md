@@ -29,6 +29,19 @@ game gets its own static URL `/<id>/` (shareable, new-tab-able, no client router
   to a status code or an empty/`null` buffer (a wasm panic aborts the module).
 - A thin typed TS wrapper (`src/games/<game>-wasm.ts`) presents the API the UI
   calls. The UI never re-implements rules.
+- **Adding a new board state (the overlay pattern).** When a game grows a new
+  per-cell facet (match-3's jelly, then its special candies), model it as a
+  **parallel overlay grid** beside `cells`, and append it to `state_hash`
+  **only when some cell carries it** (`if any: marker || per-cell bytes`). A
+  gem-only / overlay-free board then hashes byte-identically to before, so
+  **existing golden vectors do not re-lock** — every state addition is additive.
+  Author it via a `from_rows_with_<facet>` helper, expose it as a parallel grid in
+  the `BoardView`, and render it as a badge/backing with an a11y label (never
+  colour-only). Keep the base cell a plain `Gem` where the facet must not change
+  match/legality (a special candy still matches/swaps/falls as its colour), so the
+  determinism-critical core stays untouched. If the new state changes scoring or
+  clearing, remember it also shifts any committed solver/par packs — regenerate
+  and re-lock them in the same commit (see the match-3 B0 plan).
 
 ## 3. Verifiable outcomes — the pond property
 

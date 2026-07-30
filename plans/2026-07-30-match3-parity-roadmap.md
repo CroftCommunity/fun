@@ -148,16 +148,27 @@ lighter — firm them up when reached. "Vectors" = golden-vector corpus + re-loc
   existing target-score tests updated; no re-grading surprises.
 
 ### Track B — Specials (the long pole), phased
-- **B0 foundation:** the special-gem model (`Cell` gains special kinds, or a
-  parallel special layer) + **shape detection** (classify a match as line-3,
-  line-4, L/T, line-5, 2×2) with deterministic special *creation* placement rules
-  in `RULES.md`; `state_hash` + vectors. No activation yet beyond creation.
+Execution plan for B0: `plans/2026-07-30-match3-b0-specials.md`.
+- **B0 foundation — DONE (2026-07-30).** Representation = a **parallel special
+  overlay** (a special is a `Gem(color)` + a marker), chosen over a `Cell` variant
+  so the match/legality core stays byte-identical (owner steer: "do whatever Candy
+  Crush does" → a special is a coloured candy with a power). `find_runs` +
+  `creations_for` classify **line-4 → striped, L/T → wrapped, line-5 → colour bomb**
+  (priority bomb > wrapped > striped) with deterministic creation placement in
+  `RULES.md`; `state_hash` appends a special section only when present (no vector
+  re-lock); golden vectors 04–07. Creation shifted scoring, so the committed
+  par/blockers/jelly packs were regenerated (365 winnable, byte-identical). No
+  activation yet. **The 2×2 fish moved to B4** (it needs a new *match* definition,
+  not a sub-classification of line matches).
 - **B1 striped:** 4-in-a-row → striped gem; activation clears its row/column
   (orientation rule fixed + documented); activation can cascade. Vectors + balance.
 - **B2 wrapped:** L/T → wrapped gem; activation = 3×3 explosion, twice.
 - **B3 colour bomb:** 5-in-a-row → colour bomb; swap-with-gem clears all of that
   colour.
-- **B4 fish (2×2 square):** fish gem; activation picks targets via **seeded
+- **B4 fish (2×2 square):** fish gem. **Includes the 2×2-square match detection
+  moved from B0** — recognising a 2×2 block changes what counts as a *match* and a
+  *legal swap* (new legal moves), plus deal/reshuffle match-avoidance, with its own
+  vector re-lock + winnability re-check. Activation picks targets via **seeded
   `DetRng`** (deterministic) — prefers jelly/blockers; verify reproduces exactly.
 - **B5 combos:** the special + special swap matrix (striped+striped, striped+
   wrapped, wrapped+wrapped, bomb+striped, bomb+wrapped, bomb+bomb = clear board).

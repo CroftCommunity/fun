@@ -501,6 +501,22 @@ canon rather than re-asking.
 
 ## Review Log
 
+### B0 complete — 2026-07-30
+All phases shipped, green, and deployed to `fun.croft.ing`:
+- Phase 1 `ab7c9f4` (overlay model + hash + authoring), Phase 2 `3dab6e2`
+  (clear/gravity carry), Phase 3 `ca75ee7` (run detection + line-derived creation
+  + pack re-lock, byte-identical drills pass), Phase 4 `179cafd` (binding + UI
+  render + the docs/roadmap sync in this commit's follow-up).
+- **Fallout caught by the full gate (not the Rust gate):** the B0.3 pack regen
+  left two hardcoded fixtures stale (the old seed-30 `[4,4,5,4]` blockers clear no
+  longer clears once a 4-match makes a special) — the blockers unit test and e2e
+  now use the new committed fixture (seed 19, `[5,5,6,5]`). Lesson: a pack regen
+  must be validated against `npm run test` + `npm run e2e`, not just
+  `cargo test --workspace`; run the full gate before committing a rule change.
+- 2×2 fish confirmed deferred to B4; **B1 (striped activation) is next.**
+- Final gate: cargo 111, npm test 84, e2e 82 (both projects, incl. axe),
+  clippy + fmt clean, guide shots regenerated.
+
 ### Execution restructure — 2026-07-30 (during Phase 3)
 **Found:** the committed packs are coupled to the engine's scoring/clearing
 rules, so **any commit that changes those rules must regenerate the packs in the
