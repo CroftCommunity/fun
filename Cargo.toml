@@ -12,6 +12,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/bubble-core",
     "crates/match3-core",
     "crates/solitaire-core",
     "crates/pond-docformat",

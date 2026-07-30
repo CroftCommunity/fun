@@ -12,6 +12,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "bubble-core"
+version = "0.0.0"
+dependencies = [
+ "hex",
+ "rand",
+ "rand_chacha",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+]
+
+[[package]]
 name = "cfg-if"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
