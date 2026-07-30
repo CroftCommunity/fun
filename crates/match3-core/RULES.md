@@ -32,6 +32,11 @@ balance decision is smuggled in.
   - `Blocker { layers }` — a fixed, non-movable, non-matchable tile with `layers >= 1` remaining.
   - `Empty` — a transient hole that exists only mid-resolution (between clear and refill).
 - A **settled** board has no `Empty` cells: every non-blocker cell holds a `Gem`.
+- **Jelly** is a separate per-cell overlay (`layers >= 0`, `0` = none) that sits *under* the cells. It is
+  orthogonal to `Gem`/`Blocker`/`Empty`, never moves with gems or gravity, and never affects swap legality.
+  A match that clears a cell scrubs **one** jelly layer beneath it (`clear_cells` reports
+  `jelly_layers_removed`). The clear-the-jelly objective is met when no jelly remains. Jelly can only be
+  removed, so the count is monotone non-increasing under play.
 
 ## The deterministic RNG
 
@@ -120,7 +125,11 @@ a determinism bug.
              Empty        -> 0x00
              Gem(c)       -> 0x01, c(u8)
              Blocker(l)   -> 0x02, l(u8)
+        || IF any cell is jellied: "j\x00" || for each cell: jelly_layers(u8)
 ```
+
+The jelly section is appended **only when some cell carries jelly**, so a gem-only board hashes exactly as
+it did before jelly existed — every pre-jelly golden vector stays valid without a re-lock.
 
 Replaying `(seed, initial board, moves)` MUST reproduce the identical `state_hash` on every run and on every
 build target. That is the property P8 (score verification) and the follow-chain leaderboard later depend on.

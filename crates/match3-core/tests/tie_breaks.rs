@@ -62,7 +62,8 @@ fn t2_clears_matched_to_empty() {
         out,
         ClearOutcome {
             gems_cleared: 3,
-            blocker_layers_removed: 0
+            blocker_layers_removed: 0,
+            jelly_layers_removed: 0
         }
     );
     assert_eq!(b.to_rows(), vec!["...", "123"]);
@@ -76,7 +77,8 @@ fn t2_adjacent_one_layer_blocker_is_removed() {
         out,
         ClearOutcome {
             gems_cleared: 3,
-            blocker_layers_removed: 1
+            blocker_layers_removed: 1,
+            jelly_layers_removed: 0
         }
     );
     // Blocker (1,0) was adjacent to matched (0,0) -> dropped to 0 -> Empty.

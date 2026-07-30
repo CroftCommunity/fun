@@ -26,11 +26,18 @@ impl Cell {
 }
 
 /// Row-major grid. `row = 0` is the top; gravity pulls toward larger `row`.
+///
+/// `jelly` is a parallel row-major grid of jelly layers per cell (`0` = none),
+/// an overlay that sits *under* the gems: it is orthogonal to `cells`, moves
+/// with neither gems nor gravity, and is scrubbed one layer when a match clears
+/// the cell above it (the clear-the-jelly objective). A gem-only board has an
+/// all-zero `jelly` grid and hashes exactly as it did before jelly existed.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Board {
     pub width: usize,
     pub height: usize,
     cells: Vec<Cell>,
+    jelly: Vec<u8>,
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -63,11 +70,33 @@ impl Board {
                 want,
             });
         }
+        let jelly = vec![0u8; want];
         Ok(Self {
             width,
             height,
             cells,
+            jelly,
         })
+    }
+
+    /// Jelly layers per cell, row-major (`0` = no jelly).
+    #[must_use]
+    pub fn jelly(&self) -> &[u8] {
+        &self.jelly
+    }
+
+    /// Jelly layers remaining on one cell.
+    #[inline]
+    #[must_use]
+    pub fn jelly_at(&self, row: usize, col: usize) -> u8 {
+        self.jelly[self.idx(row, col)]
+    }
+
+    /// Set the jelly layers on one cell.
+    #[inline]
+    pub fn set_jelly(&mut self, row: usize, col: usize, layers: u8) {
+        let i = self.idx(row, col);
+        self.jelly[i] = layers;
     }
 
     #[inline]
@@ -117,6 +146,31 @@ impl Board {
             }
         }
         Board::new(width, height, cells)
+    }
+
+    /// Parse a char grid plus a parallel **jelly** grid (`0`-`9` layers per cell).
+    /// The two grids must have the same shape. Used by clear-the-jelly vectors.
+    pub fn from_rows_with_jelly(rows: &[&str], jelly_rows: &[&str]) -> Result<Self, BoardError> {
+        let mut board = Board::from_rows(rows)?;
+        for (r, jrow) in jelly_rows.iter().enumerate() {
+            let mut n = 0;
+            for (c, ch) in jrow.chars().enumerate() {
+                n += 1;
+                let layers = match ch {
+                    '0'..='9' => ch as u8 - b'0',
+                    other => return Err(BoardError::BadChar(other)),
+                };
+                board.set_jelly(r, c, layers);
+            }
+            if n != board.width {
+                return Err(BoardError::Ragged {
+                    row: r,
+                    got: n,
+                    width: board.width,
+                });
+            }
+        }
+        Ok(board)
     }
 
     /// Inverse of `from_rows`, for readable test failures and vector authoring.

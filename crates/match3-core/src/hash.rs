@@ -20,5 +20,12 @@ pub fn state_hash(board: &Board, colors: usize, draws: u64, score: u64) -> Strin
             Cell::Blocker(l) => h.update([0x02, *l]),
         }
     }
+    // Jelly overlay — appended ONLY when some cell is jellied, so a gem-only
+    // board hashes exactly as it did before jelly existed (pre-jelly golden
+    // vectors stay valid). The `j\x00` marker + one layer byte per cell.
+    if board.jelly().iter().any(|&l| l > 0) {
+        h.update(b"j\x00");
+        h.update(board.jelly());
+    }
     hex::encode(h.finalize())
 }

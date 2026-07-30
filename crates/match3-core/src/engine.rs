@@ -15,6 +15,9 @@ pub type Pos = (usize, usize);
 pub struct ClearOutcome {
     pub gems_cleared: u32,
     pub blocker_layers_removed: u32,
+    /// Jelly layers scrubbed by this clear (a match over a jellied cell removes
+    /// one layer beneath it) — the clear-the-jelly objective's progress.
+    pub jelly_layers_removed: u32,
 }
 
 /// One cascade step within a move's resolution.
@@ -113,9 +116,16 @@ pub fn clear_cells(board: &mut Board, matched: &[Pos]) -> ClearOutcome {
     }
 
     let mut gems_cleared = 0;
+    let mut jelly_layers_removed = 0;
     for &(r, c) in matched {
         if board.get(r, c).is_gem() {
             gems_cleared += 1;
+        }
+        // A match over a jellied cell scrubs one jelly layer beneath it.
+        let jelly = board.jelly_at(r, c);
+        if jelly > 0 {
+            jelly_layers_removed += 1;
+            board.set_jelly(r, c, jelly - 1);
         }
         board.set(r, c, Cell::Empty);
     }
@@ -135,6 +145,7 @@ pub fn clear_cells(board: &mut Board, matched: &[Pos]) -> ClearOutcome {
     ClearOutcome {
         gems_cleared,
         blocker_layers_removed,
+        jelly_layers_removed,
     }
 }
 
@@ -355,6 +366,35 @@ pub fn deal_blockers(
 #[must_use]
 pub fn blockers_remaining(board: &Board) -> u32 {
     u32::try_from(board.cells().iter().filter(|c| c.is_blocker()).count()).unwrap_or(u32::MAX)
+}
+
+/// A seeded starting deal for **clear-the-jelly**: a settled, no-initial-match,
+/// live all-gem board with `jelly` single-layer jellied cells, deterministic
+/// from `seed`. Jelly is orthogonal to gem legality (it never blocks a swap), so
+/// a normal deal is reused and jelly is sprinkled on distinct cells.
+#[must_use]
+pub fn deal_jelly(seed: u64, width: usize, height: usize, colors: usize, jelly: usize) -> Board {
+    let mut board = deal(seed, width, height, colors);
+    // Advance a fresh RNG stream off the seed to choose distinct jellied cells.
+    let mut rng = DetRng::from_seed(seed ^ 0x006a_656c_6c79); // "jelly" tag
+    let cell_count = width * height;
+    let n = jelly.min(cell_count);
+    let mut chosen: BTreeSet<usize> = BTreeSet::new();
+    while chosen.len() < n {
+        chosen.insert(rng.index(cell_count));
+    }
+    for idx in chosen {
+        board.set_jelly(idx / width, idx % width, 1);
+    }
+    board
+}
+
+/// How many cells still carry jelly — the clear-the-jelly objective is met when
+/// this reaches `0`. Counts jellied cells, not layers. Jelly can only be scrubbed
+/// (never added), so this is monotone non-increasing under play.
+#[must_use]
+pub fn jelly_remaining(board: &Board) -> u32 {
+    u32::try_from(board.jelly().iter().filter(|&&l| l > 0).count()).unwrap_or(u32::MAX)
 }
 
 /// A greedy reference playout: from the `seed` deal, play the highest-scoring
