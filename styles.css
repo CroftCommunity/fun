@@ -684,3 +684,84 @@ body.fullscreen .play-area {
     font-size: 0.85rem;
   }
 }
+
+/* ---------- bubble shooter (clear-the-board) ---------- */
+/* Staggered hex board: even rows full width, odd rows shifted half a cell. The
+   AA-verified --gem-N tokens colour the bubbles (shape + hue = colour-blind
+   safe); the shared .legal-target accent glow marks reachable landing cells. */
+.bub-board {
+  --bub: 2.6rem;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.6rem;
+  background: var(--felt);
+  border-radius: var(--radius);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 12%), 0 2px 8px rgb(0 0 0 / 18%);
+}
+.bub-row {
+  display: flex;
+  gap: 0.25rem;
+}
+.bub-row-odd {
+  margin-left: calc((var(--bub) + 0.25rem) / 2);
+}
+.bub-cell {
+  width: var(--bub);
+  height: var(--bub);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: calc(var(--bub) * 0.6);
+  line-height: 1;
+  box-sizing: border-box;
+}
+.bub-bubble {
+  background: var(--surface);
+  box-shadow: inset 0 -2px 4px rgb(0 0 0 / 18%), 0 1px 2px rgb(0 0 0 / 25%);
+}
+.bub-color-0 { color: var(--gem-0); }
+.bub-color-1 { color: var(--gem-1); }
+.bub-color-2 { color: var(--gem-2); }
+.bub-color-3 { color: var(--gem-3); }
+.bub-color-4 { color: var(--gem-4); }
+.bub-color-5 { color: var(--gem-5); }
+.bub-empty {
+  background: rgb(255 255 255 / 6%);
+}
+.bub-target {
+  background: rgb(255 255 255 / 10%);
+  border: 2px dashed var(--felt-ink);
+  cursor: pointer;
+  padding: 0;
+}
+.bub-target:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 1px;
+}
+.bub-target.hint-target {
+  box-shadow: 0 0 0 3px var(--active), 0 0 12px 3px var(--active);
+}
+.bub-launcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+.bub-launcher-label {
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+}
+.bub-hud {
+  display: flex;
+  gap: 1rem;
+  margin: 0.3rem 0;
+  color: var(--ink);
+}
+@media (max-width: 400px) {
+  /* Fits a 360px viewport (8 cells + gaps + the odd-row offset + padding). */
+  .bub-board {
+    --bub: 2rem;
+  }
+}
