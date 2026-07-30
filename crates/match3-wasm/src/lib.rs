@@ -12,8 +12,8 @@
 //! to a status code or an empty/`"null"` buffer.
 
 use match3_core::{
-    blockers_mode, blockers_remaining, deal, deal_blockers, legal_swaps, reference_score, Cell,
-    Game as M3Game,
+    blockers_mode, blockers_remaining, deal, deal_blockers, deal_jelly, jelly_mode,
+    jelly_remaining, legal_swaps, reference_score, Cell, Game as M3Game,
 };
 use pond_outcome::{attest, Game, Outcome, Replayed};
 use serde::Serialize;
@@ -24,15 +24,17 @@ const HEIGHT: usize = 8;
 const COLORS: usize = 6;
 const MOVE_BUDGET: usize = 20;
 
-/// The two objectives this binding serves. Both share the 8×8 board and the
-/// same `Game` engine; the mode selects the deal, the win check, and how the
-/// outcome record is graded.
+/// The objectives this binding serves. All share the 8×8 board and the same
+/// `Game` engine; the mode selects the deal, the win check, and how the outcome
+/// record is graded.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Mode {
     /// Score at least the 1★ target within the move budget (v1).
     TargetScore,
     /// Clear every `Blocker` cell within the (larger) move budget.
     Blockers,
+    /// Scrub every jelly cell within the (larger) move budget.
+    Jelly,
 }
 
 /// Per-deal 1★ / 2★ / 3★ score thresholds, as fractions of the deterministic
@@ -58,20 +60,23 @@ struct Session {
     budget: usize,
     /// Per-deal star thresholds derived from the seed (target-score mode).
     targets: [u64; 3],
-    /// Blockers present in the deal (blockers mode); `0` in target-score mode.
+    /// Blockers present in the deal (blockers mode); `0` otherwise.
     blockers_total: u32,
+    /// Jellied cells present in the deal (jelly mode); `0` otherwise.
+    jelly_total: u32,
     /// Applied legal swaps `[from_row, from_col, to_row, to_col]` — the outcome proof.
     swaps: Vec<[u8; 4]>,
     assistance_used: bool,
 }
 
 impl Session {
-    /// Whether the objective is met: the 1★ target (target-score) or every
-    /// blocker cleared (blockers).
+    /// Whether the objective is met: the 1★ target (target-score), every blocker
+    /// cleared (blockers), or every jelly scrubbed (jelly).
     fn won(&self) -> bool {
         match self.mode {
             Mode::TargetScore => self.game.score >= self.targets[0],
             Mode::Blockers => blockers_remaining(&self.game.board) == 0,
+            Mode::Jelly => jelly_remaining(&self.game.board) == 0,
         }
     }
 }
@@ -127,6 +132,7 @@ pub extern "C" fn new_game(seed_lo: u32, seed_hi: u32) {
         budget: MOVE_BUDGET,
         targets: targets_for(seed),
         blockers_total: 0,
+        jelly_total: 0,
         swaps: Vec::new(),
         assistance_used: false,
     });
@@ -153,6 +159,34 @@ pub extern "C" fn new_blockers_game(seed_lo: u32, seed_hi: u32) {
         budget: blockers_mode::MOVE_BUDGET,
         targets: [0; 3],
         blockers_total,
+        jelly_total: 0,
+        swaps: Vec::new(),
+        assistance_used: false,
+    });
+}
+
+/// Start a fresh **clear-the-jelly** game: deal a winnable jelly board from
+/// `seed` (the daily seeds come from the solver pack) with the jelly-mode budget.
+/// The objective is to scrub every jellied cell.
+#[no_mangle]
+pub extern "C" fn new_jelly_game(seed_lo: u32, seed_hi: u32) {
+    let seed = (u64::from(seed_hi) << 32) | u64::from(seed_lo);
+    let board = deal_jelly(
+        seed,
+        jelly_mode::WIDTH,
+        jelly_mode::HEIGHT,
+        jelly_mode::COLORS,
+        jelly_mode::JELLY,
+    );
+    let jelly_total = jelly_remaining(&board);
+    set_session(Session {
+        seed,
+        mode: Mode::Jelly,
+        game: M3Game::new(board, seed, jelly_mode::COLORS),
+        budget: jelly_mode::MOVE_BUDGET,
+        targets: [0; 3],
+        blockers_total: 0,
+        jelly_total,
         swaps: Vec::new(),
         assistance_used: false,
     });
@@ -163,7 +197,7 @@ pub extern "C" fn new_blockers_game(seed_lo: u32, seed_hi: u32) {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct BoardView {
-    /// `"target-score"` or `"blockers"` — the UI branches on this.
+    /// `"target-score"`, `"blockers"`, or `"jelly"` — the UI branches on this.
     mode: &'static str,
     width: usize,
     height: usize,
@@ -172,6 +206,8 @@ struct BoardView {
     cells: Vec<Vec<u8>>,
     /// Row-major blocker mask: `true` where a `Blocker` sits (blockers mode).
     blockers: Vec<Vec<bool>>,
+    /// Row-major jelly layers per cell (`0` = none), jelly mode.
+    jelly: Vec<Vec<u8>>,
     score: u64,
     moves_left: usize,
     move_budget: usize,
@@ -181,6 +217,9 @@ struct BoardView {
     /// Blockers mode: how many blockers remain and how many the deal had.
     blockers_remaining: u32,
     blockers_total: u32,
+    /// Jelly mode: how many jellied cells remain and how many the deal had.
+    jelly_remaining: u32,
+    jelly_total: u32,
     won: bool,
 }
 
@@ -199,15 +238,20 @@ fn board_view(s: &Session) -> BoardView {
     let blockers = (0..b.height)
         .map(|r| (0..b.width).map(|c| b.get(r, c).is_blocker()).collect())
         .collect();
+    let jelly = (0..b.height)
+        .map(|r| (0..b.width).map(|c| b.jelly_at(r, c)).collect())
+        .collect();
     BoardView {
         mode: match s.mode {
             Mode::TargetScore => "target-score",
             Mode::Blockers => "blockers",
+            Mode::Jelly => "jelly",
         },
         width: b.width,
         height: b.height,
         cells,
         blockers,
+        jelly,
         score: s.game.score,
         moves_left: s.budget.saturating_sub(s.swaps.len()),
         move_budget: s.budget,
@@ -215,6 +259,8 @@ fn board_view(s: &Session) -> BoardView {
         stars: star_count(s.game.score, s.targets),
         blockers_remaining: blockers_remaining(b),
         blockers_total: s.blockers_total,
+        jelly_remaining: jelly_remaining(b),
+        jelly_total: s.jelly_total,
         won: s.won(),
     }
 }
@@ -272,8 +318,8 @@ pub extern "C" fn moves_left() -> u32 {
     })
 }
 
-/// `1` if the objective is met (1★ target in target-score mode; every blocker
-/// cleared in blockers mode).
+/// `1` if the objective is met (1★ target; every blocker cleared; all jelly
+/// scrubbed — per mode).
 #[no_mangle]
 pub extern "C" fn is_won() -> u32 {
     u32::from(session_mut().is_some_and(|s| s.won()))
@@ -398,10 +444,38 @@ impl Game for Match3Blockers {
     }
 }
 
+/// The `pond-outcome` [`Game`] impl for **clear-the-jelly** — replay
+/// `(seed, swaps)` by dealing the jelly board and applying the swaps; the win is
+/// verifiable (`Won` ⟺ no jelly remains). Metric is `move_count`; no score/stars.
+struct Match3Jelly;
+impl Game for Match3Jelly {
+    type Move = [u8; 4];
+    const KIND: &'static str = "match3-jelly";
+    const VERSION: u32 = 1;
+    fn replay(seed: u64, moves: &[[u8; 4]]) -> Replayed {
+        let board = deal_jelly(
+            seed,
+            jelly_mode::WIDTH,
+            jelly_mode::HEIGHT,
+            jelly_mode::COLORS,
+            jelly_mode::JELLY,
+        );
+        let mut game = M3Game::new(board, seed, jelly_mode::COLORS);
+        for m in moves {
+            let _ = game.play_move(
+                (m[0] as usize, m[1] as usize),
+                (m[2] as usize, m[3] as usize),
+            );
+        }
+        Replayed::new(game.state_hash(), jelly_remaining(&game.board) == 0)
+    }
+}
+
 /// The outcome record for the current game, as a `pond-docformat` envelope JSON.
 /// `declare`: 1 = include the (self-declared) assistance flag, 0 = omit it. A
 /// run that did not meet the objective is `Lost`; a met objective is `Won`. The
-/// envelope `kind` distinguishes the two modes (`match3` / `match3-blockers`).
+/// envelope `kind` distinguishes the modes (`match3` / `match3-blockers` /
+/// `match3-jelly`).
 #[no_mangle]
 pub extern "C" fn outcome_json(declare: u32) -> *const u8 {
     let Some(s) = session_mut() else {
@@ -421,6 +495,10 @@ pub extern "C" fn outcome_json(declare: u32) -> *const u8 {
             let record =
                 attest::<Match3Blockers>(s.seed, s.swaps.clone(), Outcome::Lost, assistance);
             pond_outcome::to_doc::<Match3Blockers>(&record)
+        }
+        Mode::Jelly => {
+            let record = attest::<Match3Jelly>(s.seed, s.swaps.clone(), Outcome::Lost, assistance);
+            pond_outcome::to_doc::<Match3Jelly>(&record)
         }
     };
     match bytes {

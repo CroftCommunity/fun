@@ -3,7 +3,7 @@
 //! wasm holds the game; this wrapper never re-implements rules.
 
 /** The objective the board is being played under. */
-export type Mode = "target-score" | "blockers";
+export type Mode = "target-score" | "blockers" | "jelly";
 
 /** The board as the UI sees it. */
 export interface BoardView {
@@ -15,6 +15,8 @@ export interface BoardView {
   cells: number[][];
   /** Row-major blocker mask: `true` where a blocker cell sits (blockers mode). */
   blockers: boolean[][];
+  /** Row-major jelly layers per cell (`0` = none, jelly mode). */
+  jelly: number[][];
   score: number;
   movesLeft: number;
   moveBudget: number;
@@ -25,7 +27,10 @@ export interface BoardView {
   /** Blockers still on the board and the deal's original count (blockers mode). */
   blockersRemaining: number;
   blockersTotal: number;
-  /** Whether the objective is met (1★ target, or every blocker cleared). */
+  /** Jellied cells still on the board and the deal's original count (jelly mode). */
+  jellyRemaining: number;
+  jellyTotal: number;
+  /** Whether the objective is met (1★ target, every blocker cleared, or all jelly scrubbed). */
   won: boolean;
 }
 
@@ -44,6 +49,7 @@ interface Exports {
   out_len(): number;
   new_game(lo: number, hi: number): void;
   new_blockers_game(lo: number, hi: number): void;
+  new_jelly_game(lo: number, hi: number): void;
   board_json(): number;
   legal_moves_json(): number;
   current_hash(): number;
@@ -87,6 +93,10 @@ export class Match3 {
   /** Start a clear-the-blockers game on `seed` (deal a winnable blocker board). */
   newBlockersGame(seed: bigint): void {
     this.x.new_blockers_game(Number(seed & 0xffff_ffffn), Number((seed >> 32n) & 0xffff_ffffn));
+  }
+  /** Start a clear-the-jelly game on `seed` (deal a winnable jelly board). */
+  newJellyGame(seed: bigint): void {
+    this.x.new_jelly_game(Number(seed & 0xffff_ffffn), Number((seed >> 32n) & 0xffff_ffffn));
   }
   board(): BoardView {
     return JSON.parse(this.read(this.x.board_json())) as BoardView;

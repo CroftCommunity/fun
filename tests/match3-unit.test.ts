@@ -109,6 +109,34 @@ describe("clear-the-blockers verify-orchestration (real wasm)", () => {
   });
 });
 
+describe("clear-the-jelly verify-orchestration (real wasm)", () => {
+  let game: Match3;
+  let env: M3Envelope;
+
+  beforeAll(async () => {
+    game = await loadReal();
+    // The committed jelly pack fixture: seed 317 clears in two swaps.
+    game.newJellyGame(317n);
+    game.play([6, 0, 6, 1]);
+    game.play([4, 1, 4, 2]);
+    env = game.outcome(true) as M3Envelope;
+  });
+
+  it("grades a scrubbed jelly board as a verifiable Won", () => {
+    expect(env.kind).toBe("match3-jelly");
+    expect(env.payload.result).toBe("Won");
+    expect(env.payload.score).toBeUndefined(); // jelly mode has no score/stars
+    const v = verifyRecord(game, env);
+    expect(v.ok).toBe(true);
+    expect(v.actual).toBe(env.payload.final_hash);
+  });
+
+  it("rejects a tampered jelly swap list", () => {
+    const tampered: M3Envelope = { ...env, payload: { ...env.payload, moves: [[0, 0, 0, 1]] } };
+    expect(verifyRecord(game, tampered).ok).toBe(false);
+  });
+});
+
 describe("result screen", () => {
   it("leads with the stars earned when won", () => {
     const el = renderResultScreen(envelope("Won", 2, 1200), { ok: true, expected: "h", actual: "h" }, {

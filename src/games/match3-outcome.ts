@@ -35,13 +35,15 @@ export interface VerifyResult {
   actual: string;
 }
 
-/** The `pond-outcome` kind for the clear-the-blockers mode. */
+/** The `pond-outcome` kinds for the win-objective modes. */
 export const BLOCKERS_KIND = "match3-blockers";
+export const JELLY_KIND = "match3-jelly";
 
 /** The minimal binding surface [`verifyRecord`] drives (the `Match3` wrapper satisfies it). */
 export interface Verifier {
   newGame(seed: bigint): void;
   newBlockersGame(seed: bigint): void;
+  newJellyGame(seed: bigint): void;
   play(swap: Swap): unknown;
   currentHash(): string;
   isWon(): boolean;
@@ -61,14 +63,15 @@ export async function decodeRecord(payload: string): Promise<M3Envelope> {
 /**
  * Re-verify a record by replaying `(seed, swaps)` through the binding and
  * re-hashing — never trusts the stored `final_hash`. The mode is taken from the
- * envelope `kind`: target-score replays a normal deal (and a `Won` record must
- * re-clear the 1★ target); clear-the-blockers replays a blocker deal (and a
- * `Won` record must re-clear every blocker). Score/stars, when present, are
- * re-derived too, never trusted.
+ * envelope `kind`: target-score replays a normal deal (a `Won` record must
+ * re-clear the 1★ target); clear-the-blockers replays a blocker deal (must
+ * re-clear every blocker); clear-the-jelly replays a jelly deal (must scrub all
+ * jelly). Score/stars, when present, are re-derived too, never trusted.
  */
 export function verifyRecord(v: Verifier, env: M3Envelope): VerifyResult {
   const rec = env.payload;
   if (env.kind === BLOCKERS_KIND) v.newBlockersGame(BigInt(rec.seed));
+  else if (env.kind === JELLY_KIND) v.newJellyGame(BigInt(rec.seed));
   else v.newGame(BigInt(rec.seed));
   for (const swap of rec.moves) v.play(swap);
   const actual = v.currentHash();
