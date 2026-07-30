@@ -134,6 +134,9 @@ export function match3Module(): GameModule {
   let seed = 0n;
   let selected: { r: number; c: number } | null = null;
   let hint: Swap | null = null;
+  let cascadeEl: HTMLElement | null = null;
+  let lastScore = 0;
+  let scoreBumped = false;
 
   const statusEl = el("p", { class: "sol-status", role: "status", "aria-live": "polite" });
   const setStatus = (msg: string): void => {
@@ -234,6 +237,7 @@ export function match3Module(): GameModule {
       class: `m3-gem gem-${color}`,
       "data-r": String(r),
       "data-c": String(c),
+      draggable: "true", // drag-to-swap fast-follow; tapping still works
       "aria-label": `${GEM_NAME[color]} gem, row ${r + 1} column ${c + 1}`,
     });
     b.textContent = GEM_GLYPH[color]!;
@@ -294,7 +298,7 @@ export function match3Module(): GameModule {
     const hud = el(
       "div",
       { class: "m3-hud" },
-      el("span", { class: "m3-score" }, `Score ${board.score}`),
+      el("span", { class: `m3-score${scoreBumped ? " bump" : ""}` }, `Score ${board.score}`),
       el("span", { class: "m3-moves" }, `Swaps left ${board.movesLeft}`),
       el("span", { class: "m3-stars", "aria-label": `${board.stars} of 3 stars` }, starString(board.stars)),
       el("span", { class: "m3-target" }, `Targets ${board.targets.join(" / ")}`),
@@ -317,6 +321,54 @@ export function match3Module(): GameModule {
       const btn = (e.target as HTMLElement).closest<HTMLElement>(".m3-gem");
       if (!btn) return;
       handleClick(Number(btn.dataset.r), Number(btn.dataset.c));
+    });
+
+    // Drag-to-swap: same source→target resolution as tapping, so the core still
+    // decides legality. Tapping remains the accessible floor.
+    let dragFrom: { r: number; c: number } | null = null;
+    boardEl.addEventListener("dragstart", (e: DragEvent) => {
+      const btn = (e.target as HTMLElement).closest<HTMLElement>(".m3-gem");
+      if (!btn || gameOver()) {
+        e.preventDefault();
+        return;
+      }
+      dragFrom = { r: Number(btn.dataset.r), c: Number(btn.dataset.c) };
+      selected = dragFrom;
+      hint = null;
+      applyGlow();
+      e.dataTransfer?.setData("text/plain", "gem");
+      if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
+    });
+    boardEl.addEventListener("dragover", (e: DragEvent) => {
+      if (dragFrom) e.preventDefault();
+    });
+    boardEl.addEventListener("drop", (e: DragEvent) => {
+      if (!dragFrom) return;
+      e.preventDefault();
+      const btn = (e.target as HTMLElement).closest<HTMLElement>(".m3-gem");
+      const from = dragFrom;
+      dragFrom = null;
+      if (!btn) {
+        selected = null;
+        applyGlow();
+        return;
+      }
+      const r = Number(btn.dataset.r);
+      const c = Number(btn.dataset.c);
+      const swap = adjacent(from, r, c) ? swapBetween(from, r, c) : null;
+      if (swap) {
+        applySwap(swap);
+      } else {
+        selected = null;
+        applyGlow();
+        setStatus("That swap makes no match.");
+      }
+    });
+    boardEl.addEventListener("dragend", () => {
+      if (!dragFrom) return;
+      dragFrom = null;
+      selected = null;
+      applyGlow();
     });
     return boardEl;
   };
@@ -342,9 +394,33 @@ export function match3Module(): GameModule {
     }
   };
 
+  // A brief celebratory gem cascade on a passing result; decorative and
+  // aria-hidden; skipped under reduced-motion; removed on unmount.
+  const playCascade = (): void => {
+    try {
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    } catch {
+      return;
+    }
+    const layer = el("div", { class: "sol-cascade", "aria-hidden": "true" });
+    for (let i = 0; i < 24; i += 1) {
+      const s = el("span", { class: `gem-${i % 6}` }, GEM_GLYPH[i % 6]!);
+      s.style.left = `${(i * 4.15) % 100}%`;
+      s.style.animationDelay = `${(i % 8) * 0.08}s`;
+      layer.append(s);
+    }
+    document.body.append(layer);
+    cascadeEl = layer;
+    setTimeout(() => {
+      layer.remove();
+      if (cascadeEl === layer) cascadeEl = null;
+    }, 1900);
+  };
+
   const presentResult = async (): Promise<void> => {
     if (!container || !game) return;
     const env = game.outcome(declareAssistanceEnabled()) as M3Envelope;
+    if ((env.payload.stars ?? 0) >= 1) playCascade();
     container.replaceChildren(el("div", { class: "sol-loading" }, "Preparing your verifiable result…"));
     const shareUrl = await shareUrlFor(env);
     if (disposed || !container) return;
@@ -364,6 +440,8 @@ export function match3Module(): GameModule {
       return;
     }
     const board = game.board();
+    scoreBumped = board.score > lastScore;
+    lastScore = board.score;
     container.replaceChildren(renderControls(board), renderBoard(board), statusEl);
     applyGlow();
   }
@@ -376,6 +454,8 @@ export function match3Module(): GameModule {
       (nextMode === "daily" ? BigInt(dayIndexUTC(new Date())) : randomSeed());
     selected = null;
     hint = null;
+    lastScore = 0;
+    scoreBumped = false;
     setStatus("");
     game.newGame(seed);
     exposeHook();
@@ -446,6 +526,8 @@ export function match3Module(): GameModule {
     unmount(): void {
       disposed = true;
       delete window.__match3;
+      cascadeEl?.remove();
+      cascadeEl = null;
       container?.replaceChildren();
       container = null;
       game = null;

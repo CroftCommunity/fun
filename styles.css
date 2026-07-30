@@ -469,6 +469,40 @@ body.fullscreen .play-area {
     --m3-gem: 1.9rem;
   }
 }
+/* Score bump when a swap scores. */
+.m3-hud .m3-score.bump {
+  animation: m3-bump 0.4s ease;
+}
+@keyframes m3-bump {
+  30% {
+    transform: scale(1.35);
+    color: var(--accent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .m3-hud .m3-score.bump {
+    animation: none;
+  }
+}
+/* Gem-coloured glyphs in the win cascade (beats the generic `.sol-cascade span`). */
+.sol-cascade .gem-0 {
+  color: var(--gem-0);
+}
+.sol-cascade .gem-1 {
+  color: var(--gem-1);
+}
+.sol-cascade .gem-2 {
+  color: var(--gem-2);
+}
+.sol-cascade .gem-3 {
+  color: var(--gem-3);
+}
+.sol-cascade .gem-4 {
+  color: var(--gem-4);
+}
+.sol-cascade .gem-5 {
+  color: var(--gem-5);
+}
 
 /* --- How to play guide (the reusable game user-guide standard) --- */
 .play-area .panel {

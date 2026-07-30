@@ -19,11 +19,20 @@ star thresholds). Plan: `plans/2026-07-30-match3-playable.md`. Standards:
 - [x] **Per-deal star targets** — thresholds now scale to a deterministic greedy
       reference score for the seed (40/66/100%), re-derived at verify time so
       shared score/stars are trustless. No shipped par table needed.
+- [x] **Drag-to-swap** — drop on an adjacent gem swaps via the same core-decided
+      resolution as tap; tap stays the accessible floor.
+- [x] **Win cascade + score-gain flash** — a gem cascade on a ≥1★ result
+      (reduced-motion-aware) and a score bump when a swap scores.
+
+Deferred (each is a real chunk or an owner call, not a quick polish):
+- [ ] **Full step-by-step cascade animation** — needs a read-only preview /
+      stepping API in the binding (the core resolves a move atomically, so the
+      UI can't see the intermediate boards a clear→fall→refill animation needs).
+- [ ] **Reshuffle on a mid-run deadlock** — to stay verifiable it must live in
+      the core's move resolution (so replay reshuffles identically), which
+      touches the golden-vector determinism anchor. Rare on 8×8/6.
+- [ ] **Variant objectives** (clear-the-blockers / jelly / ingredients) and
+      **specials** (striped / wrapped / colour-bomb) — new modes + balance
+      decisions reserved for the owner.
 - [ ] **Tune the reference/fractions** — greedy is a rough par; a stronger
-      reference (beam/lookahead) or retuned fractions would sharpen fairness.
-- [ ] **Variant objectives** (deferred balance decisions): clear-the-blockers /
-      jelly / ingredients — the engine already models blockers.
-- [ ] **Specials** (striped / wrapped / colour-bomb) and bigger cascades.
-- [ ] **Drag-to-swap** as a fast-follow (tap stays the accessible floor).
-- [ ] **Win cascade / clear animation** (currently an instant re-render).
-- [ ] Reshuffle when a board deadlocks mid-run (rare; today the round just ends).
+      reference (beam/lookahead) or retuned fractions, best driven by real play.

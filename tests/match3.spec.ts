@@ -84,6 +84,18 @@ test("playing out the budget yields a verifiable record; share round-trips", asy
   await shared.close();
 });
 
+test("dragging a gem onto a legal neighbour swaps it (drag as well as tap)", async ({ page }) => {
+  await page.goto("/match3/?seed=7");
+  await ready(page);
+  const before = await page.evaluate(() => window.__match3!.game.board().score);
+  const swap = await page.evaluate(() => window.__match3!.game.legalMoves()[0]!);
+  await page
+    .locator(`.m3-gem[data-r="${swap[0]}"][data-c="${swap[1]}"]`)
+    .dragTo(page.locator(`.m3-gem[data-r="${swap[2]}"][data-c="${swap[3]}"]`));
+  const after = await page.evaluate(() => window.__match3!.game.board().score);
+  expect(after).toBeGreaterThan(before);
+});
+
 test("with hints off, 'I'm done' ends the round", async ({ page }) => {
   await page.goto("/match3/?seed=7");
   await ready(page);
