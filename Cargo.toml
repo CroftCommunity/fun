@@ -19,6 +19,7 @@ members = [
     "crates/match3-wasm",
     "crates/solitaire-wasm",
     "crates/solitaire-solver",
+    "crates/match3-solver",
     "crates/xbuild",
 ]
 

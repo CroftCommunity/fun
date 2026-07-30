@@ -88,6 +88,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "match3-solver"
+version = "0.0.0"
+dependencies = [
+ "match3-core",
+ "pond-docformat",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "match3-wasm"
 version = "0.0.0"
 dependencies = [
