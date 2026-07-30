@@ -67,10 +67,11 @@ un-listed) entry purely to observe integration, discarded or left clearly marked
                                               against the actual repo, not memory
 2. Bundle weight     ────────────────────►  measured MB (code + assets), vs the
    (fits instant-start?)                      shelf budget; lazy-load feasibility
-3. Contract fit      ────────────────────►  can `GameModule.mount/unmount`
-   (host it as-is?)                           host it (iframe or canvas) cleanly,
-                                              own `/tux/` URL, all three chrome
-                                              modes, unmount leaks nothing?
+3. Containment +     ────────────────────►  a real-browser (Playwright) harness:
+   legibility                                 stays in its mount, NO egress outside
+   (proven, not                               an allowlist, no host bleed, clean
+    assumed)                                   unmount; renders + reads as our game
+                                              in all 3 chrome modes; no focus trap
 4. Charter coherence ────────────────────►  how a non-verifiable game reads on a
    (mixed shelf?)                             verifiable-outcome shelf: registry
                                               representation, how-to, the "no
@@ -118,15 +119,46 @@ un-listed) entry purely to observe integration, discarded or left clearly marked
   asset MB; assess lazy-load / on-demand-fetch feasibility against the shelf's
   instant-start bar. (Note the existing `croft-pwa/content-fetch` pattern as a
   possible lazy-asset precedent.)
-- **T3 — Contract-fit proof.** Stand up a throwaway `GameModule` that mounts
-  TuxRacer.js (iframe first; canvas if clean) in the drawer, full-screen, and a
-  standalone `/tux/`-style URL; verify `unmount()` tears it down with no leak.
-  Mark it `experimental` / unlisted; do **not** flip anything to `playable`.
-- **T4 — Charter-coherence proposal.** Write how a non-verifiable game is
-  represented honestly on a verifiable shelf (registry field, game-page banner,
-  how-to voice), and what "shelf standards" become optional vs required for
-  wrapped games (a wrapped-game addendum to `BUILDING-GAMES.md`, drafted not
-  merged).
+- **T3 — Contract-fit + a real in-browser containment/legibility harness.** An
+  off-the-shelf WASM bundle is **untrusted third-party code running in our
+  chrome**, so contract-fit is not "does it mount" — it is *proven in a real
+  browser* that it stays contained, coexists with our UI/UX, and is legible.
+  Stand up a throwaway `GameModule` mounting TuxRacer.js (iframe-with-`sandbox`
+  first; canvas only if containment holds) in the drawer, full-screen, and a
+  standalone `/tux/`-style URL. Drive it with **Playwright** (the Chrome
+  extension is disabled in this workspace — Playwright is the browser-driver, per
+  the top-level `.claude` note) across three assertion dimensions:
+
+  - **Containment** — it cannot escape its mount or affect the host. Assert: no
+    top-window navigation / no breaking out of the iframe; **no unexpected
+    network egress** (fail on any request outside an explicit allowlist — the
+    webxdc Cure53 lesson: CSP alone does not contain a webview, so
+    `iframe[sandbox]` + a request-interception allowlist, not trust); no
+    `localStorage`/cookie writes to our origin; no global-scope or CSS bleed into
+    our chrome (theme tokens, layout); console-error budget.
+  - **Legibility** — it reads as *our* game. Assert: renders inside the drawer
+    and full-screen without overflow at 360px and desktop; our header/back-chrome
+    stays visible and usable; the game is visually distinguishable from our
+    verifiable games (the honest-representation banner from T4 is present); axe on
+    *our* surrounding chrome stays clean (the embedded canvas is exempt but the
+    frame around it is not).
+  - **Interaction + lifecycle** — input goes to the game without trapping the
+    user. Assert: keyboard/pointer reach the game while focus can still return to
+    our chrome (Esc/back works, no focus trap); and **`unmount()` fully tears
+    down** — canvas removed, Web Audio context closed, `requestAnimationFrame`
+    loops cancelled, event listeners and timers cleared (assert no leaked
+    RAF/audio/listeners after unmount + re-mount N times without growth).
+
+  Mark the entry `experimental` / unlisted; do **not** flip anything to
+  `playable`. This harness is reusable for **every** Tier-2 candidate, not just
+  TuxRacer.js — it is the containment/legibility gate the tier needs.
+- **T4 — Charter-coherence proposal + the Tier-2 standard.** Write how a
+  non-verifiable game is represented honestly on a verifiable shelf (registry
+  field, game-page banner, how-to voice), and draft (not merge) the wrapped-game
+  addendum to `BUILDING-GAMES.md` that codifies which Tier-1 standards become
+  optional vs required for wraps — with the **T3 containment/legibility harness
+  as a required gate** (every Tier-2 game must pass it) in place of the Tier-1
+  verifiable-outcome + core-decides-legality standards.
 - **T5 — Recommendation.** A short doc: adopt-as-wrap / adopt-with-conditions /
   reject / park *this candidate*, with the T1–T4 evidence. The charter is
   already decided (Tier 2 admitted, COHESION §62); T5 decides TuxRacer.js and
@@ -135,12 +167,15 @@ un-listed) entry purely to observe integration, discarded or left clearly marked
 ## Definition of done (of the spike)
 
 A written recommendation with: confirmed license/redistribution status, measured
-bundle weight, a demonstrated (throwaway) mount proving contract fit across all
-three chrome modes with clean unmount, and a concrete proposal for how a wrapped
-non-verifiable game would be represented honestly on the shelf. No `playable`
-registry entry; no shipped game; nothing committed as a feature. The artifact
-gates TuxRacer.js against the Tier-2 inclusion filter and ratifies the reusable
-Tier-2 wrap standard (charter already decided — COHESION §62).
+bundle weight, and a **green Playwright harness** demonstrating (on a throwaway
+mount, all three chrome modes) that the game stays **contained** (no egress
+outside allowlist, no host bleed, clean teardown), is **legible** in our chrome,
+and does not trap the user — plus a concrete honest-representation proposal for a
+non-verifiable game on a verifiable shelf. No `playable` registry entry; no
+shipped game; nothing committed as a feature. The harness and the standard it
+encodes are **reusable for every Tier-2 candidate**. The artifact gates
+TuxRacer.js against the Tier-2 inclusion filter and ratifies the reusable Tier-2
+wrap standard (charter already decided — COHESION §62).
 
 ## Explicitly out of scope
 
