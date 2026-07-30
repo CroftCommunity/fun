@@ -390,6 +390,54 @@ pub fn reference_score(
     game.score
 }
 
+/// A **less-myopic** reference playout: a beam search over move sequences that
+/// also carries the plain greedy line, so it provably scores **at least**
+/// [`reference_score`] and catches cascades a one-ply greedy sets up but cannot
+/// see. Deterministic (fixed tie-breaks: frontier order × `legal_swaps` order,
+/// stable-sorted by cumulative score) and monotone in `budget`.
+///
+/// This is the item-4 "stronger reference" tool. It is **not** wired into the
+/// shipped per-deal targets (`targets_for` still uses [`reference_score`]):
+/// swapping it re-grades every seed, so adoption waits for real play data and a
+/// `Match3::VERSION` bump. Cost is a build-time/analysis concern, not the
+/// runtime path.
+#[must_use]
+pub fn reference_score_beam(
+    seed: u64,
+    width: usize,
+    height: usize,
+    colors: usize,
+    budget: usize,
+    beam_width: usize,
+) -> u64 {
+    let start = Game::new(deal(seed, width, height, colors), seed, colors);
+    // Each frontier entry is a game and the score accumulated to reach it.
+    let mut frontier = vec![(start, 0u64)];
+    // The greedy line guarantees `beam >= reference_score` regardless of any
+    // beam-search anomaly (a wider beam occasionally pruning the greedy branch).
+    let mut best = reference_score(seed, width, height, colors, budget);
+    for _ in 0..budget {
+        let mut next: Vec<(Game, u64)> = Vec::new();
+        for (game, score) in &frontier {
+            for (from, to) in legal_swaps(&game.board) {
+                let mut g = game.clone();
+                let gain = g.play_move(from, to).score_gained;
+                next.push((g, score + gain));
+            }
+        }
+        if next.is_empty() {
+            break;
+        }
+        // Keep the `beam_width` highest-cumulative states; the sort is stable, so
+        // equal scores keep their (deterministic) generation order.
+        next.sort_by(|a, b| b.1.cmp(&a.1));
+        next.truncate(beam_width.max(1));
+        best = best.max(next.iter().map(|(_, s)| *s).max().unwrap_or(0));
+        frontier = next;
+    }
+    best
+}
+
 // --- The game ---------------------------------------------------------------
 
 /// A game is a board plus the seeded refill stream, colour count, and score.

@@ -131,6 +131,22 @@ build target. That is the property P8 (score verification) and the follow-chain 
 `final_state_hash` is a regression + cross-build determinism anchor (locked once the engine is green — it is
 a recorded output, by construction not hand-derivable). Schema in `vectors/README.md`.
 
+## Per-deal par (the reference score) & versioning
+
+Star targets scale to a **reference score** for the seed, so play-time and verify-time derive the same
+targets without a shipped par table. Two references live in the engine:
+
+- `reference_score` — a greedy best-swap playout. Myopic (ignores cascades a lookahead would set up) but
+  cheap enough for the runtime path. **This is the shipped par**: the binding's `targets_for` uses it, and
+  the 1★/2★/3★ thresholds are 30% / 60% / 90% of it.
+- `reference_score_beam` — a less-myopic beam playout that also carries the greedy line, so it provably
+  scores at least `reference_score` and catches cascades greedy misses. Built and tested, but **not** wired
+  into the shipped targets: it is an analysis tool for a future, data-driven par.
+
+**Par is a rules version.** `verify` re-derives targets from the seed, so changing the reference or the
+fractions re-grades every past record. Any such change is a `Match3::VERSION` bump: keep the old par for
+old-version records (read the version from the `pond-docformat` envelope). Do not change par silently.
+
 ## Out of P1 (explicit not-yet set)
 
 Special tiles; cascade multipliers and par bands; level generation (P4); saves and share codes (their

@@ -389,7 +389,10 @@ impl Game for Match3Blockers {
         );
         let mut game = M3Game::new(board, seed, blockers_mode::COLORS);
         for m in moves {
-            let _ = game.play_move((m[0] as usize, m[1] as usize), (m[2] as usize, m[3] as usize));
+            let _ = game.play_move(
+                (m[0] as usize, m[1] as usize),
+                (m[2] as usize, m[3] as usize),
+            );
         }
         Replayed::new(game.state_hash(), blockers_remaining(&game.board) == 0)
     }

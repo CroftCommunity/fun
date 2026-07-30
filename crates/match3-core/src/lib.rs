@@ -27,6 +27,6 @@ pub mod blockers_mode {
 }
 pub use engine::{
     apply_gravity, blockers_remaining, clear_cells, deal, deal_blockers, find_matches,
-    has_legal_move, legal_swaps, reference_score, refill, reshuffle_if_dead, swap_legal,
-    ClearOutcome, Game, MoveReport, Pos, StepReport,
+    has_legal_move, legal_swaps, reference_score, reference_score_beam, refill, reshuffle_if_dead,
+    swap_legal, ClearOutcome, Game, MoveReport, Pos, StepReport,
 };

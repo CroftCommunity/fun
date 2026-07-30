@@ -78,10 +78,15 @@ Do them safest → owner-gated, each shipped green + deployed on its own commit:
   jelly / ingredients / specials / defer. → **DECIDED 2026-07-30: clear-the-blockers.**
   Build a blocker-placing deal + a winnable-daily solver + pack (solitaire's
   shape), win = all blockers cleared, metric = swaps-to-clear.
-- **D2 (item 4 versioning):** are there real records in the wild? If no → change
-  par in place; if yes → bump `Match3::VERSION`. Default assumption: **no real
-  records yet** (pre-release), so in-place is acceptable, but confirm before
-  changing par.
+- **D2 (item 4 versioning):** **DECIDED 2026-07-30: build the stronger reference,
+  hold the switch.** Add a beam `reference_score_beam` to match3-core and validate
+  it, but keep `targets_for` on the greedy `reference_score` so **no shared result
+  is re-graded**. The fraction/par retune is "best driven by real play data" that
+  does not exist yet, so it waits.
+  **Adoption procedure (when real data justifies it):** switch `targets_for` to
+  the beam reference and/or new fractions, bump `Match3::VERSION` to 2, and keep
+  the greedy par for version-1 records (read the version from the `pond-docformat`
+  envelope in `Match3::replay`). Treat any par change as a rules-version bump.
 - **Doc drift:** `TODO/match3.md` says fractions are 40/66/100%; the shipped code
   (`match3-wasm` `targets_for`) is 30/60/90%. Fix the doc during item 4.
 
@@ -100,8 +105,12 @@ Do them safest → owner-gated, each shipped green + deployed on its own commit:
   `match3-solver` crate + committed winnable-daily pack, 3c the mode-aware binding
   (`new_blockers_game`, `Match3Blockers` outcome kind), 3d the UI objective toggle
   + blocker tiles + blockers-left HUD + verifiable clear result + how-to.
-- [ ] **Item 4** — reference/fraction tuning with versioning handled, or a
-  recorded re-defer.
+- [x] **Item 4** — shipped 2026-07-30 as "build the tool, hold the switch."
+  Added a validated beam `reference_score_beam` (deterministic, monotone,
+  provably ≥ greedy, strictly better on some seeds) but left `targets_for` on the
+  greedy par, so nothing re-grades. Fixed the stale 40/66/100% doc figure
+  (code is 30/60/90%). Versioning/adoption procedure recorded in D2 + RULES.md.
+  The fraction retune is explicitly deferred to when real play data exists.
 
 ## The gate (must stay green every commit)
 

@@ -17,8 +17,9 @@ star thresholds). Plan: `plans/2026-07-30-match3-playable.md`. Standards:
 
 ## Follow-ups
 - [x] **Per-deal star targets** — thresholds now scale to a deterministic greedy
-      reference score for the seed (40/66/100%), re-derived at verify time so
-      shared score/stars are trustless. No shipped par table needed.
+      reference score for the seed (30/60/90% — the shipped `targets_for`
+      fractions), re-derived at verify time so shared score/stars are trustless.
+      No shipped par table needed.
 - [x] **Drag-to-swap** — drop on an adjacent gem swaps via the same core-decided
       resolution as tap; tap stays the accessible floor.
 - [x] **Win cascade + score-gain flash** — a gem cascade on a ≥1★ result
@@ -51,5 +52,9 @@ Deferred (each is a real chunk or an owner call, not a quick polish):
 - [ ] **Other variant objectives** (jelly / ingredients) and **specials**
       (striped / wrapped / colour-bomb) — further new modes + balance decisions
       reserved for the owner.
-- [ ] **Tune the reference/fractions** — greedy is a rough par; a stronger
-      reference (beam/lookahead) or retuned fractions, best driven by real play.
+- [~] **Tune the reference/fractions** — stronger reference **built**
+      (`reference_score_beam`: a beam playout, deterministic, ≥ greedy, strictly
+      better on some seeds) but the switch is **held**: `targets_for` still uses
+      the greedy par so no shared result re-grades. The fraction retune waits for
+      real play data; adopting the beam is a `Match3::VERSION` bump (procedure in
+      RULES.md + plan). Stale doc figure fixed (par fractions are 30/60/90%).
