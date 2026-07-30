@@ -160,8 +160,13 @@ Execution plan for B0: `plans/2026-07-30-match3-b0-specials.md`.
   par/blockers/jelly packs were regenerated (365 winnable, byte-identical). No
   activation yet. **The 2×2 fish moved to B4** (it needs a new *match* definition,
   not a sub-classification of line matches).
-- **B1 striped:** 4-in-a-row → striped gem; activation clears its row/column
-  (orientation rule fixed + documented); activation can cascade. Vectors + balance.
+- **B1 striped — DONE (2026-07-30)** (plan: `plans/2026-07-30-match3-b1-striped.md`).
+  A striped candy fires its line blast (`StripedH`→row, `StripedV`→column),
+  chaining through specials it hits (deterministic set-union) and cascading.
+  Triggered by matching it (B1.1) or swapping it with any neighbour — legal with
+  no line match (B1.2). The swap carries the special marker, and a latent
+  `reshuffle_if_dead` marker-desync (shipped since B0) was fixed (vectors
+  04/05/06 re-locked). Vectors 08/09; packs re-locked; how-to updated.
 - **B2 wrapped:** L/T → wrapped gem; activation = 3×3 explosion, twice.
 - **B3 colour bomb:** 5-in-a-row → colour bomb; swap-with-gem clears all of that
   colour.

@@ -318,3 +318,39 @@ test("a line-4+ match creates a special candy: rendered, badged, and labelled", 
   await expect(tile).toHaveClass(new RegExp(`m3-special-${found!.kind}`));
   await expect(tile).toHaveAttribute("aria-label", /candy|colour bomb/i);
 });
+
+test("a striped candy can be fired by swapping it (swap-activation reaches the UI)", async ({ page }) => {
+  await page.goto("/match3/?seed=13");
+  await ready(page);
+
+  // Greedy-first play until a striped candy is on the settled board, then fire
+  // it by swapping it with a neighbour — swap-activation makes that swap legal
+  // (no line match needed), and firing clears a whole line so the score jumps.
+  const info = await page.evaluate(() => {
+    const h = window.__match3!;
+    for (let i = 0; i < 20; i += 1) {
+      const b = h.game.board();
+      for (let r = 0; r < b.specials.length; r += 1) {
+        for (let c = 0; c < (b.specials[r] ?? []).length; c += 1) {
+          if ((b.specials[r]![c] ?? "").startsWith("striped")) {
+            const mv = h.game
+              .legalMoves()
+              .find((m) => (m[0] === r && m[1] === c) || (m[2] === r && m[3] === c));
+            if (!mv) return { swappable: false, before: b.score, after: b.score };
+            const before = b.score;
+            h.game.play(mv);
+            h.refresh();
+            return { swappable: true, before, after: h.game.board().score };
+          }
+        }
+      }
+      const m = h.game.legalMoves();
+      if (m.length === 0) break;
+      h.game.play(m[0]!);
+    }
+    return null;
+  });
+  expect(info, "a striped candy was created within the budget").not.toBeNull();
+  expect(info!.swappable, "the striped is swappable (swap-activation reaches the UI)").toBe(true);
+  expect(info!.after, "firing the striped cleared a line, so the score rose").toBeGreaterThan(info!.before);
+});

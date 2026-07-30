@@ -162,6 +162,20 @@ Resolved by "do whatever Candy Crush does" + the no-users free-knob latitude:
   survives (not fired/cleared this step); special-by-swap combos are B5.
 
 ## Review Log
+### B1 complete — 2026-07-30
+Shipped green + deployed: B1.1 `96e600e` (match-activation + packs), B1.2
+`519ee0b` (swap-activation + reshuffle desync fix + vector re-locks), B1.3
+`<this commit>` (how-to + e2e + docs). Final gate: cargo 117, npm test 84, e2e 84
+(both projects, incl. axe), regen drills byte-identical.
+- **Bug found during B1.2 (worth remembering):** the swap and `reshuffle_if_dead`
+  both permuted gems without carrying the `special` overlay — a latent desync
+  shipped in B0 (only caught because swap-activation changed vector 04's
+  reshuffle path). The B0.3 integration test checked the *pre-gravity* frame, so
+  it missed the post-reshuffle desync. Lesson: for overlay state, assert the
+  *settled* board, and any op that moves gems (swap, gravity, reshuffle) must
+  move the overlay in lockstep.
+- **B2 (wrapped 3×3 activation) is next.**
+
 ### Pass 1 — 2026-07-30
 Plan authored from deep B0 context (no separate gap pass needed — same files,
 same patterns as B0.3/B0.4). Key carried-forward lesson baked into every rule-

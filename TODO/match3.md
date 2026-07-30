@@ -87,8 +87,17 @@ beam-based par table landing early. Full phasing, DoD, and risks in the roadmap.
         byte-identical). Rendered with a power badge + a11y label. **No activation
         yet** (the blast is B1+). The **2×2 fish is deferred to B4** (it needs a new
         *match* definition, not a sub-classification of line matches).
-  - [ ] B1 striped → B2 wrapped → B3 colour bomb → B4 fish (2×2 + seeded targeting)
-        → B5 combo matrix → B6 specials-aware solver/par. **Next up: B1.**
+  - [x] **B1 striped activation** (plan: `plans/2026-07-30-match3-b1-striped.md`).
+        A striped candy fires its line blast: `StripedH`→row, `StripedV`→column,
+        chaining through other specials (deterministic set-union), cascading.
+        Triggered by matching it (B1.1) or **swapping** it with any neighbour —
+        legal with no line match (B1.2). Golden vectors 08/09; the swap now
+        carries the special marker, and a latent `reshuffle_if_dead` desync (it
+        permuted gems without their markers, shipped since B0) is fixed —
+        vectors 04/05/06 re-locked to corrected hashes. UI renders the blast via
+        the existing cascade animation; how-to updated. Packs re-locked.
+  - [ ] B2 wrapped → B3 colour bomb → B4 fish (2×2 + seeded targeting) → B5 combo
+        matrix → B6 specials-aware solver/par. **Next up: B2.**
 - [ ] **Track C (rest) — par calibration**: C2 offline LLM calibration study of the
       rung difficulty → C3 re-par after specials land.
 - [ ] **Track D — parity completeness** (confirm each first): ingredients,
