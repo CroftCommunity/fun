@@ -16,6 +16,7 @@ name = "bubble-core"
 version = "0.0.0"
 dependencies = [
  "hex",
+ "pond-outcome",
  "rand",
  "rand_chacha",
  "serde",

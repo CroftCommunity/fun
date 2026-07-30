@@ -10,11 +10,13 @@
 
 pub mod board;
 pub mod engine;
+pub mod game;
 pub mod hash;
 pub mod rng;
 
 pub use board::{Board, BoardError, Cell, Pos};
 pub use engine::{deal, Deal};
+pub use game::{Bubble, Game};
 pub use hash::state_hash;
 
 /// Default clear-the-board mode parameters, shared by the deal, the UI, and the
@@ -29,4 +31,8 @@ pub mod clear_board_mode {
     pub const ROWS_FILLED: usize = 5;
     /// Bubble colours.
     pub const COLORS: usize = 5;
+    /// Shot budget: the objective is to clear the board within this many shots.
+    /// Generous by default; the B4 winnable-pack solver certifies clearability
+    /// within it and can retune this constant.
+    pub const SHOT_BUDGET: usize = 40;
 }
