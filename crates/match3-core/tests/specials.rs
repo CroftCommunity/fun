@@ -206,3 +206,72 @@ fn line4_swap_creates_a_striped_and_scores_three() {
         "a striped candy was created at the swapped cell"
     );
 }
+
+// --- B1.1: match-activation (a matched striped fires its line blast) --------
+
+#[test]
+fn matched_striped_clears_its_whole_row() {
+    // Row 0 holds a StripedH (colour 0) at (0,0). Swapping (0,2)<->(1,2) makes a
+    // line-3 of colour 0 that includes it -> it fires: the entire row 0 clears
+    // (5 cells), not just the 3-match.
+    let b =
+        Board::from_rows_with_specials(&["00234", "12045", "23451"], &["H....", ".....", "....."])
+            .expect("parses");
+    let mut game = Game::new(b, 1, 6);
+    let (report, snaps) = game.play_move_traced((0, 2), (1, 2));
+    assert!(report.legal, "the swap forms a 3-run including the striped");
+    let cleared0 = &report.steps[0].cleared;
+    for c in 0..5 {
+        assert!(
+            cleared0.contains(&(0, c)),
+            "row-0 cell {c} cleared by the blast"
+        );
+    }
+    assert_eq!(report.steps[0].score_gained, 50, "5 gems x 10");
+    for c in 0..5 {
+        assert_eq!(
+            snaps[1].get(0, c),
+            Cell::Empty,
+            "row 0 emptied in the after-clear frame"
+        );
+    }
+}
+
+#[test]
+fn a_blast_chains_into_another_special() {
+    // StripedH (colour 0) at (0,0) and StripedV (colour 5) at (0,3). Firing the
+    // StripedH clears row 0, whose blast hits the StripedV -> it fires too,
+    // clearing column 3. Both a row and a column go: 7 cells.
+    let b =
+        Board::from_rows_with_specials(&["00254", "12045", "23413"], &["H..V.", ".....", "....."])
+            .expect("parses");
+    let mut game = Game::new(b, 1, 6);
+    let report = game.play_move((0, 2), (1, 2));
+    assert!(report.legal);
+    let cleared0 = &report.steps[0].cleared;
+    for c in 0..5 {
+        assert!(cleared0.contains(&(0, c)), "row-0 cell {c} cleared");
+    }
+    assert!(
+        cleared0.contains(&(1, 3)) && cleared0.contains(&(2, 3)),
+        "column 3 chained"
+    );
+    assert_eq!(report.steps[0].score_gained, 70, "7 gems x 10");
+}
+
+#[test]
+fn a_blast_scrubs_jelly_under_the_cells_it_clears() {
+    // The StripedH blast clears row 0; jelly beneath a blasted (non-matched) cell
+    // is scrubbed just like a normal clear.
+    let b =
+        Board::from_rows_with_specials(&["00234", "12045", "23451"], &["H....", ".....", "....."])
+            .expect("parses");
+    let mut b = b;
+    b.set_jelly(0, 4, 1); // (0,4) is only reached by the blast, not the 3-match
+    let mut game = Game::new(b, 1, 6);
+    let report = game.play_move((0, 2), (1, 2));
+    assert!(
+        report.steps[0].jelly_layers_removed >= 1,
+        "blast scrubbed the jelly it passed"
+    );
+}

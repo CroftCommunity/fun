@@ -31,6 +31,11 @@ pub struct Vector {
     pub seed: u64,
     pub colors: usize,
     pub board: Vec<String>,
+    /// Optional parallel special-overlay grid (`.`/`H`/`V`/`W`/`C`), for vectors
+    /// that pre-place a special candy (e.g. activation tests). Same shape as
+    /// `board`; omitted (empty) for plain boards.
+    #[serde(default)]
+    pub special: Vec<String>,
     #[serde(default)]
     pub moves: Vec<Move4>,
     pub expect: Expect,
@@ -52,7 +57,12 @@ impl Vector {
 
     pub fn to_game(&self) -> Game {
         let rows: Vec<&str> = self.board.iter().map(|s| s.as_str()).collect();
-        let board = Board::from_rows(&rows).expect("vector board parses");
+        let board = if self.special.is_empty() {
+            Board::from_rows(&rows).expect("vector board parses")
+        } else {
+            let srows: Vec<&str> = self.special.iter().map(|s| s.as_str()).collect();
+            Board::from_rows_with_specials(&rows, &srows).expect("vector board parses")
+        };
         Game::new(board, self.seed, self.colors)
     }
 

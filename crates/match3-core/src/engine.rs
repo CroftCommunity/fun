@@ -294,6 +294,58 @@ fn neighbours(board: &Board, r: usize, c: usize) -> Vec<Pos> {
     v
 }
 
+/// Whether a special kind fires a blast in B1 (striped only; wrapped / colour-
+/// bomb activation is B2 / B3).
+fn fires(kind: Option<SpecialKind>) -> bool {
+    matches!(kind, Some(SpecialKind::StripedH | SpecialKind::StripedV))
+}
+
+/// The cells a striped candy at `pos` blasts: its whole row (`StripedH`) or
+/// column (`StripedV`), excluding blockers — a blocker in the line is not cleared
+/// but takes adjacency damage via [`clear_cells`], like any match. A non-striped
+/// or non-special cell blasts nothing.
+fn blast_region(board: &Board, pos: Pos) -> Vec<Pos> {
+    let (r, c) = pos;
+    match board.special_at(r, c) {
+        Some(SpecialKind::StripedH) => (0..board.width)
+            .map(|cc| (r, cc))
+            .filter(|&(rr, cc)| !board.get(rr, cc).is_blocker())
+            .collect(),
+        Some(SpecialKind::StripedV) => (0..board.height)
+            .map(|rr| (rr, c))
+            .filter(|&(rr, cc)| !board.get(rr, cc).is_blocker())
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// B1 activation — expand the matched set by the line blasts of any **striped**
+/// candy in it, chaining: a blast cell holding another striped fires it too. The
+/// result is the full set of cells to clear this step, sorted. Deterministic —
+/// each striped fires at most once and the union is order-independent. Wrapped /
+/// colour-bomb do not fire yet (B2 / B3), so a matched wrapped/bomb just clears.
+fn activate(board: &Board, matched: &[Pos]) -> Vec<Pos> {
+    let mut to_clear: BTreeSet<Pos> = matched.iter().copied().collect();
+    let mut fired: BTreeSet<Pos> = BTreeSet::new();
+    let mut queue: Vec<Pos> = matched
+        .iter()
+        .copied()
+        .filter(|&(r, c)| fires(board.special_at(r, c)))
+        .collect();
+    while let Some(cell) = queue.pop() {
+        if !fired.insert(cell) {
+            continue;
+        }
+        for bc in blast_region(board, cell) {
+            to_clear.insert(bc);
+            if fires(board.special_at(bc.0, bc.1)) && !fired.contains(&bc) {
+                queue.push(bc);
+            }
+        }
+    }
+    to_clear.into_iter().collect()
+}
+
 /// T2 — clear the matched cells to `Empty` and damage adjacent blockers by at
 /// most one layer each. Returns the counts needed for scoring.
 pub fn clear_cells(board: &mut Board, matched: &[Pos]) -> ClearOutcome {
@@ -781,7 +833,11 @@ impl Game {
                 None
             };
             let creations = creations_for(&self.board, swap);
-            let out = clear_cells(&mut self.board, &matched);
+            // B1 activation: expand the cleared set by the blasts of any striped
+            // candy in the matched set (chained). No matched striped -> `activated`
+            // == `matched`, so plain-gem and B0-creation play stay byte-identical.
+            let activated = activate(&self.board, &matched);
+            let out = clear_cells(&mut self.board, &activated);
             // Each placement cell survives as a special candy: clear_cells set it
             // Empty (and scrubbed its jelly + damaged adjacent blockers as part of
             // the match), so restore it as a gem carrying the marker. It is
@@ -796,9 +852,9 @@ impl Game {
                 u64::from(gems_scored) * 10 + u64::from(out.blocker_layers_removed) * 20;
             score_gained += step_score;
             self.score += step_score;
-            // Report the truly-cleared cells (matched minus the survivors that
-            // became specials), so step0_cleared stays hand-computable.
-            let cleared: Vec<Pos> = matched
+            // Report the truly-cleared cells (the activated set minus the
+            // survivors that became specials), so step0_cleared stays computable.
+            let cleared: Vec<Pos> = activated
                 .into_iter()
                 .filter(|p| !creations.iter().any(|c| c.pos == *p))
                 .collect();

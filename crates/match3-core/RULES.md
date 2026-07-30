@@ -133,7 +133,31 @@ gems, not 4 — the survivor is *transformed*, not cleared). The placement cell:
    **median** cell (`cells[len/2]` in scan order).
 
 The created special's colour is the component's gem colour. Blast/activation of
-a created special is deferred to B1–B4; the 2×2 **fish** shape is deferred to B4.
+a created special is in T1c (striped, B1); wrapped/colour-bomb activation is
+B2/B3; the 2×2 **fish** shape is deferred to B4.
+
+### T1c — Activation (striped, B1)
+
+A striped candy **fires** a line blast when it is cleared by a match. Before the
+clear (T2), the matched set is expanded by activation:
+
+- **Trigger (B1 = match-activation):** a striped candy in the matched set fires.
+  (Swap-activation — firing a striped by swapping it with no line match — is
+  B1.2; wrapped/colour-bomb firing is B2/B3.)
+- **Blast region:** `StripedH` clears its entire **row**, `StripedV` its entire
+  **column**. A **blocker** in the line is *not* cleared — it takes one layer of
+  adjacency damage via T2 like any match. (Orientation = stripe direction;
+  revisable pre-users.)
+- **Chaining:** if a blast cell holds another striped, that striped fires too.
+  Resolution is a deterministic set-union (each striped fires at most once; the
+  result is order-independent), so it reproduces identically on every device.
+- **Just-created specials survive.** A special *created this step* (T1b) is
+  restored after the clear, so a simultaneous blast over its cell does not destroy
+  it (it is transformed, not cleared). Special-meets-special *by swap* is the
+  combo matrix (B5); B1 does no combos.
+- **Scoring/jelly/cascade:** blast-cleared gems score +10 each (flat, T2); jelly
+  under a blasted cell scrubs one layer; the expanded clear feeds gravity/refill
+  and can cascade like any step.
 
 ### T2 — Clear + scoring
 

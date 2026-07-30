@@ -28,6 +28,11 @@ Char encoding is `Board::from_rows` / `to_rows` (see `src/board.rs`). Step 0 is 
 directly by the swap, before any refill randomness — so it is fully hand-computable. Scoring (RULES.md T2):
 `+10` per gem cleared, `+20` per blocker layer removed.
 
+**Pre-placed specials (optional `special` grid):** a vector may carry a parallel `special` grid (same shape
+as `board`, chars `.`/`H`/`V`/`W`/`C`) to start with a special candy on the board — used by activation
+vectors. `Board::from_rows_with_specials` parses it. Activation (B1): a matched striped clears its whole
+row/column at step 0, so `step0_cleared` lists the blasted line (see `08`/`09`).
+
 **Specials (B0):** when a move forms a line-4 / L-T / line-5, one matched cell becomes a special candy
 (RULES.md T1b) instead of clearing, so `step0_cleared` lists the *cleared* cells (the special's cell is
 excluded) and `step0_score` counts only those. The created special is part of `final_state_hash` (the hash's
