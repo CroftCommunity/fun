@@ -176,3 +176,33 @@ fn inert_special_survives_a_cascade_move() {
         "the surviving special is part of the fingerprint"
     );
 }
+
+// --- Phase 3: creation wired into play_move ---------------------------------
+
+#[test]
+fn line4_swap_creates_a_striped_and_scores_three() {
+    // 0 0 2 0 / 3 4 0 5 ; swapping (0,2)<->(1,2) fills row 0 with four 0s -> a
+    // horizontal 4-run. Step 0 creates a StripedH at the swapped cell, clears
+    // the other three (score 30, not 40 -- the special is transformed, not
+    // cleared), and the striped candy is on the board in the after-clear frame.
+    let mut game = Game::new(board(&["0020", "3405"]), 1, 6);
+    let (report, snaps) = game.play_move_traced((0, 2), (1, 2));
+    assert!(report.legal, "the swap forms a 4-run");
+    assert_eq!(
+        report.steps[0].cleared.len(),
+        3,
+        "three cleared, one transformed"
+    );
+    assert_eq!(report.steps[0].score_gained, 30, "3 gems x 10");
+    // snaps[0] = after swap; snaps[1] = after step-0 clear + creation.
+    assert_eq!(
+        snaps[1].get(0, 2),
+        Cell::Gem(0),
+        "placement keeps its colour"
+    );
+    assert_eq!(
+        snaps[1].special_at(0, 2),
+        Some(SpecialKind::StripedH),
+        "a striped candy was created at the swapped cell"
+    );
+}

@@ -1,7 +1,7 @@
 //! The deterministic match-3 engine: match / clear / gravity / refill / cascade.
 //! All ordering is fixed by the tie-break tables in RULES.md.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::board::{Board, Cell, SpecialKind};
 use crate::hash::state_hash;
@@ -83,6 +83,198 @@ pub fn find_matches(board: &Board) -> Vec<Pos> {
 /// Two cells match iff both are the same-coloured gem.
 fn same_gem(a: Cell, b: Cell) -> bool {
     matches!((a, b), (Cell::Gem(x), Cell::Gem(y)) if x == y)
+}
+
+/// Orientation of a match run — fixes which striped candy a line-4 creates.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Orientation {
+    /// A run within one row.
+    Horizontal,
+    /// A run within one column.
+    Vertical,
+}
+
+/// A maximal same-colour run of ≥3 gems in a single row or column — the run-
+/// structured detection specials need (`find_matches` returns only the flat
+/// union). `cells` are in scan order (H: left→right, V: top→bottom).
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Run {
+    /// The run's cells, in scan order.
+    pub cells: Vec<Pos>,
+    /// Whether the run lies along a row or a column.
+    pub orientation: Orientation,
+}
+
+/// Every maximal same-colour run of ≥3 gems: horizontal runs first (rows
+/// top→bottom, left→right), then vertical (columns left→right, top→bottom). The
+/// **union** of all run cells equals [`find_matches`] exactly (proven in
+/// `tests/shapes.rs`), so the flat clear set is unchanged — only the structure
+/// (which cells form which run) is new. This is the same scan as `find_matches`.
+#[must_use]
+pub fn find_runs(board: &Board) -> Vec<Run> {
+    let mut runs = Vec::new();
+    for r in 0..board.height {
+        let mut run_start = 0;
+        for c in 1..=board.width {
+            let same = c < board.width && same_gem(board.get(r, c), board.get(r, run_start));
+            if !same {
+                if c - run_start >= 3 {
+                    runs.push(Run {
+                        cells: (run_start..c).map(|cc| (r, cc)).collect(),
+                        orientation: Orientation::Horizontal,
+                    });
+                }
+                run_start = c;
+            }
+        }
+    }
+    for c in 0..board.width {
+        let mut run_start = 0;
+        for r in 1..=board.height {
+            let same = r < board.height && same_gem(board.get(r, c), board.get(run_start, c));
+            if !same {
+                if r - run_start >= 3 {
+                    runs.push(Run {
+                        cells: (run_start..r).map(|rr| (rr, c)).collect(),
+                        orientation: Orientation::Vertical,
+                    });
+                }
+                run_start = r;
+            }
+        }
+    }
+    runs
+}
+
+/// A special candy to spawn where a qualifying match resolved (RULES.md
+/// "Special candies"). The placement cell keeps its colour and gains the marker;
+/// the other matched cells clear normally.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct Creation {
+    /// Where the special spawns (a cell of the matched component).
+    pub pos: Pos,
+    /// Which special (by shape).
+    pub kind: SpecialKind,
+    /// The component's gem colour (all cells in a component share a colour).
+    pub color: u8,
+}
+
+/// Classify the current matches into the specials they create. `swap` is
+/// `Some((from, to))` for the swap-triggered step (step 0), enabling the
+/// "spawn at the moved candy" rule; `None` for cascade steps (spawn at the
+/// deterministic anchor). At most **one** special per connected match component,
+/// by the priority **colour-bomb (≥5) > wrapped (L/T) > striped (line-4)**.
+#[must_use]
+pub fn creations_for(board: &Board, swap: Option<(Pos, Pos)>) -> Vec<Creation> {
+    let runs = find_runs(board);
+    let mut out = Vec::new();
+    for comp in group_runs(&runs) {
+        let comp_runs: Vec<&Run> = comp.iter().map(|&i| &runs[i]).collect();
+        let max_len = comp_runs.iter().map(|r| r.cells.len()).max().unwrap_or(0);
+        let has_h = comp_runs
+            .iter()
+            .any(|r| r.orientation == Orientation::Horizontal);
+        let has_v = comp_runs
+            .iter()
+            .any(|r| r.orientation == Orientation::Vertical);
+        // The dominant run (longest; ties keep the earlier = scan order) anchors
+        // striped / colour-bomb placement.
+        let dominant = comp_runs
+            .iter()
+            .copied()
+            .reduce(|a, b| if b.cells.len() > a.cells.len() { b } else { a })
+            .expect("a component has at least one run");
+        let kind = if max_len >= 5 {
+            SpecialKind::ColorBomb
+        } else if has_h && has_v {
+            SpecialKind::Wrapped
+        } else if max_len == 4 {
+            match dominant.orientation {
+                Orientation::Horizontal => SpecialKind::StripedH,
+                Orientation::Vertical => SpecialKind::StripedV,
+            }
+        } else {
+            continue; // a lone line-3 makes no special
+        };
+        let pos = placement(&comp_runs, dominant, kind, swap);
+        // Placement is always a matched gem cell; skip defensively otherwise.
+        if let Cell::Gem(color) = board.get(pos.0, pos.1) {
+            out.push(Creation { pos, kind, color });
+        }
+    }
+    out
+}
+
+/// Connected components of runs (runs sharing a cell), as ascending index
+/// groups. `n` runs per clear step is tiny, so a simple union-find is ample.
+fn group_runs(runs: &[Run]) -> Vec<Vec<usize>> {
+    let n = runs.len();
+    let mut parent: Vec<usize> = (0..n).collect();
+    fn root(parent: &mut [usize], mut i: usize) -> usize {
+        while parent[i] != i {
+            parent[i] = parent[parent[i]];
+            i = parent[i];
+        }
+        i
+    }
+    for i in 0..n {
+        for j in (i + 1)..n {
+            if runs[i].cells.iter().any(|c| runs[j].cells.contains(c)) {
+                let (ri, rj) = (root(&mut parent, i), root(&mut parent, j));
+                parent[ri] = rj;
+            }
+        }
+    }
+    let mut groups: BTreeMap<usize, Vec<usize>> = BTreeMap::new();
+    for i in 0..n {
+        let r = root(&mut parent, i);
+        groups.entry(r).or_default().push(i);
+    }
+    groups.into_values().collect()
+}
+
+/// The deterministic placement cell (RULES.md creation tie-break table): on
+/// step 0, prefer the swapped candy (`to`, then `from`) if it lies in the
+/// candidate set; else the anchor — the earliest junction (wrapped) or the
+/// dominant run's median (striped / colour-bomb).
+fn placement(
+    comp_runs: &[&Run],
+    dominant: &Run,
+    kind: SpecialKind,
+    swap: Option<(Pos, Pos)>,
+) -> Pos {
+    let candidates: Vec<Pos> = if kind == SpecialKind::Wrapped {
+        // Junctions: cells shared by ≥2 runs (the L/T corner), earliest first.
+        let mut js: Vec<Pos> = Vec::new();
+        for (i, r) in comp_runs.iter().enumerate() {
+            for &cell in &r.cells {
+                let shared = comp_runs
+                    .iter()
+                    .enumerate()
+                    .any(|(j, r2)| j != i && r2.cells.contains(&cell));
+                if shared && !js.contains(&cell) {
+                    js.push(cell);
+                }
+            }
+        }
+        js.sort_unstable();
+        js
+    } else {
+        dominant.cells.clone()
+    };
+    if let Some((from, to)) = swap {
+        if candidates.contains(&to) {
+            return to;
+        }
+        if candidates.contains(&from) {
+            return from;
+        }
+    }
+    if kind == SpecialKind::Wrapped {
+        candidates[0]
+    } else {
+        candidates[candidates.len() / 2]
+    }
 }
 
 fn neighbours(board: &Board, r: usize, c: usize) -> Vec<Pos> {
@@ -574,17 +766,44 @@ impl Game {
 
         let mut steps = Vec::new();
         let mut score_gained = 0u64;
+        let mut step_index = 0usize;
         loop {
             let matched = find_matches(&self.board);
             if matched.is_empty() {
                 break;
             }
+            // Which specials this step's shapes create — step 0 uses the swap so
+            // the special spawns at the moved candy (RULES.md). Computed on the
+            // pre-clear board (the gems must still be present).
+            let swap = if step_index == 0 {
+                Some((from, to))
+            } else {
+                None
+            };
+            let creations = creations_for(&self.board, swap);
             let out = clear_cells(&mut self.board, &matched);
-            let step_score = out.gems_cleared as u64 * 10 + out.blocker_layers_removed as u64 * 20;
+            // Each placement cell survives as a special candy: clear_cells set it
+            // Empty (and scrubbed its jelly + damaged adjacent blockers as part of
+            // the match), so restore it as a gem carrying the marker. It is
+            // transformed, not cleared, so it does not score as a cleared gem.
+            for cr in &creations {
+                self.board.set(cr.pos.0, cr.pos.1, Cell::Gem(cr.color));
+                self.board.set_special(cr.pos.0, cr.pos.1, Some(cr.kind));
+            }
+            let created = u32::try_from(creations.len()).unwrap_or(0);
+            let gems_scored = out.gems_cleared.saturating_sub(created);
+            let step_score =
+                u64::from(gems_scored) * 10 + u64::from(out.blocker_layers_removed) * 20;
             score_gained += step_score;
             self.score += step_score;
+            // Report the truly-cleared cells (matched minus the survivors that
+            // became specials), so step0_cleared stays hand-computable.
+            let cleared: Vec<Pos> = matched
+                .into_iter()
+                .filter(|p| !creations.iter().any(|c| c.pos == *p))
+                .collect();
             steps.push(StepReport {
-                cleared: matched,
+                cleared,
                 blocker_layers_removed: out.blocker_layers_removed,
                 jelly_layers_removed: out.jelly_layers_removed,
                 score_gained: step_score,
@@ -600,6 +819,7 @@ impl Game {
             if trace {
                 snapshots.push(self.board.clone());
             }
+            step_index += 1;
         }
 
         // The cascade has settled; if it settled into a dead board, reshuffle so

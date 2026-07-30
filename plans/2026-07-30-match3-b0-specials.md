@@ -501,6 +501,25 @@ canon rather than re-asking.
 
 ## Review Log
 
+### Execution restructure — 2026-07-30 (during Phase 3)
+**Found:** the committed packs are coupled to the engine's scoring/clearing
+rules, so **any commit that changes those rules must regenerate the packs in the
+same commit** to keep the gate green — a "code now, regenerate later" split would
+leave an intermediate RED commit (violating commit-per-stable-point). This
+collapses the original Phase 3 (line-4) + Phase 4 (L/T, line-5) + Phase 6
+(regenerate) into a tighter shape:
+- **Phase 3 (revised):** run detection + **all** line-derived creation
+  (striped / wrapped / colour-bomb, with shape priority) **+ regenerate & re-lock
+  the three packs**, one green commit. Combining the shapes means a single
+  (slow) regeneration instead of two.
+- **Phase 4 (revised, was 5):** surface to binding + UI (deployed, visible).
+- **Phase 5 (revised, was 7):** docs sync + roadmap update.
+The classification is cohesive (run-length → kind), so combining the shapes is
+also cleaner than an intermediate where a line-5 makes no special.
+**Confirmed (Phases 1–2 shipped):** the overlay keeps match/legality
+byte-identical (94→98 passed, existing vectors un-re-locked); commits `ab7c9f4`
+(B0.1), `3dab6e2` (B0.2).
+
 ### Pass 1+2 — 2026-07-30 (combined, exploration fresh)
 **Found (gap analysis, verified against code):**
 - Creating specials shifts `par_tiers` → `committed_par_pack_is_wellformed`

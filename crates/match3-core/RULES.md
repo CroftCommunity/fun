@@ -103,6 +103,38 @@ a determinism bug.
   intersecting horizontal and vertical run appears **once**. Because the result is a set, detection order
   does not affect the outcome — but the canonical scan is rows top→bottom, then columns left→right.
 
+### T1b — Shape classification + special creation (B0.3)
+
+Beyond the flat match set (T1), a match's **shape** decides which special candy
+it creates. `find_runs` returns the maximal same-colour runs of ≥3 (rows first,
+top→bottom/left→right; then columns, left→right/top→bottom) — the *union* of run
+cells is exactly `find_matches`, so the clear set is unchanged. Runs sharing a
+cell form a **component**; each component creates **at most one** special, by
+this priority:
+
+| Component shape | Special | Priority |
+|---|---|---|
+| a run of length ≥5 | `ColorBomb` | 1 (highest) |
+| both a horizontal and a vertical run (L/T) | `Wrapped` | 2 |
+| a single run of length 4 | `StripedH` (horizontal) / `StripedV` (vertical) | 3 |
+| a single run of length 3 | none (plain clear) | — |
+
+**Creation placement (tie-break table).** The special spawns on one cell of the
+component; the other matched cells clear normally (so a 4-run scores 3 cleared
+gems, not 4 — the survivor is *transformed*, not cleared). The placement cell:
+
+1. **Step 0 (the swap-triggered step):** if the swapped candy (`to`, else
+   `from`) lies in the candidate set, spawn there (Candy-Crush "at the moved
+   candy"). Candidates are the **junction cells** (shared by ≥2 runs) for
+   `Wrapped`, else the **dominant run's cells** (the longest; ties keep the
+   earlier in scan order).
+2. **Otherwise (cascade steps, or no swapped candy in the set):** the anchor —
+   the earliest (row, col) junction for `Wrapped`, else the dominant run's
+   **median** cell (`cells[len/2]` in scan order).
+
+The created special's colour is the component's gem colour. Blast/activation of
+a created special is deferred to B1–B4; the 2×2 **fish** shape is deferred to B4.
+
 ### T2 — Clear + scoring
 
 - All matched cells become `Empty` **simultaneously** (one set, not sequential).

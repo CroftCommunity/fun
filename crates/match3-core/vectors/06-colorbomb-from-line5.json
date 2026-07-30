@@ -1,0 +1,16 @@
+{
+  "name": "colorbomb-from-line5",
+  "seed": 1,
+  "colors": 6,
+  "board": [
+    "00200",
+    "34056"
+  ],
+  "moves": [ [0, 2, 1, 2] ],
+  "expect": {
+    "move_legal": [true],
+    "step0_cleared": [ [[0, 0], [0, 1], [0, 3], [0, 4]] ],
+    "step0_score": [40],
+    "final_state_hash": "4b78e87e51616a886f540e48f62685bb2f1a817f0d8b43f9e50f7c53271aba0c"
+  }
+}

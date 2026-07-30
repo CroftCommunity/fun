@@ -1,0 +1,16 @@
+{
+  "name": "striped-from-line4",
+  "seed": 1,
+  "colors": 6,
+  "board": [
+    "0020",
+    "3405"
+  ],
+  "moves": [ [0, 2, 1, 2] ],
+  "expect": {
+    "move_legal": [true],
+    "step0_cleared": [ [[0, 0], [0, 1], [0, 3]] ],
+    "step0_score": [30],
+    "final_state_hash": "afe0c47a3125a5783dca76d91734459d716f8e434d50093ad2188bbd1a4768a8"
+  }
+}

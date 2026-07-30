@@ -27,3 +27,9 @@ once the engine is green — by construction it cannot be hand-derived, since it
 Char encoding is `Board::from_rows` / `to_rows` (see `src/board.rs`). Step 0 is the cascade step triggered
 directly by the swap, before any refill randomness — so it is fully hand-computable. Scoring (RULES.md T2):
 `+10` per gem cleared, `+20` per blocker layer removed.
+
+**Specials (B0):** when a move forms a line-4 / L-T / line-5, one matched cell becomes a special candy
+(RULES.md T1b) instead of clearing, so `step0_cleared` lists the *cleared* cells (the special's cell is
+excluded) and `step0_score` counts only those. The created special is part of `final_state_hash` (the hash's
+special section). Initial boards carry no specials, but `Board::from_rows_with_specials(rows, special_rows)`
+can author them (`.`/`H`/`V`/`W`/`C`) if a vector ever needs a pre-placed special.
