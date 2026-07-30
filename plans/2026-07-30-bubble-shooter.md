@@ -1,9 +1,14 @@
 # Bubble shooter — Tier-1 build-fresh (phase plan)
 
-**Status:** Pass 1+2+3 complete 2026-07-30. Owner decisions folded (winnable-pack
-solver; surface score, no stars; per-game directory). **B1 + B2 executed
-TDD-first + committed.** B3–B7 ready to execute. Plan file:
-`plans/2026-07-30-bubble-shooter.md`.
+**Status:** ✅ **SHIPPED 2026-07-30 — all phases B1–B7 executed TDD-first +
+committed.** Bubble is playable at `/bubble/`: clear-the-board-in-N-shots over a
+guaranteed-winnable daily pack, tap-target aim with core-decided legal-target
+glow, a verification-forward result + `?r=` share, hints/settings, a How-to
+guide. Full gate green (cargo `--workspace` 42 suites + fmt + clippy; 87 unit;
+94 e2e / 2 expected skips). Deploy-ready (not pushed). Commits: B1 `839bca8`,
+B2 `40d4045`, B3 `77b0d6d`, B4 `e8c3d1d`, B5 `21e55bf`, B6 `2e876a1`, B7
+`8956507`. Owner decisions folded (winnable-pack solver; surface score, no
+stars; per-game directory). Plan file: `plans/2026-07-30-bubble-shooter.md`.
 
 > Convention note: this repo keeps plans as `plans/YYYY-MM-DD-<slug>.md`, so this
 > file keeps that name rather than the skill's `N-plan-` scheme (skill: "match
@@ -357,3 +362,11 @@ starting B3.
   **Coherence:** plan still solves the original problem; no scope creep beyond the
   owner-requested winnable pack.
   **Confirmed ready:** yes — B3 can start now; B3-Q1 gates B4 only.
+- **2026-07-30 Execution complete (B3–B7).** All phases shipped TDD-first, each a
+  green committed checkpoint. Notable deltas from the plan, all recorded in the
+  commits: B3's launcher policy was refined in B4 to load a **board-present**
+  colour (always-progress gameplay + tractable winnability); B4's solver is a
+  greedy DFS certifying ~45% of seeds (365-seed pack, byte-identically
+  regenerable); registry/page wiring was pulled into **B6** (not B7) so the
+  wiring test could drive a real `/bubble/`. `pond-outcome` needed **no** change
+  (as predicted). Full gate green; deploy-ready; not pushed.
