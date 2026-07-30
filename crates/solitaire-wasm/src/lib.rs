@@ -272,10 +272,7 @@ impl Game for Solitaire {
         for &mv in moves {
             let _ = game.play_move(mv);
         }
-        Replayed {
-            final_hash: state_hash(&game),
-            won: game.is_won(),
-        }
+        Replayed::new(state_hash(&game), game.is_won())
     }
 }
 

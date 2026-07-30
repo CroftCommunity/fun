@@ -196,6 +196,86 @@ pub fn swap_legal(board: &Board, from: Pos, to: Pos) -> bool {
     !find_matches(&b).is_empty()
 }
 
+/// Every legal swap in `board` — each adjacent pair once, in (row, col) order.
+/// The UI highlights from this list; the core stays the sole legality authority.
+#[must_use]
+pub fn legal_swaps(board: &Board) -> Vec<(Pos, Pos)> {
+    let mut out = Vec::new();
+    for r in 0..board.height {
+        for c in 0..board.width {
+            if c + 1 < board.width && swap_legal(board, (r, c), (r, c + 1)) {
+                out.push(((r, c), (r, c + 1)));
+            }
+            if r + 1 < board.height && swap_legal(board, (r, c), (r + 1, c)) {
+                out.push(((r, c), (r + 1, c)));
+            }
+        }
+    }
+    out
+}
+
+/// Whether any legal swap exists (a dead board has none).
+#[must_use]
+pub fn has_legal_move(board: &Board) -> bool {
+    for r in 0..board.height {
+        for c in 0..board.width {
+            if (c + 1 < board.width && swap_legal(board, (r, c), (r, c + 1)))
+                || (r + 1 < board.height && swap_legal(board, (r, c), (r + 1, c)))
+            {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+/// Fill a `width×height` board with gems in `0..colors`, rejecting any colour
+/// that would complete a horizontal or vertical run of three (so the deal has
+/// no free matches). Draw order is row-major; each cell consumes one RNG draw.
+fn fill_no_initial_match(rng: &mut DetRng, width: usize, height: usize, colors: usize) -> Board {
+    let mut cells = vec![Cell::Empty; width * height];
+    let at = |r: usize, c: usize| r * width + c;
+    for r in 0..height {
+        for c in 0..width {
+            let mut forbidden = vec![false; colors];
+            if c >= 2 {
+                if let (Cell::Gem(a), Cell::Gem(b)) = (cells[at(r, c - 1)], cells[at(r, c - 2)]) {
+                    if a == b {
+                        forbidden[a as usize] = true;
+                    }
+                }
+            }
+            if r >= 2 {
+                if let (Cell::Gem(a), Cell::Gem(b)) = (cells[at(r - 1, c)], cells[at(r - 2, c)]) {
+                    if a == b {
+                        forbidden[a as usize] = true;
+                    }
+                }
+            }
+            let allowed: Vec<usize> = (0..colors).filter(|g| !forbidden[*g]).collect();
+            let pick = allowed[rng.index(allowed.len())];
+            cells[at(r, c)] = Cell::Gem(u8::try_from(pick).expect("colour fits u8"));
+        }
+    }
+    Board::new(width, height, cells).expect("deal shape is valid")
+}
+
+/// A seeded starting deal: a settled board with **no initial matches** and **at
+/// least one legal swap**, deterministic from `seed`. Retries (advancing the
+/// RNG) if a fill has no legal move — astronomically rare on a real grid, but
+/// the guarantee keeps a daily deal from being a dead start.
+#[must_use]
+pub fn deal(seed: u64, width: usize, height: usize, colors: usize) -> Board {
+    let mut rng = DetRng::from_seed(seed);
+    for _ in 0..64 {
+        let board = fill_no_initial_match(&mut rng, width, height, colors);
+        if has_legal_move(&board) {
+            return board;
+        }
+    }
+    fill_no_initial_match(&mut rng, width, height, colors)
+}
+
 // --- The game ---------------------------------------------------------------
 
 /// A game is a board plus the seeded refill stream, colour count, and score.

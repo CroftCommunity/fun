@@ -13,10 +13,7 @@ impl Game for Counter {
     const VERSION: u32 = 1;
     fn replay(seed: u64, moves: &[u8]) -> Replayed {
         let sum: u64 = moves.iter().map(|&m| u64::from(m)).sum();
-        Replayed {
-            final_hash: format!("{seed}:{sum}"),
-            won: moves.last() == Some(&255),
-        }
+        Replayed::new(format!("{seed}:{sum}"), moves.last() == Some(&255))
     }
 }
 
@@ -75,10 +72,7 @@ impl Game for Solitaire {
         for &mv in moves {
             let _ = game.play_move(mv); // illegal moves are no-ops; the hash still diverges if tampered
         }
-        Replayed {
-            final_hash: state_hash(&game),
-            won: game.is_won(),
-        }
+        Replayed::new(state_hash(&game), game.is_won())
     }
 }
 

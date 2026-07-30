@@ -1,0 +1,99 @@
+//! Typed TS wrapper over the `match3-wasm` raw C-ABI binding. Loads the wasm,
+//! decodes the output buffer, and presents a typed API to the board UI. The
+//! wasm holds the game; this wrapper never re-implements rules.
+
+/** The board as the UI sees it. */
+export interface BoardView {
+  width: number;
+  height: number;
+  /** Row-major gem colours `0..colours` (v1 boards are all gems). */
+  cells: number[][];
+  score: number;
+  movesLeft: number;
+  moveBudget: number;
+  /** Score thresholds for 1★ / 2★ / 3★. */
+  targets: [number, number, number];
+  /** Stars earned at the current score (0–3). */
+  stars: number;
+  /** Whether the score has passed the 1★ threshold. */
+  won: boolean;
+}
+
+/** A swap of two adjacent cells: `[fromRow, fromCol, toRow, toCol]`. */
+export type Swap = [number, number, number, number];
+
+/** Move application status. */
+export type MoveStatus = "applied" | "illegal" | "bad";
+
+interface Exports {
+  memory: WebAssembly.Memory;
+  out_len(): number;
+  new_game(lo: number, hi: number): void;
+  board_json(): number;
+  legal_moves_json(): number;
+  current_hash(): number;
+  score(): number;
+  moves_left(): number;
+  is_won(): number;
+  play_swap(r1: number, c1: number, r2: number, c2: number): number;
+  mark_assistance(): void;
+  outcome_json(declare: number): number;
+}
+
+const STATUS: Record<number, MoveStatus> = { 0: "applied", 1: "illegal", 2: "bad" };
+
+/** A loaded match-3 binding bound to one game. */
+export class Match3 {
+  private constructor(private readonly x: Exports) {}
+
+  static async load(wasmUrl = "/match3.wasm"): Promise<Match3> {
+    const source =
+      typeof fetch === "function"
+        ? await WebAssembly.instantiateStreaming(fetch(wasmUrl), {}).catch(async () =>
+            WebAssembly.instantiate(await (await fetch(wasmUrl)).arrayBuffer(), {}),
+          )
+        : (() => {
+            throw new Error("no fetch available to load wasm");
+          })();
+    const { instance } = await source;
+    return new Match3(instance.exports as unknown as Exports);
+  }
+
+  private read(ptr: number): string {
+    const len = this.x.out_len();
+    const bytes = new Uint8Array(this.x.memory.buffer, ptr, len);
+    return new TextDecoder().decode(bytes);
+  }
+
+  newGame(seed: bigint): void {
+    this.x.new_game(Number(seed & 0xffff_ffffn), Number((seed >> 32n) & 0xffff_ffffn));
+  }
+  board(): BoardView {
+    return JSON.parse(this.read(this.x.board_json())) as BoardView;
+  }
+  legalMoves(): Swap[] {
+    return JSON.parse(this.read(this.x.legal_moves_json())) as Swap[];
+  }
+  currentHash(): string {
+    return JSON.parse(this.read(this.x.current_hash())) as string;
+  }
+  score(): number {
+    return this.x.score();
+  }
+  movesLeft(): number {
+    return this.x.moves_left();
+  }
+  isWon(): boolean {
+    return this.x.is_won() === 1;
+  }
+  markAssistance(): void {
+    this.x.mark_assistance();
+  }
+  outcome(declareAssistance: boolean): unknown {
+    return JSON.parse(this.read(this.x.outcome_json(declareAssistance ? 1 : 0)));
+  }
+
+  play(swap: Swap): MoveStatus {
+    return STATUS[this.x.play_swap(swap[0], swap[1], swap[2], swap[3])]!;
+  }
+}

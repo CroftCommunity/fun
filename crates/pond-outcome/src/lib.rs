@@ -33,10 +33,41 @@ pub struct Replayed {
     pub final_hash: String,
     /// Whether the final state is a win.
     pub won: bool,
+    /// A score-based game's final score (folded into the record for display /
+    /// comparison; still re-derived by replay). `None` for win/lose games.
+    pub score: Option<u64>,
+    /// Stars earned (0–3), for graded score games. `None` when not graded.
+    pub stars: Option<u8>,
 }
 
-/// How a game ended. `Won` is verifiable (replay + `is_won`); `Stuck` /
-/// `Abandoned` are declared metadata.
+impl Replayed {
+    /// A win/lose replay result (no score).
+    #[must_use]
+    pub fn new(final_hash: String, won: bool) -> Self {
+        Self {
+            final_hash,
+            won,
+            score: None,
+            stars: None,
+        }
+    }
+
+    /// A score-graded replay result.
+    #[must_use]
+    pub fn scored(final_hash: String, won: bool, score: u64, stars: u8) -> Self {
+        Self {
+            final_hash,
+            won,
+            score: Some(score),
+            stars: Some(stars),
+        }
+    }
+}
+
+/// How a game ended. `Won` is verifiable (replay + the game's win check);
+/// `Stuck` / `Abandoned` are declared metadata; `Lost` is a completed run that
+/// did not meet its goal (e.g. a match-3 move budget spent under target — also
+/// verifiable by replay).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Outcome {
     /// The game was won.
@@ -45,6 +76,8 @@ pub enum Outcome {
     Stuck,
     /// The game was left unfinished.
     Abandoned,
+    /// The game ran to completion without meeting its goal.
+    Lost,
 }
 
 /// A self-checking outcome record. `verify` re-derives `final_hash` by replay.
@@ -65,6 +98,12 @@ pub struct Record<M> {
     /// Self-declared assistance (undo/hints): `Some(false)` = none declared,
     /// `Some(true)` = assistance declared, `None` = declaration opted out.
     pub assistance: Option<bool>,
+    /// Final score for a score-based game (omitted for win/lose games).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub score: Option<u64>,
+    /// Stars earned (0–3) for a graded game (omitted otherwise).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stars: Option<u8>,
 }
 
 /// The result of verifying a record: whether it holds, with the expected vs
@@ -102,6 +141,8 @@ pub fn attest<G: Game>(
         final_hash: replayed.final_hash,
         result,
         assistance,
+        score: replayed.score,
+        stars: replayed.stars,
     }
 }
 

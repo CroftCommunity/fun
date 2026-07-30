@@ -91,7 +91,11 @@ fn pack_regenerates_byte_identical() {
 #[ignore = "generator — writes games/solitaire/daily-pack.json"]
 fn generate_daily_pack() {
     let pack = generate_pack(PACK_MASTER, PACK_COUNT, PACK_BUDGET, PACK_MAX_SEEDS);
-    assert_eq!(pack.seeds.len(), PACK_COUNT, "expected {PACK_COUNT} winnable seeds");
+    assert_eq!(
+        pack.seeds.len(),
+        PACK_COUNT,
+        "expected {PACK_COUNT} winnable seeds"
+    );
     let bytes = pack_to_doc(&pack).expect("serialize pack");
     let path = pack_path();
     fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
