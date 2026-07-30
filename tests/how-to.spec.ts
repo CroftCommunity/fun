@@ -15,12 +15,18 @@ test("the how-to page renders the solitaire guide with all screenshots loading",
   expect(entries).toBeGreaterThan(0);
   await expect(page.locator(".guide-toc a")).toHaveCount(entries);
 
-  // Every referenced screenshot actually loaded (no broken/missing shots).
+  // Every referenced screenshot actually loaded (no broken/missing shots). Poll
+  // rather than sample once — images may still be decoding right after navigation.
   const shots = page.locator(".guide-shot img");
   const n = await shots.count();
   expect(n).toBeGreaterThan(0);
-  const widths = await shots.evaluateAll((imgs) => imgs.map((i) => (i as HTMLImageElement).naturalWidth));
-  expect(widths.every((w) => w > 0)).toBe(true);
+  await expect
+    .poll(async () =>
+      shots.evaluateAll((imgs) =>
+        imgs.every((i) => (i as HTMLImageElement).complete && (i as HTMLImageElement).naturalWidth > 0),
+      ),
+    )
+    .toBe(true);
 
   // The interaction model is spelled out (the thing players ask first).
   await expect(page.locator("#howto-move")).toContainText(/tap a source, then tap a destination/i);

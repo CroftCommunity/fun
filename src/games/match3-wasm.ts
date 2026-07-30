@@ -2,20 +2,30 @@
 //! decodes the output buffer, and presents a typed API to the board UI. The
 //! wasm holds the game; this wrapper never re-implements rules.
 
+/** The objective the board is being played under. */
+export type Mode = "target-score" | "blockers";
+
 /** The board as the UI sees it. */
 export interface BoardView {
+  /** Which objective this board serves — the UI branches on it. */
+  mode: Mode;
   width: number;
   height: number;
-  /** Row-major gem colours `0..colours` (v1 boards are all gems). */
+  /** Row-major gem colours `0..colours`; `0` where a blocker sits (see `blockers`). */
   cells: number[][];
+  /** Row-major blocker mask: `true` where a blocker cell sits (blockers mode). */
+  blockers: boolean[][];
   score: number;
   movesLeft: number;
   moveBudget: number;
-  /** Score thresholds for 1★ / 2★ / 3★. */
+  /** Score thresholds for 1★ / 2★ / 3★ (target-score mode). */
   targets: [number, number, number];
-  /** Stars earned at the current score (0–3). */
+  /** Stars earned at the current score (0–3, target-score mode). */
   stars: number;
-  /** Whether the score has passed the 1★ threshold. */
+  /** Blockers still on the board and the deal's original count (blockers mode). */
+  blockersRemaining: number;
+  blockersTotal: number;
+  /** Whether the objective is met (1★ target, or every blocker cleared). */
   won: boolean;
 }
 
@@ -33,6 +43,7 @@ interface Exports {
   memory: WebAssembly.Memory;
   out_len(): number;
   new_game(lo: number, hi: number): void;
+  new_blockers_game(lo: number, hi: number): void;
   board_json(): number;
   legal_moves_json(): number;
   current_hash(): number;
@@ -72,6 +83,10 @@ export class Match3 {
 
   newGame(seed: bigint): void {
     this.x.new_game(Number(seed & 0xffff_ffffn), Number((seed >> 32n) & 0xffff_ffffn));
+  }
+  /** Start a clear-the-blockers game on `seed` (deal a winnable blocker board). */
+  newBlockersGame(seed: bigint): void {
+    this.x.new_blockers_game(Number(seed & 0xffff_ffffn), Number((seed >> 32n) & 0xffff_ffffn));
   }
   board(): BoardView {
     return JSON.parse(this.read(this.x.board_json())) as BoardView;

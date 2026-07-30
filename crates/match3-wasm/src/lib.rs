@@ -11,7 +11,10 @@
 //! **Never panics** (a wasm panic aborts the module): every fallible path maps
 //! to a status code or an empty/`"null"` buffer.
 
-use match3_core::{deal, legal_swaps, reference_score, Cell, Game as M3Game};
+use match3_core::{
+    blockers_mode, blockers_remaining, deal, deal_blockers, legal_swaps, reference_score, Cell,
+    Game as M3Game,
+};
 use pond_outcome::{attest, Game, Outcome, Replayed};
 use serde::Serialize;
 
@@ -20,6 +23,17 @@ const WIDTH: usize = 8;
 const HEIGHT: usize = 8;
 const COLORS: usize = 6;
 const MOVE_BUDGET: usize = 20;
+
+/// The two objectives this binding serves. Both share the 8×8 board and the
+/// same `Game` engine; the mode selects the deal, the win check, and how the
+/// outcome record is graded.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Mode {
+    /// Score at least the 1★ target within the move budget (v1).
+    TargetScore,
+    /// Clear every `Blocker` cell within the (larger) move budget.
+    Blockers,
+}
 
 /// Per-deal 1★ / 2★ / 3★ score thresholds, as fractions of the deterministic
 /// greedy reference score for the seed (30% / 60% / 90%): 1★ is a gentle
@@ -38,12 +52,28 @@ fn star_count(score: u64, targets: [u64; 3]) -> u8 {
 
 struct Session {
     seed: u64,
+    mode: Mode,
     game: M3Game,
-    /// Per-deal star thresholds derived from the seed.
+    /// Legal-swap budget for this mode (target-score: 20; blockers: 30).
+    budget: usize,
+    /// Per-deal star thresholds derived from the seed (target-score mode).
     targets: [u64; 3],
+    /// Blockers present in the deal (blockers mode); `0` in target-score mode.
+    blockers_total: u32,
     /// Applied legal swaps `[from_row, from_col, to_row, to_col]` — the outcome proof.
     swaps: Vec<[u8; 4]>,
     assistance_used: bool,
+}
+
+impl Session {
+    /// Whether the objective is met: the 1★ target (target-score) or every
+    /// blocker cleared (blockers).
+    fn won(&self) -> bool {
+        match self.mode {
+            Mode::TargetScore => self.game.score >= self.targets[0],
+            Mode::Blockers => blockers_remaining(&self.game.board) == 0,
+        }
+    }
 }
 
 static mut STATE: Option<Session> = None;
@@ -77,22 +107,55 @@ pub extern "C" fn out_len() -> u32 {
 
 // --- lifecycle ----------
 
-/// Start a fresh game: deal a settled board from `seed` and reset the budget.
-#[no_mangle]
-pub extern "C" fn new_game(seed_lo: u32, seed_hi: u32) {
-    let seed = (u64::from(seed_hi) << 32) | u64::from(seed_lo);
-    let board = deal(seed, WIDTH, HEIGHT, COLORS);
-    let session = Session {
-        seed,
-        game: M3Game::new(board, seed, COLORS),
-        targets: targets_for(seed),
-        swaps: Vec::new(),
-        assistance_used: false,
-    };
+fn set_session(session: Session) {
     // SAFETY: single-threaded; replaces the held session.
     unsafe {
         *core::ptr::addr_of_mut!(STATE) = Some(session);
     }
+}
+
+/// Start a fresh **target-score** game: deal a settled board from `seed` and
+/// reset the budget.
+#[no_mangle]
+pub extern "C" fn new_game(seed_lo: u32, seed_hi: u32) {
+    let seed = (u64::from(seed_hi) << 32) | u64::from(seed_lo);
+    let board = deal(seed, WIDTH, HEIGHT, COLORS);
+    set_session(Session {
+        seed,
+        mode: Mode::TargetScore,
+        game: M3Game::new(board, seed, COLORS),
+        budget: MOVE_BUDGET,
+        targets: targets_for(seed),
+        blockers_total: 0,
+        swaps: Vec::new(),
+        assistance_used: false,
+    });
+}
+
+/// Start a fresh **clear-the-blockers** game: deal a blocker board from `seed`
+/// (winnable — the daily seeds come from the solver pack) with the blockers-mode
+/// budget. The objective is to clear every blocker.
+#[no_mangle]
+pub extern "C" fn new_blockers_game(seed_lo: u32, seed_hi: u32) {
+    let seed = (u64::from(seed_hi) << 32) | u64::from(seed_lo);
+    let board = deal_blockers(
+        seed,
+        blockers_mode::WIDTH,
+        blockers_mode::HEIGHT,
+        blockers_mode::COLORS,
+        blockers_mode::BLOCKERS,
+    );
+    let blockers_total = blockers_remaining(&board);
+    set_session(Session {
+        seed,
+        mode: Mode::Blockers,
+        game: M3Game::new(board, seed, blockers_mode::COLORS),
+        budget: blockers_mode::MOVE_BUDGET,
+        targets: [0; 3],
+        blockers_total,
+        swaps: Vec::new(),
+        assistance_used: false,
+    });
 }
 
 // --- reads (JSON via the output buffer) ----------
@@ -100,15 +163,24 @@ pub extern "C" fn new_game(seed_lo: u32, seed_hi: u32) {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct BoardView {
+    /// `"target-score"` or `"blockers"` — the UI branches on this.
+    mode: &'static str,
     width: usize,
     height: usize,
-    /// Row-major gem colours `0..COLORS` (v1 boards are all gems).
+    /// Row-major gem colours `0..COLORS`; `0` where the cell is a blocker (see
+    /// `blockers`) or an (never at rest) hole.
     cells: Vec<Vec<u8>>,
+    /// Row-major blocker mask: `true` where a `Blocker` sits (blockers mode).
+    blockers: Vec<Vec<bool>>,
     score: u64,
     moves_left: usize,
     move_budget: usize,
+    /// Target-score mode: the 1★/2★/3★ thresholds and stars earned.
     targets: [u64; 3],
     stars: u8,
+    /// Blockers mode: how many blockers remain and how many the deal had.
+    blockers_remaining: u32,
+    blockers_total: u32,
     won: bool,
 }
 
@@ -119,21 +191,31 @@ fn board_view(s: &Session) -> BoardView {
             (0..b.width)
                 .map(|c| match b.get(r, c) {
                     Cell::Gem(g) => g,
-                    _ => 0, // v1: boards are all gems at rest
+                    _ => 0, // blocker / hole — see the `blockers` mask
                 })
                 .collect()
         })
         .collect();
+    let blockers = (0..b.height)
+        .map(|r| (0..b.width).map(|c| b.get(r, c).is_blocker()).collect())
+        .collect();
     BoardView {
+        mode: match s.mode {
+            Mode::TargetScore => "target-score",
+            Mode::Blockers => "blockers",
+        },
         width: b.width,
         height: b.height,
         cells,
+        blockers,
         score: s.game.score,
-        moves_left: MOVE_BUDGET.saturating_sub(s.swaps.len()),
-        move_budget: MOVE_BUDGET,
+        moves_left: s.budget.saturating_sub(s.swaps.len()),
+        move_budget: s.budget,
         targets: s.targets,
         stars: star_count(s.game.score, s.targets),
-        won: s.game.score >= s.targets[0],
+        blockers_remaining: blockers_remaining(b),
+        blockers_total: s.blockers_total,
+        won: s.won(),
     }
 }
 
@@ -186,14 +268,15 @@ pub extern "C" fn score() -> u32 {
 #[no_mangle]
 pub extern "C" fn moves_left() -> u32 {
     session_mut().map_or(0, |s| {
-        u32::try_from(MOVE_BUDGET.saturating_sub(s.swaps.len())).unwrap_or(0)
+        u32::try_from(s.budget.saturating_sub(s.swaps.len())).unwrap_or(0)
     })
 }
 
-/// `1` if the score has passed the 1★ threshold.
+/// `1` if the objective is met (1★ target in target-score mode; every blocker
+/// cleared in blockers mode).
 #[no_mangle]
 pub extern "C" fn is_won() -> u32 {
-    u32::from(session_mut().is_some_and(|s| s.game.score >= s.targets[0]))
+    u32::from(session_mut().is_some_and(|s| s.won()))
 }
 
 // --- moves (status: 0 applied / 1 illegal / 2 bad state or budget spent) ----------
@@ -203,7 +286,7 @@ pub extern "C" fn is_won() -> u32 {
 #[no_mangle]
 pub extern "C" fn play_swap(r1: u32, c1: u32, r2: u32, c2: u32) -> u32 {
     let Some(s) = session_mut() else { return 2 };
-    if s.swaps.len() >= MOVE_BUDGET {
+    if s.swaps.len() >= s.budget {
         return 2; // budget spent
     }
     let from = (r1 as usize, c1 as usize);
@@ -230,7 +313,7 @@ pub extern "C" fn play_swap_traced(r1: u32, c1: u32, r2: u32, c2: u32) -> *const
     let Some(s) = session_mut() else {
         return set_out_str("[]");
     };
-    if s.swaps.len() >= MOVE_BUDGET {
+    if s.swaps.len() >= s.budget {
         return set_out_str("[]"); // budget spent
     }
     let from = (r1 as usize, c1 as usize);
@@ -287,9 +370,35 @@ impl Game for Match3 {
     }
 }
 
+/// The `pond-outcome` [`Game`] impl for **clear-the-blockers** — replay
+/// `(seed, swaps)` by dealing the blocker board and applying the swaps; the win
+/// is verifiable (`Won` ⟺ no blockers remain). The compare metric is
+/// `move_count` (fewer swaps to clear = better); no score/stars.
+struct Match3Blockers;
+impl Game for Match3Blockers {
+    type Move = [u8; 4];
+    const KIND: &'static str = "match3-blockers";
+    const VERSION: u32 = 1;
+    fn replay(seed: u64, moves: &[[u8; 4]]) -> Replayed {
+        let board = deal_blockers(
+            seed,
+            blockers_mode::WIDTH,
+            blockers_mode::HEIGHT,
+            blockers_mode::COLORS,
+            blockers_mode::BLOCKERS,
+        );
+        let mut game = M3Game::new(board, seed, blockers_mode::COLORS);
+        for m in moves {
+            let _ = game.play_move((m[0] as usize, m[1] as usize), (m[2] as usize, m[3] as usize));
+        }
+        Replayed::new(game.state_hash(), blockers_remaining(&game.board) == 0)
+    }
+}
+
 /// The outcome record for the current game, as a `pond-docformat` envelope JSON.
 /// `declare`: 1 = include the (self-declared) assistance flag, 0 = omit it. A
-/// completed run under the 1★ target is `Lost`; at or above it is `Won`.
+/// run that did not meet the objective is `Lost`; a met objective is `Won`. The
+/// envelope `kind` distinguishes the two modes (`match3` / `match3-blockers`).
 #[no_mangle]
 pub extern "C" fn outcome_json(declare: u32) -> *const u8 {
     let Some(s) = session_mut() else {
@@ -300,8 +409,18 @@ pub extern "C" fn outcome_json(declare: u32) -> *const u8 {
     } else {
         None
     };
-    let record = attest::<Match3>(s.seed, s.swaps.clone(), Outcome::Lost, assistance);
-    match pond_outcome::to_doc::<Match3>(&record) {
+    let bytes = match s.mode {
+        Mode::TargetScore => {
+            let record = attest::<Match3>(s.seed, s.swaps.clone(), Outcome::Lost, assistance);
+            pond_outcome::to_doc::<Match3>(&record)
+        }
+        Mode::Blockers => {
+            let record =
+                attest::<Match3Blockers>(s.seed, s.swaps.clone(), Outcome::Lost, assistance);
+            pond_outcome::to_doc::<Match3Blockers>(&record)
+        }
+    };
+    match bytes {
         Ok(bytes) => set_out(bytes),
         Err(_) => set_out_str("null"),
     }

@@ -82,6 +82,33 @@ describe("verify-orchestration (real wasm)", () => {
   });
 });
 
+describe("clear-the-blockers verify-orchestration (real wasm)", () => {
+  let game: Match3;
+  let env: M3Envelope;
+
+  beforeAll(async () => {
+    game = await loadReal();
+    // The committed pack fixture: seed 30 clears in a single swap.
+    game.newBlockersGame(30n);
+    game.play([4, 4, 5, 4]);
+    env = game.outcome(true) as M3Envelope;
+  });
+
+  it("grades a cleared blocker board as a verifiable Won", () => {
+    expect(env.kind).toBe("match3-blockers");
+    expect(env.payload.result).toBe("Won");
+    expect(env.payload.score).toBeUndefined(); // blockers mode has no score/stars
+    const v = verifyRecord(game, env);
+    expect(v.ok).toBe(true);
+    expect(v.actual).toBe(env.payload.final_hash);
+  });
+
+  it("rejects a tampered blocker swap list", () => {
+    const tampered: M3Envelope = { ...env, payload: { ...env.payload, moves: [[0, 0, 0, 1]] } };
+    expect(verifyRecord(game, tampered).ok).toBe(false);
+  });
+});
+
 describe("result screen", () => {
   it("leads with the stars earned when won", () => {
     const el = renderResultScreen(envelope("Won", 2, 1200), { ok: true, expected: "h", actual: "h" }, {

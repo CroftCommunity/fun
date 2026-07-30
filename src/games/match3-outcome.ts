@@ -35,9 +35,13 @@ export interface VerifyResult {
   actual: string;
 }
 
+/** The `pond-outcome` kind for the clear-the-blockers mode. */
+export const BLOCKERS_KIND = "match3-blockers";
+
 /** The minimal binding surface [`verifyRecord`] drives (the `Match3` wrapper satisfies it). */
 export interface Verifier {
   newGame(seed: bigint): void;
+  newBlockersGame(seed: bigint): void;
   play(swap: Swap): unknown;
   currentHash(): string;
   isWon(): boolean;
@@ -56,12 +60,16 @@ export async function decodeRecord(payload: string): Promise<M3Envelope> {
 
 /**
  * Re-verify a record by replaying `(seed, swaps)` through the binding and
- * re-hashing — never trusts the stored `final_hash`. For a `Won` record the
- * replay must also clear the 1★ target.
+ * re-hashing — never trusts the stored `final_hash`. The mode is taken from the
+ * envelope `kind`: target-score replays a normal deal (and a `Won` record must
+ * re-clear the 1★ target); clear-the-blockers replays a blocker deal (and a
+ * `Won` record must re-clear every blocker). Score/stars, when present, are
+ * re-derived too, never trusted.
  */
 export function verifyRecord(v: Verifier, env: M3Envelope): VerifyResult {
   const rec = env.payload;
-  v.newGame(BigInt(rec.seed));
+  if (env.kind === BLOCKERS_KIND) v.newBlockersGame(BigInt(rec.seed));
+  else v.newGame(BigInt(rec.seed));
   for (const swap of rec.moves) v.play(swap);
   const actual = v.currentHash();
   const board = v.board();
