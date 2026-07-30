@@ -37,19 +37,19 @@ export const MATCH3_GUIDE: Guide = {
     },
     {
       testid: "howto-blockers",
-      title: "Two objectives: Target score and Clear blockers",
+      title: "Three objectives: Target score, Clear blockers, Clear jelly",
       toc: "Objectives",
       blocks: [
         {
           kind: "prose",
-          text: "The buttons above the board pick your objective. Target score is the classic mode: bank as many points as you can within your swap budget for one, two, or three stars. Clear blockers gives you a board with locked tiles you cannot swap; a match made next to a blocker chips it away, and you win the moment every blocker is gone.",
+          text: "The buttons above the board pick your objective. Target score is the classic mode: bank as many points as you can within your swap budget for one, two, or three stars. Clear blockers gives you a board with locked tiles you cannot swap; a match made next to a blocker chips it away. Clear jelly coats some squares with jelly; a match made on top of a jellied square scrubs it off. In both clear modes you win the moment the board is clear.",
         },
         {
           kind: "steps",
           items: [
             "Blockers do not move and cannot be swapped — clear the gems beside them.",
-            "A match next to a blocker removes one layer; these boards use single-layer blockers, so one adjacent match clears each.",
-            "You are graded on how few swaps it takes to clear them all — the daily board is always solvable.",
+            "Jellied squares hold ordinary, swappable gems — you clear the jelly by matching the gems sitting on it.",
+            "These boards use single-layer blockers and jelly, so one match clears each; you are graded on how few swaps it takes, and the daily board is always solvable.",
           ],
         },
       ],

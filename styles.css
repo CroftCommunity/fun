@@ -491,9 +491,17 @@ body.fullscreen .play-area {
   border-radius: var(--r-card);
   cursor: default;
 }
-.m3-hud .m3-blockers-left {
+.m3-hud .m3-goal-left {
   color: var(--ink);
   font-weight: 700;
+}
+/* A jellied cell: a normal swappable gem sitting on a translucent jelly backing
+   that a match over it scrubs away. Kept subtle so the gem glyph stays legible. */
+.m3-gem.m3-jellied {
+  background:
+    radial-gradient(circle at 50% 45%, rgb(120 200 255 / 34%), rgb(120 200 255 / 14%)),
+    var(--surface);
+  box-shadow: inset 0 0 0 2px rgb(120 200 255 / 55%);
 }
 @media (max-width: 32rem) {
   .m3-board {

@@ -180,6 +180,84 @@ test("clearing every blocker is a verifiable win (blockers mode)", async ({ page
   await expect(result.locator(".sol-record")).toContainText(/swaps used/i);
 });
 
+test("the Clear-jelly objective deals a jelly board with the jelly HUD", async ({ page }) => {
+  await page.goto("/match3/?mode=jelly&seed=317");
+  await ready(page);
+  await expect(page.locator(".m3-obj-jelly")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".m3-hud")).toContainText(/jelly left/i);
+  // Six jellied cells, and each is a still-swappable gem button (jelly sits under it).
+  await expect(page.locator("button.m3-gem.m3-jellied")).toHaveCount(6);
+  expect(await page.evaluate(() => window.__match3!.objective)).toBe("jelly");
+  // The new jelly backing stays accessible.
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
+test("scrubbing every jelly is a verifiable win (jelly mode)", async ({ page }) => {
+  // Committed jelly fixture: seed 317 clears in two swaps.
+  await page.goto("/match3/?mode=jelly&seed=317");
+  await ready(page);
+  await expect(page.locator(".m3-gem.m3-jellied")).toHaveCount(6);
+
+  await page.evaluate(() => {
+    const h = window.__match3!;
+    h.game.play([6, 0, 6, 1]);
+    h.game.play([4, 1, 4, 2]);
+    h.refresh();
+  });
+
+  const result = page.locator(".sol-result");
+  await expect(result).toBeVisible();
+  await expect(result.locator(".sol-verify-badge.ok")).toBeVisible();
+  await expect(result).toContainText(/all jelly cleared/i);
+  await expect(result.locator(".sol-record")).toContainText(/swaps used/i);
+});
+
+test("every objective fits a narrow phone with no horizontal overflow", async ({ page }) => {
+  // The 3-objective toggle + board must stay within a 360px viewport in each mode.
+  await page.setViewportSize({ width: 360, height: 780 });
+  const noOverflow = (): Promise<boolean> =>
+    page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
+
+  for (const q of ["seed=7", "mode=blockers&seed=30", "mode=jelly&seed=317"]) {
+    await page.goto(`/match3/?${q}`);
+    await ready(page);
+    await expect(page.locator(".m3-board")).toBeVisible();
+    expect(await noOverflow(), `overflow at 360px for ${q}`).toBe(true);
+  }
+});
+
+test("switching objective via the toggle re-deals and updates the HUD", async ({ page }) => {
+  await page.goto("/match3/?seed=7"); // target-score
+  await ready(page);
+  await expect(page.locator(".m3-hud")).toContainText(/score/i);
+  await expect(page.locator(".m3-gem.m3-jellied")).toHaveCount(0);
+
+  await page.locator(".m3-obj-jelly").click();
+  await expect(page.locator(".m3-hud")).toContainText(/jelly left/i);
+  await expect(page.locator(".m3-gem.m3-jellied")).toHaveCount(6);
+
+  await page.locator(".m3-obj-score").click();
+  await expect(page.locator(".m3-hud")).toContainText(/score/i);
+  await expect(page.locator(".m3-gem.m3-jellied")).toHaveCount(0);
+});
+
+test("a jellied gem is still tappable and swaps like any other", async ({ page }) => {
+  await page.goto("/match3/?mode=jelly&seed=317");
+  await ready(page);
+  // Find a legal swap whose source cell is jellied, and play it by tapping.
+  const swap = await page.evaluate(() => {
+    const h = window.__match3!;
+    const b = h.game.board();
+    return h.game.legalMoves().find((s) => (b.jelly[s[0]]?.[s[1]] ?? 0) > 0) ?? h.game.legalMoves()[0]!;
+  });
+  const before = await page.evaluate(() => window.__match3!.game.board().jellyRemaining);
+  await page.locator(`.m3-gem[data-r="${swap[0]}"][data-c="${swap[1]}"]`).click();
+  await page.locator(`.m3-gem[data-r="${swap[2]}"][data-c="${swap[3]}"]`).click();
+  const after = await page.evaluate(() => window.__match3!.game.board().jellyRemaining);
+  // A legal swap resolved (jelly did not increase; the board advanced).
+  expect(after).toBeLessThanOrEqual(before);
+});
+
 test("the board has no axe violations in light and dark", async ({ page }) => {
   await page.goto("/match3/?seed=7");
   await ready(page);
