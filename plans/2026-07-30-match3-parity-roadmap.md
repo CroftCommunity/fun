@@ -38,6 +38,16 @@ build-tool/hold-switch):
   in the browser on the verify path. **LLM/"thinking" subagents are used offline
   only, to *calibrate* which search depths map to weak/medium/strong** — the
   shipped rungs are deterministic searches, never model inference.
+  - **3★ target level (2026-07-30):** **strong-but-attainable**, not near-optimal.
+    Rationale: in Candy Crush 3★ is "played well" (a majority on easy levels, rare
+    on hard), boosted by leftover-move bonuses we don't have — so pinning 3★ to a
+    near-optimal search would feel far harder than the reference. Keep the deep
+    near-optimal search as the "100% reference"; set 3★ at a strong-but-human-
+    reachable rung below it. A free knob (no users), to refine with data.
+  - **Measurement (2026-07-30):** across 24 sampled target-score boards the greedy
+    par averaged 1993, the beam ~2827 (+41%), a wider beam ~3248 (+62%); under the
+    *current* 30/60/90%-of-greedy tiers a greedy- and a beam-level player both
+    earned 3★ on 24/24 — i.e. today's 3★ is trivial, which is what the ladder fixes.
 - **D6 — in-browser AI hint/coach = backlog.** An advisory feature (a live model
   is fine because it never feeds a verified outcome). Not now.
 - **Order (owner-confirmed):** jelly → specials (phased) → par ladder (trails

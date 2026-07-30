@@ -26,6 +26,7 @@ pub struct StepReport {
     /// Matched cells cleared this step (sorted, unique).
     pub cleared: Vec<Pos>,
     pub blocker_layers_removed: u32,
+    pub jelly_layers_removed: u32,
     pub score_gained: u64,
 }
 
@@ -556,6 +557,7 @@ impl Game {
             steps.push(StepReport {
                 cleared: matched,
                 blocker_layers_removed: out.blocker_layers_removed,
+                jelly_layers_removed: out.jelly_layers_removed,
                 score_gained: step_score,
             });
             if trace {

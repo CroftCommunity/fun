@@ -25,6 +25,21 @@ pub mod blockers_mode {
     /// Swap budget: the objective is met by clearing every blocker within this.
     pub const MOVE_BUDGET: usize = 30;
 }
+
+/// Clear-the-jelly mode parameters, shared by the deal, the solver's winnable
+/// pack, and the wasm binding so all three agree on the same daily boards.
+pub mod jelly_mode {
+    /// Board width.
+    pub const WIDTH: usize = 8;
+    /// Board height.
+    pub const HEIGHT: usize = 8;
+    /// Gem colours.
+    pub const COLORS: usize = 6;
+    /// Single-layer jellied cells placed in a deal.
+    pub const JELLY: usize = 6;
+    /// Swap budget: the objective is met by scrubbing every jelly within this.
+    pub const MOVE_BUDGET: usize = 30;
+}
 pub use engine::{
     apply_gravity, blockers_remaining, clear_cells, deal, deal_blockers, deal_jelly, find_matches,
     has_legal_move, jelly_remaining, legal_swaps, reference_score, reference_score_beam, refill,

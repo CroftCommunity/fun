@@ -7,8 +7,13 @@ use std::fs;
 use std::path::PathBuf;
 
 use match3_core::blockers_mode::{BLOCKERS, COLORS, HEIGHT, WIDTH};
-use match3_core::{blockers_remaining, deal_blockers, Game};
-use match3_solver::{find_clear, generate_pack, pack_to_doc, Pack, PackEntry};
+use match3_core::{
+    blockers_remaining, deal_blockers, deal_jelly, jelly_mode, jelly_remaining, Game,
+};
+use match3_solver::{
+    find_clear, find_dejelly, generate_jelly_pack, generate_pack, jelly_pack_to_doc, pack_to_doc,
+    Pack, PackEntry,
+};
 
 // Fixed, so the pack regenerates byte-identically. A full year of clearable
 // seeds (the daily board never repeats within a year).
@@ -108,6 +113,111 @@ fn generate_blockers_pack() {
     fs::write(&path, &bytes).expect("write pack");
     println!(
         "wrote {} seeds (fixture seed {} line {} moves) to {}",
+        pack.seeds.len(),
+        pack.fixture.seed,
+        pack.fixture.moves.len(),
+        path.display()
+    );
+}
+
+// --- clear-the-jelly pack (parity Track A / A2) ---
+
+const JPACK_MASTER: u64 = 0;
+const JPACK_COUNT: usize = 365;
+const JPACK_BUDGET: u64 = 300_000;
+const JPACK_MAX_SEEDS: u64 = 3_000;
+
+fn jelly_pack_path() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../games/match3/jelly-pack.json")
+}
+
+fn jelly_replays_to_clear(entry: &PackEntry) -> bool {
+    let mut game = Game::new(
+        deal_jelly(
+            entry.seed,
+            jelly_mode::WIDTH,
+            jelly_mode::HEIGHT,
+            jelly_mode::COLORS,
+            jelly_mode::JELLY,
+        ),
+        entry.seed,
+        jelly_mode::COLORS,
+    );
+    for &m in &entry.moves {
+        let _ = game.play_move((m[0], m[1]), (m[2], m[3]));
+    }
+    jelly_remaining(&game.board) == 0
+}
+
+fn read_committed_jelly() -> Pack {
+    let bytes = fs::read(jelly_pack_path())
+        .expect("run the `generate_jelly_pack_file` (ignored) test first to create the pack");
+    pond_docformat::read_as(&bytes, "match3-jelly-pack", 1).expect("valid jelly pack v1 envelope")
+}
+
+#[test]
+fn find_dejelly_respects_budget() {
+    assert!(
+        find_dejelly(0, 1).is_none(),
+        "cannot scrub all jelly within a one-node budget"
+    );
+}
+
+#[test]
+fn committed_jelly_pack_is_wellformed() {
+    let pack = read_committed_jelly();
+    assert_eq!(pack.seeds.len(), JPACK_COUNT, "a full year of seeds");
+    let unique: HashSet<u64> = pack.seeds.iter().copied().collect();
+    assert_eq!(unique.len(), pack.seeds.len(), "seeds are unique");
+    assert!(
+        pack.seeds.contains(&pack.fixture.seed),
+        "the fixture seed is one of the pack seeds"
+    );
+    assert!(
+        jelly_replays_to_clear(&pack.fixture),
+        "fixture seed {} line must replay to all-jelly-cleared",
+        pack.fixture.seed
+    );
+}
+
+#[test]
+fn committed_jelly_seeds_are_clearable_spotcheck() {
+    let pack = read_committed_jelly();
+    for &seed in pack.seeds.iter().take(3) {
+        assert!(
+            find_dejelly(seed, JPACK_BUDGET).is_some(),
+            "committed jelly seed {seed} must be clearable within budget"
+        );
+    }
+}
+
+#[test]
+#[ignore = "P10 regeneration drill — runs the solver (slow)"]
+fn jelly_pack_regenerates_byte_identical() {
+    let pack = generate_jelly_pack(JPACK_MASTER, JPACK_COUNT, JPACK_BUDGET, JPACK_MAX_SEEDS);
+    let bytes = jelly_pack_to_doc(&pack).expect("serialize pack");
+    let committed = fs::read(jelly_pack_path()).expect("read committed pack");
+    assert_eq!(
+        bytes, committed,
+        "jelly pack must regenerate byte-identically"
+    );
+}
+
+#[test]
+#[ignore = "generator — writes games/match3/jelly-pack.json"]
+fn generate_jelly_pack_file() {
+    let pack = generate_jelly_pack(JPACK_MASTER, JPACK_COUNT, JPACK_BUDGET, JPACK_MAX_SEEDS);
+    assert_eq!(
+        pack.seeds.len(),
+        JPACK_COUNT,
+        "expected a full year of seeds"
+    );
+    let bytes = jelly_pack_to_doc(&pack).expect("serialize pack");
+    let path = jelly_pack_path();
+    fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+    fs::write(&path, &bytes).expect("write pack");
+    println!(
+        "wrote {} jelly seeds (fixture seed {} line {} moves) to {}",
         pack.seeds.len(),
         pack.fixture.seed,
         pack.fixture.moves.len(),
