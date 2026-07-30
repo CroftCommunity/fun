@@ -13,7 +13,7 @@ const dist = join(root, "dist");
 
 // Game entry pages: "" is the home/drawer page (no game mounted); the rest carry
 // <body data-game> so the chrome knows what to mount.
-const GAME_PAGES = ["", "placeholder", "solitaire", "match3"];
+const GAME_PAGES = ["", "placeholder", "solitaire", "match3", "cribbage"];
 
 // Pre-paint theme resolution: set [data-theme] before first paint so the felt
 // table never flashes the wrong theme. Same rule as src/theme.ts resolveTheme.

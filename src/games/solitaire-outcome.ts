@@ -4,7 +4,10 @@
 //! isolated and unit-tested: it never re-implements rules (verification replays
 //! through the binding, the source of truth) and never trusts a stored hash.
 
+import { decodeShare, encodeShare, dayIndexUTC } from "./share.js";
 import type { SolMove } from "./solitaire-wasm.js";
+
+export { dayIndexUTC } from "./share.js";
 
 /** How a game ended, matching `pond_outcome::Outcome`. */
 export type OutcomeResult = "Won" | "Stuck" | "Abandoned";
@@ -70,58 +73,14 @@ export interface Verifier {
   isWon(): boolean;
 }
 
-const toB64Url = (b64: string): string => b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-const fromB64Url = (s: string): string => s.replace(/-/g, "+").replace(/_/g, "/");
-
-/** Base64 a byte array without blowing the call stack on large move lists. */
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = "";
-  const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-  }
-  return btoa(binary);
-}
-
-function base64ToBytes(b64: string): Uint8Array {
-  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-}
-
-async function pipe(stream: TransformStream, bytes: Uint8Array): Promise<Uint8Array> {
-  // Begin consuming `readable` before writing so the stream's backpressure
-  // never deadlocks the single large write (it can, e.g. in Chromium).
-  const collected = new Response(stream.readable).arrayBuffer();
-  const writer = stream.writable.getWriter();
-  await writer.write(bytes);
-  await writer.close();
-  return new Uint8Array(await collected);
-}
-
-/**
- * Encode an outcome envelope as the base64url share payload (`?r=`). The record
- * is the full, self-verifying document (the recipient re-verifies offline by
- * replay), and a winning move list is long and repetitive, so it is deflated
- * first — a 500-move win shrinks from ~21 KB to ~1.3 KB, keeping the share URL
- * portable.
- */
+/** Encode an outcome envelope as the deflated base64url share payload (`?r=`). */
 export async function encodeRecord(env: OutcomeEnvelope): Promise<string> {
-  const json = new TextEncoder().encode(JSON.stringify(env));
-  const compressed = await pipe(new CompressionStream("deflate-raw"), json);
-  return toB64Url(bytesToBase64(compressed));
+  return encodeShare(env);
 }
 
 /** Decode a base64url share payload back into an outcome envelope. */
 export async function decodeRecord(payload: string): Promise<OutcomeEnvelope> {
-  const compressed = base64ToBytes(fromB64Url(payload));
-  const json = await pipe(new DecompressionStream("deflate-raw"), compressed);
-  return JSON.parse(new TextDecoder().decode(json)) as OutcomeEnvelope;
-}
-
-const MS_PER_DAY = 86_400_000;
-
-/** Whole UTC days since the Unix epoch — the daily-deal rollover boundary. */
-export function dayIndexUTC(now: Date): number {
-  return Math.floor(now.getTime() / MS_PER_DAY);
+  return decodeShare<OutcomeEnvelope>(payload);
 }
 
 /** The seed for `now`'s daily deal: the UTC day index into the seed list (wrapping). */

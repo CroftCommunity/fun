@@ -69,6 +69,12 @@ const PAIRS: ReadonlyArray<readonly [string, string, number]> = [
   ["suit-black", "card", 4.5],
   ["felt-ink", "felt", 3], // labels/hints on the felt table — UI/large floor
   ["focus", "bg", 3], // focus ring is a UI indicator
+  ["gem-0", "surface", 3], // match-3 gem glyphs on their tile — large-glyph floor
+  ["gem-1", "surface", 3],
+  ["gem-2", "surface", 3],
+  ["gem-3", "surface", 3],
+  ["gem-4", "surface", 3],
+  ["gem-5", "surface", 3],
 ];
 
 describe.each(["light", "dark"] as const)("tokens: %s theme clears WCAG AA", (name) => {

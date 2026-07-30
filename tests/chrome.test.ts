@@ -51,14 +51,14 @@ describe("games drawer chrome", () => {
     const ids = [...document.querySelectorAll(".drawer-item")].map((a) =>
       a.getAttribute("data-game-id"),
     );
-    expect(ids).toEqual(["placeholder", "solitaire", "match3"]);
+    expect(ids).toEqual(["placeholder", "solitaire", "match3", "cribbage"]);
     expect(
       document.querySelector('[data-game-id="solitaire"]')?.getAttribute("href"),
     ).toBe("/solitaire/");
   });
 
   it("shows a coming-soon panel for a not-yet-playable game", () => {
-    document.body.dataset.game = "match3";
+    document.body.dataset.game = "cribbage";
     const chrome = boot();
     expect(chrome.mountedModule()).toBeNull();
     expect(document.querySelector(".welcome")?.textContent).toMatch(/coming soon/i);

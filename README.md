@@ -21,7 +21,7 @@ crates/
   solitaire-solver/  build-time Klondike solver + winnable-daily pack generator (Phase S) — green
   pond-docformat/    P2 versioned document envelope (saves / codes / outcomes) — built
   pond-outcome/      P8 verifiable-outcome record (replay → state hash)         — built
-  match3-wasm/       browser binding over match3-core                            [stub]
+  match3-wasm/       browser binding over match3-core (raw C-ABI + serde-JSON)   — built
   solitaire-wasm/    browser binding over solitaire-core (raw C-ABI + serde-JSON) — built
 games/solitaire/     daily-pack.json — a year of winnable daily seeds + a fixture win line (v2, seeds-lean)
 src/                 the games drawer UI (vanilla TS + esbuild); solitaire is playable at /solitaire/
@@ -38,6 +38,14 @@ free-play toggle (`?seed=<n>` for deterministic runs). Undo and an "I'm stuck" c
 with a verification-forward screen — "Cleared clean ✓ — verifiable" — the full `pond-outcome` record,
 moves-to-clear, one-tap re-verify (replays the record through the core), and a `?r=` share link that
 re-verifies the shared result before display (deflated, so even a long win stays a portable URL).
+
+## Match-3 (playable — Candy-Crush-style)
+
+`/match3/` is a target-score-in-moves game: an 8×8 board of coloured, shaped gems (colour-blind safe),
+tap a gem then an adjacent one to swap (only match-making swaps are legal; the core decides and they
+glow), a 20-swap budget graded into 0–3 stars at score thresholds. Moves out → a verifiable score+stars
+record with re-verify + a `?r=` share. Daily board (date seed) + free-play (`?seed=`). v1 uses flat star
+thresholds (no per-deal par yet — see `TODO/match3.md`). Plan: `plans/2026-07-30-match3-playable.md`.
 
 ## Identity (light/dark)
 

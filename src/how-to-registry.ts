@@ -3,9 +3,11 @@
 
 import type { Guide } from "./how-to.js";
 import { SOLITAIRE_GUIDE } from "./games/solitaire-howto.js";
+import { MATCH3_GUIDE } from "./games/match3-howto.js";
 
 export const GUIDES: Readonly<Record<string, Guide>> = {
   solitaire: SOLITAIRE_GUIDE,
+  match3: MATCH3_GUIDE,
 };
 
 /** The guide for a game id, or undefined if none is written yet. */

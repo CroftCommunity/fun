@@ -398,6 +398,78 @@ body.fullscreen .play-area {
   padding: 1rem 0;
 }
 
+/* --- match-3 board --- */
+.m3-hud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  align-items: baseline;
+  margin-bottom: 1rem;
+  color: var(--ink-muted);
+}
+.m3-hud .m3-score {
+  color: var(--ink);
+  font-weight: 700;
+}
+.m3-hud .m3-stars {
+  color: var(--accent);
+  letter-spacing: 0.1em;
+}
+.m3-board {
+  --m3-gem: 2.6rem;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.6rem;
+  background: var(--felt);
+  border-radius: var(--radius);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 12%), 0 2px 8px rgb(0 0 0 / 18%);
+}
+.m3-row {
+  display: flex;
+  gap: 0.3rem;
+}
+.m3-gem {
+  width: var(--m3-gem);
+  height: var(--m3-gem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--m3-gem) * 0.55);
+  line-height: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  cursor: pointer;
+}
+.m3-gem.gem-0 {
+  color: var(--gem-0);
+}
+.m3-gem.gem-1 {
+  color: var(--gem-1);
+}
+.m3-gem.gem-2 {
+  color: var(--gem-2);
+}
+.m3-gem.gem-3 {
+  color: var(--gem-3);
+}
+.m3-gem.gem-4 {
+  color: var(--gem-4);
+}
+.m3-gem.gem-5 {
+  color: var(--gem-5);
+}
+.m3-gem.selected {
+  outline: 3px solid var(--focus);
+  outline-offset: 1px;
+}
+@media (max-width: 32rem) {
+  .m3-board {
+    --m3-gem: 1.9rem;
+  }
+}
+
 /* --- How to play guide (the reusable game user-guide standard) --- */
 .play-area .panel {
   max-width: 44rem;

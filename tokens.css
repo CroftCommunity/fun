@@ -39,6 +39,15 @@
   --suit-red: #b3123b;    /* ♦ ♥ on a card           (card 6.41:1) */
   --suit-black: #1b201c;  /* ♣ ♠ on a card           (card 15.47:1)*/
 
+  /* match-3 gem glyphs, each also carrying a distinct shape (colour-blind
+     safe). Rendered on --surface tiles; every one clears ≥4.8:1 there. */
+  --gem-0: #c62828;       /* red     (surface 5.26:1) */
+  --gem-1: #15539f;       /* blue    (surface 7.09:1) */
+  --gem-2: #2e7d32;       /* green   (surface 4.80:1) */
+  --gem-3: #7b1fa2;       /* purple  (surface 7.67:1) */
+  --gem-4: #8a5a00;       /* amber   (surface 5.54:1) */
+  --gem-5: #00697a;       /* teal    (surface 5.95:1) */
+
   /* Type roles (self-hostable display + system UI fallback). */
   --font-display: "Fredoka", "Baloo 2", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -73,6 +82,14 @@
   --card: #ece4d3;        /* playing-card face (light, as real cards) */
   --suit-red: #a8113a;    /* ♦ ♥ on a card           (card 5.92:1) */
   --suit-black: #1b201c;  /* ♣ ♠ on a card           (card 13.07:1)*/
+
+  /* match-3 gems, lightened for the dark tile surface (≥6:1 there). */
+  --gem-0: #ef7a7a;       /* red     (surface 6.06:1) */
+  --gem-1: #7fb0f0;       /* blue    (surface 7.34:1) */
+  --gem-2: #7fce85;       /* green   (surface 8.67:1) */
+  --gem-3: #c99ae0;       /* purple  (surface 7.19:1) */
+  --gem-4: #e0b24a;       /* amber   (surface 8.33:1) */
+  --gem-5: #58c4d6;       /* teal    (surface 8.05:1) */
 
   --theme-color: #123f2b;
 }
