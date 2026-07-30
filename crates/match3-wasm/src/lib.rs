@@ -3,27 +3,35 @@
 //!
 //! The module holds **one game** (one board per tab). The objective is
 //! Candy-Crush-style: a fixed **move budget** of legal swaps; when it runs out
-//! the score is graded into 0–3 **stars** at flat thresholds, and a run "passes"
-//! (`Won`) at ≥1★. Reads (board / legal swaps / hash / outcome) are JSON written
+//! the score is graded into 0–3 **stars** at per-deal thresholds (derived from a
+//! deterministic reference score for the seed), and a run "passes" (`Won`) at
+//! ≥1★. Reads (board / legal swaps / hash / outcome) are JSON written
 //! to one output buffer the host reads via `out_ptr`/`out_len`.
 //!
 //! **Never panics** (a wasm panic aborts the module): every fallible path maps
 //! to a status code or an empty/`"null"` buffer.
 
-use match3_core::{deal, legal_swaps, Cell, Game as M3Game};
+use match3_core::{deal, legal_swaps, reference_score, Cell, Game as M3Game};
 use pond_outcome::{attest, Game, Outcome, Replayed};
 use serde::Serialize;
 
-// --- level config (provisional — tunable balance, see plans/2026-07-30-match3-playable.md) ---
+// --- level config (see plans/2026-07-30-match3-playable.md) ---
 const WIDTH: usize = 8;
 const HEIGHT: usize = 8;
 const COLORS: usize = 6;
 const MOVE_BUDGET: usize = 20;
-/// Score thresholds for 1★ / 2★ / 3★. Flat for v1.
-const STARS: [u64; 3] = [500, 1000, 1600];
 
-fn star_count(score: u64) -> u8 {
-    u8::try_from(STARS.iter().filter(|&&t| score >= t).count()).unwrap_or(3)
+/// Per-deal 1★ / 2★ / 3★ score thresholds, as fractions of the deterministic
+/// greedy reference score for the seed (30% / 60% / 90%): 1★ is a gentle
+/// "cleared it" bar, 3★ near the greedy reference. A pure function of the seed,
+/// so play-time and verify-time agree without a shipped par table.
+fn targets_for(seed: u64) -> [u64; 3] {
+    let par = reference_score(seed, WIDTH, HEIGHT, COLORS, MOVE_BUDGET).max(10);
+    [par * 3 / 10, par * 3 / 5, par * 9 / 10]
+}
+
+fn star_count(score: u64, targets: [u64; 3]) -> u8 {
+    u8::try_from(targets.iter().filter(|&&t| score >= t).count()).unwrap_or(3)
 }
 
 // --- the held session ----------
@@ -31,6 +39,8 @@ fn star_count(score: u64) -> u8 {
 struct Session {
     seed: u64,
     game: M3Game,
+    /// Per-deal star thresholds derived from the seed.
+    targets: [u64; 3],
     /// Applied legal swaps `[from_row, from_col, to_row, to_col]` — the outcome proof.
     swaps: Vec<[u8; 4]>,
     assistance_used: bool,
@@ -75,6 +85,7 @@ pub extern "C" fn new_game(seed_lo: u32, seed_hi: u32) {
     let session = Session {
         seed,
         game: M3Game::new(board, seed, COLORS),
+        targets: targets_for(seed),
         swaps: Vec::new(),
         assistance_used: false,
     };
@@ -120,9 +131,9 @@ fn board_view(s: &Session) -> BoardView {
         score: s.game.score,
         moves_left: MOVE_BUDGET.saturating_sub(s.swaps.len()),
         move_budget: MOVE_BUDGET,
-        targets: STARS,
-        stars: star_count(s.game.score),
-        won: s.game.score >= STARS[0],
+        targets: s.targets,
+        stars: star_count(s.game.score, s.targets),
+        won: s.game.score >= s.targets[0],
     }
 }
 
@@ -182,7 +193,7 @@ pub extern "C" fn moves_left() -> u32 {
 /// `1` if the score has passed the 1★ threshold.
 #[no_mangle]
 pub extern "C" fn is_won() -> u32 {
-    u32::from(session_mut().is_some_and(|s| s.game.score >= STARS[0]))
+    u32::from(session_mut().is_some_and(|s| s.game.score >= s.targets[0]))
 }
 
 // --- moves (status: 0 applied / 1 illegal / 2 bad state or budget spent) ----------
@@ -235,7 +246,13 @@ impl Game for Match3 {
             );
         }
         let s = game.score;
-        Replayed::scored(game.state_hash(), s >= STARS[0], s, star_count(s))
+        let targets = targets_for(seed);
+        Replayed::scored(
+            game.state_hash(),
+            s >= targets[0],
+            s,
+            star_count(s, targets),
+        )
     }
 }
 

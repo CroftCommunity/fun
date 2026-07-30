@@ -16,9 +16,11 @@ star thresholds). Plan: `plans/2026-07-30-match3-playable.md`. Standards:
       target-score run, share round-trip, axe both themes, 360px fit).
 
 ## Follow-ups
-- [ ] **Tune star thresholds** — currently flat (500/1000/1600) for every board,
-      so luck varies. Estimate a per-deal par (a build-time greedy/solver pass)
-      to make it fair; or keep flat and just retune the numbers.
+- [x] **Per-deal star targets** — thresholds now scale to a deterministic greedy
+      reference score for the seed (40/66/100%), re-derived at verify time so
+      shared score/stars are trustless. No shipped par table needed.
+- [ ] **Tune the reference/fractions** — greedy is a rough par; a stronger
+      reference (beam/lookahead) or retuned fractions would sharpen fairness.
 - [ ] **Variant objectives** (deferred balance decisions): clear-the-blockers /
       jelly / ingredients — the engine already models blockers.
 - [ ] **Specials** (striped / wrapped / colour-bomb) and bigger cascades.

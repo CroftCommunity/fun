@@ -41,6 +41,7 @@ export interface Verifier {
   play(swap: Swap): unknown;
   currentHash(): string;
   isWon(): boolean;
+  board(): { score: number; stars: number };
 }
 
 /** Encode a match-3 outcome envelope as the `?r=` share payload. */
@@ -63,7 +64,12 @@ export function verifyRecord(v: Verifier, env: M3Envelope): VerifyResult {
   v.newGame(BigInt(rec.seed));
   for (const swap of rec.moves) v.play(swap);
   const actual = v.currentHash();
+  const board = v.board();
   const hashOk = actual === rec.final_hash;
   const resultOk = rec.result !== "Won" || v.isWon();
-  return { ok: hashOk && resultOk, expected: rec.final_hash, actual };
+  // The score/stars are re-derived here, not trusted from the record — a shared
+  // claim of "N points, T stars" is only accepted if the replay reproduces it.
+  const scoreOk = rec.score === undefined || rec.score === board.score;
+  const starsOk = rec.stars === undefined || rec.stars === board.stars;
+  return { ok: hashOk && resultOk && scoreOk && starsOk, expected: rec.final_hash, actual };
 }

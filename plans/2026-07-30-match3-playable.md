@@ -2,7 +2,9 @@
 
 **Status:** ✅ **SHIPPED (v1) 2026-07-30.** `/match3/` is playable: an 8×8 / 6-colour
 board, tap-a-gem→tap-adjacent to swap (core-driven legal-swap glow), a 20-swap
-budget graded into 0–3 stars at flat 500/1000/1600 thresholds, a verifiable
+budget graded into 0–3 stars at **per-deal** thresholds (fractions of a
+deterministic greedy reference score for the seed; re-derived at verify time so
+shared score/stars are trustless), a verifiable
 score+stars record with re-verify + `?r=` share, daily (date-seed) + free-play,
 hints/settings, and a How-to-play guide. Gate green: Rust 56 + fmt + clippy;
 vitest 78 / Playwright 31 (axe both themes). Follow-ups (par tuning, variants,

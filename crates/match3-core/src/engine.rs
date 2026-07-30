@@ -276,6 +276,39 @@ pub fn deal(seed: u64, width: usize, height: usize, colors: usize) -> Board {
     fill_no_initial_match(&mut rng, width, height, colors)
 }
 
+/// A greedy reference playout: from the `seed` deal, play the highest-scoring
+/// legal swap each turn for `budget` swaps, and return the total score. Used to
+/// set **per-deal** star targets (fractions of this) — a deterministic function
+/// of the seed, so play-time and verify-time agree without a shipped par table.
+#[must_use]
+pub fn reference_score(
+    seed: u64,
+    width: usize,
+    height: usize,
+    colors: usize,
+    budget: usize,
+) -> u64 {
+    let mut game = Game::new(deal(seed, width, height, colors), seed, colors);
+    for _ in 0..budget {
+        let swaps = legal_swaps(&game.board);
+        let Some(&first) = swaps.first() else { break };
+        // Pick the swap with the greatest immediate score (probe on a clone);
+        // ties resolve to the earliest in `legal_swaps` order (deterministic).
+        let mut best = first;
+        let mut best_gain = 0u64;
+        for &(from, to) in &swaps {
+            let mut probe = game.clone();
+            let gain = probe.play_move(from, to).score_gained;
+            if gain > best_gain {
+                best_gain = gain;
+                best = (from, to);
+            }
+        }
+        game.play_move(best.0, best.1);
+    }
+    game.score
+}
+
 // --- The game ---------------------------------------------------------------
 
 /// A game is a board plus the seeded refill stream, colour count, and score.

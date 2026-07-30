@@ -75,7 +75,7 @@ export const MATCH3_GUIDE: Guide = {
         },
         {
           kind: "note",
-          text: "Score targets are the same for every board for now, so a board can be luckier than another. That's a known trade-off — see the plan — and will be tuned.",
+          text: "Star targets are tuned per board: each deal's thresholds scale to what a reference playout scores on it, so a richer board asks for more. The three targets show in the bar above the board.",
         },
       ],
     },
