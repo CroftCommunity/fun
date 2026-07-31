@@ -3,7 +3,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::board::{Board, Cell, SpecialKind};
+use crate::board::{Board, Cell, Obstacle, SpecialKind};
 use crate::hash::state_hash;
 use crate::rng::DetRng;
 
@@ -908,6 +908,9 @@ pub fn clear_cells(board: &mut Board, matched: &[Pos]) -> ClearOutcome {
             blocker_layers_removed += 1;
             if l <= 1 {
                 board.set(r, c, Cell::Empty);
+                // A cleared blocker holds no obstacle flavour (Track D, T7) — the
+                // marker is scrubbed with it (its hole then refills as a plain gem).
+                board.set_obstacle(r, c, None);
             } else {
                 board.set(r, c, Cell::Blocker(l - 1));
             }
@@ -1276,6 +1279,53 @@ pub fn deal_ingredients(
 #[must_use]
 pub fn ingredients_remaining(board: &Board) -> u32 {
     u32::try_from(board.cells().iter().filter(|c| c.is_ingredient()).count()).unwrap_or(u32::MAX)
+}
+
+/// A seeded starting deal for the **clear-the-obstacles** objective (Track D, T7):
+/// a settled, no-initial-match, live board with `licorice` single-layer licorice
+/// blockers and `meringue` durable multi-layer (2–3) meringue blockers on distinct
+/// cells, deterministic from `seed`. Both are `Blocker` cells carrying an obstacle
+/// flavour, cleared by the proven adjacency mechanic; the objective is met when no
+/// blocker remains ([`blockers_remaining`]). Redraws (advancing the RNG) if a
+/// placement leaves no legal move (mirrors [`deal_blockers`]).
+#[must_use]
+pub fn deal_obstacles(
+    seed: u64,
+    width: usize,
+    height: usize,
+    colors: usize,
+    licorice: usize,
+    meringue: usize,
+) -> Board {
+    let mut rng = DetRng::from_seed(seed);
+    let cell_count = width * height;
+    let n = (licorice + meringue).min(cell_count);
+    for _ in 0..64 {
+        let mut board = fill_no_initial_match(&mut rng, width, height, colors);
+        // Distinct cell positions, drawn in RNG order (dedup by retrying a draw).
+        let mut chosen: BTreeSet<usize> = BTreeSet::new();
+        while chosen.len() < n {
+            chosen.insert(rng.index(cell_count));
+        }
+        // The first `licorice` chosen cells (scan order) become single-layer
+        // licorice; the rest become meringue with 2–3 layers (a fixed-order RNG
+        // draw per meringue, so the deal stays byte-identically reproducible).
+        for (i, &idx) in chosen.iter().enumerate() {
+            let (r, c) = (idx / width, idx % width);
+            if i < licorice {
+                board.set(r, c, Cell::Blocker(1));
+                board.set_obstacle(r, c, Some(Obstacle::Licorice));
+            } else {
+                let layers = 2 + u8::try_from(rng.index(2)).unwrap_or(0); // 2 or 3
+                board.set(r, c, Cell::Blocker(layers));
+                board.set_obstacle(r, c, Some(Obstacle::Meringue));
+            }
+        }
+        if has_legal_move(&board) {
+            return board;
+        }
+    }
+    fill_no_initial_match(&mut rng, width, height, colors)
 }
 
 /// A greedy reference playout: from the `seed` deal, play the highest-scoring

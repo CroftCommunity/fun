@@ -177,27 +177,27 @@ deliverables are built in sequence: **Checklist (Phases 1–4)**, then **Obstacl
   (both projects incl. axe) + the narrow-phone overflow sweep extended to checklist.
 - [x] Guide shots regenerated for the new 5-button toggle (`match3-board`, `match3-select`);
   other games' shots reverted.
-- [ ] Deploy + live-smoke `?mode=checklist` on fun.croft.ing (standalone Playwright) —
-  after this push deploys.
+- [x] Deploy + live-smoke `?mode=checklist` on fun.croft.ing (standalone Playwright):
+  targets colour-3 ×12 / striped ×2 / wrapped ×1; the seed-3 fixture wins (`isWon`), the
+  result re-verifies ("Checklist complete in 2 swaps — verifiable"), zero page errors.
 
-### Phase 5 (obstacles core) — flavour overlay, deal, hash section, vectors
-- [ ] `board.rs` — an `Obstacle { Licorice, Meringue }` enum + a parallel
-  `obstacle: Vec<Option<Obstacle>>` overlay (set only on a `Blocker`; scrubbed on clear/
-  refill); `obstacle_at`/`set_obstacle`; a `from_rows`/`to_rows` authoring convention or a
-  `from_rows_with_obstacles` for vectors; obstacle hash tags (`Licorice 0x01 / Meringue
-  0x02`).
-- [ ] `hash.rs` — append `"o\x00" || per-cell obstacle_tag(u8)` **only when any cell carries
-  an obstacle**, after the special section. Gem/jelly/special-only boards unchanged.
-- [ ] `engine.rs` — `deal_obstacles(seed, w, h, colors, licorice, meringue)` (normal fill,
-  place `licorice` single-layer Licorice blockers + `meringue` multi-layer (2–3) Meringue
-  blockers in distinct cells, redraw if no legal move); the overlay travels nowhere
-  (blockers are fixed) and is scrubbed when its blocker clears.
-- [ ] `lib.rs` `obstacles_mode` constants (LICORICE, MERINGUE counts, MERINGUE layers,
-  MOVE_BUDGET=30). Win = `blockers_remaining == 0` (both are blockers — reused).
-- [ ] `RULES.md` — Board model (obstacle flavour) + T7 + the hash section.
-- [ ] tests: meringue takes N adjacent-match steps to clear (multi-hit); licorice clears in
-  one; the deal places both with a legal move; the overlay scrubs on clear; a board with no
-  obstacle hashes unchanged; obstacle tags stable. Golden vector 26 (obstacles).
+### Phase 5 (obstacles core) — flavour overlay, deal, hash section, vector — DONE
+- [x] `board.rs` — `Obstacle { Licorice, Meringue }` + a parallel `obstacle` overlay (set
+  only on a `Blocker`); `obstacle_at`/`set_obstacle`; `from_rows_with_obstacles` for vectors;
+  `Obstacle::tag` (`Licorice 0x01 / Meringue 0x02`).
+- [x] `hash.rs` — append `"o\x00" || per-cell obstacle_tag(u8)` only when a blocker is
+  flavoured, after the special section. Gem/jelly/special-only boards unchanged (144 core
+  tests + all golden vectors stayed green — no re-lock).
+- [x] `engine.rs` — `deal_obstacles(seed, w, h, colors, licorice, meringue)`; `clear_cells`
+  scrubs the flavour when a blocker clears.
+- [x] `lib.rs` `obstacles_mode` (LICORICE=3, MERINGUE=3 @ 2–3 layers, MOVE_BUDGET=30); win =
+  `blockers_remaining == 0` (both flavours are blockers — reused).
+- [x] `RULES.md` — Board model (obstacle flavour) + T7 + the hash section.
+- [x] tests (`tests/obstacles.rs`): meringue multi-hit / licorice single-hit; the deal places
+  both with a legal move; the overlay scrubs on clear; no-obstacle board hashes unchanged;
+  flavour distinguishes the hash; tags stable. Golden **vector 25** (`obstacle-clear`:
+  licorice chipped by an adjacent match, score 50 = 30 gems + 20 layer; meringue untouched;
+  locked hash) — the vector harness gained an `obstacle` grid.
 
 ### Phase 6 (obstacles solver + pack) — `find_obstacles` + winnable-daily pack
 - [ ] `match3-solver` — `find_obstacles` (reuse `search`, `won` = `blockers_remaining==0`,
@@ -244,6 +244,18 @@ deliverables are built in sequence: **Checklist (Phases 1–4)**, then **Obstacl
   by a fish" (B4). Meringue/licorice ship as adjacency-cleared flavoured blockers.
 
 ## Review Log
+### Phase 5 (obstacles core) complete — 2026-07-31
+Green: licorice + meringue ship as distinct, mechanically-separate obstacle tiles via a
+blocker-flavour overlay (`Obstacle { Licorice, Meringue }`), additive to the hash (`o\x00`
+section, only when a blocker is flavoured — after special) so no pre-obstacle vector
+re-locked (144 core tests + all golden vectors green). Both clear by the proven adjacency
+mechanic; meringue is durable (2–3 layers, the first shipped layered-blocker path in play),
+licorice single-hit. `deal_obstacles` places both; `clear_cells` scrubs the flavour when a
+blocker clears; `obstacles_mode` (3+3, budget 30) reuses `blockers_remaining` as the win.
+Golden vector 25 (`obstacle-clear`) locks the licorice-chip (score 50) + the obstacle hash
+section; the vector harness gained an `obstacle` grid. Finer canon interactions (blast
+destroys licorice, spreading) deferred + recorded (T7). fmt + clippy clean.
+
 ### Phase 4 (checklist UI + how-to + e2e) complete — 2026-07-31
 Green: the Orders (checklist) objective is playable at `?mode=checklist` with an "Orders"
 toggle + a goal-tally HUD (colour shape-glyph + striped + wrapped, each `n/target` ticked ✓

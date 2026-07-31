@@ -35,6 +35,10 @@ balance decision is smuggled in.
     unlike a blocker — **falls** with gravity and **exits** when it reaches the bottom row (T5).
     The clear-the-ingredients objective is met when none remain.
   - `Empty` — a transient hole that exists only mid-resolution (between clear and refill).
+- **Obstacle flavour** (Track D, T7) is a per-cell overlay on `Blocker` cells (`None` = a plain
+  blocker): `Licorice` or `Meringue`. It is orthogonal to matching/legality (an obstacle is a blocker to
+  the core), governs only rendering identity + the deal + hashing, and is scrubbed when its blocker
+  clears. A board with no flavoured blocker hashes exactly as before (additive).
 - A **settled** board has no `Empty` cells (every non-blocker cell holds a `Gem`) **and no match** —
   which, from B4, includes no **2×2 square** (the deal's fill forbids the colour that would complete a 2×2,
   and the deadlock reshuffle's "no rest-matches" reads `find_matches`, so a settled board never starts with
@@ -362,6 +366,26 @@ depends on what the run has produced, not on any single board state.
   off-hash report fields, it adds nothing to `state_hash`; the existing gem-clear / specials-creation corpus
   already locks the underlying mechanics (a checklist-relevant board hashes exactly as its plain-gem twin).
 
+### T7 — Obstacle families (licorice + meringue, Track D)
+
+The clear-the-obstacles objective adds two **distinct, mechanically-separate obstacle tiles** beyond the
+plain blocker, both realized as `Blocker` cells carrying an obstacle **flavour** (see the Board model):
+
+- **Licorice** — a **single-hit** tile (dealt with one layer): one adjacent match clears it.
+- **Meringue** — a **durable multi-hit** tile (dealt with **2–3** layers): each adjacent-match step chips
+  one layer (T2), so it takes several matches to clear. This is the first shipped daily that exercises the
+  layered-blocker path in play.
+- **Clear mechanic:** both clear by the **proven adjacency rule** (T2) — a matched cell orthogonally
+  adjacent chips one layer; at zero layers the cell becomes `Empty` and its flavour is scrubbed. A blocker
+  is never `Gem`, so obstacles never match, swap, or move (T3 shelves).
+- **Deal:** `deal_obstacles` draws a normal gem fill, then places `LICORICE` single-layer licorice and
+  `MERINGUE` durable (2–3 layer) meringue blockers on distinct cells (the meringue layer count is a fixed-
+  order RNG draw), redrawing if a placement leaves no legal move (mirrors `deal_blockers`).
+- **Win:** `blockers_remaining == 0` (both flavours are blockers — the clear-blockers win check is reused).
+- **Deferred (revisable):** finer canon interactions — a direct special blast destroying a licorice outright,
+  spreading/growth — are deferred (like direct blocker-eating by a fish, B4). Obstacles ship as
+  adjacency-cleared flavoured blockers.
+
 ## State hash (the verifiable-outcome anchor)
 
 `state_hash` = lowercase hex of `SHA-256` over the canonical encoding:
@@ -374,17 +398,19 @@ depends on what the run has produced, not on any single board state.
              Gem(c)       -> 0x01, c(u8)
              Blocker(l)   -> 0x02, l(u8)
              Ingredient   -> 0x03            (Track D; additive — no pre-ingredient board carries it)
-        || IF any cell is jellied:     "j\x00" || for each cell: jelly_layers(u8)
-        || IF any cell has a special:  "s\x00" || for each cell: special_tag(u8)
+        || IF any cell is jellied:      "j\x00" || for each cell: jelly_layers(u8)
+        || IF any cell has a special:   "s\x00" || for each cell: special_tag(u8)
+        || IF any blocker is flavoured: "o\x00" || for each cell: obstacle_tag(u8)   (Track D, T7)
 ```
 
 where `special_tag` is `0x00` (no special), `0x01` `StripedH`, `0x02` `StripedV`, `0x03` `Wrapped`,
-`0x04` `ColorBomb`, `0x05` `Fish` (never renumber a shipped tag — it is part of the fingerprint).
+`0x04` `ColorBomb`, `0x05` `Fish`, and `obstacle_tag` is `0x00` (no obstacle), `0x01` `Licorice`,
+`0x02` `Meringue` (never renumber a shipped tag — it is part of the fingerprint).
 
-Both overlay sections are appended **only when some cell carries** that overlay, so a gem-only board hashes
-exactly as it did before the overlays existed — every pre-jelly / pre-specials golden vector stays valid
-without a re-lock. The order is fixed: cells, then the jelly section (if any), then the special section (if
-any), so a jelly-only board is unaffected by the special section and vice-versa.
+Each overlay section is appended **only when some cell carries** that overlay, so a gem-only board hashes
+exactly as it did before the overlays existed — every pre-jelly / pre-specials / pre-obstacle golden vector
+stays valid without a re-lock. The order is fixed: cells, then jelly (if any), then special (if any), then
+obstacle (if any), so each section is unaffected by the others' presence.
 
 Replaying `(seed, initial board, moves)` MUST reproduce the identical `state_hash` on every run and on every
 build target. That is the property P8 (score verification) and the follow-chain leaderboard later depend on.

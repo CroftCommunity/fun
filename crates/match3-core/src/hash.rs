@@ -2,7 +2,7 @@
 
 use sha2::{Digest, Sha256};
 
-use crate::board::{Board, Cell, SpecialKind};
+use crate::board::{Board, Cell, Obstacle, SpecialKind};
 
 /// Lowercase-hex SHA-256 over the canonical encoding in RULES.md.
 pub fn state_hash(board: &Board, colors: usize, draws: u64, score: u64) -> String {
@@ -39,6 +39,17 @@ pub fn state_hash(board: &Board, colors: usize, draws: u64, score: u64) -> Strin
         h.update(b"s\x00");
         for s in board.special() {
             h.update([s.map_or(0x00, SpecialKind::tag)]);
+        }
+    }
+    // Obstacle-flavour overlay (Track D, T7) — appended ONLY when some blocker
+    // carries a flavour (the same append-only-when-present rule), after the special
+    // section, so every pre-obstacle board (all other modes + vectors) hashes
+    // exactly as before. The `o\x00` marker + one tag byte per cell (`0x00` = none;
+    // see `Obstacle::tag`).
+    if board.obstacle().iter().any(std::option::Option::is_some) {
+        h.update(b"o\x00");
+        for o in board.obstacle() {
+            h.update([o.map_or(0x00, Obstacle::tag)]);
         }
     }
     hex::encode(h.finalize())
