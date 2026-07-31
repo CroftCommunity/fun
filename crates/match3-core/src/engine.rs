@@ -304,13 +304,18 @@ fn fires_on_match(kind: Option<SpecialKind>) -> bool {
 }
 
 /// Whether a special kind fires **when swapped** (swap-activation legality) —
-/// striped (B1.2) and wrapped (B2.2). Colour-bomb swap-activation is B3. Kept
-/// separate from [`fires_on_match`] so a phase can add a kind's match-activation
-/// without also changing swap legality (which re-locks packs — B1's pattern).
+/// striped (B1.2), wrapped (B2.2), and colour bomb (B3). Kept separate from
+/// [`fires_on_match`] because a colour bomb fires **only** by swap (it is
+/// colourless — never match-fired), so it is in this predicate but not that one.
 fn fires_on_swap(kind: Option<SpecialKind>) -> bool {
     matches!(
         kind,
-        Some(SpecialKind::StripedH | SpecialKind::StripedV | SpecialKind::Wrapped)
+        Some(
+            SpecialKind::StripedH
+                | SpecialKind::StripedV
+                | SpecialKind::Wrapped
+                | SpecialKind::ColorBomb
+        )
     )
 }
 
@@ -369,7 +374,18 @@ struct Activation {
 /// - Surviving (`pending`) wrapped are subtracted from `clear`, so a simultaneous
 ///   blast over a survivor's cell cannot destroy it (the "just-created special
 ///   survives" protection, applied to survive-first-blast wrapped).
-fn activate(board: &Board, matched: &[Pos], seed: &[Pos], reblast: &[Pos]) -> Activation {
+/// - **Colour bomb** (B3), one `(pos, target)` per firing bomb: clears its own cell
+///   (consumed) plus **every cell holding `Gem(target)`**, and enqueues any
+///   striped/wrapped of that colour so it chains. A colour bomb fires only from
+///   `bombs` (swap-seeded) — it is not matched, and a colour-clear that sweeps up
+///   another colour bomb does not detonate it (that is a B5 combo).
+fn activate(
+    board: &Board,
+    matched: &[Pos],
+    seed: &[Pos],
+    reblast: &[Pos],
+    bombs: &[(Pos, u8)],
+) -> Activation {
     let mut to_clear: BTreeSet<Pos> = matched.iter().copied().collect();
     let mut pending: BTreeSet<Pos> = BTreeSet::new();
     let mut fired: BTreeSet<Pos> = BTreeSet::new();
@@ -384,6 +400,21 @@ fn activate(board: &Board, matched: &[Pos], seed: &[Pos], reblast: &[Pos]) -> Ac
         .map(|p| (p, false))
         .chain(reblast.iter().copied().map(|p| (p, true)))
         .collect();
+    // Colour bombs (B3): clear the whole target colour + the bomb's own cell, and
+    // chain any striped/wrapped of that colour into the blast queue.
+    for &(bomb_pos, target) in bombs {
+        to_clear.insert(bomb_pos);
+        for r in 0..board.height {
+            for c in 0..board.width {
+                if board.get(r, c) == Cell::Gem(target) {
+                    to_clear.insert((r, c));
+                    if fires_on_match(board.special_at(r, c)) && !fired.contains(&(r, c)) {
+                        queue.push(((r, c), false));
+                    }
+                }
+            }
+        }
+    }
     while let Some((cell, is_reblast)) = queue.pop() {
         if !fired.insert(cell) {
             continue;
@@ -933,17 +964,34 @@ impl Game {
         loop {
             let matched = find_matches(&self.board);
             // Step 0 also seeds activation from a special swapped into place: it
-            // fires even with no line match (striped B1.2). Later steps have no
-            // swap seed.
-            let seed: Vec<Pos> = if step_index == 0 {
-                [from, to]
-                    .into_iter()
-                    .filter(|&(r, c)| fires_on_swap(self.board.special_at(r, c)))
-                    .collect()
+            // fires even with no line match (striped B1.2, wrapped B2.2). A swapped
+            // colour bomb (B3) fires differently — it detonates the colour of the
+            // gem it traded with — so it is split into `bombs` with that target
+            // colour. Later steps have no swap seed.
+            let (seed, bombs): (Vec<Pos>, Vec<(Pos, u8)>) = if step_index == 0 {
+                let mut seed = Vec::new();
+                let mut bombs = Vec::new();
+                for (pos, other) in [(from, to), (to, from)] {
+                    match self.board.special_at(pos.0, pos.1) {
+                        Some(SpecialKind::ColorBomb) => {
+                            // Target = the colour now at `other` (the gem the bomb
+                            // traded places with). A colour bomb swapped with another
+                            // special still uses its underlying colour here — the true
+                            // combo matrix is B5.
+                            if let Cell::Gem(color) = self.board.get(other.0, other.1) {
+                                bombs.push((pos, color));
+                            }
+                        }
+                        k if fires_on_swap(k) => seed.push(pos),
+                        _ => {}
+                    }
+                }
+                (seed, bombs)
             } else {
-                Vec::new()
+                (Vec::new(), Vec::new())
             };
-            if matched.is_empty() && seed.is_empty() && reblast_seed.is_empty() {
+            if matched.is_empty() && seed.is_empty() && reblast_seed.is_empty() && bombs.is_empty()
+            {
                 break;
             }
             // Which specials this step's shapes create — step 0 uses the swap so
@@ -960,7 +1008,7 @@ impl Game {
             // special -> `act.clear` == `matched`, so plain-gem and B0-creation play
             // stay byte-identical. `act.pending` = wrapped surviving their first
             // blast (B2), pinned through this gravity and re-blasting next step.
-            let act = activate(&self.board, &matched, &seed, &reblast_seed);
+            let act = activate(&self.board, &matched, &seed, &reblast_seed, &bombs);
             let activated = act.clear;
             let out = clear_cells(&mut self.board, &activated);
             // Each placement cell survives as a special candy: clear_cells set it

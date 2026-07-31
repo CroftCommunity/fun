@@ -137,23 +137,35 @@ The created special's colour is the component's gem colour. Blast/activation of
 a created special is in T1c (striped, B1); wrapped/colour-bomb activation is
 B2/B3; the 2×2 **fish** shape is deferred to B4.
 
-### T1c — Activation (striped B1, wrapped B2)
+### T1c — Activation (striped B1, wrapped B2, colour bomb B3)
 
 A special candy **fires** its blast when it is cleared by a match (or swapped).
 Before the clear (T2), the matched set is expanded by activation:
 
 - **Trigger:** a special fires when (a) it is in the matched set
-  (match-activation), or (b) it is **swapped** with an adjacent gem — the swap is
-  legal even with no line match, and fires the special from its post-swap cell
-  (swap-activation: striped B1.2, wrapped B2.2). Swapping carries the special
-  marker with its gem. Colour-bomb firing is B3; swapping two specials is the combo
-  matrix (B5) — B1/B2 fire each independently.
+  (match-activation: striped, wrapped), or (b) it is **swapped** with an adjacent
+  gem — the swap is legal even with no line match, and fires the special from its
+  post-swap cell (swap-activation: striped B1.2, wrapped B2.2, colour bomb B3).
+  Swapping carries the special marker with its gem. Swapping two specials is the
+  combo matrix (B5) — B1/B2/B3 fire each independently.
+  - **The colour bomb is swap-only.** It is **colourless** (its overlay sits on a
+    `Gem` only because the match core stays byte-identical — the underlying colour
+    is a representation artifact, not a play colour), so it is **never match-fired**:
+    a colour bomb caught in a line match just clears as a gem. It fires only when
+    **swapped** (B3), and a colour-clear that sweeps up another colour bomb does not
+    detonate it (that, and swapping two specials, is the B5 combo matrix). Revisable
+    pre-users.
 - **Blast region:**
   - **Striped:** `StripedH` clears its entire **row**, `StripedV` its entire
     **column** (orientation = stripe direction; revisable pre-users).
   - **Wrapped:** the **3×3 block** around its cell, clamped to the board.
+  - **Colour bomb:** not a positional region — it clears **every cell holding a gem
+    of the target colour** (the colour of the gem it was swapped with) plus its own
+    cell (consumed). A striped/wrapped of that colour caught in the clear **fires**
+    (chains) — e.g. detonating "all red" sets off a red striped's line.
   - A **blocker** in a blast region is *not* cleared — it takes one layer of
-    adjacency damage via T2 like any match.
+    adjacency damage via T2 like any match. (A blocker is never `Gem(target)`, so a
+    colour detonation leaves it standing, minus its one adjacency layer.)
 - **Wrapped = a double 3×3 (the canon "explodes twice").** A wrapped's blast
   happens in two stages so it faithfully mirrors the reference:
   1. **First blast** (the step it is triggered): clears the 3×3 **minus its own

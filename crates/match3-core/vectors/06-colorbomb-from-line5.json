@@ -11,6 +11,6 @@
     "move_legal": [true],
     "step0_cleared": [ [[0, 0], [0, 1], [0, 3], [0, 4]] ],
     "step0_score": [40],
-    "final_state_hash": "19c2abdd16eba1a5015ba6c38484c253a8c124efab84cae91120dfc57e254b5f"
+    "final_state_hash": "643754d7347fa281b20a97d3f2840818a0e97e74b64e20869b5009d9fd9bdb84"
   }
 }

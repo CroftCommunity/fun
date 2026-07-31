@@ -35,6 +35,8 @@ row/column at step 0, so `step0_cleared` lists the blasted line (see `08`/`09`).
 matched wrapped fires the canon **double 3×3** — `step0_cleared` lists the **first** blast (the 3×3 ring
 *minus* the wrapped's own centre, which survives), and the surviving wrapped re-blasts (consuming its centre)
 on the *next* cascade step (see `10-wrapped-activate`; `11-wrapped-chain` chains a striped row into a wrapped).
+Activation (B3, colour bomb): swapping a colour bomb with a gem detonates that gem's **colour** — `step0_cleared`
+lists every cell holding that colour plus the bomb's own cell (see `12`/`13` for the swap-activation shape).
 
 **Specials (B0):** when a move forms a line-4 / L-T / line-5, one matched cell becomes a special candy
 (RULES.md T1b) instead of clearing, so `step0_cleared` lists the *cleared* cells (the special's cell is

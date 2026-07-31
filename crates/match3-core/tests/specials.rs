@@ -562,3 +562,106 @@ fn swapping_a_wrapped_fires_its_double_and_carries_the_marker() {
         "the wrapped re-blasts and is consumed on the next step"
     );
 }
+
+// --- B3.1: colour-bomb swap-activation (clear all of a colour) ---------------
+
+fn colorbomb_board() -> Board {
+    // A ColorBomb (underlying colour 5) at (1,1). Swapping it with (1,2)=0 targets
+    // colour 0; the six 0-gems on the board all clear (plus the bomb). No line
+    // match forms, so only swap-activation drives step 0.
+    Board::from_rows_with_specials(
+        &["01230", "45012", "30124", "12340", "23401"],
+        &[".....", ".C...", ".....", ".....", "....."],
+    )
+    .expect("parses")
+}
+
+#[test]
+fn swap_legal_allows_firing_a_colour_bomb_without_a_match() {
+    let b = colorbomb_board();
+    assert!(
+        swap_legal(&b, (1, 1), (1, 2)),
+        "swapping the colour bomb is legal (it detonates)"
+    );
+}
+
+#[test]
+fn legal_swaps_includes_the_colour_bomb_swap() {
+    let swaps = legal_swaps(&colorbomb_board());
+    assert!(
+        swaps.iter().any(|&(f, t)| f == (1, 1) || t == (1, 1)),
+        "the colour bomb at (1,1) can be swapped with a neighbour"
+    );
+}
+
+#[test]
+fn swapping_a_colour_bomb_clears_all_of_the_swapped_gems_colour() {
+    // Swap the ColorBomb (1,1)<->(1,2): the bomb trades with a 0-gem, so it targets
+    // colour 0. Every 0 on the board clears — post-swap the 0s sit at (0,0),(0,4),
+    // (1,1),(2,1),(3,4),(4,3) — plus the bomb's own cell (1,2). Seven cells.
+    let mut game = Game::new(colorbomb_board(), 1, 6);
+    let report = game.play_move((1, 1), (1, 2));
+    assert!(report.legal, "the colour-bomb swap is legal");
+    let cleared0 = &report.steps[0].cleared;
+    for cell in [(0, 0), (0, 4), (1, 1), (1, 2), (2, 1), (3, 4), (4, 3)] {
+        assert!(
+            cleared0.contains(&cell),
+            "{cell:?} cleared by the colour detonation"
+        );
+    }
+    assert_eq!(cleared0.len(), 7, "exactly the six 0-gems + the bomb cell");
+    assert_eq!(report.steps[0].score_gained, 70, "7 cells x 10");
+    assert_eq!(
+        count_special(&game.board, SpecialKind::ColorBomb),
+        0,
+        "the colour bomb is consumed"
+    );
+}
+
+#[test]
+fn a_colour_detonation_chains_a_striped_of_that_colour() {
+    // A ColorBomb (colour 5) at (1,1) and a StripedH (colour 0) at (2,0). Swapping
+    // the bomb with (1,2)=0 targets colour 0, which sweeps up the striped(0) -> it
+    // fires its row (2,0..3), so cells beyond the plain colour-clear also clear.
+    let b = Board::from_rows_with_specials(
+        &["0123", "4501", "0234", "1243"],
+        &["....", ".C..", "H...", "...."],
+    )
+    .expect("parses");
+    let mut game = Game::new(b, 1, 6);
+    let report = game.play_move((1, 1), (1, 2));
+    assert!(report.legal);
+    let cleared0 = &report.steps[0].cleared;
+    for cell in [(2, 1), (2, 2), (2, 3)] {
+        assert!(
+            cleared0.contains(&cell),
+            "{cell:?} cleared by the chained striped's row"
+        );
+    }
+    assert!(
+        cleared0.contains(&(1, 1)),
+        "the swapped-in 0 cleared by the detonation"
+    );
+}
+
+#[test]
+fn a_matched_colour_bomb_does_not_detonate() {
+    // A ColorBomb (colour 0) at (0,0). Swapping (0,2)<->(1,2) forms a line-3 of 0s
+    // that includes the bomb. Because a colour bomb is colourless (never match-
+    // fired), it just clears as part of the 3-match — the 0 elsewhere at (2,0)
+    // survives, proving no colour detonation happened.
+    let b = Board::from_rows_with_specials(&["001", "230", "045"], &["C..", "...", "..."])
+        .expect("parses");
+    let mut game = Game::new(b, 1, 6);
+    let report = game.play_move((0, 2), (1, 2));
+    assert!(report.legal, "the swap forms a line-3 of 0s");
+    let cleared0 = &report.steps[0].cleared;
+    assert!(
+        !cleared0.contains(&(2, 0)),
+        "the 0 at (2,0) survives — a matched colour bomb does not detonate the colour"
+    );
+    assert_eq!(
+        report.steps[0].score_gained, 30,
+        "just the 3-match, 3 gems x 10"
+    );
+}
