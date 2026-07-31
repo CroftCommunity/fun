@@ -7,6 +7,7 @@ import { placeholderModule } from "./games/placeholder.js";
 import { solitaireModule } from "./games/solitaire.js";
 import { match3Module } from "./games/match3.js";
 import { bubbleModule } from "./games/bubble/bubble.js";
+import { wyrdleModule } from "./games/wyrdle/wyrdle.js";
 
 export const REGISTRY: readonly GameEntry[] = [
   {
@@ -19,6 +20,7 @@ export const REGISTRY: readonly GameEntry[] = [
   { id: "solitaire", title: "Solitaire", icon: "♠", status: "playable", load: solitaireModule },
   { id: "match3", title: "Match-3", icon: "🍬", status: "playable", load: match3Module },
   { id: "bubble", title: "Bubble", icon: "🫧", status: "playable", load: bubbleModule },
+  { id: "wyrdle", title: "Wyrdle", icon: "🐉", status: "playable", load: wyrdleModule },
   { id: "cribbage", title: "Cribbage", icon: "🎴", status: "soon" },
 ];
 

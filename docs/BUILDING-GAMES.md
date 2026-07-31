@@ -94,6 +94,20 @@ unless noted.
   (`?r=`) carrying the full self-verifying record — **deflated** (a long win must
   stay a portable URL) — whose open path **re-verifies before display** (a shared
   claim is checked, not trusted).
+- **The daily pack, and when it needs a solver.** A game whose deal may be
+  *unwinnable* bakes a **winnable-daily pack** certified by a build-time solver
+  (solitaire, bubble). A game that is **trivially winnable** — every deal is always
+  solvable, e.g. a word game where the answer is itself a legal guess — keeps the
+  same pack *machinery* (a `pond-docformat` `{ seeds, fixture }` envelope, byte-
+  identically regenerable, embedded in the wasm, indexed by UTC day) but has **no
+  solver crate**; the pack is just a deterministic seed schedule + a fixture
+  win-line (wyrdle). Don't ship an empty solver to look symmetric — say it's
+  trivially winnable and note why.
+- **Verifiable share vs spoiler.** The `?r=` record contains the move list (it
+  must, to replay), so opening it reveals the solution — it is a *completed-result*
+  artifact, honestly a spoiler for that seed. Where the game's social object is
+  itself spoiler-free (a word game's emoji grid), ship **both**: the spoiler-free
+  brag to copy, and the verifiable `?r=` (wyrdle).
 
 ## 4. Interaction model — tap first, the core decides legality
 

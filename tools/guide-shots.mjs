@@ -147,6 +147,35 @@ const SHOTS = [
       await page.waitForSelector(".sol-result");
     },
   },
+  {
+    name: "wyrdle-board",
+    clip: ".play-area",
+    async run(page) {
+      await page.goto(`${origin}/wyrdle/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".wy-grid");
+      await page.waitForFunction(() => Boolean(window.__wyrdle));
+      // Play one legal guess so the shot shows a scored row + coloured keys.
+      await page.evaluate(() => window.__wyrdle.submitGuess("crane"));
+      await page.waitForSelector(".wy-tile.wy-absent, .wy-tile.wy-present, .wy-tile.wy-correct");
+    },
+  },
+  {
+    name: "wyrdle-win",
+    clip: ".sol-result",
+    async run(page) {
+      await page.goto(`${origin}/wyrdle/`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".wy-grid");
+      const fixture = await (await fetch(`${origin}/wyrdle-daily-pack.json`)).json();
+      await page.goto(`${origin}/wyrdle/?seed=${fixture.payload.fixture.seed}`, {
+        waitUntil: "networkidle",
+      });
+      await page.waitForFunction(() => Boolean(window.__wyrdle));
+      await page.evaluate((moves) => {
+        for (const m of moves) window.__wyrdle.submitGuess(m);
+      }, fixture.payload.fixture.moves);
+      await page.waitForSelector(".sol-result");
+    },
+  },
 ];
 
 const server = spawn("node", [join(root, "tools", "serve.mjs")], { stdio: "ignore" });
