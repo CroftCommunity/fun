@@ -1,12 +1,16 @@
-//! The bubble-shooter board (clear-the-board-in-N-shots) over the `bubble-wasm`
-//! binding. The launcher loads a colour; tap a glowing empty cell to drop it
-//! there — the core decides which cells are reachable (`legalTargets`), the UI
-//! only glows them and calls `shoot`. Clusters of 3+ pop; disconnected bubbles
-//! drop. When the board clears (or shots run out) a verifiable `pond-outcome`
-//! record is shown, shareable via `?r=`.
+//! The bubble-shooter board — a real aim-and-shoot game over the `bubble-wasm`
+//! binding. A launcher at the bottom holds a colour; the player **aims an angle**
+//! (drag/point on the board, the ←/→ keys, or the angle slider), sees a dotted
+//! trajectory preview that bounces off the walls, and **fires** — the projectile
+//! flies up, bounces, sticks where the core resolves it, and pops connected
+//! clusters of 3+ (disconnected bubbles drop). The core owns every landing (the
+//! UI only visualises the path it computes), so the outcome stays verifiable: on
+//! a clear (or when shots run out) a `pond-outcome` record is shown, shareable
+//! via `?r=`.
 
 import type { GameModule } from "../../contract.js";
-import { Bubble, type BoardView, type Target } from "./bubble-wasm.js";
+import { Bubble, type BoardView, type Geom } from "./bubble-wasm.js";
+import { boardSubpixelSize, cellCenter, clampAngle, launcherOrigin, pointerToAngle } from "./bubble-aim.js";
 import {
   decodeRecord,
   encodeRecord,
@@ -24,12 +28,21 @@ import {
 
 declare global {
   interface Window {
-    /** E2E hook: the live binding + a re-render, so tests drive the core. */
+    /** E2E hook: the live binding, geometry, and aim/fire controls, so tests
+     *  drive the real UI path against the core. */
     __bubble?: {
       game: Bubble;
+      /** A second binding for control replays in the landing-matches-core guardrail. */
+      verifier: Bubble;
       refresh: () => void;
-      legalTargets: () => Target[];
+      geom: Geom;
       seed: bigint;
+      /** Set the aim angle (whole degrees, clamped to the fan) + redraw. */
+      setAim: (deg: number) => void;
+      /** The current aim angle. */
+      aim: () => number;
+      /** Fire the current aim; resolves once the shot has been applied. */
+      fire: () => Promise<void>;
     };
   }
 }
@@ -46,6 +59,14 @@ function el<K extends keyof HTMLElementTagNameMap>(
   for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
   for (const c of children) node.append(c);
   return node;
+}
+
+function prefersReducedMotion(): boolean {
+  try {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  } catch {
+    return false;
+  }
 }
 
 // ---------- the result screen (pure DOM) ----------
@@ -119,6 +140,32 @@ export function renderResultScreen(
   return section;
 }
 
+// ---------- canvas palette (theme-aware) ----------
+
+interface Palette {
+  gems: string[];
+  surface: string;
+  ink: string;
+  inkMuted: string;
+  focus: string;
+  active: string;
+  aimLine: string;
+}
+
+function palette(): Palette {
+  const cs = getComputedStyle(document.documentElement);
+  const v = (name: string, fallback: string): string => cs.getPropertyValue(name).trim() || fallback;
+  return {
+    gems: [0, 1, 2, 3, 4, 5].map((i) => v(`--gem-${i}`, "#888")),
+    surface: v("--surface", "#ffffff"),
+    ink: v("--ink", "#111111"),
+    inkMuted: v("--ink-muted", "#888888"),
+    focus: v("--focus", "#3b82f6"),
+    active: v("--active", "#10b981"),
+    aimLine: v("--ink-muted", "#888888"),
+  };
+}
+
 // ---------- the game module ----------
 
 /** Construct a fresh bubble-shooter module (the registry `load`). */
@@ -130,7 +177,12 @@ export function bubbleModule(): GameModule {
 
   let mode: "daily" | "free" = "daily";
   let seed = 0n;
-  let hint: Target | null = null;
+  let geom: Geom = { diam: 256, radius: 128, rowH: 222, fanLo: 10, fanHi: 170 };
+  let aim = 90;
+  let animating = false;
+  let raf = 0;
+  let canvas: HTMLCanvasElement | null = null;
+  let aimInput: HTMLInputElement | null = null;
   let cascadeEl: HTMLElement | null = null;
 
   const statusEl = el("p", { class: "sol-status", role: "status", "aria-live": "polite" });
@@ -156,52 +208,176 @@ export function bubbleModule(): GameModule {
     return b.cleared || b.shotsLeft === 0;
   };
 
-  const isLegal = (r: number, c: number): boolean =>
-    game!.legalTargets().some((t) => t[0] === r && t[1] === c);
+  const origin = (board: BoardView) => launcherOrigin(board.width, board.height, geom);
 
-  const shootAt = (r: number, c: number): void => {
-    if (!game || gameOver()) return;
-    if (!isLegal(r, c)) return; // the core decides; an illegal tap is a no-op
-    hint = null;
-    setStatus("");
-    game.shoot([r, c]);
+  // ---------- canvas drawing ----------
+
+  const drawBubble = (
+    ctx: CanvasRenderingContext2D,
+    p: Palette,
+    x: number,
+    y: number,
+    color: number,
+  ): void => {
+    ctx.beginPath();
+    ctx.arc(x, y, geom.radius * 0.92, 0, Math.PI * 2);
+    ctx.fillStyle = p.surface;
+    ctx.fill();
+    ctx.fillStyle = p.gems[color] ?? p.ink;
+    ctx.font = `${Math.round(geom.radius * 1.15)}px system-ui, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(BUBBLE_GLYPH[color] ?? "●", x, y + geom.radius * 0.06);
+  };
+
+  // Draw the board + launcher, plus (when `flight` is null) the dotted aim
+  // preview, or (during a shot) the flying projectile at `flight`.
+  const drawScene = (flight: { x: number; y: number } | null = null): void => {
+    if (!canvas || !game) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const board = game.board();
+    const p = palette();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    board.cells.forEach((rowCells, r) => {
+      rowCells.forEach((color, c) => {
+        if (color >= 0) {
+          const { x, y } = cellCenter(r, c, geom);
+          drawBubble(ctx, p, x, y, color);
+        }
+      });
+    });
+
+    const o = origin(board);
+    if (!board.cleared) drawBubble(ctx, p, o.x, o.y, board.currentColor);
+
+    if (flight) {
+      drawBubble(ctx, p, flight.x, flight.y, board.currentColor);
+      return;
+    }
+    if (gameOver()) return;
+
+    // Dotted trajectory preview + a landing ring where the shot resolves.
+    const traj = game.trajectory(aim);
+    ctx.save();
+    ctx.strokeStyle = p.aimLine;
+    ctx.globalAlpha = 0.85;
+    ctx.lineWidth = Math.max(2, geom.radius * 0.16);
+    ctx.setLineDash([geom.radius * 0.5, geom.radius * 0.7]);
+    ctx.beginPath();
+    traj.points.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
+    ctx.stroke();
+    ctx.restore();
+
+    const [lr, lc] = traj.landing;
+    const lp = cellCenter(lr, lc, geom);
+    ctx.save();
+    ctx.strokeStyle = p.active;
+    ctx.lineWidth = Math.max(2, geom.radius * 0.16);
+    ctx.beginPath();
+    ctx.arc(lp.x, lp.y, geom.radius * 0.9, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  };
+
+  // ---------- flight animation ----------
+
+  const pathAt = (points: [number, number][], dist: number): { x: number; y: number } => {
+    let acc = 0;
+    for (let i = 1; i < points.length; i += 1) {
+      const [ax, ay] = points[i - 1]!;
+      const [bx, by] = points[i]!;
+      const seg = Math.hypot(bx - ax, by - ay);
+      if (acc + seg >= dist) {
+        const t = seg === 0 ? 0 : (dist - acc) / seg;
+        return { x: ax + (bx - ax) * t, y: ay + (by - ay) * t };
+      }
+      acc += seg;
+    }
+    const last = points[points.length - 1]!;
+    return { x: last[0], y: last[1] };
+  };
+
+  const animateFlight = (points: [number, number][]): Promise<void> =>
+    new Promise((resolve) => {
+      const total = points.slice(1).reduce((s, [x, y], i) => {
+        const [px, py] = points[i]!;
+        return s + Math.hypot(x - px, y - py);
+      }, 0);
+      const speed = geom.diam * 0.06; // sub-pixels per ms → ~short, snappy flight
+      const dur = Math.min(700, Math.max(140, total / speed));
+      const start = performance.now();
+      const step = (now: number): void => {
+        if (disposed) return resolve();
+        const t = Math.min(1, (now - start) / dur);
+        drawScene(pathAt(points, t * total));
+        if (t >= 1) return resolve();
+        raf = requestAnimationFrame(step);
+      };
+      raf = requestAnimationFrame(step);
+    });
+
+  const fire = async (): Promise<void> => {
+    if (!game || gameOver() || animating) return;
+    const angle = aim;
+    const traj = game.trajectory(angle);
+    setStatus(`Fired at ${angle} degrees`);
+    animating = true;
+    syncControlsDisabled();
+    if (!prefersReducedMotion() && traj.points.length >= 2) {
+      await animateFlight(traj.points);
+    }
+    animating = false;
+    if (disposed || !game) return;
+    game.shoot(angle);
     render();
   };
 
-  // --- hints ---
+  // ---------- controls + interaction ----------
+
+  const syncAim = (): void => {
+    if (aimInput) aimInput.value = String(aim);
+    if (canvas) canvas.setAttribute("aria-label", boardLabel());
+  };
+
+  const setAim = (deg: number): void => {
+    aim = clampAngle(deg, geom);
+    syncAim();
+    if (!animating) drawScene();
+  };
+
+  const syncControlsDisabled = (): void => {
+    const off = animating || gameOver();
+    aimInput?.toggleAttribute("disabled", off);
+    container?.querySelector<HTMLButtonElement>(".bub-fire")?.toggleAttribute("disabled", off);
+  };
+
+  const boardLabel = (): string => {
+    if (!game) return "Bubble board";
+    const b = game.board();
+    const bubbles = b.cells.reduce((n, row) => n + row.filter((c) => c >= 0).length, 0);
+    return `Bubble board: ${bubbles} bubbles left, ${b.shotsLeft} shots left, aiming ${aim} degrees`;
+  };
+
+  const canvasToSub = (clientX: number, clientY: number): { x: number; y: number } => {
+    const rect = canvas!.getBoundingClientRect();
+    return {
+      x: ((clientX - rect.left) / rect.width) * canvas!.width,
+      y: ((clientY - rect.top) / rect.height) * canvas!.height,
+    };
+  };
 
   const showHint = (): void => {
     if (!game || gameOver()) return;
-    const targets = game.legalTargets();
-    if (targets.length === 0) {
-      render(); // no targets -> the game is over
-      return;
-    }
     game.markAssistance();
-    hint = targets[0]!;
-    setStatus(`Hint: aim at row ${hint[0] + 1} col ${hint[1] + 1} (a hint counts as assistance)`);
-    applyGlow();
+    setAim(game.hintAngle());
+    setStatus(`Hint: aim at ${aim} degrees (a hint counts as assistance)`);
   };
 
   const endNow = (): void => {
-    // "I'm stuck" with hints off: end the round and report honestly.
-    const stuckWithMoves = !!game && !gameOver() && game.legalTargets().length > 0;
-    setStatus(
-      stuckWithMoves ? "Ended early — a legal shot was still available." : "Ended — no shot was available.",
-    );
+    setStatus("Ended — reporting the result honestly.");
     render(true);
-  };
-
-  // --- rendering ---
-
-  const launcher = (board: BoardView): HTMLElement => {
-    const color = board.currentColor;
-    const chip = el(
-      "span",
-      { class: `bub-cell bub-bubble bub-color-${color}`, role: "img", "aria-label": `${BUBBLE_NAME[color] ?? "bubble"} bubble loaded` },
-      BUBBLE_GLYPH[color] ?? "●",
-    );
-    return el("div", { class: "bub-launcher" }, el("span", { class: "bub-launcher-label" }, "Launcher"), chip);
   };
 
   const renderControls = (board: BoardView): HTMLElement => {
@@ -255,80 +431,95 @@ export function bubbleModule(): GameModule {
       }),
     );
 
+    const color = board.currentColor;
     const hud = el(
       "div",
       { class: "bub-hud" },
+      el(
+        "span",
+        {
+          class: `bub-loaded bub-color-${color}`,
+          role: "img",
+          "aria-label": `Launcher loaded: ${BUBBLE_NAME[color] ?? "bubble"}`,
+        },
+        BUBBLE_GLYPH[color] ?? "●",
+      ),
       el("span", { class: "bub-score" }, `Score ${board.score}`),
       el("span", { class: "bub-shots" }, `Shots left ${board.shotsLeft}`),
     );
 
     bar.append(modes, actionBtn, settings);
     const wrap = el("div");
-    wrap.append(bar, launcher(board), hud);
+    wrap.append(bar, hud);
     return wrap;
   };
 
-  const renderBoard = (board: BoardView): HTMLElement => {
-    const legal = new Set(game!.legalTargets().map((t) => `${t[0]},${t[1]}`));
-    const boardEl = el("div", { class: "bub-board", tabindex: "-1" });
-    board.cells.forEach((row, r) => {
-      const rowEl = el("div", { class: `bub-row${r % 2 === 1 ? " bub-row-odd" : ""}` });
-      row.forEach((color, c) => {
-        if (color >= 0) {
-          const b = el(
-            "span",
-            {
-              class: `bub-cell bub-bubble bub-color-${color}`,
-              role: "img",
-              "aria-label": `${BUBBLE_NAME[color] ?? "bubble"} bubble, row ${r + 1} column ${c + 1}`,
-            },
-            BUBBLE_GLYPH[color] ?? "●",
-          );
-          rowEl.append(b);
-        } else if (legal.has(`${r},${c}`)) {
-          const t = el("button", {
-            type: "button",
-            class: "bub-cell bub-target legal-target",
-            "data-r": String(r),
-            "data-c": String(c),
-            "aria-label": `drop here, row ${r + 1} column ${c + 1}`,
-          });
-          rowEl.append(t);
-        } else {
-          rowEl.append(el("span", { class: "bub-cell bub-empty", "aria-hidden": "true" }));
-        }
-      });
-      boardEl.append(rowEl);
-    });
-    boardEl.addEventListener("click", (e) => {
-      const btn = (e.target as HTMLElement).closest<HTMLElement>(".bub-target");
-      if (!btn) return;
-      shootAt(Number(btn.dataset.r), Number(btn.dataset.c));
-    });
-    return boardEl;
+  const renderAimBar = (): HTMLElement => {
+    const bar = el("div", { class: "bub-aimbar" });
+    const range = el("input", {
+      type: "range",
+      class: "bub-aim",
+      min: String(geom.fanLo),
+      max: String(geom.fanHi),
+      value: String(aim),
+      "aria-label": "Aim angle in degrees",
+    }) as HTMLInputElement;
+    range.addEventListener("input", () => setAim(Number(range.value)));
+    aimInput = range;
+    const fireBtn = el("button", { type: "button", class: "bub-fire" }, "Fire");
+    fireBtn.addEventListener("click", () => void fire());
+    bar.append(el("span", { class: "bub-aim-label" }, "Aim"), range, fireBtn);
+    return bar;
   };
 
-  const applyGlow = (): void => {
-    if (!container) return;
-    container.querySelectorAll(".hint-target").forEach((e) => e.classList.remove("hint-target"));
-    if (hint) {
-      container
-        .querySelector<HTMLElement>(`.bub-target[data-r="${hint[0]}"][data-c="${hint[1]}"]`)
-        ?.classList.add("hint-target");
-    }
+  const renderCanvas = (board: BoardView): HTMLCanvasElement => {
+    const { w, h } = boardSubpixelSize(board.width, board.height, geom);
+    const c = el("canvas", {
+      class: "bub-canvas",
+      width: String(w),
+      height: String(h),
+      tabindex: "0",
+      role: "img",
+    }) as HTMLCanvasElement;
+    canvas = c;
+    c.setAttribute("aria-label", boardLabel());
+
+    const aimFromEvent = (e: PointerEvent): void => {
+      if (animating || gameOver()) return;
+      const s = canvasToSub(e.clientX, e.clientY);
+      setAim(pointerToAngle(s.x, s.y, origin(board), geom));
+    };
+    c.addEventListener("pointermove", aimFromEvent);
+    c.addEventListener("pointerdown", (e) => {
+      c.setPointerCapture(e.pointerId);
+      aimFromEvent(e);
+    });
+    c.addEventListener("pointerup", (e) => {
+      aimFromEvent(e);
+      void fire();
+    });
+    c.addEventListener("keydown", (e) => {
+      if (animating || gameOver()) return;
+      if (e.key === "ArrowLeft") {
+        setAim(aim + 2); // left = larger angle (toward 170°)
+        e.preventDefault();
+      } else if (e.key === "ArrowRight") {
+        setAim(aim - 2);
+        e.preventDefault();
+      } else if (e.key === " " || e.key === "Enter" || e.key === "ArrowUp") {
+        void fire();
+        e.preventDefault();
+      }
+    });
+    return c;
   };
 
   // A brief celebratory bubble cascade on a cleared board; decorative and
   // aria-hidden; skipped under reduced-motion; removed on unmount.
   const playCascade = (): void => {
-    try {
-      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    } catch {
-      return;
-    }
+    if (prefersReducedMotion()) return;
     const layer = el("div", { class: "sol-cascade", "aria-hidden": "true" });
     for (let i = 0; i < 24; i += 1) {
-      // Reuse the shared `.sol-cascade .gem-N` colour + fall animation.
       const s = el("span", { class: `gem-${i % 6}` }, BUBBLE_GLYPH[i % 6]!);
       s.style.left = `${(i * 4.15) % 100}%`;
       s.style.animationDelay = `${(i % 8) * 0.08}s`;
@@ -360,13 +551,19 @@ export function bubbleModule(): GameModule {
 
   function render(force = false): void {
     if (disposed || !container || !game) return;
+    if (raf) cancelAnimationFrame(raf);
     if (force || gameOver()) {
+      canvas = null;
+      aimInput = null;
       void presentResult();
       return;
     }
     const board = game.board();
-    container.replaceChildren(renderControls(board), renderBoard(board), statusEl);
-    applyGlow();
+    aim = clampAngle(aim, geom);
+    container.replaceChildren(renderControls(board), renderCanvas(board), renderAimBar(), statusEl);
+    syncControlsDisabled();
+    drawScene();
+    exposeHook();
   }
 
   async function startGame(nextMode: "daily" | "free", seedOverride?: bigint): Promise<void> {
@@ -376,9 +573,10 @@ export function bubbleModule(): GameModule {
       seedOverride ??
       (nextMode === "daily" ? BigInt(game.dailySeed(dayIndexUTC(new Date()))) : randomSeed());
     game.newGame(seed);
-    hint = null;
+    geom = game.geom();
+    aim = clampAngle(90, geom);
+    animating = false;
     setStatus("");
-    exposeHook();
     render();
   }
 
@@ -404,12 +602,16 @@ export function bubbleModule(): GameModule {
   };
 
   const exposeHook = (): void => {
-    if (!game) return;
+    if (!game || !verifier) return;
     window.__bubble = {
       game,
+      verifier,
       refresh: () => render(),
-      legalTargets: () => game!.legalTargets(),
+      geom,
       seed,
+      setAim,
+      aim: () => aim,
+      fire,
     };
   };
 
@@ -445,14 +647,17 @@ export function bubbleModule(): GameModule {
     },
     unmount(): void {
       disposed = true;
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
       delete window.__bubble;
       cascadeEl?.remove();
       cascadeEl = null;
       container?.replaceChildren();
       container = null;
+      canvas = null;
+      aimInput = null;
       game = null;
       verifier = null;
-      hint = null;
     },
   };
 }

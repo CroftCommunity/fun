@@ -4,7 +4,6 @@
 //! deflate/base64url + daily helpers.
 
 import { decodeShare, encodeShare } from "../share.js";
-import type { Target } from "./bubble-wasm.js";
 
 export type BubbleResult = "Won" | "Lost" | "Stuck" | "Abandoned";
 
@@ -13,8 +12,8 @@ export interface BubbleRecord {
   kind: string;
   /** The deal seed (kept ≤ Number.MAX_SAFE_INTEGER for exact JSON round-trip). */
   seed: number;
-  /** The shot targets `[row, col]` — the proof, replayed to re-derive the hash. */
-  moves: Target[];
+  /** The aim line (whole-degree angles) — the proof, replayed to re-derive the hash. */
+  moves: number[];
   move_count: number;
   final_hash: string;
   result: BubbleResult;
@@ -40,7 +39,7 @@ export interface VerifyResult {
 /** The minimal binding surface [`verifyRecord`] drives (the `Bubble` wrapper satisfies it). */
 export interface Verifier {
   newGame(seed: bigint): void;
-  shoot(target: Target): unknown;
+  shoot(angle: number): unknown;
   currentHash(): string;
   isCleared(): boolean;
   score(): number;
@@ -65,7 +64,7 @@ export async function decodeRecord(payload: string): Promise<BubbleEnvelope> {
 export function verifyRecord(v: Verifier, env: BubbleEnvelope): VerifyResult {
   const rec = env.payload;
   v.newGame(BigInt(rec.seed));
-  for (const target of rec.moves) v.shoot(target);
+  for (const angle of rec.moves) v.shoot(angle);
   const actual = v.currentHash();
   const hashOk = actual === rec.final_hash;
   const resultOk = rec.result !== "Won" || v.isCleared();
