@@ -79,7 +79,11 @@ Tier-1. Everything in §§2–8 is Tier-1 unless noted.
   match/legality (a special candy still matches/swaps/falls as its colour), so the
   determinism-critical core stays untouched. If the new state changes scoring or
   clearing, remember it also shifts any committed solver/par packs — regenerate
-  and re-lock them in the same commit (see the match-3 B0 plan).
+  and re-lock them in the same commit (see the match-3 B0 plan). An overlay can sit
+  on a non-gem cell too: match-3's **obstacle flavour** (Track D — licorice / meringue)
+  is an overlay on a `Blocker`, giving two distinct, mechanically-separate tiles that
+  reuse the blocker's clear mechanic while rendering distinctly (the flavour is
+  additive to `state_hash`, so no pre-obstacle vector re-locks).
 - **When the new state is a new *kind* of cell, not a facet of a gem, add a `Cell`
   variant instead of an overlay.** match-3's **ingredient** (Track D) is a non-gem
   object that occupies a cell and *falls* — no gem lives under it, so an overlay
@@ -114,6 +118,17 @@ Tier-1. Everything in §§2–8 is Tier-1 unless noted.
   solver crate**; the pack is just a deterministic seed schedule + a fixture
   win-line (wyrdle). Don't ship an empty solver to look symmetric — say it's
   trivially winnable and note why.
+- **Board-state vs path-accumulated objectives.** Most win checks are a function of
+  the *current* board (clear every blocker / scrub all jelly / drop all ingredients).
+  An objective can instead be **path-accumulated** — met by what the run has produced,
+  not any single board — like match-3's **order/mixed checklist** (clear N of a colour,
+  make N striped + N wrapped). Model it with a small **progress accumulator** in the
+  core, fed by **neutral, off-hash per-move report signals** (never add it to
+  `state_hash` — it is not board state), and derive the per-seed targets from a
+  deterministic seed template. Share that accumulator + target fn across the binding,
+  the solver, and outcome replay so all three agree bit-for-bit; the solver then needs a
+  progress-carrying search (memoize on `(state_hash, progress)`), not the board-state
+  one. Winnability is still a solver-filtered pack (see the match-3 Track D checklist plan).
 - **Verifiable share vs spoiler.** The `?r=` record contains the move list (it
   must, to replay), so opening it reveals the solution — it is a *completed-result*
   artifact, honestly a spoiler for that seed. Where the game's social object is

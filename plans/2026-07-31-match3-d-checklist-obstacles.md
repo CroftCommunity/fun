@@ -227,16 +227,23 @@ deliverables are built in sequence: **Checklist (Phases 1–4)**, then **Obstacl
   via the seed-72 fixture + the overflow sweep extended to obstacles.
 - [x] Guide shots: `guide:shots` produced no match3 change (the 6-button toggle renders within
   the captured region); unrelated churn reverted.
-- [ ] Deploy + live-smoke `?mode=obstacles` — after this push deploys.
+- [x] Deploy + live-smoke `?mode=obstacles` (standalone Playwright): 3 licorice + 3 meringue;
+  the seed-72 fixture clears all six in one swap (`isWon`, `blockersRemaining==0`); the result
+  re-verifies ("All obstacles cleared in 1 swaps — verifiable"); zero page errors.
 
-### Phase 9 (Track-D closeout) — ticks + the honest out-of-scope boundary
-- [ ] `TODO/match3.md` + `plans/2026-07-30-match3-parity-roadmap.md` — tick the checklist
-  objective + the obstacle families; mark **Track D complete**.
-- [ ] Record **deliberately out of scope, with reasons** (markdown-only, no gate):
+### Phase 9 (Track-D closeout) — ticks + the honest out-of-scope boundary — DONE
+- [x] `TODO/match3.md` + `plans/2026-07-30-match3-parity-roadmap.md` — ticked the checklist
+  objective + the obstacle families; **Track D marked COMPLETE**; the roadmap's program-level
+  DoD now records the whole parity program complete.
+- [x] `docs/BUILDING-GAMES.md` — the obstacle overlay (an overlay on a non-gem cell) + the new
+  **path-accumulated objective** pattern (progress accumulator + off-hash signals + a
+  progress-carrying solver search).
+- [x] Recorded **deliberately out of scope, with reasons** (markdown-only, no gate):
   - **timed** — breaks the no-wall-clock verifiable model (a result must be a pure
     function of `(seed, moves)`; wall-clock is not replayable/verifiable).
   - **spreading chocolate / marmalade / locks / timed bombs** — buildable later as more
-    obstacle families on the T7 overlay pattern, but not in this closeout.
+    obstacle families on the T7 overlay pattern, but not in this closeout; timed bombs also
+    hit the wall-clock limit.
   - **meta (boosters, lives, level maps, progression)** — contradicts the single-daily-
     board, account-less, server-less shelf (no accounts to hold lives/progression; no
     server to gate boosters). A deliberate boundary, not an omission.
@@ -252,6 +259,17 @@ deliverables are built in sequence: **Checklist (Phases 1–4)**, then **Obstacl
   by a fish" (B4). Meringue/licorice ship as adjacency-cleared flavoured blockers.
 
 ## Review Log
+### Phase 9 (Track-D closeout) — TRACK D COMPLETE — 2026-07-31
+Track D is closed as an honest boundary. Ticked the checklist + obstacle families in
+`TODO/match3.md` and the roadmap; marked **Track D COMPLETE** and updated the roadmap's
+program-level DoD (the whole parity program is now complete: six objectives, full specials +
+combos, calibrated par ladder, two obstacle families). Recorded the deliberate out-of-scope
+set with reasons — **timed** (no-wall-clock verifiable model), **spreading chocolate /
+marmalade / locks / timed bombs** (later, on the T7 overlay pattern), **meta** (contradicts
+the account-less/server-less shelf). Added two `docs/BUILDING-GAMES.md` notes: the obstacle
+overlay (an overlay on a non-gem cell) and the path-accumulated-objective pattern. Markdown
+only — no gate. match-3 parity is DONE.
+
 ### Phase 8 (obstacles UI + how-to + e2e) complete — 2026-07-31
 Green: clear-the-obstacles is playable at `?mode=obstacles` with an "Obstacles" toggle,
 distinct licorice + meringue tiles (meringue renders its remaining layer count — a

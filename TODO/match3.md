@@ -149,13 +149,28 @@ beam-based par table landing early. Full phasing, DoD, and risks in the roadmap.
       combo headroom on every board, sub-optimal) + an illustrative model panel
       (casual≈1★–2★, careful≈2★, expert≈3★). Verdict: keep the rungs/weights — 3★ reads
       strong-but-attainable. C3 (re-par with specials) already satisfied by B6.
-- [ ] **Track D — parity completeness** (confirm each first):
-  - [x] **Ingredients (drop-to-bottom)** — owner-confirmed 2026-07-31 (plan:
-        `plans/2026-07-31-match3-d-ingredients.md`). A fourth objective: `Cell::Ingredient`
-        (a falling non-gem that exits at the bottom; hash tag `0x03`, additive) + the full
-        mode template (deal → solver + winnable pack → binding + outcome → UI toggle/tile/
-        HUD + how-to + e2e). Playable at `?mode=ingredients`, winnable-daily, verifiable.
-  - [ ] order/mixed (a checklist); timed (poor fit — no wall-clock); more obstacle families
-        (licorice, chocolate, meringue, locks, timed bombs).
+- [x] **Track D — parity completeness — COMPLETE (2026-07-31)** (plan:
+      `plans/2026-07-31-match3-d-checklist-obstacles.md`). An honest boundary: the objectives
+      + obstacle families that fit the shelf are shipped; the rest is deliberately out of scope.
+  - [x] **Ingredients (drop-to-bottom)** — plan `plans/2026-07-31-match3-d-ingredients.md`.
+        `Cell::Ingredient` (falling non-gem, hash tag `0x03`) + the full mode template.
+        Playable at `?mode=ingredients`, winnable-daily, verifiable.
+  - [x] **Order/mixed CHECKLIST** — a fifth objective (clear N of a colour + make N striped +
+        N wrapped): a **path-accumulated** win (a `ChecklistProgress` accumulator fed by two
+        neutral off-hash `StepReport` signals, shared by binding/solver/replay); seed-template
+        targets + solver-filtered pack; `Mode::Checklist` + `match3-checklist`; UI "Orders"
+        toggle + goal-tally HUD + how-to + e2e. Playable at `?mode=checklist`, deployed +
+        live-smoked.
+  - [x] **Obstacle families — meringue + licorice** — distinct, mechanically-separate tiles via
+        a blocker-flavour overlay (`o\x00` hash section, additive; `Obstacle {Licorice,Meringue}`,
+        tags `0x01`/`0x02`). Meringue = durable multi-hit (first shipped layered-blocker daily);
+        licorice = single-hit. New `Mode::Obstacles` + `match3-obstacles` + `find_obstacles`
+        pack + UI toggle/tiles/HUD + how-to + e2e + golden vector 25. Playable at
+        `?mode=obstacles`, deployed + live-smoked.
+  - **Out of scope (deliberate, recorded with reasons):** *timed* (breaks the no-wall-clock
+    verifiable model — a result must be a pure function of `(seed, moves)`); *spreading
+    chocolate / marmalade / locks / timed bombs* (buildable later on the T7 overlay pattern;
+    timed bombs also hit the wall-clock limit); *meta — boosters, lives, level maps,
+    progression* (contradicts the single-daily-board, account-less, server-less shelf).
 - [ ] **Backlog — in-browser AI hint/coach** (D6): advisory "show a strong line" /
       smarter hints; design after the parity spine lands.
