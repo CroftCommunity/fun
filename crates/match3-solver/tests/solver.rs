@@ -8,11 +8,12 @@ use std::path::PathBuf;
 
 use match3_core::blockers_mode::{BLOCKERS, COLORS, HEIGHT, WIDTH};
 use match3_core::{
-    blockers_remaining, deal_blockers, deal_jelly, jelly_mode, jelly_remaining, Game,
+    blockers_remaining, deal_blockers, deal_ingredients, deal_jelly, ingredients_mode,
+    ingredients_remaining, jelly_mode, jelly_remaining, Game,
 };
 use match3_solver::{
-    find_clear, find_dejelly, generate_jelly_pack, generate_pack, jelly_pack_to_doc, pack_to_doc,
-    Pack, PackEntry,
+    find_clear, find_dejelly, find_ingredients, generate_ingredients_pack, generate_jelly_pack,
+    generate_pack, ingredients_pack_to_doc, jelly_pack_to_doc, pack_to_doc, Pack, PackEntry,
 };
 
 // Fixed, so the pack regenerates byte-identically. A full year of clearable
@@ -218,6 +219,107 @@ fn generate_jelly_pack_file() {
     fs::write(&path, &bytes).expect("write pack");
     println!(
         "wrote {} jelly seeds (fixture seed {} line {} moves) to {}",
+        pack.seeds.len(),
+        pack.fixture.seed,
+        pack.fixture.moves.len(),
+        path.display()
+    );
+}
+
+// --- clear-the-ingredients pack (parity Track D) ---
+
+const IPACK_MASTER: u64 = 0;
+const IPACK_COUNT: usize = 365;
+const IPACK_BUDGET: u64 = 400_000;
+const IPACK_MAX_SEEDS: u64 = 4_000;
+
+fn ingredients_pack_path() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../games/match3/ingredients-pack.json")
+}
+
+fn ingredients_replays_to_clear(entry: &PackEntry) -> bool {
+    use ingredients_mode as m;
+    let mut game = Game::new(
+        deal_ingredients(entry.seed, m::WIDTH, m::HEIGHT, m::COLORS, m::INGREDIENTS),
+        entry.seed,
+        m::COLORS,
+    );
+    for &mv in &entry.moves {
+        let _ = game.play_move((mv[0], mv[1]), (mv[2], mv[3]));
+    }
+    ingredients_remaining(&game.board) == 0
+}
+
+fn read_committed_ingredients() -> Pack {
+    let bytes = fs::read(ingredients_pack_path())
+        .expect("run the `generate_ingredients_pack_file` (ignored) test first to create the pack");
+    pond_docformat::read_as(&bytes, "match3-ingredients-pack", 1)
+        .expect("valid ingredients pack v1 envelope")
+}
+
+#[test]
+fn find_ingredients_respects_budget() {
+    assert!(
+        find_ingredients(0, 1).is_none(),
+        "cannot drop every ingredient within a one-node budget"
+    );
+}
+
+#[test]
+fn committed_ingredients_pack_is_wellformed() {
+    let pack = read_committed_ingredients();
+    assert_eq!(pack.seeds.len(), IPACK_COUNT, "a full year of seeds");
+    let unique: HashSet<u64> = pack.seeds.iter().copied().collect();
+    assert_eq!(unique.len(), pack.seeds.len(), "seeds are unique");
+    assert!(
+        pack.seeds.contains(&pack.fixture.seed),
+        "the fixture seed is one of the pack seeds"
+    );
+    assert!(
+        ingredients_replays_to_clear(&pack.fixture),
+        "fixture seed {} line must replay to all-ingredients-collected",
+        pack.fixture.seed
+    );
+}
+
+#[test]
+fn committed_ingredients_seeds_are_clearable_spotcheck() {
+    let pack = read_committed_ingredients();
+    for &seed in pack.seeds.iter().take(3) {
+        assert!(
+            find_ingredients(seed, IPACK_BUDGET).is_some(),
+            "committed ingredients seed {seed} must be clearable within budget"
+        );
+    }
+}
+
+#[test]
+#[ignore = "P10 regeneration drill — runs the solver (slow)"]
+fn ingredients_pack_regenerates_byte_identical() {
+    let pack = generate_ingredients_pack(IPACK_MASTER, IPACK_COUNT, IPACK_BUDGET, IPACK_MAX_SEEDS);
+    let bytes = ingredients_pack_to_doc(&pack).expect("serialize pack");
+    let committed = fs::read(ingredients_pack_path()).expect("read committed pack");
+    assert_eq!(
+        bytes, committed,
+        "ingredients pack must regenerate byte-identically"
+    );
+}
+
+#[test]
+#[ignore = "generator — writes games/match3/ingredients-pack.json"]
+fn generate_ingredients_pack_file() {
+    let pack = generate_ingredients_pack(IPACK_MASTER, IPACK_COUNT, IPACK_BUDGET, IPACK_MAX_SEEDS);
+    assert_eq!(
+        pack.seeds.len(),
+        IPACK_COUNT,
+        "expected a full year of seeds"
+    );
+    let bytes = ingredients_pack_to_doc(&pack).expect("serialize pack");
+    let path = ingredients_pack_path();
+    fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+    fs::write(&path, &bytes).expect("write pack");
+    println!(
+        "wrote {} ingredient seeds (fixture seed {} line {} moves) to {}",
         pack.seeds.len(),
         pack.fixture.seed,
         pack.fixture.moves.len(),

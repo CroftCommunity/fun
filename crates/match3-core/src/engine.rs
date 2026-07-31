@@ -27,6 +27,8 @@ pub struct StepReport {
     pub cleared: Vec<Pos>,
     pub blocker_layers_removed: u32,
     pub jelly_layers_removed: u32,
+    /// Ingredients that reached the bottom row and exited this step (Track D).
+    pub ingredients_collected: u32,
     pub score_gained: u64,
 }
 
@@ -1627,12 +1629,6 @@ impl Game {
                 .into_iter()
                 .filter(|p| !creations.iter().any(|c| c.pos == *p))
                 .collect();
-            steps.push(StepReport {
-                cleared,
-                blocker_layers_removed: out.blocker_layers_removed,
-                jelly_layers_removed: out.jelly_layers_removed,
-                score_gained: step_score,
-            });
             if trace {
                 snapshots.push(self.board.clone());
             }
@@ -1644,7 +1640,7 @@ impl Game {
             // Track D: an ingredient that gravity dropped into the bottom row exits
             // now (before refill), so its hole refills as a gem. No-op with no
             // ingredient on the board, so every other mode is unchanged.
-            collect_ingredients(&mut self.board);
+            let ingredients_collected = collect_ingredients(&mut self.board);
             if trace {
                 snapshots.push(self.board.clone());
             }
@@ -1652,6 +1648,15 @@ impl Game {
             if trace {
                 snapshots.push(self.board.clone());
             }
+            // The step report is pushed after collection so it can carry the
+            // ingredients that exited this step (the solver orders by that progress).
+            steps.push(StepReport {
+                cleared,
+                blocker_layers_removed: out.blocker_layers_removed,
+                jelly_layers_removed: out.jelly_layers_removed,
+                ingredients_collected,
+                score_gained: step_score,
+            });
             reblast_seed = act.pending;
             step_index += 1;
         }
