@@ -1,0 +1,40 @@
+{
+  "id": "hexgl",
+  "tier": 2,
+  "provenance": {
+    "upstreamUrl": "https://github.com/BKcore/HexGL",
+    "upstreamRef": "master@6addc95a2fce3bf05f4d751823cc054c61a16d68",
+    "retrieved": "2026-07-31",
+    "author": "Thibaut Despoulain (BKcore)",
+    "license": "MIT",
+    "licenseFile": "vendor/LICENSE"
+  },
+  "posture": {
+    "verifiable": false,
+    "containment": "iframe-sandbox",
+    "sandbox": "allow-scripts",
+    "egress": "same-origin",
+    "input": ["keyboard", "pointer", "touch", "gamepad"],
+    "approxSizeKb": 17000,
+    "patches": [
+      {
+        "file": "vendor/index.html",
+        "change": "removed the inline Google Analytics <script> block (_gaq / UA-26274524-4 / ga.js)",
+        "reason": "non-extractive gate: a wrap must not phone home; also holds the same-origin egress posture"
+      },
+      {
+        "file": "vendor/index.html",
+        "change": "external favicon links http://hexgl.bkcore.com/favicon.png -> local favicon.png",
+        "reason": "avoid off-origin asset fetch (egress); the favicon ships in the bundle"
+      },
+      {
+        "file": "vendor/index.html",
+        "change": "og:image http://hexgl.bkcore.com/image.png -> local icon_256.png",
+        "reason": "keep social metadata pointing at a vendored asset, not upstream"
+      }
+    ]
+  },
+  "representation": {
+    "claim": "Wrapped game — no verifiable record."
+  }
+}

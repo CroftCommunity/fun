@@ -10,6 +10,7 @@ import { bubbleModule } from "./games/bubble/bubble.js";
 import { wyrdleModule } from "./games/wyrdle/wyrdle.js";
 import { twenty48Module } from "./games/2048/2048.js";
 import { astrayModule } from "./games/astray/astray.js";
+import { hexglModule } from "./games/hexgl/hexgl.js";
 
 export const REGISTRY: readonly GameEntry[] = [
   {
@@ -36,6 +37,19 @@ export const REGISTRY: readonly GameEntry[] = [
       upstreamUrl: "https://github.com/wwwtyro/Astray",
     },
     load: astrayModule,
+  },
+  {
+    id: "hexgl",
+    title: "HexGL",
+    icon: "🏎",
+    status: "playable",
+    tier: 2,
+    attribution: {
+      author: "Thibaut Despoulain (BKcore)",
+      license: "MIT",
+      upstreamUrl: "https://github.com/BKcore/HexGL",
+    },
+    load: hexglModule,
   },
   { id: "cribbage", title: "Cribbage", icon: "🎴", status: "soon" },
 ];

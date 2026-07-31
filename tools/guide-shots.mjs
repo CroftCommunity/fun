@@ -234,6 +234,20 @@ const SHOTS = [
       await page.waitForTimeout(1500);
     },
   },
+  {
+    name: "hexgl-race",
+    clip: ".wrapped-game-frame",
+    async run(page) {
+      await page.goto(`${origin}/hexgl/`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".wrapped-game-frame");
+      const frame = page.frameLocator(".wrapped-game-frame");
+      // menu -> Start -> click-to-continue past the controls-help -> race.
+      await frame.locator("#start").click({ timeout: 8000 });
+      await page.waitForTimeout(1500);
+      await page.locator(".wrapped-game-frame").click({ position: { x: 450, y: 300 } });
+      await page.waitForTimeout(8000); // track + textures load, race begins
+    },
+  },
 ];
 
 const server = spawn("node", [join(root, "tools", "serve.mjs")], { stdio: "ignore" });

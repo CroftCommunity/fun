@@ -24,12 +24,17 @@ export interface GameModule {
  * shelf can attribute the upstream work honestly (author, license, source).
  */
 export interface GameAttribution {
-  /** Upstream author / project owner. */
+  /** The developer we credit — the original author or the port's author. */
   readonly author: string;
   /** SPDX-ish license name (e.g. "MIT", "The Unlicense", "GPL-3.0"). */
   readonly license: string;
-  /** Canonical upstream URL (repo or project home). */
+  /** Canonical upstream URL (repo or project home) — the "view the original" link. */
   readonly upstreamUrl: string;
+  /**
+   * The original work this game pays homage to, if it descends from another
+   * (e.g. a clone or a port). Free text: "Flappy Bird by Dong Nguyen". Optional.
+   */
+  readonly basedOn?: string;
 }
 
 /** Fields common to every catalog entry, whatever its tier. */

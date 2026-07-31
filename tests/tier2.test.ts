@@ -40,14 +40,31 @@ describe("wrappedBanner (Tier-2 honest representation)", () => {
     expect(banner!.getAttribute("role")).toBe("note");
   });
 
-  it("shows the attribution: author, license, and a source link", () => {
+  it("pays homage: credits the developer with thanks and links to the original", () => {
     const banner = wrappedBanner(tier2Entry())!;
     expect(banner.textContent).toContain("wwwtyro");
     expect(banner.textContent).toContain("The Unlicense");
+    // A genuine acknowledgment, not a terse legal line.
+    expect(banner.textContent?.toLowerCase()).toContain("with thanks");
     const link = banner.querySelector("a");
+    expect(link?.textContent?.toLowerCase()).toContain("view the original");
     expect(link?.getAttribute("href")).toBe("https://github.com/wwwtyro/Astray");
     // External source link opens safely.
     expect(link?.getAttribute("rel")).toContain("noopener");
+  });
+
+  it("acknowledges the work it descends from when `basedOn` is set", () => {
+    const banner = wrappedBanner(
+      tier2Entry({
+        attribution: {
+          author: "ellisonleao",
+          license: "GPL-3.0",
+          upstreamUrl: "https://github.com/ellisonleao/clumsy-bird",
+          basedOn: "Flappy Bird by Dong Nguyen",
+        },
+      }),
+    )!;
+    expect(banner.textContent).toContain("homage to Flappy Bird by Dong Nguyen");
   });
 
   it("renders nothing for a Tier-1 (verifiable, Croft-native) game", () => {

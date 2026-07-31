@@ -34,6 +34,8 @@ export interface Tier2Provenance {
   readonly license: string;
   /** Path (within the game dir) to the vendored license file, verbatim. */
   readonly licenseFile: string;
+  /** The original work this game descends from, if any (homage/clone/port). */
+  readonly basedOn?: string;
 }
 
 /** How the wrapped game is contained and what it may reach. */
@@ -109,6 +111,7 @@ export function parseTier2Meta(raw: unknown, gameId: string): Tier2Meta {
     author: str(p.author, gameId, "provenance.author"),
     license: str(p.license, gameId, "provenance.license"),
     licenseFile: str(p.licenseFile, gameId, "provenance.licenseFile"),
+    ...(p.basedOn === undefined ? {} : { basedOn: str(p.basedOn, gameId, "provenance.basedOn") }),
   };
 
   const po = obj(root.posture, gameId, "posture");

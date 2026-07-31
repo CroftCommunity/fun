@@ -17,7 +17,8 @@ test("Astray loads at its own URL with the honest-representation banner", async 
   // Attribution: author, license, and a source link to the upstream repo.
   await expect(banner).toContainText("wwwtyro");
   await expect(banner).toContainText("The Unlicense");
-  const source = banner.getByRole("link", { name: /source/i });
+  await expect(banner).toContainText(/with thanks/i);
+  const source = banner.getByRole("link", { name: /view the original/i });
   await expect(source).toHaveAttribute("href", "https://github.com/wwwtyro/Astray");
 });
 
