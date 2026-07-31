@@ -1,7 +1,14 @@
 # Wyrdle — the daily word game (Tier-1 build-fresh, phase plan)
 
-**Status:** 🚧 **IN PROGRESS** — planning complete (Pass 1+2+3, 2026-07-31);
-execution starting at W0. Target: `/wyrdle/` — a daily 5-letter word-guessing
+**Status:** ✅ **SHIPPED 2026-07-31 — all phases W0–W6 executed TDD-first +
+committed.** Wyrdle is playable at `/wyrdle/`: a daily 5-letter word game over an
+embedded license-clean word list, tap-or-type input with the core deciding
+legality, a verification-forward result with **two shares** (spoiler-free emoji
+grid + self-verifying `?r=`), hints/settings, and a How-to guide. Full gate green
+(cargo `--workspace` 50 suites + fmt + clippy; 96 unit; 118 e2e / 2 expected
+skips). Deploy-ready (not pushed). Commits: plan `d752f6a`, W0 `87e0423`, W1
+`5e16246`, W2 `a219d56`, W3 `6acb27e`, W4 `aee6466`, W5 `6eabbe5`, W6 `1d2478d`
+(branch `claude/wyrdle`, worktree `worktrees/fun/wyrdle`). Target: `/wyrdle/` — a daily 5-letter word-guessing
 game (Wordle-family) for `fun.croft.ing`. Name = wyrm + word (nod to Old-English
 *wyrd*, "fate"); icon 🐉; wyrm/dragon motif. Distinct, non-trademarked: original
 name, original (license-clean) word lists, our own look — **not** Wordle, no NYT
@@ -635,3 +642,17 @@ resolves it) but does not block starting W0.
   Committed `tools/build-wordlists.mjs` (re-runnable, off-gate),
   `crates/wyrdle-core/data/{allowed,answers}.txt`, `games/wyrdle/PROVENANCE.md`.
   D3 (`include_str!` embed/parse) folded into W1's tests (the crate lands there).
+- **2026-07-31 Execution complete (W1–W6).** All phases shipped TDD-first, each a
+  green committed checkpoint. Deltas from the plan, all in the commits: (1) The
+  pack shuffle uses an inline `splitmix64` rather than a `rand` dev-dep — keeps
+  the core dependency-lean and byte-identically reproducible (W3). (2) A
+  `Game::hint()` core method + a `hint()` wasm export were added in W5 (planned as
+  "reveal one correct letter" — the minimal BUILDING-GAMES-compliant hint;
+  extends the already-committed W4 wasm). (3) Word-list sourcing landed on
+  hermitdave/FrequencyWords (MIT) after **rejecting** google-10000-english
+  (LDC/commercial-restricted) — a real license-clean win from W0 discovery.
+  (4) Registry + how-to wiring were split across W5 (module/registry, so the e2e
+  drives a real `/wyrdle/`) and W6 (guide + shots + docs). `pond-outcome` and
+  `pond-docformat` needed **no** change (as predicted). Shared-file merge surface
+  vs match-3 is exactly the six named files; this branch is a clean worktree off
+  `origin/main` awaiting the owner's merge decision.
