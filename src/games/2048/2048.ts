@@ -385,7 +385,18 @@ export function twenty48Module(): GameModule {
       { class: "t48-banner" },
       "Slide the board — matching numbers combine (2+2=4). Reach the 2048 tile.",
     );
-    container.replaceChildren(renderControls(board), banner, renderBoard(board), renderPad(), statusEl);
+    // A single centered column: controls, banner, board, and d-pad all share
+    // one vertical axis so the directional keys read as belonging to the board.
+    const game_ = el(
+      "div",
+      { class: "t48-game" },
+      renderControls(board),
+      banner,
+      renderBoard(board),
+      renderPad(),
+      statusEl,
+    );
+    container.replaceChildren(game_);
   }
 
   async function startGame(nextMode: "daily" | "free", seedOverride?: bigint): Promise<void> {
