@@ -1,10 +1,13 @@
 # Match-3 parity — Track C / C2: par-ladder calibration note
 
-**Status:** calibration note (2026-07-31). Parent: `plans/2026-07-30-match3-parity-roadmap.md`
-(Track C / C2). This is the **recorded rationale for the rung choices** the Track C
-DoD calls for — an analysis output, **not shipped code**. Owner scope (2026-07-31):
-**both** methods (a data-driven spread + an illustrative model panel), **all 365 daily
-seeds**, evaluating the **current specials-beam 3★** (no recalibration target set).
+**Status:** ✅ **LOCKED (2026-07-31)** — Track C complete; difficulty kept at the current
+specials-beam 3★. Parent: `plans/2026-07-30-match3-parity-roadmap.md` (Track C / C2). This
+is the **recorded rationale for the rung choices** the Track C DoD calls for — an analysis
+output, **not shipped code**. Owner scope (2026-07-31): **both** methods (a data-driven
+spread + an illustrative model panel), **all 365 daily seeds**, evaluating the **current
+specials-beam 3★**. The verdict is a **locked design decision**, not a "pending real
+play-data" hold — there is no telemetry (the shelf is static + account-less), and stars are
+defined solver-relative, so there is nothing external to await (see "Verdict — LOCKED").
 
 ## Question
 
@@ -58,33 +61,45 @@ The panel maps onto the ladder as intended: **casual ≈ 1★–2★, careful �
 grinding or luck, and that it is demanding but reachable within the 20-swap budget. This
 is exactly D5's "strong-but-attainable, not the majority-easy Candy-Crush 3★."
 
-## Verdict & recommendation
+## Verdict — LOCKED (2026-07-31)
 
-**Keep the current rungs and `special_potential` weights.** The shipped ladder is
-healthy: monotone, ~2× separated, with combo headroom on every daily, and 3★ that both
-the data (2.1× greedy, sub-optimal) and the panel (expert-reachable, careful-short)
-read as strong-but-attainable. No weight or beam-width change is warranted now.
+**Keep the current rungs and `special_potential` weights; Track C is done.** The shipped
+ladder is healthy: monotone, ~2× separated, with combo headroom on every daily, and a 3★
+that both the data (2.1× greedy, sub-optimal) and the panel (expert-reachable,
+careful-short) read as strong-but-attainable.
 
-**Levers, if live data later shows a skew** (recorded so a future tuner has the knobs):
-- *3★ too rarely earned* → lower the 3★ demand: reduce the beam width (8 → 4) or trim the
-  `special_potential` combo-adjacency bonus (so the beam builds fewer combos).
-- *3★ too commonly earned* → raise it: widen the beam or increase the combo bonus.
-- Any change re-bakes `par-pack.json` in place (D5, no `VERSION` bump while there are no
-  users); the byte-identical regen drill guards determinism.
+### Why this is a *locked design decision*, not a provisional "await data"
+
+An earlier draft of this note hedged that "the honest calibration is the day real
+play-data arrives." **That day is not coming, and it does not need to.** The shelf is
+static (GitHub Pages), account-less and server-less by design — outcomes are shared
+voluntarily as `?r=` links, never collected — so there is **no telemetry pipeline** and
+there never will be. Aggregate "what % of players hit 3★" data is simply not a thing this
+project will have.
+
+That is fine, because D5 defined the stars **solver-relative**, not by a human percentile:
+a star means "you played as well as a {weak / competent / strong} deterministic solver."
+Under that definition **the ladder *is* the bar** — there is nothing external to measure
+against and nothing to wait for. The human-ish model panel above was only ever a loose
+sanity check that the solver rungs are not absurdly placed, never a future data-driven
+correction. So this calibration is **final by construction**, not pending.
+
+### If we ever return to refine it (a deliberate design choice, not a measurement)
+
+Refinement here is a judgment call about *desired difficulty*, made by an owner, not a fit
+to observed data. The knobs, recorded so a future session can move 3★ cheaply:
+- *Make 3★ easier* → reduce the beam width (8 → 4), or trim the `special_potential`
+  combo-adjacency bonus so the strong player builds fewer combos.
+- *Make 3★ harder* → widen the beam, or raise the combo bonus.
+- Either re-bakes `par-pack.json` in place via the generator + the byte-identical regen
+  drill. `Match3::VERSION` stays 1 while there are no users; it becomes a `VERSION` bump
+  only if shared records ever need their old par preserved.
+- The reproducer (`calibration_rung_spread`, `#[ignore]`) reprints the spread to re-judge.
 
 ## C3 status
 
 Track C's C3 ("re-par with specials") is **already satisfied**: B6 baked the
-specials-exploiting player into the 3★ rung and regenerated the committed par table.
-This note evaluated that result and found no further re-par needed — so **Track C is
-complete** (the star tiers are the deterministic player ladder; the par table is baked +
+specials-exploiting player into the 3★ rung and regenerated the committed par table. This
+note evaluated that result, found no further re-par needed, and locked it — so **Track C
+is complete** (star tiers are the deterministic player ladder; the par table is baked +
 verifiable; the rung rationale is recorded here).
-
-## Caveats
-
-- The model panel is **illustrative reasoning, not measured play** — LLMs cannot play
-  match-3 near-optimally, so it is a qualitative sanity check on perceived difficulty,
-  weighted well below the deterministic data.
-- "Human-ish" is inferred, not observed; the honest calibration is the day real
-  play-data arrives, at which point the levers above apply (and any change becomes a
-  `VERSION` bump once records exist in the wild).

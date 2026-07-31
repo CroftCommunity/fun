@@ -254,8 +254,12 @@ Execution plan for B0: `plans/2026-07-30-match3-b0-specials.md`.
   Data-driven spread over all 365 daily seeds (rungs ~2× separated: random 1162 / greedy
   2759 / specials 5765; combo headroom on 365/365; 3★ median +111% over greedy, and
   sub-optimal) plus an illustrative 3-persona model panel (casual ≈ 1★–2★, careful ≈ 2★,
-  expert ≈ 3★). Verdict: keep the rungs + `special_potential` weights; 3★ reads
-  strong-but-attainable. Levers recorded for future live-data tuning.
+  expert ≈ 3★). Verdict **LOCKED**: keep the rungs + `special_potential` weights; 3★ reads
+  strong-but-attainable. This is a locked design decision, **not** a "pending real
+  play-data" hold — the shelf is static/account-less (no telemetry, ever) and stars are
+  solver-relative, so there is nothing external to await. Refinement, if revisited, is a
+  deliberate difficulty choice via the recorded knobs (beam width / `special_potential`),
+  not a data fit.
 - **C3 re-par with specials — DONE** (B6 baked the specials 3★; C2 confirmed no further
   re-par needed).
 - **DoD:** star tiers are the player ladder; par table baked + verifiable; a
