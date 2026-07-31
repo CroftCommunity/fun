@@ -53,9 +53,11 @@ at them and add what's specific to this repo. Git identity: chasemp
   chrome, **honestly represented** — no faked verifiable outcome). Gated by a
   real-browser **containment/legibility** harness (untrusted code in our chrome).
   A large one-time download that then runs fully offline is an allowed class
-  *with up-front size disclosure* (e.g. SuperTuxKart). See the Tux Racer wrap
-  spike in `plans/` for the reference path; the wrapped-game standard is a
-  pending addendum to `docs/BUILDING-GAMES.md`.
+  *with up-front size disclosure*. The wrapped-game standard is **ratified in
+  `docs/BUILDING-GAMES.md` §9**; **Astray** (`src/games/astray/`) is the Tier-2
+  reference implementation (as solitaire is for Tier-1). Every wrap ships a
+  `tier2.meta.json` (provenance + posture). Avoid the Emscripten + runtime-untar
+  class (the SuperTuxKart cut, `plans/2026-07-31-supertuxkart-wrap.md`).
 
 The candidate inventory + the Tier-2 inclusion filter live in discovery:
 `discovery/alpha/thinking/app/ponds/client-side-static-game-candidates.md`.

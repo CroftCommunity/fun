@@ -48,14 +48,14 @@ bleed into the shared chrome (see "The two tiers" below).
 
 ### The two tiers
 
-The standards in this doc describe **Tier-1 Croft-native** games (build-fresh,
+The standards in §§2–8 describe **Tier-1 Croft-native** games (build-fresh,
 determinism-first, verifiable). The shelf also admits **Tier-2** opportunistic
 ethical wraps/ports (already-packaged, static, non-extractive, taken as-is, **no
 verifiable outcome — stated honestly**), gated by a real-browser
 containment/legibility harness rather than by the verifiable-outcome + tap-first
-standards. The Tier-2 wrapped-game addendum is drafted in the Tux Racer wrap
-spike (`plans/`) and lands here when ratified. Everything below §1 is Tier-1
-unless noted.
+standards. **The Tier-2 wrapped-game standard is ratified in §9 below**; Astray
+(`src/games/astray/`) is its reference implementation, as solitaire is for
+Tier-1. Everything in §§2–8 is Tier-1 unless noted.
 
 ## 2. Determinism-first core → wasm
 
@@ -224,7 +224,75 @@ page (`/how-to/?game=<id>`). It follows the Croft user-guide pattern:
 
 ---
 
-## New-game checklist
+## 9. Tier-2 — wrapped games (the ratified addendum)
+
+A Tier-2 game is an **already-packaged, ethical game taken as-is**. We do **not**
+rebuild it and we do **not** fake a verifiable outcome. It earns a place by being
+honestly represented and provably contained, not by the Tier-1 verifiable-outcome
+standard. Astray (`src/games/astray/`) is the reference implementation; the Tux
+Racer spike (`plans/2026-07-30-tux-racer-wrap-spike.md`) is the origin of this
+standard, and the SuperTuxKart cut (`plans/2026-07-31-supertuxkart-wrap.md`) is
+the cautionary tale — **avoid the Emscripten + runtime-asset-untar class**; prefer
+a self-contained JS/WebGL bundle that vendors as plain static files.
+
+### The inclusion filter (all must hold)
+
+1. **Already fully client-side / static** — runs in-browser, no backend.
+2. **Non-extractive** — no ads, tracking/telemetry-home, account-as-data-grab, or
+   dark patterns. Any such code is **stripped at vendor time** and the removal is
+   recorded as a patch (see HexGL's Google-Analytics strip).
+3. **Redistribution-licensed** — an OSS/freeware-assets license that lets us
+   vendor, host, and attribute. Copyleft (GPL) is allowed but carries a
+   **source-offer** obligation — record it in the meta.
+4. **Fits our chrome** — mounts through the `GameModule` contract, gets its own
+   `/<id>/` URL, and passes the containment/legibility gate in all modes.
+5. **Honestly represented** — the shelf must not imply a verifiable record where
+   there is none.
+
+Bundle weight is **not** a disqualifier — a large one-time download that then runs
+fully offline is an allowed class *with up-front size disclosure* (recorded in the
+meta's `approxSizeKb`).
+
+### Which Tier-1 standards change for a wrap
+
+| Tier-1 standard | For a Tier-2 wrap |
+|---|---|
+| Determinism-first Rust core → wasm (§2) | **N/A** — the game is vendored, not built |
+| Verifiable outcome / `pond-outcome` / `?r=` (§3) | **Replaced** by honest "no verifiable record" representation |
+| Tap-first, core-decides-legality (§4) | **N/A** — native input; document the input model in the meta |
+| Identity + tokens, WCAG AA, axe (§5) | **Required for our chrome** around the game (the embedded canvas is exempt) |
+| Standard settings (§6) | **N/A** |
+| How to play (§7) | **Required** — and it must state plainly that the game keeps no verifiable record |
+| TDD + gate (§8) | **Required** for the wrapper + the containment gate we write (not the vendored engine) |
+
+### The Tier-2 mechanics (as built)
+
+- **Vendor, don't fetch.** The bundle lives under `src/games/<id>/vendor/`
+  (license file verbatim), is committed, and is served from our own origin —
+  no runtime third-party fetch, no untar step. `build.mjs` copies it to
+  `dist/<id>/vendor/`; `tools/serve.mjs` (and GitHub Pages) send
+  `Access-Control-Allow-Origin: *` so opaque-origin WebGL texture loads succeed.
+- **Provenance + posture in one file.** Every wrap ships
+  `src/games/<id>/tier2.meta.json` — the single source of truth for where it came
+  from (upstream URL/ref/date, author, license, license file) and how it is
+  contained (containment, sandbox flags, `egress: "same-origin"`, input, size,
+  and **every vendor patch with its reason**). `parseTier2Meta` is fail-loud; a
+  gate test ties the registry's `attribution` to the meta's `provenance` so they
+  cannot drift.
+- **Contained mount.** The `GameModule` mounts through the shared
+  `mountWrappedGame` primitive: an `iframe[sandbox="allow-scripts"]` (opaque
+  origin; `allow-same-origin` is refused because, with scripts, it lets the frame
+  remove its own sandbox). Clean teardown on `unmount`.
+- **Honest representation.** The chrome renders a persistent "Wrapped game — no
+  verifiable record" banner + attribution (author · license · source link) above
+  the game, driven by `GameEntry.tier === 2`.
+- **The gate.** `tests/tier2-containment.spec.ts` is a real-browser gate
+  parameterized over every `tier2.meta.json`. It asserts the game's real behavior
+  matches its declared posture: sandbox flags, **zero off-origin egress**, no
+  breakout, our-origin storage untouched, legible in our chrome at 360px +
+  desktop, axe-clean chrome, input reaches the game with no focus trap.
+
+## New-game checklist (Tier-1 Croft-native)
 
 - [ ] Rust core + rules doc + golden vectors; native==wasm verified.
 - [ ] Raw C-ABI + serde-JSON binding (holds state, never panics) + typed TS wrapper.
@@ -235,3 +303,14 @@ page (`/how-to/?game=<id>`). It follows the Croft user-guide pattern:
 - [ ] Standard settings wired (Enable hints on; Declare assistance on; hints-off → "I'm stuck" ends + reports).
 - [ ] "How to play" guide (pure data) + `guide:shots` screenshots + sync tests; header link.
 - [ ] Gate green (unit + e2e + Rust) and deployed.
+
+## New-game checklist (Tier-2 wrap — see §9)
+
+- [ ] Passes the inclusion filter (client-side/static, non-extractive, redistribution-licensed, fits our chrome, honestly represented).
+- [ ] Bundle **vendored** under `src/games/<id>/vendor/` (license verbatim); no runtime third-party fetch; each modification recorded as a patch.
+- [ ] `src/games/<id>/tier2.meta.json` complete (provenance + posture + patches); `parseTier2Meta` passes; registry `attribution` matches the meta's `provenance`.
+- [ ] Any extractive code (analytics/ads) stripped; copyleft source-offer recorded if applicable.
+- [ ] `GameModule` mounts via `mountWrappedGame` (sandbox `allow-scripts`, no `allow-same-origin`); registry `tier: 2` + `status: "playable"`; own `/<id>/` URL.
+- [ ] Honest-representation banner shows on the game page; our surrounding chrome is WCAG AA + axe clean.
+- [ ] "How to play" guide (pure data) states plainly there is **no verifiable record**; `guide:shots` + sync tests; header link.
+- [ ] `tests/tier2-containment.spec.ts` green for the game (containment + legibility + interaction) on both engines; full gate green and deployed.
