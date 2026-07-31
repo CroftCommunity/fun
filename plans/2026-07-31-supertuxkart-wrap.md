@@ -1,7 +1,17 @@
 # SuperTuxKart — Tier-2 wrap (the "big-download-then-offline" class-definer)
 
-**Status:** Pass 1 + **Phase 0 recon done 2026-07-31**. **Blocked on a build
-environment** — see "Phase 0 recon findings" below. This is the **first real
+**Status:** ❌ **FAILED / CUT 2026-07-31.** The built local preview never loads
+to play: asset extraction throws inside the upstream port's loader
+(`PAGEERROR at js-untar@2.0.0/+esm` — the ~130 MB tar downloads and decompresses
+to a valid 217 MB `ustar`, but the untar Web Worker throws, so files never reach
+the emscripten FS and `run()` is never called). Not our shelf code; fixing it
+means patching someone else's emscripten port. Owner cut it. Build tree, worktree,
+and branches (local + remote) removed. If Tier-2 is revisited, start with HexGL
+(lowest-risk exemplar), not STK. See `TODO/supertuxkart.md`. Original plan below,
+kept as the feasibility record.
+
+**Status (original):** Pass 1 + **Phase 0 recon done 2026-07-31**. **Blocked on a
+build environment** — see "Phase 0 recon findings" below. This is the **first real
 Tier-2 wrap** on `fun.croft.ing`, so it does double duty: it wraps SuperTuxKart
 **and** ratifies the reusable Tier-2 standard the Tux Racer spike drafted
 (`plans/2026-07-30-tux-racer-wrap-spike.md`) — the vendored-bundle pattern, the
