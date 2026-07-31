@@ -179,6 +179,22 @@ body {
   color: var(--link);
 }
 
+/* A wrapped game's sandboxed frame fills the play area with no chrome of its
+   own; the honest-representation banner sits above it (in our chrome). */
+.wrapped-game-frame {
+  display: block;
+  width: 100%;
+  height: 70vh;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+body.fullscreen .wrapped-game-frame {
+  height: 100vh;
+  border: 0;
+  border-radius: 0;
+}
+
 /* Full-screen: hide the chrome, let the play area fill the viewport. */
 body.fullscreen .chrome-header,
 body.fullscreen .drawer {
