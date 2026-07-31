@@ -292,6 +292,63 @@ meta's `approxSizeKb`).
   breakout, our-origin storage untouched, legible in our chrome at 360px +
   desktop, axe-clean chrome, input reaches the game with no focus trap.
 
+### Porting a game — the step-by-step recipe
+
+Follow Astray (`src/games/astray/`, the simplest) or HexGL (a bigger, patched
+bundle). The whole thing is a wrapper + a metadata file; you write no game code.
+
+1. **Recon against primary sources.** Confirm the real repo, the **license**
+   (file-by-file if assets differ from code), and that it is **non-extractive** —
+   look for `ads.txt`, analytics snippets (`ga.js`, `gtag`), telemetry, and a
+   trademark on the name/characters. Reject trademarked clones (Pac-Man, the
+   Chrome dino) even when the code license is clean. Prefer a self-contained
+   JS/WebGL bundle; steer clear of the Emscripten + runtime-untar class.
+2. **Vendor it, don't fetch it.** Copy the runtime files into
+   `src/games/<id>/vendor/` (skip dev/deploy cruft — `.git`, `Gruntfile`,
+   `package.json`, `Procfile`), **including the license file verbatim**. Nothing
+   loads from a third-party origin at runtime.
+3. **Patch minimally, record every change.** Strip any extractive code
+   (analytics/ads); repoint external asset URLs (favicons, textures) to local or
+   relative paths so nothing leaves our origin. Each edit becomes a `patches`
+   entry in the meta with a `reason`. A zero-patch bundle (Clumsy Bird) is ideal;
+   an honest patch list (HexGL) is fine.
+4. **Write `src/games/<id>/tier2.meta.json`.** Provenance (upstream URL/ref/date,
+   author, license, license-file path; `basedOn` if it descends from another
+   work) and posture (`sandbox`, `egress: "same-origin"`, input model,
+   `approxSizeKb`, the patch list). `parseTier2Meta` is fail-loud; get it right.
+5. **Wrap + wire.** A ~20-line `GameModule` that calls `mountWrappedGame({ src:
+   "/<id>/vendor/index.html", title })`. Add the registry entry (`tier: 2` +
+   `attribution` matching the meta's provenance), add `<id>` to `GAME_PAGES` and
+   `TIER2_VENDORS` in `build.mjs`, and register a how-to.
+6. **Pay homage.** Attribution/homage is shared code — the banner credits the
+   original dev "with thanks" and links to the source automatically from the
+   registry `attribution`; set `basedOn` to credit lineage. The how-to's closing
+   note repeats the credit + source link. Keep this consistent for every wrap.
+7. **Prove it.** The containment/legibility gate enrols the game automatically
+   from its meta. Run `npm run test` + `npm run e2e`; both green before shipping.
+
+### Mobile + desktop — what a wrap must still honour
+
+The house rules (works on a phone and a desktop, honest, contained) apply to the
+*frame around* the game even though we don't control the game's own input:
+
+- **Both viewports.** The gate checks **no horizontal overflow at 360px** and a
+  desktop width; the `.wrapped-game-frame` fills the play area (70vh; 100vh in
+  full-screen). Confirm the game is actually playable at phone width, not just
+  non-overflowing — some ports assume a desktop canvas.
+- **Input honesty.** Declare the real input model in the meta (`keyboard`,
+  `pointer`, `touch`, `gamepad`). If a game is keyboard-only (Astray), **say so**
+  in the how-to — do not imply our tap-first floor. A game that needs a physical
+  keyboard is admissible but must be honest that it plays best with one.
+- **Focus + full-screen.** Input reaches the frame, but focus must return to our
+  chrome (Esc / the drawer toggle) — no focus trap. Full-screen must keep the
+  game mounted and legible. The gate asserts both.
+- **Size disclosure.** A heavy bundle (HexGL, ~17 MB) is allowed but its size
+  goes in `approxSizeKb` **and** in the how-to lede, up front, before the player
+  commits to the download.
+- **Our chrome stays accessible.** Tokens/WCAG-AA/axe apply to the banner and
+  surrounding chrome (the embedded game canvas is exempt).
+
 ## New-game checklist (Tier-1 Croft-native)
 
 - [ ] Rust core + rules doc + golden vectors; native==wasm verified.
