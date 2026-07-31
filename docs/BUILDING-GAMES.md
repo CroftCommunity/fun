@@ -120,6 +120,27 @@ unless noted.
 - **Drag-and-drop is a fast-follow**, never the only way in. Add convenience
   gestures (double-tap to auto-place) where they fit, on top of tap.
 
+### Centre the play surface — the default layout
+
+A game mounts into the shared play area as a **single centred column**: controls,
+board, and any on-screen control keys stack on one vertical axis, centred in the
+play area, not hugging the left edge. Centre by default; only deviate with a
+reason. The full layout playbook + running lessons log is `docs/RESPONSIVE-DESIGN.md`.
+
+- **This matters most when the board has directional/on-screen keys** (a 2048-style
+  d-pad, an on-screen keyboard). Those keys only read as belonging to the board
+  when they sit on the board's centreline directly beneath it. A left-aligned board
+  over a centred key cluster looks broken. An E2E should assert the board and its
+  key cluster share a centreline (`boundingBox` centres within a few px).
+- **Watch the `inline-flex` trap.** `margin-inline: auto` does **not** centre an
+  `inline-flex`/`inline-block` element — it is inline-level, so the margins
+  collapse. Centre via the column wrapper (`display: flex; flex-direction: column;
+  align-items: center`) or `width: fit-content; margin-inline: auto` on a
+  block-level element.
+- **Mobile is part of the pass, not a follow-up.** Every board ships with a
+  narrow-viewport check (no horizontal overflow at 360 px) and comfortable touch
+  targets for any on-screen keys (`touch-action: manipulation`, ≥ 44 px hit area).
+
 ## 5. Identity + tokens
 
 - `tokens.css` is the **only file with raw hex**. Components use semantic `var()`
