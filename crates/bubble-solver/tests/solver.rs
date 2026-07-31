@@ -20,8 +20,8 @@ fn pack_path() -> PathBuf {
 
 fn replays_to_clear(entry: &PackEntry) -> bool {
     let mut game = Game::new(entry.seed);
-    for &target in &entry.moves {
-        let _ = game.play(target);
+    for &angle in &entry.moves {
+        game.play(angle);
     }
     is_cleared(game.board())
 }

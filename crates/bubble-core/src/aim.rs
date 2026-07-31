@@ -171,3 +171,41 @@ pub fn resolve_shot(board: &Board, angle: Angle) -> Landing {
         path,
     }
 }
+
+/// The lowest fan angle whose shot lands on `target` for this `board`, or `None`
+/// if no angle in the fan reaches it. This is the resolve inverse the solver
+/// uses to record a representative **angle** for a landing cell its
+/// landing-space search chose (RULES.md "Aim"). Deterministic: scans the fan in
+/// ascending order and returns the first match.
+#[must_use]
+pub fn angle_for_landing(board: &Board, target: Pos) -> Option<Angle> {
+    let (lo, hi) = fan();
+    (lo..=hi)
+        .map(Angle)
+        .find(|&a| resolve_shot(board, a).pos == target)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn angle_for_landing_round_trips_a_reachable_cell() {
+        let board = Board::new_empty(8, 11).expect("dims");
+        let landing = resolve_shot(&board, Angle(90)).pos;
+        let a = angle_for_landing(&board, landing).expect("the straight-up cell is reachable");
+        assert_eq!(
+            resolve_shot(&board, a).pos,
+            landing,
+            "the recovered angle resolves back to the same landing"
+        );
+    }
+
+    #[test]
+    fn angle_for_landing_is_none_for_an_unreachable_cell() {
+        // On an empty board every shot flies to the ceiling row, so a mid-board
+        // cell is reachable by no angle.
+        let board = Board::new_empty(8, 11).expect("dims");
+        assert_eq!(angle_for_landing(&board, (5, 3)), None);
+    }
+}

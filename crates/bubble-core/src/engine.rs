@@ -156,7 +156,7 @@ fn drop_floating(board: &mut Board) -> usize {
 /// "The shot"). This is the raw place→pop→drop with **no legality gate** — the
 /// caller owns where the shot lands ([`shoot`] gates on a legal tap-target;
 /// [`shoot_angle`] takes the landing the aim resolver computed).
-pub(crate) fn apply_shot(board: &mut Board, target: Pos, color: u8) -> ShotReport {
+fn apply_shot(board: &mut Board, target: Pos, color: u8) -> ShotReport {
     board.set(target.0, target.1, Cell::Bubble(color));
     let cluster = connected_same_color(board, target, color);
     let popped = if cluster.len() >= 3 {

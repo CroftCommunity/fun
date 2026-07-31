@@ -12,26 +12,32 @@
 //! **seeds** (the runtime only needs a seed per day) plus one shortest-line
 //! `fixture` — a **byte-identically regenerable** pack the runtime indexes by
 //! date.
+//!
+//! The move set at each node is the **reachable-landing** set — the distinct
+//! cells a fan of angles actually lands on from the current board (see
+//! [`reachable_landings`]) — each carried with the angle that reaches it. So the
+//! search space is the physical aim space and every line it finds is recorded as
+//! angles a real aim game replays exactly; there are no unreachable "tucked"
+//! cells and no post-hoc mapping.
 
 #![warn(missing_docs)]
 
 use std::collections::HashSet;
 
-use bubble_core::engine::legal_targets;
-use bubble_core::{Cell, Game, Pos};
+use bubble_core::{fan, resolve_shot, Angle, Board, Cell, Game, Pos};
 use serde::{Deserialize, Serialize};
 
 /// Recursion/stack guard. A clear-the-board line is bounded by the shot budget
 /// (`Game::shots_left`), well under this.
 const MAX_DEPTH: usize = 200;
 
-/// A winnable deal: its seed and a verified clearing shot line.
+/// A winnable deal: its seed and a verified clearing aim line.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PackEntry {
     /// The deal seed.
     pub seed: u64,
-    /// A shot line (tap targets) that replays to a cleared board.
-    pub moves: Vec<Pos>,
+    /// An aim line (angles) that replays to a cleared board.
+    pub moves: Vec<Angle>,
 }
 
 /// The winnable-daily pack: winnable seeds (indexed by date at runtime) plus one
@@ -56,9 +62,30 @@ fn adjacent_to_current(game: &Game, target: Pos) -> bool {
         .any(|(nr, nc)| board.get(nr, nc) == Some(Cell::Bubble(color)))
 }
 
-/// Find a clearing shot line for `seed` within `node_budget` nodes, or `None`.
+/// The distinct landings **reachable by the fan** from `board`, each paired with
+/// the lowest angle that reaches it (ascending scan → deterministic). These are
+/// exactly the shots an aim game can make — the search space is the physical one,
+/// so every line it finds is replayable by a real angle game (no post-hoc
+/// mapping, no unreachable cells).
+fn reachable_landings(board: &Board) -> Vec<(Angle, Pos)> {
+    let (lo, hi) = fan();
+    let mut seen = HashSet::new();
+    let mut out = Vec::new();
+    for deg in lo..=hi {
+        let angle = Angle(deg);
+        let pos = resolve_shot(board, angle).pos;
+        if seen.insert(pos) {
+            out.push((angle, pos));
+        }
+    }
+    out
+}
+
+/// Find a clearing **aim line** (angles) for `seed` within `node_budget` nodes,
+/// or `None`. A budgeted greedy DFS over the reachable-landing move set with
+/// state-hash memoization; the returned angles replay to a cleared board.
 #[must_use]
-pub fn find_win(seed: u64, node_budget: u64) -> Option<Vec<Pos>> {
+pub fn find_win(seed: u64, node_budget: u64) -> Option<Vec<Angle>> {
     let game = Game::new(seed);
     let mut visited = HashSet::new();
     let mut budget = node_budget;
@@ -70,7 +97,12 @@ pub fn find_win(seed: u64, node_budget: u64) -> Option<Vec<Pos>> {
     }
 }
 
-fn dfs(game: &Game, visited: &mut HashSet<String>, budget: &mut u64, path: &mut Vec<Pos>) -> bool {
+fn dfs(
+    game: &Game,
+    visited: &mut HashSet<String>,
+    budget: &mut u64,
+    path: &mut Vec<Angle>,
+) -> bool {
     if game.is_won() {
         return true;
     }
@@ -81,30 +113,28 @@ fn dfs(game: &Game, visited: &mut HashSet<String>, budget: &mut u64, path: &mut 
     if !visited.insert(game.current_hash()) {
         return false; // already explored this position
     }
-    // Candidate targets: those that pop/drop, or at least build toward the
-    // current colour. Pure dead placements are pruned. Score each by simulating,
-    // then try highest pop+drop first (greedy — finds a clear fast when one is
-    // reachable, and drops cascade whole sections).
-    let mut scored: Vec<(usize, Pos)> = Vec::new();
-    for t in legal_targets(game.board()) {
+    // Candidate angles: reachable landings that pop/drop, or at least build
+    // toward the current colour. Pure dead placements are pruned. Score each by
+    // simulating, then try highest pop+drop first (greedy — finds a clear fast
+    // when one is reachable, and drops cascade whole sections).
+    let mut scored: Vec<(usize, Angle)> = Vec::new();
+    for (angle, pos) in reachable_landings(game.board()) {
         let mut probe = game.clone();
-        if let Ok(rep) = probe.play(t) {
-            let gain = rep.popped + rep.dropped;
-            if gain > 0 || adjacent_to_current(game, t) {
-                scored.push((gain, t));
-            }
+        let rep = probe.play(angle);
+        let gain = rep.popped + rep.dropped;
+        if gain > 0 || adjacent_to_current(game, pos) {
+            scored.push((gain, angle));
         }
     }
     scored.sort_by(|a, b| b.0.cmp(&a.0));
-    for (_, t) in scored {
+    for (_, angle) in scored {
         let mut next = game.clone();
-        if next.play(t).is_ok() {
-            path.push(t);
-            if dfs(&next, visited, budget, path) {
-                return true;
-            }
-            path.pop();
+        next.play(angle);
+        path.push(angle);
+        if dfs(&next, visited, budget, path) {
+            return true;
         }
+        path.pop();
     }
     false
 }
