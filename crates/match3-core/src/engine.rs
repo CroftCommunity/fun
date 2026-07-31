@@ -29,6 +29,17 @@ pub struct StepReport {
     pub jelly_layers_removed: u32,
     /// Ingredients that reached the bottom row and exited this step (Track D).
     pub ingredients_collected: u32,
+    /// Gems **truly cleared** this step counted per colour (`index = colour`;
+    /// length = the game's colour count). Excludes creation survivors (they are
+    /// transformed, not cleared). The checklist objective's "clear N of a colour"
+    /// progress signal (Track D, T6). Off the hashed path.
+    pub gems_cleared_by_color: Vec<u32>,
+    /// Striped candies (H + V) created this step — the checklist objective's
+    /// "make N striped" progress signal (Track D, T6).
+    pub striped_created: u32,
+    /// Wrapped candies created this step — the checklist objective's "make N
+    /// wrapped" progress signal (Track D, T6).
+    pub wrapped_created: u32,
     pub score_gained: u64,
 }
 
@@ -1608,6 +1619,37 @@ impl Game {
                 combo_effect.as_ref(),
             );
             let activated = act.clear;
+            // Track D (T6) — the checklist's neutral per-step signals, computed on
+            // the **pre-clear** board (colours must still be present): gems truly
+            // cleared per colour (the activated set minus the creation survivors,
+            // which are transformed not cleared), and specials made this step by
+            // kind. No-op for every other mode (they just ignore these fields).
+            let mut gems_cleared_by_color = vec![0u32; self.colors];
+            for &(r, c) in &activated {
+                if creations.iter().any(|cr| cr.pos == (r, c)) {
+                    continue;
+                }
+                if let Cell::Gem(g) = self.board.get(r, c) {
+                    let gi = g as usize;
+                    if gi < gems_cleared_by_color.len() {
+                        gems_cleared_by_color[gi] += 1;
+                    }
+                }
+            }
+            let striped_created = u32::try_from(
+                creations
+                    .iter()
+                    .filter(|cr| matches!(cr.kind, SpecialKind::StripedH | SpecialKind::StripedV))
+                    .count(),
+            )
+            .unwrap_or(0);
+            let wrapped_created = u32::try_from(
+                creations
+                    .iter()
+                    .filter(|cr| cr.kind == SpecialKind::Wrapped)
+                    .count(),
+            )
+            .unwrap_or(0);
             let out = clear_cells(&mut self.board, &activated);
             // Each placement cell survives as a special candy: clear_cells set it
             // Empty (and scrubbed its jelly + damaged adjacent blockers as part of
@@ -1655,6 +1697,9 @@ impl Game {
                 blocker_layers_removed: out.blocker_layers_removed,
                 jelly_layers_removed: out.jelly_layers_removed,
                 ingredients_collected,
+                gems_cleared_by_color,
+                striped_created,
+                wrapped_created,
                 score_gained: step_score,
             });
             reblast_seed = act.pending;

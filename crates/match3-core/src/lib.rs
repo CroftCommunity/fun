@@ -4,12 +4,14 @@
 //! for the rules and the tie-break tables this crate implements verbatim.
 
 pub mod board;
+pub mod checklist;
 pub mod engine;
 pub mod hash;
 pub mod rng;
 pub mod vectors;
 
 pub use board::{Board, BoardError, Cell, SpecialKind};
+pub use checklist::{checklist_targets, ChecklistProgress, ChecklistTargets};
 
 /// Target-score mode parameters, shared by the binding and the par-table
 /// generator so play-time and the baked par agree.
@@ -67,6 +69,20 @@ pub mod ingredients_mode {
     /// Ingredients placed in the top row of a deal (they must fall to the bottom).
     pub const INGREDIENTS: usize = 3;
     /// Swap budget: the objective is met by dropping every ingredient within this.
+    pub const MOVE_BUDGET: usize = 30;
+}
+
+/// Mixed/order **Checklist** mode parameters (Track D), shared by the deal (a
+/// normal gem deal), the solver's winnable pack, and the wasm binding. The
+/// checklist goals themselves come from [`crate::checklist::checklist_targets`].
+pub mod checklist_mode {
+    /// Board width.
+    pub const WIDTH: usize = 8;
+    /// Board height.
+    pub const HEIGHT: usize = 8;
+    /// Gem colours.
+    pub const COLORS: usize = 6;
+    /// Swap budget: every checklist goal must be reached within this.
     pub const MOVE_BUDGET: usize = 30;
 }
 pub use engine::{

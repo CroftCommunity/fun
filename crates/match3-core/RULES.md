@@ -337,6 +337,31 @@ The Ingredients objective adds a falling non-gem object (see the Board model). I
 - Ingredients are inert to matching and swap legality (they are not `Gem`), and a blocker in the same column
   still bounds the gravity segment; an ingredient rides inside it.
 
+### T6 — Checklist (mixed/order objective, Track D)
+
+The Checklist objective is a small **heterogeneous list of goals** — clear `N` gems of a target colour,
+make `S` striped candies, make `W` wrapped candies — won when **all** are reached. Unlike every prior
+objective (whose win is a function of the *current* board), the checklist win is **path-accumulated**: it
+depends on what the run has produced, not on any single board state.
+
+- **Deal:** a **normal gem deal** (`deal`) — the checklist adds **no new cell kind and no new board state**.
+  It is played on plain gems; only the win definition differs.
+- **Targets (the seed template):** `checklist_targets(seed, colors)` is a deterministic function of the
+  seed — the target **colour** is drawn from a seed-derived stream (`seed ^ tag`, one `rng.index(colors)`
+  draw, off the game RNG) and the three **counts** are fixed tunable knobs (`COLOR_TARGET` / `STRIPED_TARGET`
+  / `WRAPPED_TARGET`). So play-time, the solver, and outcome replay derive the identical goals.
+- **Progress signals (off the hashed path).** Each `play_move` reports two neutral per-cascade-step tallies
+  on `StepReport`, both **not** part of `state_hash` (they are per-move report fields, like
+  `ingredients_collected`): `gems_cleared_by_color` (the gems **truly cleared** that step counted per colour,
+  excluding creation survivors — which are transformed, not cleared) and `striped_created` / `wrapped_created`
+  (specials made that step, by kind). A `ChecklistProgress` folds these across the run (colour counted only
+  for the target colour; striped/wrapped colour-agnostic).
+- **Win:** `ChecklistProgress::met(&targets)` — every goal reached. Progress is monotone non-decreasing
+  (goals only ever advance), so once met the run has passed.
+- **No new hashed state → no new golden vector.** Because the checklist plays plain gems and its signals are
+  off-hash report fields, it adds nothing to `state_hash`; the existing gem-clear / specials-creation corpus
+  already locks the underlying mechanics (a checklist-relevant board hashes exactly as its plain-gem twin).
+
 ## State hash (the verifiable-outcome anchor)
 
 `state_hash` = lowercase hex of `SHA-256` over the canonical encoding:
