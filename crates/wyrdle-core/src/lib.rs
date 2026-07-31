@@ -10,11 +10,13 @@
 
 #![warn(missing_docs)]
 
+pub mod game;
 pub mod hash;
 pub mod pattern;
 pub mod word;
 pub mod words;
 
+pub use game::{Game, GuessError, Wyrdle};
 pub use hash::state_hash;
 pub use pattern::{score, Mark};
 pub use word::{Word, WordError, WORD_LEN};
