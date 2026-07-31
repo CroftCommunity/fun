@@ -31,7 +31,10 @@ directly by the swap, before any refill randomness — so it is fully hand-compu
 **Pre-placed specials (optional `special` grid):** a vector may carry a parallel `special` grid (same shape
 as `board`, chars `.`/`H`/`V`/`W`/`C`) to start with a special candy on the board — used by activation
 vectors. `Board::from_rows_with_specials` parses it. Activation (B1): a matched striped clears its whole
-row/column at step 0, so `step0_cleared` lists the blasted line (see `08`/`09`).
+row/column at step 0, so `step0_cleared` lists the blasted line (see `08`/`09`). Activation (B2, wrapped): a
+matched wrapped fires the canon **double 3×3** — `step0_cleared` lists the **first** blast (the 3×3 ring
+*minus* the wrapped's own centre, which survives), and the surviving wrapped re-blasts (consuming its centre)
+on the *next* cascade step (see `10-wrapped-activate`; `11-wrapped-chain` chains a striped row into a wrapped).
 
 **Specials (B0):** when a move forms a line-4 / L-T / line-5, one matched cell becomes a special candy
 (RULES.md T1b) instead of clearing, so `step0_cleared` lists the *cleared* cells (the special's cell is

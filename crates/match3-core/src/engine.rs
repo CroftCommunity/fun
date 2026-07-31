@@ -294,16 +294,30 @@ fn neighbours(board: &Board, r: usize, c: usize) -> Vec<Pos> {
     v
 }
 
-/// Whether a special kind fires a blast in B1 (striped only; wrapped / colour-
-/// bomb activation is B2 / B3).
-fn fires(kind: Option<SpecialKind>) -> bool {
+/// Whether a special kind fires a blast **when matched or chained** — striped
+/// (B1) and wrapped (B2). Colour-bomb activation is B3.
+fn fires_on_match(kind: Option<SpecialKind>) -> bool {
+    matches!(
+        kind,
+        Some(SpecialKind::StripedH | SpecialKind::StripedV | SpecialKind::Wrapped)
+    )
+}
+
+/// Whether a special kind fires **when swapped** (swap-activation legality) —
+/// striped (B1.2); wrapped swap-activation lands in B2.2. Kept separate from
+/// [`fires_on_match`] so B2.1 can add wrapped match-activation without also
+/// changing swap legality (which re-locks packs — its own phase, B1's pattern).
+fn fires_on_swap(kind: Option<SpecialKind>) -> bool {
     matches!(kind, Some(SpecialKind::StripedH | SpecialKind::StripedV))
 }
 
-/// The cells a striped candy at `pos` blasts: its whole row (`StripedH`) or
-/// column (`StripedV`), excluding blockers — a blocker in the line is not cleared
-/// but takes adjacency damage via [`clear_cells`], like any match. A non-striped
-/// or non-special cell blasts nothing.
+/// The cells a special candy at `pos` blasts, excluding blockers — a blocker in
+/// the region is not cleared but takes adjacency damage via [`clear_cells`], like
+/// any match. `StripedH` clears its whole row, `StripedV` its whole column, and
+/// `Wrapped` the 3×3 block around it (clamped to the board). A non-special cell
+/// blasts nothing. The region **includes** the special's own cell (a caller
+/// firing a wrapped's *first* blast excludes the centre so it survives — see
+/// [`activate`]).
 fn blast_region(board: &Board, pos: Pos) -> Vec<Pos> {
     let (r, c) = pos;
     match board.special_at(r, c) {
@@ -315,39 +329,90 @@ fn blast_region(board: &Board, pos: Pos) -> Vec<Pos> {
             .map(|rr| (rr, c))
             .filter(|&(rr, cc)| !board.get(rr, cc).is_blocker())
             .collect(),
+        Some(SpecialKind::Wrapped) => {
+            let r0 = r.saturating_sub(1);
+            let r1 = (r + 1).min(board.height.saturating_sub(1));
+            let c0 = c.saturating_sub(1);
+            let c1 = (c + 1).min(board.width.saturating_sub(1));
+            (r0..=r1)
+                .flat_map(|rr| (c0..=c1).map(move |cc| (rr, cc)))
+                .filter(|&(rr, cc)| !board.get(rr, cc).is_blocker())
+                .collect()
+        }
         _ => Vec::new(),
     }
 }
 
-/// B1 activation — expand the matched set by the line blasts of any **striped**
-/// candy in it, chaining: a blast cell holding another striped fires it too. The
-/// result is the full set of cells to clear this step, sorted. Deterministic —
-/// each striped fires at most once and the union is order-independent. Wrapped /
-/// colour-bomb do not fire yet (B2 / B3), so a matched wrapped/bomb just clears.
-fn activate(board: &Board, matched: &[Pos], seed: &[Pos]) -> Vec<Pos> {
+/// The outcome of expanding a matched set by its special blasts (a single cascade
+/// step): `clear` is the full sorted set of cells to clear this step; `pending` is
+/// the wrapped candies that fired their **first** blast and survived — they are
+/// pinned through this step's gravity and re-blast (consumed) on the next step.
+struct Activation {
+    clear: Vec<Pos>,
+    pending: Vec<Pos>,
+}
+
+/// Activation — expand the matched set by the blasts of any firing special in it,
+/// chaining: a blast cell holding another firing special fires it too. Returns the
+/// cells to clear this step plus the wrapped candies that survive to re-blast.
+/// Deterministic — each cell fires at most once and the union is order-independent.
+///
+/// - **Striped** (B1) clears its whole line, its own cell included.
+/// - **Wrapped** (B2) is the canon **double 3×3**: on its *first* blast (it is in
+///   `matched`/`seed`, or chained) it clears the 3×3 **minus its own centre** — the
+///   candy survives — and is added to `pending`; on its *second* blast (it is in
+///   `reblast`, seeded from the previous step) it clears the full 3×3, consuming
+///   itself. A wrapped set off by a chain does its own double (survives + re-blasts).
+/// - Surviving (`pending`) wrapped are subtracted from `clear`, so a simultaneous
+///   blast over a survivor's cell cannot destroy it (the "just-created special
+///   survives" protection, applied to survive-first-blast wrapped).
+fn activate(board: &Board, matched: &[Pos], seed: &[Pos], reblast: &[Pos]) -> Activation {
     let mut to_clear: BTreeSet<Pos> = matched.iter().copied().collect();
+    let mut pending: BTreeSet<Pos> = BTreeSet::new();
     let mut fired: BTreeSet<Pos> = BTreeSet::new();
-    // Fire every striped in the matched set (match-activation, B1.1) plus any
-    // striped swapped into place this step (swap-activation, B1.2). A fired
-    // striped's own cell is in its blast region, so it clears too.
-    let mut queue: Vec<Pos> = matched
+    // Queue of `(cell, is_reblast)`. First blasts: every firing special in the
+    // matched set (match-activation) plus any swapped into place (swap-activation).
+    // Re-blasts: the wrapped that survived last step, firing their second blast.
+    let mut queue: Vec<(Pos, bool)> = matched
         .iter()
         .copied()
         .chain(seed.iter().copied())
-        .filter(|&(r, c)| fires(board.special_at(r, c)))
+        .filter(|&(r, c)| fires_on_match(board.special_at(r, c)))
+        .map(|p| (p, false))
+        .chain(reblast.iter().copied().map(|p| (p, true)))
         .collect();
-    while let Some(cell) = queue.pop() {
+    while let Some((cell, is_reblast)) = queue.pop() {
         if !fired.insert(cell) {
             continue;
         }
+        let is_first_wrapped =
+            !is_reblast && board.special_at(cell.0, cell.1) == Some(SpecialKind::Wrapped);
         for bc in blast_region(board, cell) {
+            // A wrapped's FIRST blast spares its own centre so it survives to
+            // re-blast; every other cell in the region clears.
+            if is_first_wrapped && bc == cell {
+                continue;
+            }
             to_clear.insert(bc);
-            if fires(board.special_at(bc.0, bc.1)) && !fired.contains(&bc) {
-                queue.push(bc);
+            // A firing special the blast hits fires too — a chained wrapped does
+            // its own first blast (and thus its own double).
+            if fires_on_match(board.special_at(bc.0, bc.1)) && !fired.contains(&bc) {
+                queue.push((bc, false));
             }
         }
+        if is_first_wrapped {
+            pending.insert(cell);
+        }
     }
-    to_clear.into_iter().collect()
+    // Protect the survivors: a wrapped that fired its first blast must not be
+    // cleared by another blast this step, or it could not re-blast.
+    for p in &pending {
+        to_clear.remove(p);
+    }
+    Activation {
+        clear: to_clear.into_iter().collect(),
+        pending: pending.into_iter().collect(),
+    }
 }
 
 /// T2 — clear the matched cells to `Empty` and damage adjacent blockers by at
@@ -404,10 +469,21 @@ pub fn clear_cells(board: &mut Board, matched: &[Pos]) -> ClearOutcome {
 /// T3 — gravity: per column, within each blocker-bounded segment, gems fall to
 /// the bottom and holes rise to the top. Blockers never move.
 pub fn apply_gravity(board: &mut Board) {
+    apply_gravity_pinned(board, &BTreeSet::new());
+}
+
+/// [`apply_gravity`] with a set of **pinned** cells that hold their position for
+/// this one pass (B2 wrapped double-blast: a wrapped that survived its first blast
+/// stays put while candies fall in around it). A pinned cell is a one-pass shelf —
+/// like a blocker it bounds segments and does not move, but it stays its
+/// `Gem`+special and is a boundary only for this call.
+fn apply_gravity_pinned(board: &mut Board, pinned: &BTreeSet<Pos>) {
     for c in 0..board.width {
         let mut seg_start = 0usize;
         for r in 0..=board.height {
-            let boundary = r == board.height || board.get(r, c).is_blocker();
+            let boundary = r == board.height
+                || board.get(r, c).is_blocker()
+                || (r < board.height && pinned.contains(&(r, c)));
             if !boundary {
                 continue;
             }
@@ -457,10 +533,12 @@ pub fn swap_legal(board: &Board, from: Pos, to: Pos) -> bool {
     if !board.get(from.0, from.1).is_gem() || !board.get(to.0, to.1).is_gem() {
         return false;
     }
-    // B1.2 swap-activation: swapping a striped candy is legal even with no line
-    // match — the swap fires it. (Only firing kinds; wrapped/bomb swap-fire is
-    // B2/B3.) A board with no firing special takes the unchanged match-only path.
-    if fires(board.special_at(from.0, from.1)) || fires(board.special_at(to.0, to.1)) {
+    // Swap-activation: swapping a firing special is legal even with no line match
+    // — the swap fires it (striped B1.2, wrapped B2.2). A board with no swap-firing
+    // special takes the unchanged match-only path.
+    if fires_on_swap(board.special_at(from.0, from.1))
+        || fires_on_swap(board.special_at(to.0, to.1))
+    {
         return true;
     }
     let mut b = board.clone();
@@ -845,19 +923,24 @@ impl Game {
         let mut steps = Vec::new();
         let mut score_gained = 0u64;
         let mut step_index = 0usize;
+        // Wrapped candies that fired their first blast last step and must re-blast
+        // (consumed) this step — the second half of the canon double 3×3 (B2). A
+        // transient carry within this one move; it never persists into `state_hash`.
+        let mut reblast_seed: Vec<Pos> = Vec::new();
         loop {
             let matched = find_matches(&self.board);
-            // Step 0 also seeds activation from a striped swapped into place: it
-            // fires even with no line match (B1.2). Later steps have no swap seed.
+            // Step 0 also seeds activation from a special swapped into place: it
+            // fires even with no line match (striped B1.2). Later steps have no
+            // swap seed.
             let seed: Vec<Pos> = if step_index == 0 {
                 [from, to]
                     .into_iter()
-                    .filter(|&(r, c)| fires(self.board.special_at(r, c)))
+                    .filter(|&(r, c)| fires_on_swap(self.board.special_at(r, c)))
                     .collect()
             } else {
                 Vec::new()
             };
-            if matched.is_empty() && seed.is_empty() {
+            if matched.is_empty() && seed.is_empty() && reblast_seed.is_empty() {
                 break;
             }
             // Which specials this step's shapes create — step 0 uses the swap so
@@ -869,10 +952,13 @@ impl Game {
                 None
             };
             let creations = creations_for(&self.board, swap);
-            // B1 activation: expand the cleared set by the blasts of any striped
-            // candy in the matched set (chained). No matched striped -> `activated`
-            // == `matched`, so plain-gem and B0-creation play stay byte-identical.
-            let activated = activate(&self.board, &matched, &seed);
+            // Activation: expand the cleared set by the blasts of any firing
+            // special in the matched set (chained) + swap/re-blast seeds. No firing
+            // special -> `act.clear` == `matched`, so plain-gem and B0-creation play
+            // stay byte-identical. `act.pending` = wrapped surviving their first
+            // blast (B2), pinned through this gravity and re-blasting next step.
+            let act = activate(&self.board, &matched, &seed, &reblast_seed);
+            let activated = act.clear;
             let out = clear_cells(&mut self.board, &activated);
             // Each placement cell survives as a special candy: clear_cells set it
             // Empty (and scrubbed its jelly + damaged adjacent blockers as part of
@@ -903,7 +989,11 @@ impl Game {
             if trace {
                 snapshots.push(self.board.clone());
             }
-            apply_gravity(&mut self.board);
+            // Pin the surviving wrapped through gravity (they hold their cells
+            // while candies fall in around them), then carry them to the next step
+            // as the re-blast seed for their second explosion.
+            let pinned: BTreeSet<Pos> = act.pending.iter().copied().collect();
+            apply_gravity_pinned(&mut self.board, &pinned);
             if trace {
                 snapshots.push(self.board.clone());
             }
@@ -911,6 +1001,7 @@ impl Game {
             if trace {
                 snapshots.push(self.board.clone());
             }
+            reblast_seed = act.pending;
             step_index += 1;
         }
 

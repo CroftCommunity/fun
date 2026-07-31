@@ -325,3 +325,178 @@ fn swapping_a_striped_fires_it_and_carries_the_marker() {
     }
     assert_eq!(report.steps[0].score_gained, 30, "row of 3 x 10");
 }
+
+// --- B2.1: wrapped match-activation (the canon double 3×3) ------------------
+
+fn wrapped_board() -> Board {
+    // A Wrapped candy (colour 0) at the interior cell (2,2), on a 5×5 board with
+    // no initial matches. Swapping (3,1)<->(3,2) brings a 0 to (3,2), forming a
+    // vertical 3-run of 0s in column 2 (rows 1-3) that includes the wrapped — so
+    // the wrapped is match-activated. Its 3×3 is fully interior (a clean 8-ring).
+    Board::from_rows_with_specials(
+        &["12345", "54021", "23045", "40132", "31254"],
+        &[".....", ".....", "..W..", ".....", "....."],
+    )
+    .expect("parses")
+}
+
+// The 8 ring cells of the 3×3 around (2,2), excluding the centre — sorted.
+const WRAPPED_RING: [(usize, usize); 8] = [
+    (1, 1),
+    (1, 2),
+    (1, 3),
+    (2, 1),
+    (2, 3),
+    (3, 1),
+    (3, 2),
+    (3, 3),
+];
+
+#[test]
+fn matched_wrapped_clears_its_ring_and_its_centre_survives_the_first_blast() {
+    // First blast: the wrapped clears the 8 cells around it (the 3×3 minus its
+    // own cell) — its centre SURVIVES to explode a second time (the reference's
+    // "explodes twice"). So step 0 clears 8 gems (80), not the whole 3×3, and the
+    // wrapped candy is still on the board in the after-clear frame.
+    let mut game = Game::new(wrapped_board(), 1, 6);
+    let (report, snaps) = game.play_move_traced((3, 1), (3, 2));
+    assert!(
+        report.legal,
+        "the swap forms a vertical 3-run through the wrapped"
+    );
+    let cleared0 = &report.steps[0].cleared;
+    for cell in WRAPPED_RING {
+        assert!(
+            cleared0.contains(&cell),
+            "ring cell {cell:?} cleared by blast 1"
+        );
+    }
+    assert!(
+        !cleared0.contains(&(2, 2)),
+        "the wrapped's own centre is NOT cleared by its first blast (it survives)"
+    );
+    assert_eq!(report.steps[0].score_gained, 80, "8 ring gems x 10");
+    // snaps[0] = after swap; snaps[1] = after step-0 clear.
+    assert_eq!(snaps[1].get(2, 2), Cell::Gem(0), "centre still a gem");
+    assert_eq!(
+        snaps[1].special_at(2, 2),
+        Some(SpecialKind::Wrapped),
+        "the wrapped survived its first blast, marker intact"
+    );
+}
+
+#[test]
+fn a_surviving_wrapped_is_pinned_through_gravity() {
+    // The reference wrapped stays in its cell while candies fall in around it. Its
+    // first blast cleared the cells below it (row 3), so plain gravity would drop
+    // it — but it is PINNED for that one gravity pass. snaps[2] is the post-step-0
+    // gravity frame: the wrapped must still be at (2,2), not fallen.
+    let mut game = Game::new(wrapped_board(), 1, 6);
+    let (_report, snaps) = game.play_move_traced((3, 1), (3, 2));
+    assert_eq!(
+        snaps[2].special_at(2, 2),
+        Some(SpecialKind::Wrapped),
+        "the wrapped held its cell through gravity (pinned), rather than falling"
+    );
+    assert_eq!(snaps[2].get(2, 2), Cell::Gem(0), "still its coloured gem");
+}
+
+#[test]
+fn a_wrapped_reblasts_its_full_3x3_and_is_consumed() {
+    // Second blast: on the next cascade step the pinned wrapped fires again — this
+    // time the full 3×3 INCLUDING its own cell (it is consumed). So there is a
+    // step 1 whose cleared set contains the centre (2,2), and no wrapped remains.
+    let mut game = Game::new(wrapped_board(), 1, 6);
+    let report = game.play_move((3, 1), (3, 2));
+    assert!(
+        report.steps.len() >= 2,
+        "the double blast is a second cascade step"
+    );
+    assert!(
+        report.steps[1].cleared.contains(&(2, 2)),
+        "the second blast clears the wrapped's own centre (consumed)"
+    );
+    assert_eq!(
+        count_special(&game.board, SpecialKind::Wrapped),
+        0,
+        "the wrapped is gone after its double blast"
+    );
+}
+
+#[test]
+fn a_blast_chaining_into_a_wrapped_fires_its_double_and_the_survivor_is_protected() {
+    // A StripedH (colour 0) at (2,0) and a Wrapped (colour 3) at (2,3) in the same
+    // row. Swapping (2,2)<->(1,2) makes a 3-run of 0s in row 2 that fires the
+    // striped, whose row blast hits the wrapped -> the wrapped fires its own 3×3
+    // double. The striped's blast also covers the wrapped's cell (2,3), but the
+    // wrapped SURVIVES its first blast (protected), then re-blasts.
+    let b = Board::from_rows_with_specials(
+        &["12452", "24013", "00132", "45241", "12452"],
+        &[".....", ".....", "H..W.", ".....", "....."],
+    )
+    .expect("parses");
+    let mut game = Game::new(b, 1, 6);
+    let (report, snaps) = game.play_move_traced((2, 2), (1, 2));
+    assert!(report.legal, "the swap forms a 3-run through the striped");
+    let cleared0 = &report.steps[0].cleared;
+    // The striped's row (minus the surviving wrapped centre) and the wrapped's ring.
+    for cell in [
+        (2, 0),
+        (2, 1),
+        (2, 2),
+        (2, 4), // the striped row (2,3) survives
+        (1, 2),
+        (1, 3),
+        (1, 4),
+        (3, 2),
+        (3, 3),
+        (3, 4), // the wrapped ring above/below its row
+    ] {
+        assert!(
+            cleared0.contains(&cell),
+            "{cell:?} cleared by the chained blast"
+        );
+    }
+    assert!(
+        !cleared0.contains(&(2, 3)),
+        "the chained wrapped survives its first blast (protected from the striped's row)"
+    );
+    assert_eq!(
+        snaps[1].special_at(2, 3),
+        Some(SpecialKind::Wrapped),
+        "the wrapped is still on the board after step 0"
+    );
+    assert_eq!(
+        snaps[1].special_at(2, 0),
+        None,
+        "the striped that fired is consumed"
+    );
+    assert!(
+        report.steps.len() >= 2 && report.steps[1].cleared.contains(&(2, 3)),
+        "the wrapped re-blasts and is consumed on the next step"
+    );
+}
+
+#[test]
+fn a_blocker_in_the_3x3_is_not_cleared_but_takes_one_layer() {
+    // A blocker inside the wrapped's 3×3 is spared from the blast (like a match)
+    // but takes exactly one layer of adjacency damage.
+    let mut b = wrapped_board();
+    b.set(1, 1, Cell::Blocker(2)); // (1,1) is a ring cell of the wrapped at (2,2)
+    let mut game = Game::new(b, 1, 6);
+    let (report, snaps) = game.play_move_traced((3, 1), (3, 2));
+    assert!(report.legal);
+    assert!(
+        !report.steps[0].cleared.contains(&(1, 1)),
+        "the blocker is not cleared by the blast"
+    );
+    assert!(
+        report.steps[0].blocker_layers_removed >= 1,
+        "the blocker took a layer of blast damage"
+    );
+    assert_eq!(
+        snaps[1].get(1, 1),
+        Cell::Blocker(1),
+        "one layer removed, blocker still standing after blast 1"
+    );
+}
