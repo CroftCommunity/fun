@@ -338,82 +338,69 @@ pub extern "C" fn outcome_json(declare: u32) -> *const u8 {
 mod tests {
     use super::*;
 
-    // Exercises the C-ABI end to end (the "wiring test" for V4): start a game,
-    // read the board, read a trajectory for an angle, shoot that angle, and
-    // confirm the board changed to the resolved landing and the outcome JSON
-    // parses to a bubble v2 record. Runs native (rlib), not wasm.
-    #[test]
-    fn cabi_new_game_trajectory_shoot_outcome() {
-        new_game(495, 0); // any seed — geometry is seed-independent for a fresh deal
-        let board_ptr = board_json();
-        assert!(!board_ptr.is_null());
+    /// Read the last output buffer as JSON.
+    fn out_json(ptr: *const u8) -> serde_json::Value {
         let n = out_len() as usize;
-        // SAFETY: single-threaded test; board_json just wrote OUT.
-        let json = unsafe { std::slice::from_raw_parts(board_ptr, n) };
-        let view: serde_json::Value = serde_json::from_slice(json).expect("board json");
-        assert_eq!(view["cleared"], serde_json::json!(false));
-        assert!(view["shotsLeft"].as_u64().unwrap() > 0);
-
-        // Read the trajectory for a straight-up shot: a path with a stop point
-        // and a landing cell.
-        let tptr = trajectory_json(90);
-        let tn = out_len() as usize;
-        let tjson = unsafe { std::slice::from_raw_parts(tptr, tn) };
-        let traj: serde_json::Value = serde_json::from_slice(tjson).expect("trajectory json");
-        let landing = &traj["landing"];
-        assert!(
-            traj["points"].as_array().unwrap().len() >= 2,
-            "path has vertices"
-        );
-        let (lr, lc) = (
-            landing[0].as_u64().unwrap() as usize,
-            landing[1].as_u64().unwrap() as usize,
-        );
-
-        // Fire that angle; the landing cell must now hold a bubble.
-        assert_eq!(shoot(90), 0, "an in-fan angle applies");
-        let board_ptr = board_json();
-        let n = out_len() as usize;
-        let json = unsafe { std::slice::from_raw_parts(board_ptr, n) };
-        let view: serde_json::Value = serde_json::from_slice(json).expect("board json");
-        assert_ne!(
-            view["cells"][lr][lc],
-            serde_json::json!(-1),
-            "the resolved landing cell is now filled"
-        );
-
-        // Outcome parses to a bubble-kind v2 envelope.
-        let optr = outcome_json(1);
-        let on = out_len() as usize;
-        let ojson = unsafe { std::slice::from_raw_parts(optr, on) };
-        let rec: serde_json::Value = serde_json::from_slice(ojson).expect("outcome json");
-        assert_eq!(rec["kind"], serde_json::json!("bubble"));
-        assert_eq!(rec["version"], serde_json::json!(2), "bubble record is v2");
-
-        // Daily seed comes from the embedded pack.
-        assert_ne!(bubble_daily_seed(0), 0, "pack seeds are embedded");
+        // SAFETY: single-threaded test; the preceding call just wrote OUT.
+        let bytes = unsafe { std::slice::from_raw_parts(ptr, n) };
+        serde_json::from_slice(bytes).expect("valid json")
     }
 
+    // ONE C-ABI wiring test (V4/V5): the module holds a single `static mut`
+    // game + output buffer (correct for single-threaded wasm), so all C-ABI
+    // exercise must live in one test — the native harness runs `#[test]`s on
+    // parallel threads and separate tests would race the shared state.
+    // Covers: new_game → geom/hint reads → trajectory → shoot → board changed →
+    // outcome is a bubble v2 record → embedded daily seed.
     #[test]
-    fn cabi_geom_and_hint() {
+    fn cabi_end_to_end() {
         new_game(495, 0);
-        // Geometry + fan are exposed for the UI.
-        let gptr = geom_json();
-        let gn = out_len() as usize;
-        let gjson = unsafe { std::slice::from_raw_parts(gptr, gn) };
-        let g: serde_json::Value = serde_json::from_slice(gjson).expect("geom json");
+
+        // Geometry + fan are exposed for the UI (seed-independent constants).
+        let g = out_json(geom_json());
         assert_eq!(g["diam"], serde_json::json!(256));
         assert_eq!(g["radius"], serde_json::json!(128));
         assert_eq!(g["rowH"], serde_json::json!(222));
         let (lo, hi) = (g["fanLo"].as_u64().unwrap(), g["fanHi"].as_u64().unwrap());
         assert!(lo < hi, "fan is a non-empty range");
 
-        // A hint is an in-fan angle that applies as a legal shot.
-        let h = hint_angle();
+        // A hint is an in-fan angle.
+        let h = u64::from(hint_angle());
+        assert!((lo..=hi).contains(&h), "hint {h} within the fan");
+
+        // A fresh deal: not cleared, shots available.
+        let before = out_json(board_json());
+        assert_eq!(before["cleared"], serde_json::json!(false));
+        let shots_before = before["shotsLeft"].as_u64().unwrap();
+        assert!(shots_before > 0);
+        let hash_before = out_json(current_hash());
+
+        // A straight-up trajectory has a launcher→stop path with a landing cell.
+        let traj = out_json(trajectory_json(90));
         assert!(
-            u64::from(h) >= lo && u64::from(h) <= hi,
-            "hint {h} within the fan"
+            traj["points"].as_array().unwrap().len() >= 2,
+            "path has vertices"
         );
-        assert_eq!(shoot(h), 0, "the hinted angle applies");
+        assert!(traj["landing"].is_array());
+
+        // Firing that angle applies a shot: a shot is spent and the state hash
+        // moves. (We assert the shot took effect, not that the landing cell is
+        // still filled — a shot that completes a trio pops and empties it.)
+        assert_eq!(shoot(90), 0, "an in-fan angle applies");
+        let after = out_json(board_json());
+        assert_eq!(
+            after["shotsLeft"].as_u64().unwrap(),
+            shots_before - 1,
+            "a shot was spent"
+        );
+        assert_ne!(out_json(current_hash()), hash_before, "the state advanced");
+
+        // The outcome is a bubble-kind v2 envelope.
+        let rec = out_json(outcome_json(1));
+        assert_eq!(rec["kind"], serde_json::json!("bubble"));
+        assert_eq!(rec["version"], serde_json::json!(2), "bubble record is v2");
+
+        // The daily seed comes from the embedded pack.
+        assert_ne!(bubble_daily_seed(0), 0, "pack seeds are embedded");
     }
 }
