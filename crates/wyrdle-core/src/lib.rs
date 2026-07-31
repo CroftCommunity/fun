@@ -12,12 +12,14 @@
 
 pub mod game;
 pub mod hash;
+pub mod pack;
 pub mod pattern;
 pub mod word;
 pub mod words;
 
 pub use game::{Game, GuessError, Wyrdle};
 pub use hash::state_hash;
+pub use pack::{Pack, PackEntry};
 pub use pattern::{score, Mark};
 pub use word::{Word, WordError, WORD_LEN};
 pub use words::{answer_for, answers_len, is_allowed};

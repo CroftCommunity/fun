@@ -13,3 +13,4 @@ sha2.workspace = true
 hex.workspace = true
 thiserror.workspace = true
 pond-outcome.workspace = true
+pond-docformat.workspace = true
