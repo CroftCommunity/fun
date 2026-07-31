@@ -13,12 +13,14 @@ pub mod board;
 pub mod engine;
 pub mod game;
 pub mod hash;
+pub mod pack;
 pub mod rng;
 
 pub use board::{Board, Pos};
 pub use engine::{has_any_move, slide, spawn, Direction, SlideReport, ALL_DIRECTIONS};
 pub use game::{Game, MoveError, Twenty48};
 pub use hash::state_hash;
+pub use pack::{Pack, PackEntry};
 
 /// Default mode parameters, shared by the deal, the UI, and the wasm binding.
 pub mod mode {
