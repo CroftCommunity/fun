@@ -11,6 +11,7 @@ import { wyrdleModule } from "./games/wyrdle/wyrdle.js";
 import { twenty48Module } from "./games/2048/2048.js";
 import { astrayModule } from "./games/astray/astray.js";
 import { hexglModule } from "./games/hexgl/hexgl.js";
+import { clumsybirdModule } from "./games/clumsybird/clumsybird.js";
 
 export const REGISTRY: readonly GameEntry[] = [
   {
@@ -50,6 +51,20 @@ export const REGISTRY: readonly GameEntry[] = [
       upstreamUrl: "https://github.com/BKcore/HexGL",
     },
     load: hexglModule,
+  },
+  {
+    id: "clumsybird",
+    title: "Clumsy Bird",
+    icon: "🐤",
+    status: "playable",
+    tier: 2,
+    attribution: {
+      author: "ellisonleao",
+      license: "GPL-3.0",
+      upstreamUrl: "https://github.com/ellisonleao/clumsy-bird",
+      basedOn: "Flappy Bird by Dong Nguyen",
+    },
+    load: clumsybirdModule,
   },
   { id: "cribbage", title: "Cribbage", icon: "🎴", status: "soon" },
 ];
