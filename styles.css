@@ -1020,3 +1020,34 @@ body.fullscreen .play-area {
     font-size: 1.4rem;
   }
 }
+
+/* Wyrdle: a prominent transient toast above the board (rejected guess, etc.). */
+.wy-toast {
+  min-height: 0;
+  max-width: 20rem;
+  margin: 0 auto;
+  padding: 0;
+  text-align: center;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--surface);
+  border-left: 4px solid var(--danger);
+  border-radius: 6px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.wy-toast.show {
+  min-height: 1.5rem;
+  padding: 0.5rem 0.9rem;
+  margin: 0 auto 0.5rem;
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .wy-toast {
+    transition: none;
+  }
+}

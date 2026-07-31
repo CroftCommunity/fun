@@ -172,6 +172,21 @@ export function wyrdleModule(): GameModule {
     statusEl.textContent = msg;
   };
 
+  // A prominent, transient message above the board (a rejected guess, etc.) —
+  // the status line under the keyboard is easy to miss on a phone. role=alert so
+  // it is announced. Persists across re-renders (same element, re-appended).
+  const toastEl = el("div", { class: "wy-toast", role: "alert", "aria-live": "assertive" });
+  let toastTimer: ReturnType<typeof setTimeout> | undefined;
+  const showToast = (msg: string): void => {
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toastEl.classList.remove("show");
+      toastEl.textContent = "";
+    }, 1600);
+  };
+
   const randomSeed = (): bigint => {
     const buf = new Uint32Array(2);
     crypto.getRandomValues(buf);
@@ -199,13 +214,13 @@ export function wyrdleModule(): GameModule {
   const submit = (): void => {
     if (!game || gameOver()) return;
     if (buffer.length < wordLen) {
-      setStatus("Not enough letters");
+      showToast("Not enough letters");
       flashShake();
       return;
     }
     const status = game.guess(buffer);
     if (status !== "applied") {
-      setStatus("Not in word list"); // the core rejected it — nothing changes
+      showToast("Not in word list"); // the core rejected it — nothing changes
       flashShake();
       return;
     }
@@ -424,7 +439,13 @@ export function wyrdleModule(): GameModule {
       return;
     }
     const board = game.board();
-    container.replaceChildren(renderControls(board), renderGrid(board), renderKeyboard(board), statusEl);
+    container.replaceChildren(
+      renderControls(board),
+      toastEl,
+      renderGrid(board),
+      renderKeyboard(board),
+      statusEl,
+    );
   }
 
   async function startGame(nextMode: "daily" | "free", seedOverride?: bigint): Promise<void> {
@@ -521,6 +542,7 @@ export function wyrdleModule(): GameModule {
     unmount(): void {
       disposed = true;
       document.removeEventListener("keydown", onKeydown);
+      if (toastTimer) clearTimeout(toastTimer);
       delete window.__wyrdle;
       container?.replaceChildren();
       container = null;
