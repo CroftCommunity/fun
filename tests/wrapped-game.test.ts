@@ -30,6 +30,17 @@ describe("mountWrappedGame", () => {
     expect(handle.iframe).toBe(iframe);
   });
 
+  it("grabs keyboard focus for the frame once it loads", () => {
+    // An opaque-origin sandboxed iframe never takes keyboard focus on its own, so
+    // key events go to the parent document and never reach the wrapped game. The
+    // primitive focuses the frame when it loads so the keyboard works without a
+    // click first — the containment posture is unchanged.
+    const handle = mountWrappedGame(container, { src: "/x/index.html", title: "x" });
+    expect(document.activeElement).not.toBe(handle.iframe);
+    handle.iframe.dispatchEvent(new Event("load"));
+    expect(document.activeElement).toBe(handle.iframe);
+  });
+
   it("teardown removes the iframe, leaving no residue", () => {
     const handle = mountWrappedGame(container, { src: "/x/index.html", title: "x" });
     expect(container.children.length).toBe(1);
