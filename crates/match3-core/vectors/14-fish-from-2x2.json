@@ -1,0 +1,17 @@
+{
+  "name": "fish-from-2x2",
+  "seed": 1,
+  "colors": 6,
+  "board": [
+    "003",
+    "010",
+    "245"
+  ],
+  "moves": [ [1, 1, 1, 2] ],
+  "expect": {
+    "move_legal": [true],
+    "step0_cleared": [ [[0, 0], [0, 1], [1, 0]] ],
+    "step0_score": [30],
+    "final_state_hash": "2af87a69638b6bce288299bf626d80654e477f23df1e07d2da770be8457c3d8a"
+  }
+}

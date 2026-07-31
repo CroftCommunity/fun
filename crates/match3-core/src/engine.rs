@@ -40,10 +40,42 @@ pub struct MoveReport {
 
 // --- Pure tie-break-table operations (each unit-tested against RULES.md) -----
 
-/// T1 — the union of all horizontal and vertical runs of ≥3 same-colour gems.
+/// T1 — every **2×2 same-colour square** on the board, each as its four cells in
+/// row-major order `[(r,c), (r,c+1), (r+1,c), (r+1,c+1)]`, top-left anchor in scan
+/// order (rows top→bottom, cols left→right). A 2×2 is a first-class match (B4,
+/// Option A): its cells are part of [`find_matches`], and a *pure* 2×2 (no ≥3 line
+/// through it) creates a fish ([`creations_for`]). Blockers/holes are never gems, so
+/// they never form a square.
+#[must_use]
+pub fn find_squares(board: &Board) -> Vec<[Pos; 4]> {
+    let mut out = Vec::new();
+    for r in 0..board.height.saturating_sub(1) {
+        for c in 0..board.width.saturating_sub(1) {
+            if let Cell::Gem(g) = board.get(r, c) {
+                if board.get(r, c + 1) == Cell::Gem(g)
+                    && board.get(r + 1, c) == Cell::Gem(g)
+                    && board.get(r + 1, c + 1) == Cell::Gem(g)
+                {
+                    out.push([(r, c), (r, c + 1), (r + 1, c), (r + 1, c + 1)]);
+                }
+            }
+        }
+    }
+    out
+}
+
+/// T1 — the union of all horizontal and vertical runs of ≥3 same-colour gems, plus
+/// every 2×2 same-colour square (B4, Option A — a 2×2 is a match too).
 /// Returned sorted by (row, col), unique.
 pub fn find_matches(board: &Board) -> Vec<Pos> {
     let mut hit: BTreeSet<Pos> = BTreeSet::new();
+
+    // 2×2 squares (B4): every cell of every monochrome 2×2 block is matched.
+    for square in find_squares(board) {
+        for cell in square {
+            hit.insert(cell);
+        }
+    }
 
     // Horizontal runs.
     for r in 0..board.height {
@@ -202,7 +234,42 @@ pub fn creations_for(board: &Board, swap: Option<(Pos, Pos)>) -> Vec<Creation> {
             out.push(Creation { pos, kind, color });
         }
     }
+    // Fish (B4): a **pure** 2×2 square — one whose cells lie in no ≥3 line run —
+    // creates a fish. Priority is below every line shape (a 2×2 that overlaps a line
+    // is part of that line's component and makes its special, not a fish). Pure
+    // squares are pairwise disjoint (any overlap would be a 2×3/3×2 = a line run), so
+    // each yields exactly one fish. Placement: the swapped cell if it is in the
+    // square (Candy-Crush "at the moved candy"), else the square's top-left cell.
+    let run_cells: BTreeSet<Pos> = runs.iter().flat_map(|r| r.cells.iter().copied()).collect();
+    for square in find_squares(board) {
+        if square.iter().any(|cell| run_cells.contains(cell)) {
+            continue; // not pure — a line shape already claimed these cells
+        }
+        let pos = fish_placement(&square, swap);
+        if let Cell::Gem(color) = board.get(pos.0, pos.1) {
+            out.push(Creation {
+                pos,
+                kind: SpecialKind::Fish,
+                color,
+            });
+        }
+    }
     out
+}
+
+/// The deterministic placement cell for a fish from a 2×2 `square`: the swapped
+/// candy (`to`, then `from`) if it is one of the four cells, else the square's
+/// top-left cell (`square[0]`, the earliest in row-major order).
+fn fish_placement(square: &[Pos; 4], swap: Option<(Pos, Pos)>) -> Pos {
+    if let Some((from, to)) = swap {
+        if square.contains(&to) {
+            return to;
+        }
+        if square.contains(&from) {
+            return from;
+        }
+    }
+    square[0]
 }
 
 /// Connected components of runs (runs sharing a cell), as ascending index
@@ -682,6 +749,19 @@ fn fill_no_initial_match(rng: &mut DetRng, width: usize, height: usize, colors: 
                 if let (Cell::Gem(a), Cell::Gem(b)) = (cells[at(r - 1, c)], cells[at(r - 2, c)]) {
                     if a == b {
                         forbidden[a as usize] = true;
+                    }
+                }
+            }
+            // Forbid completing a 2×2 square (B4): the up, left, and up-left cells
+            // all this colour would make a fish on a "settled" deal.
+            if r >= 1 && c >= 1 {
+                if let (Cell::Gem(up), Cell::Gem(left), Cell::Gem(diag)) = (
+                    cells[at(r - 1, c)],
+                    cells[at(r, c - 1)],
+                    cells[at(r - 1, c - 1)],
+                ) {
+                    if up == left && up == diag {
+                        forbidden[up as usize] = true;
                     }
                 }
             }

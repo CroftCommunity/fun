@@ -276,7 +276,8 @@ struct BoardView {
     /// Row-major jelly layers per cell (`0` = none), jelly mode.
     jelly: Vec<Vec<u8>>,
     /// Row-major special-candy overlay: `""` (plain) / `"striped-h"` /
-    /// `"striped-v"` / `"wrapped"` / `"color-bomb"`. The UI badges + labels these.
+    /// `"striped-v"` / `"wrapped"` / `"color-bomb"` / `"fish"`. The UI badges +
+    /// labels these.
     specials: Vec<Vec<&'static str>>,
     score: u64,
     moves_left: usize,
@@ -320,6 +321,7 @@ fn board_view(s: &Session) -> BoardView {
                     Some(SpecialKind::StripedV) => "striped-v",
                     Some(SpecialKind::Wrapped) => "wrapped",
                     Some(SpecialKind::ColorBomb) => "color-bomb",
+                    Some(SpecialKind::Fish) => "fish",
                 })
                 .collect()
         })

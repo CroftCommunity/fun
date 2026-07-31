@@ -195,15 +195,16 @@ test("the Clear-jelly objective deals a jelly board with the jelly HUD", async (
 });
 
 test("scrubbing every jelly is a verifiable win (jelly mode)", async ({ page }) => {
-  // Committed jelly fixture: seed 317 clears in two swaps.
-  await page.goto("/match3/?mode=jelly&seed=317");
+  // Committed jelly fixture (re-derived after the B4 2×2/deal change): seed 35
+  // clears in two swaps.
+  await page.goto("/match3/?mode=jelly&seed=35");
   await ready(page);
   await expect(page.locator(".m3-gem.m3-jellied")).toHaveCount(6);
 
   await page.evaluate(() => {
     const h = window.__match3!;
     h.game.play([6, 0, 6, 1]);
-    h.game.play([4, 1, 4, 2]);
+    h.game.play([6, 5, 6, 6]);
     h.refresh();
   });
 
@@ -395,13 +396,14 @@ test("a wrapped candy can be fired by swapping it (the 3×3 double reaches the U
 });
 
 test("a colour bomb can be fired by swapping it (the colour detonation reaches the UI)", async ({ page }) => {
-  await page.goto("/match3/?seed=11");
+  await page.goto("/match3/?seed=22");
   await ready(page);
 
   // Greedy-first play until a colour bomb is on the settled board, then fire it by
   // swapping it with a neighbour — swap-activation makes that legal (B3), and it
-  // detonates every gem of that neighbour's colour, so the score jumps. seed=11 is
-  // a deterministic deal that produces a swappable colour bomb within the budget.
+  // detonates every gem of that neighbour's colour, so the score jumps. seed=22 is
+  // a deterministic deal (re-probed after the B4 2×2/deal change) whose greedy line
+  // produces a swappable colour bomb within the 20-swap budget.
   const info = await page.evaluate(() => {
     const h = window.__match3!;
     for (let i = 0; i < 60; i += 1) {

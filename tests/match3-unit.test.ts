@@ -116,10 +116,11 @@ describe("clear-the-jelly verify-orchestration (real wasm)", () => {
 
   beforeAll(async () => {
     game = await loadReal();
-    // The committed jelly pack fixture: seed 317 clears in two swaps.
-    game.newJellyGame(317n);
+    // The committed jelly pack fixture (re-derived after the B4 2×2/deal change):
+    // seed 35 clears in two swaps.
+    game.newJellyGame(35n);
     game.play([6, 0, 6, 1]);
-    game.play([4, 1, 4, 2]);
+    game.play([6, 5, 6, 6]);
     env = game.outcome(true) as M3Envelope;
   });
 

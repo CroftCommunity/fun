@@ -29,7 +29,7 @@ directly by the swap, before any refill randomness — so it is fully hand-compu
 `+10` per gem cleared, `+20` per blocker layer removed.
 
 **Pre-placed specials (optional `special` grid):** a vector may carry a parallel `special` grid (same shape
-as `board`, chars `.`/`H`/`V`/`W`/`C`) to start with a special candy on the board — used by activation
+as `board`, chars `.`/`H`/`V`/`W`/`C`/`F`) to start with a special candy on the board — used by activation
 vectors. `Board::from_rows_with_specials` parses it. Activation (B1): a matched striped clears its whole
 row/column at step 0, so `step0_cleared` lists the blasted line (see `08`/`09`). Activation (B2, wrapped): a
 matched wrapped fires the canon **double 3×3** — `step0_cleared` lists the **first** blast (the 3×3 ring
@@ -37,6 +37,8 @@ matched wrapped fires the canon **double 3×3** — `step0_cleared` lists the **
 on the *next* cascade step (see `10-wrapped-activate`; `11-wrapped-chain` chains a striped row into a wrapped).
 Activation (B3, colour bomb): swapping a colour bomb with a gem detonates that gem's **colour** — `step0_cleared`
 lists every cell holding that colour plus the bomb's own cell (see `12`/`13` for the swap-activation shape).
+Creation (B4, fish): a **2×2 square** is a match; a *pure* 2×2 makes a `Fish` (char `F`) — `step0_cleared` lists
+the three cleared cells (the survivor becomes the fish), see `14-fish-from-2x2`. Fish activation is B4.2.
 
 **Specials (B0):** when a move forms a line-4 / L-T / line-5, one matched cell becomes a special candy
 (RULES.md T1b) instead of clearing, so `step0_cleared` lists the *cleared* cells (the special's cell is

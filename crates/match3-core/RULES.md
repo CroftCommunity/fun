@@ -32,7 +32,10 @@ balance decision is smuggled in.
   - `Gem(color)` — a movable coloured tile. `color` is `0..colors` (v1: `colors = 6`).
   - `Blocker { layers }` — a fixed, non-movable, non-matchable tile with `layers >= 1` remaining.
   - `Empty` — a transient hole that exists only mid-resolution (between clear and refill).
-- A **settled** board has no `Empty` cells: every non-blocker cell holds a `Gem`.
+- A **settled** board has no `Empty` cells (every non-blocker cell holds a `Gem`) **and no match** —
+  which, from B4, includes no **2×2 square** (the deal's fill forbids the colour that would complete a 2×2,
+  and the deadlock reshuffle's "no rest-matches" reads `find_matches`, so a settled board never starts with
+  a free fish).
 - **Jelly** is a separate per-cell overlay (`layers >= 0`, `0` = none) that sits *under* the cells. It is
   orthogonal to `Gem`/`Blocker`/`Empty`, never moves with gems or gravity, and never affects swap legality.
   A match that clears a cell scrubs **one** jelly layer beneath it (`clear_cells` reports
@@ -98,11 +101,15 @@ a determinism bug.
 ### T1 — Match detection
 
 - A **match** is a maximal run of ≥ 3 cells holding `Gem` of the **same** colour, contiguous within a single
-  row (horizontal) or single column (vertical).
-- `Blocker` and `Empty` cells break runs and are never part of a match.
-- The set of matched cells is the **union** of all horizontal and vertical runs. A cell shared by an
-  intersecting horizontal and vertical run appears **once**. Because the result is a set, detection order
-  does not affect the outcome — but the canonical scan is rows top→bottom, then columns left→right.
+  row (horizontal) or single column (vertical), **or** a **2×2 square** of four `Gem` cells all the same
+  colour (B4, Option A — a 2×2 is a first-class match, so it makes a swap legal, clears, and is avoided by
+  the deal, all from the one `find_matches` authority).
+- `Blocker` and `Empty` cells break runs and are never part of a match; a 2×2 square is likewise only ever
+  four gems.
+- The set of matched cells is the **union** of all horizontal and vertical runs **and every 2×2 square's
+  four cells**. A cell shared by intersecting runs / squares appears **once**. Because the result is a set,
+  detection order does not affect the outcome — but the canonical scan is rows top→bottom, then columns
+  left→right, then 2×2 squares by top-left anchor (rows top→bottom, cols left→right).
 
 ### T1b — Shape classification + special creation (B0.3)
 
@@ -118,7 +125,15 @@ this priority:
 | a run of length ≥5 | `ColorBomb` | 1 (highest) |
 | both a horizontal and a vertical run (L/T) | `Wrapped` | 2 |
 | a single run of length 4 | `StripedH` (horizontal) / `StripedV` (vertical) | 3 |
+| a **pure 2×2 square** (no ≥3 line run through it) | `Fish` (B4) | 4 |
 | a single run of length 3 | none (plain clear) | — |
+
+**Fish (B4) is below every line shape.** A `Fish` is created only from a **pure**
+2×2 — one whose four cells lie in **no** ≥3 line run — so a 2×2 that is part of a
+longer line (a 2×3/3×2/L is a line component) makes that line's special, not a fish.
+Pure squares are pairwise disjoint (any overlap would form a line run), so each
+makes exactly one fish. Placement: the **swapped candy** (`to`, else `from`) if it
+is one of the four cells, else the square's **top-left** cell (earliest row-major).
 
 **Creation placement (tie-break table).** The special spawns on one cell of the
 component; the other matched cells clear normally (so a 4-run scores 3 cleared
@@ -133,9 +148,9 @@ gems, not 4 — the survivor is *transformed*, not cleared). The placement cell:
    the earliest (row, col) junction for `Wrapped`, else the dominant run's
    **median** cell (`cells[len/2]` in scan order).
 
-The created special's colour is the component's gem colour. Blast/activation of
-a created special is in T1c (striped, B1); wrapped/colour-bomb activation is
-B2/B3; the 2×2 **fish** shape is deferred to B4.
+The created special's colour is the component's (or square's) gem colour.
+Blast/activation of a created special is in T1c (striped B1, wrapped B2, colour
+bomb B3, fish B4).
 
 ### T1c — Activation (striped B1, wrapped B2, colour bomb B3)
 
@@ -247,7 +262,7 @@ Before the clear (T2), the matched set is expanded by activation:
 ```
 
 where `special_tag` is `0x00` (no special), `0x01` `StripedH`, `0x02` `StripedV`, `0x03` `Wrapped`,
-`0x04` `ColorBomb` (never renumber a shipped tag — it is part of the fingerprint).
+`0x04` `ColorBomb`, `0x05` `Fish` (never renumber a shipped tag — it is part of the fingerprint).
 
 Both overlay sections are appended **only when some cell carries** that overlay, so a gem-only board hashes
 exactly as it did before the overlays existed — every pre-jelly / pre-specials golden vector stays valid

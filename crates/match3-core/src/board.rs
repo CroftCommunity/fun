@@ -40,6 +40,8 @@ pub enum SpecialKind {
     Wrapped,
     /// From a line-5 (clears a whole colour when activated — B3).
     ColorBomb,
+    /// From a 2×2 square (swims to eat a target cell when activated — B4).
+    Fish,
 }
 
 impl SpecialKind {
@@ -53,6 +55,7 @@ impl SpecialKind {
             SpecialKind::StripedV => 0x02,
             SpecialKind::Wrapped => 0x03,
             SpecialKind::ColorBomb => 0x04,
+            SpecialKind::Fish => 0x05,
         }
     }
 
@@ -64,6 +67,7 @@ impl SpecialKind {
             'V' => Some(Some(SpecialKind::StripedV)),
             'W' => Some(Some(SpecialKind::Wrapped)),
             'C' => Some(Some(SpecialKind::ColorBomb)),
+            'F' => Some(Some(SpecialKind::Fish)),
             _ => None,
         }
     }

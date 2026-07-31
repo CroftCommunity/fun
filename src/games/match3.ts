@@ -46,6 +46,7 @@ const SPECIAL_NAME: Record<string, string> = {
   "striped-v": "striped candy, clears its column",
   wrapped: "wrapped candy",
   "color-bomb": "colour bomb",
+  fish: "fish",
 };
 
 /** A winnable-daily pack payload (inside the doc envelope) — one per clear

@@ -530,6 +530,9 @@ body.fullscreen .play-area {
 .m3-gem.m3-special-color-bomb::after {
   content: "✸";
 }
+.m3-gem.m3-special-fish::after {
+  content: "❋";
+}
 @media (max-width: 32rem) {
   .m3-board {
     /* Bigger, more comfortable touch targets on phones — still fits a 360px
