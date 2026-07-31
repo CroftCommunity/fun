@@ -3,15 +3,17 @@
 //!
 //! A `Game` holds the board, a deterministic launcher-colour stream, a shot
 //! budget, and the running score. Because the launcher colour of shot `i` is
-//! derived from `(seed, i)` and aim is a tap-target `Pos`, a whole game replays
-//! exactly from `(seed, targets)` — which is what makes the outcome verifiable
-//! ([`Bubble`] implements [`pond_outcome::Game`]).
+//! derived from `(seed, i)` and aim is a quantized integer [`Angle`], a whole
+//! game replays exactly from `(seed, angles)` — the fixed-point resolver turns
+//! each angle back into the same landing — which is what makes the outcome
+//! verifiable ([`Bubble`] implements [`pond_outcome::Game`]).
 
 use std::collections::BTreeSet;
 
-use crate::board::{Board, Cell, Pos};
+use crate::aim::Angle;
+use crate::board::{Board, Cell};
 use crate::clear_board_mode as mode;
-use crate::engine::{deal, is_cleared, shoot, ShotError, ShotReport};
+use crate::engine::{deal, is_cleared, shoot_angle, ShotReport};
 use crate::hash::state_hash;
 use crate::rng::DetRng;
 
@@ -54,7 +56,13 @@ pub struct Game {
     deal_draws: u64,
     launcher: DetRng,
     current: u8,
-    shots: Vec<Pos>,
+    /// The recorded aim line (the outcome proof). Only [`Game::play`] appends;
+    /// the solver's landing-space [`Game::play_at`] advances without recording.
+    shots: Vec<Angle>,
+    /// Shots fired against the budget — incremented by both `play` and
+    /// `play_at`, so budget tracking holds for the solver's landing-space search
+    /// as well as a real angle game (for a real game `taken == shots.len()`).
+    taken: usize,
     score: u64,
 }
 
@@ -93,6 +101,7 @@ impl Game {
             launcher,
             current,
             shots: Vec::new(),
+            taken: 0,
             score: 0,
         }
     }
@@ -112,7 +121,7 @@ impl Game {
     /// Shots remaining in the budget.
     #[must_use]
     pub fn shots_left(&self) -> usize {
-        self.budget.saturating_sub(self.shots.len())
+        self.budget.saturating_sub(self.taken)
     }
 
     /// Cumulative score (pop/drop).
@@ -121,9 +130,9 @@ impl Game {
         self.score
     }
 
-    /// The shot targets taken so far (the outcome proof passed to `attest`).
+    /// The aim line fired so far (the outcome proof passed to `attest`).
     #[must_use]
-    pub fn shots(&self) -> &[Pos] {
+    pub fn shots(&self) -> &[Angle] {
         &self.shots
     }
 
@@ -136,7 +145,7 @@ impl Game {
     /// The budget is spent and the board is not cleared.
     #[must_use]
     pub fn is_lost(&self) -> bool {
-        self.shots.len() >= self.budget && !is_cleared(&self.board)
+        self.taken >= self.budget && !is_cleared(&self.board)
     }
 
     /// The canonical state hash, folding the RNG position (deal + launcher) and
@@ -151,18 +160,18 @@ impl Game {
         )
     }
 
-    /// Fire the current launcher colour at `target`, then load the next colour.
-    ///
-    /// # Errors
-    /// Returns `IllegalTarget` if `target` is not a legal landing cell; on error
-    /// nothing changes (no shot recorded, no launcher advance) — so a tampered
-    /// move list diverges the state hash and fails verification.
-    pub fn play(&mut self, target: Pos) -> Result<ShotReport, ShotError> {
-        let report = shoot(&mut self.board, target, self.current)?;
+    /// Fire the current launcher colour at `angle`: the core resolves the
+    /// landing ([`shoot_angle`]), applies the shot, records the angle, and loads
+    /// the next colour. Infallible — every angle lands somewhere, so a tampered
+    /// angle simply resolves to a different landing and diverges the state hash,
+    /// failing verification.
+    pub fn play(&mut self, angle: Angle) -> ShotReport {
+        let report = shoot_angle(&mut self.board, angle, self.current);
         self.score += report.score_gain;
-        self.shots.push(target);
+        self.shots.push(angle);
+        self.taken += 1;
         self.current = pick_color(&self.board, &mut self.launcher);
-        Ok(report)
+        report
     }
 }
 
@@ -170,16 +179,16 @@ impl Game {
 pub struct Bubble;
 
 impl pond_outcome::Game for Bubble {
-    type Move = Pos;
+    type Move = Angle;
     const KIND: &'static str = "bubble";
-    const VERSION: u32 = 1;
+    const VERSION: u32 = 2;
 
-    fn replay(seed: u64, moves: &[Pos]) -> pond_outcome::Replayed {
+    fn replay(seed: u64, moves: &[Angle]) -> pond_outcome::Replayed {
         let mut game = Game::new(seed);
-        for &target in moves {
-            // An illegal target in a tampered record is a no-op, so the state
-            // hash diverges from the honest game and verification fails.
-            let _ = game.play(target);
+        for &angle in moves {
+            // Each angle re-resolves to its landing on the current board, so an
+            // honest line reproduces the hash and a tampered angle diverges it.
+            game.play(angle);
         }
         pond_outcome::Replayed {
             final_hash: game.current_hash(),
@@ -193,42 +202,48 @@ impl pond_outcome::Game for Bubble {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::engine::legal_targets;
     use pond_outcome::{attest, verify, Game as _, Outcome};
+
+    // A fixed aim line: straight up, then two off-centre angles. The exact
+    // landings are the resolver's business — the record just has to replay.
+    const LINE: [Angle; 3] = [Angle(90), Angle(70), Angle(110)];
 
     #[test]
     fn verify_roundtrip_holds_and_detects_tamper() {
         let seed = 7;
         let mut g = Game::new(seed);
-        // Play three legal shots, choosing the first legal target each time
-        // (deterministic, row-major order).
-        let mut targets = Vec::new();
-        for _ in 0..3 {
-            let t = legal_targets(g.board())[0];
-            g.play(t).expect("first legal target is legal");
-            targets.push(t);
+        for &a in &LINE {
+            g.play(a);
         }
-        let record = attest::<Bubble>(seed, targets, Outcome::Abandoned, Some(false));
+        let record = attest::<Bubble>(seed, g.shots().to_vec(), Outcome::Abandoned, Some(false));
         assert!(verify::<Bubble>(&record).ok, "an honest record verifies");
         assert!(record.score.is_some(), "score is surfaced");
-        assert_eq!(record.stars, None, "no stars for v1");
 
-        let mut tampered = record.clone();
-        tampered.final_hash = "0".repeat(64);
+        let mut bad_hash = record.clone();
+        bad_hash.final_hash = "0".repeat(64);
         assert!(
-            !verify::<Bubble>(&tampered).ok,
+            !verify::<Bubble>(&bad_hash).ok,
             "a tampered hash fails verification"
+        );
+
+        // Tampering an angle re-resolves to a different landing, so the replayed
+        // hash no longer matches the stored one.
+        let mut bad_angle = record.clone();
+        bad_angle.moves[0] = Angle(45);
+        assert!(
+            !verify::<Bubble>(&bad_angle).ok,
+            "a tampered angle diverges the hash"
         );
     }
 
     #[test]
     fn win_on_the_last_shot() {
-        // colours=1, 3x3, one filled row => a 3-cluster; one shot into (1,0)
-        // connects a 4-cluster and clears the board. Budget 1 => the last shot.
+        // colours=1, 3x3, one filled row => a 3-cluster; a straight-up shot
+        // resolves to the cell below centre, completing a 4-cluster that clears
+        // the board. Budget 1 => the last shot.
         let mut g = Game::with_params(1, 3, 3, 1, 1, 1);
         assert_eq!(g.shots_left(), 1);
-        g.play((1, 0))
-            .expect("adjacent to the filled row, so legal");
+        g.play(Angle(90));
         assert!(g.is_won(), "the board is cleared");
         assert!(!g.is_lost());
         assert_eq!(g.shots_left(), 0);
@@ -246,17 +261,14 @@ mod tests {
     fn replay_is_deterministic_and_scores() {
         let seed = 42;
         let mut g = Game::new(seed);
-        let mut targets = Vec::new();
-        for _ in 0..3 {
-            let t = legal_targets(g.board())[0];
-            g.play(t).expect("legal");
-            targets.push(t);
+        for &a in &LINE {
+            g.play(a);
         }
-        let a = Bubble::replay(seed, &targets);
-        let b = Bubble::replay(seed, &targets);
+        let angles = g.shots().to_vec();
+        let a = Bubble::replay(seed, &angles);
+        let b = Bubble::replay(seed, &angles);
         assert_eq!(a.final_hash, b.final_hash, "replay is deterministic");
         assert_eq!(a.won, g.is_won());
         assert!(a.score.is_some());
-        assert_eq!(a.stars, None);
     }
 }

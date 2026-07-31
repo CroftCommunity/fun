@@ -1,11 +1,11 @@
 //! The bubble shooter's "How to play" guide (pure data — see src/how-to.ts).
-//! Leads with the objective and the tap-to-aim interaction.
+//! Leads with the objective and the aim-and-shoot interaction.
 
 import type { Guide } from "../../how-to.js";
 
 export const BUBBLE_GUIDE: Guide = {
   title: "How to play the bubble shooter",
-  lede: "Clear every bubble off the board before your shots run out. The launcher loads a colour; tap where you want it to land. Three or more of the same colour touching pop, and anything left hanging drops. Every cleared board is a record anyone can re-verify.",
+  lede: "Clear every bubble off the board before your shots run out. The launcher at the bottom loads a colour; aim an angle and fire — the bubble flies up, bounces off the walls, and sticks where it first touches. Three or more of the same colour touching pop, and anything left hanging drops. Every cleared board is a record anyone can re-verify.",
   entries: [
     {
       testid: "howto-goal",
@@ -19,8 +19,8 @@ export const BUBBLE_GUIDE: Guide = {
         {
           kind: "shot",
           name: "bubble-board",
-          alt: "A staggered honeycomb of coloured, shaped bubbles on a green felt table, with a launcher showing the next colour and a score / shots-left bar.",
-          caption: "The board, the launcher with your next colour, and the bar: your score and shots left.",
+          alt: "A staggered honeycomb of coloured, shaped bubbles on a green felt table, with a launcher at the bottom, a dotted aim line and a landing ring showing where the next shot will stick, and a score / shots-left bar.",
+          caption: "The board, the launcher with your next colour, the dotted aim guide showing where the shot will land, and the bar: your score and shots left.",
         },
       ],
     },
@@ -37,20 +37,24 @@ export const BUBBLE_GUIDE: Guide = {
     },
     {
       testid: "howto-aim",
-      title: "Making a shot: tap where it lands",
+      title: "Making a shot: aim and fire",
       toc: "Making a shot",
       blocks: [
         {
           kind: "prose",
-          text: "You aim by tapping — you don't drag or hold. The empty cells you can reach light up; tap one to drop the launcher's bubble there.",
+          text: "Point the launcher at the angle you want, then fire. The bubble flies up, bounces off the side walls, and sticks the instant it touches the ceiling or another bubble. A dotted guide previews the path and marks where the shot will land, so you can line up a bounce before you commit.",
         },
         {
           kind: "steps",
           items: [
-            "Look at the launcher for the colour you're about to shoot.",
-            "The reachable landing cells glow. Tap the one where you want the bubble.",
-            "Only glowing cells take a shot — if a cell isn't lit, the bubble can't reach it.",
+            "Aim: move the pointer over the board (or drag on a touchscreen), use the ←/→ keys, or drag the Aim slider.",
+            "Read the dotted guide — it shows the flight path, including wall bounces, and rings the cell the bubble will stick to.",
+            "Fire: click/tap the board, press the Fire button, or press Space. The bubble flies to exactly where the guide showed.",
           ],
+        },
+        {
+          kind: "prose",
+          text: "Want a tougher shot? Turn off \"Show aim guide\" in Settings and the dotted preview disappears — you aim by eye. It's purely a display choice; the shot still lands wherever the angle sends it.",
         },
       ],
     },
@@ -72,7 +76,7 @@ export const BUBBLE_GUIDE: Guide = {
       blocks: [
         {
           kind: "prose",
-          text: "Hints are on by default and point at a legal place to aim; using one counts as assistance, which is noted honestly on your result. Turn hints off and the button becomes \"I'm done\", which ends the round and tells you whether a shot was still available.",
+          text: "Hints are on by default and set your aim to a strong shot (the one that pops the most right now); using one counts as assistance, which is noted honestly on your result. Turn hints off and the button becomes \"I'm done\", which ends the round and reports the result honestly.",
         },
         {
           kind: "prose",

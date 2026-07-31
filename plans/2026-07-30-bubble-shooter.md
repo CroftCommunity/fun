@@ -1,5 +1,14 @@
 # Bubble shooter — Tier-1 build-fresh (phase plan)
 
+> **SUPERSEDED 2026-07-31 by `plans/2026-07-31-bubble-shooter-rebuild.md`.** This
+> v1 shipped **tap-a-cell-to-place**, a deliberate determinism tradeoff that
+> avoided floating-point trajectories — but it was the wrong game. The rebuild
+> makes `/bubble/` a real **aim-and-shoot** shooter (quantized angle + fixed-point
+> ray-cast in the core; cosmetic float flight in the UI) while keeping the
+> verifiable outcome. The move type changed `Pos → Angle` and the record
+> `VERSION 1 → 2`, invalidating old v1 `?r=` shares and the old pack. The B1–B7
+> history below is retained for provenance; the current design is the rebuild.
+
 **Status:** ✅ **SHIPPED 2026-07-30 — all phases B1–B7 executed TDD-first +
 committed.** Bubble is playable at `/bubble/`: clear-the-board-in-N-shots over a
 guaranteed-winnable daily pack, tap-target aim with core-decided legal-target

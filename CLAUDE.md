@@ -28,6 +28,16 @@ at them and add what's specific to this repo. Git identity: chasemp
 - **No stubs; built means wired means tested.** A game isn't done until it's
   reachable from its `/<id>/` URL through the drawer registry, with a wiring
   test that goes through the entry point (BUILDING-GAMES §8).
+- **Regenerate the how-to guide shots when a game's UI changes.** Any change that
+  alters what a game looks like or how it plays must re-run the "How to play"
+  screenshots so the guide can never show a UI that no longer exists:
+  `npm run build:wasm && npm run build && npm run guide:shots` (writes
+  `assets/guide/<name>.jpg`; a unit test fails on a missing referenced shot, an
+  e2e fails on a 404). This is part of the definition of done for a game update,
+  alongside the how-to *copy* itself — commit the regenerated shots. Guard
+  against unrelated churn: `guide:shots` rebuilds **every** game's shots, so
+  `git add` only the shots for the game you changed and `git checkout --` the
+  rest (other games' JPEGs can re-encode differently run-to-run).
 
 ## The shelf model — two tiers (COHESION §62 in discovery)
 

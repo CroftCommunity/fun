@@ -130,6 +130,18 @@ unless noted.
   leaking into the UI.)
 - **Drag-and-drop is a fast-follow**, never the only way in. Add convenience
   gestures (double-tap to auto-place) where they fit, on top of tap.
+- **Continuous-feeling games quantize the input, not the illusion.** A real
+  aim-and-shoot (the bubble shooter) or anything that *feels* analog stays
+  verifiable by splitting physics from presentation: (1) quantize the player's
+  input to an **integer move** (an aim *angle*, not a pixel); (2) resolve it in
+  the core with **fixed-point integer** physics (a ray-cast + wall reflection,
+  no floats on the hashed path, so `native == wasm`); (3) treat the smooth
+  on-screen motion as **cosmetic** — the rAF/float flight animation only
+  visualises the path the core already computed and never touches the hash. The
+  core still owns the outcome (the resolved landing), and the accessible floor
+  becomes a keyboard-operable control (an angle slider + Fire, ←/→ + Space)
+  rather than tap-a-cell. Reference: `crates/bubble-core/src/aim.rs` +
+  `src/games/bubble/`.
 
 ### Centre the play surface — the default layout
 

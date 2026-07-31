@@ -2,18 +2,21 @@
 //!
 //! The determinism foundation for the `fun.croft.ing` bubble shooter (Tier-1,
 //! build-fresh). See RULES.md for the geometry, adjacency, deal, shot
-//! resolution, and the state hash this crate implements verbatim. Aim is
-//! tap-a-target (no continuous physics), so a game replays exactly from
-//! `(seed, shots)` against the state hash.
+//! resolution, and the state hash this crate implements verbatim. Aim is a
+//! quantized integer [`Angle`] resolved to a landing by a fixed-point ray-cast
+//! ([`resolve_shot`], no floats on the hashed path), so a game replays exactly
+//! from `(seed, angles)` against the state hash and `native == wasm` holds.
 
 #![warn(missing_docs)]
 
+pub mod aim;
 pub mod board;
 pub mod engine;
 pub mod game;
 pub mod hash;
 pub mod rng;
 
+pub use aim::{angle_for_landing, cell_center, fan, resolve_shot, Angle, Landing};
 pub use board::{Board, BoardError, Cell, Pos};
 pub use engine::{deal, Deal};
 pub use game::{Bubble, Game};

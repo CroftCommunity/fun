@@ -8,6 +8,7 @@
 const HINTS_KEY = "fun-hints";
 const ASSIST_KEY = "fun-declare-assistance";
 const AUTOPLAY_KEY = "fun-autoplay";
+const AIM_GUIDE_KEY = "fun-bubble-aim-guide";
 
 /** Pure resolver: an explicit stored "on"/"off" wins; otherwise the default. */
 export function resolveBool(stored: string | null, fallback: boolean): boolean {
@@ -57,4 +58,14 @@ export function autoPlayEnabled(): boolean {
 }
 export function setAutoPlay(on: boolean): void {
   write(AUTOPLAY_KEY, on);
+}
+
+/** The bubble shooter's dotted trajectory preview (the aim guide) — **on by
+ *  default**. Turning it off is a harder aiming challenge; it is a display
+ *  preference, not outcome assistance (the shot still resolves identically). */
+export function aimGuideEnabled(): boolean {
+  return read(AIM_GUIDE_KEY, true);
+}
+export function setAimGuide(on: boolean): void {
+  write(AIM_GUIDE_KEY, on);
 }

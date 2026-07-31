@@ -22,11 +22,29 @@ export interface BoardView {
   cleared: boolean;
 }
 
-/** A landing cell to aim at: `[row, col]`. */
-export type Target = [number, number];
+/** A landing cell: `[row, col]`. */
+export type Cell = [number, number];
 
-/** Shot application status. */
-export type ShotStatus = "applied" | "illegal" | "bad";
+/** A resolved aim trajectory: the fixed-point flight-path vertices (launcher →
+ *  wall bounces → stop, `[x, y]` in the core's sub-pixel space) and the landing
+ *  cell. The UI draws the preview along `points` and animates to `landing`. */
+export interface Trajectory {
+  points: [number, number][];
+  landing: Cell;
+}
+
+/** The core's fixed sub-pixel geometry and legal aim fan — one source of truth
+ *  for the canvas layout and the angle control's range. */
+export interface Geom {
+  diam: number;
+  radius: number;
+  rowH: number;
+  fanLo: number;
+  fanHi: number;
+}
+
+/** Shot application status (`applied`, or `bad` = no game / budget spent). */
+export type ShotStatus = "applied" | "bad";
 
 interface Exports {
   memory: WebAssembly.Memory;
@@ -34,18 +52,20 @@ interface Exports {
   new_game(lo: number, hi: number): void;
   bubble_daily_seed(day_index: number): number;
   board_json(): number;
-  legal_targets_json(): number;
+  geom_json(): number;
+  trajectory_json(angle: number): number;
   current_hash(): number;
   score(): number;
   shots_left(): number;
   current_color(): number;
   is_cleared(): number;
-  shoot(r: number, c: number): number;
+  shoot(angle: number): number;
+  hint_angle(): number;
   mark_assistance(): void;
   outcome_json(declare: number): number;
 }
 
-const STATUS: Record<number, ShotStatus> = { 0: "applied", 1: "illegal", 2: "bad" };
+const STATUS: Record<number, ShotStatus> = { 0: "applied", 2: "bad" };
 
 /** A loaded bubble-shooter binding bound to one game. */
 export class Bubble {
@@ -81,9 +101,20 @@ export class Bubble {
   board(): BoardView {
     return JSON.parse(this.read(this.x.board_json())) as BoardView;
   }
-  /** The legal landing cells — the UI glows exactly these; the core decides. */
-  legalTargets(): Target[] {
-    return JSON.parse(this.read(this.x.legal_targets_json())) as Target[];
+  /** The core geometry + aim fan (constant for the session). */
+  geom(): Geom {
+    return JSON.parse(this.read(this.x.geom_json())) as Geom;
+  }
+  /** A suggested aim angle (the best reachable pop, or the fan midpoint). A hint
+   *  is assistance — call {@link markAssistance} when surfacing it. */
+  hintAngle(): number {
+    return this.x.hint_angle();
+  }
+  /** The resolved trajectory for aiming `angle` (whole degrees) — the flight
+   *  path to preview and the landing cell the shot will stick to. The core owns
+   *  both, so the animated bubble lands exactly where the shot resolves. */
+  trajectory(angle: number): Trajectory {
+    return JSON.parse(this.read(this.x.trajectory_json(angle))) as Trajectory;
   }
   currentHash(): string {
     return JSON.parse(this.read(this.x.current_hash())) as string;
@@ -107,9 +138,9 @@ export class Bubble {
     return JSON.parse(this.read(this.x.outcome_json(declareAssistance ? 1 : 0)));
   }
 
-  /** Fire the current colour at a landing cell. Illegal / budget-spent shots
-   *  leave the board unchanged. */
-  shoot(target: Target): ShotStatus {
-    return STATUS[this.x.shoot(target[0], target[1])]!;
+  /** Fire the current colour along `angle` (whole degrees). The core resolves
+   *  the landing; a budget-spent shot (`bad`) leaves the board unchanged. */
+  shoot(angle: number): ShotStatus {
+    return STATUS[this.x.shoot(angle)]!;
   }
 }

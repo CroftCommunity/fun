@@ -1,61 +1,93 @@
-//! Bubble-shooter wiring test: the hex board renders and plays over the binding,
-//! the glowing landing cells are exactly the core's legal targets, tapping one
-//! fires the launcher colour (an inert tap on a bubble does nothing), the
-//! committed winnable fixture clears to a verifiable record, and the share link
-//! round-trips. Axe + narrow-phone fit guard the identity.
+//! Bubble-shooter aim-and-shoot wiring test: the canvas board + launcher + aim
+//! control render; aiming then firing spends a shot and lands **exactly where
+//! the core resolves it** (the guardrail — the UI never invents physics); the
+//! committed winnable fixture clears to a verifiable record and the share link
+//! round-trips; keyboard aim/fire works; reduced-motion fires instantly. Axe +
+//! narrow-phone fit guard the identity.
 
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
 async function ready(page: Page): Promise<void> {
-  await expect(page.locator(".bub-board")).toBeVisible();
+  await expect(page.locator(".bub-canvas")).toBeVisible();
   await page.waitForFunction(() => Boolean(window.__bubble));
 }
 
-test("the board renders bubbles + a launcher and the HUD", async ({ page }) => {
+const shotsLeft = (page: Page): Promise<number> =>
+  page.evaluate(() => window.__bubble!.game.board().shotsLeft);
+
+test("the board renders a canvas, a launcher chip, an aim control and the HUD", async ({ page }) => {
   await page.goto("/bubble/?seed=7");
   await ready(page);
-  await expect(page.locator(".bub-bubble").first()).toBeVisible();
-  await expect(page.locator(".bub-launcher")).toContainText(/launcher/i);
+  await expect(page.locator(".bub-canvas")).toHaveAttribute("aria-label", /bubbles left/i);
+  await expect(page.locator(".bub-loaded")).toBeVisible();
+  await expect(page.locator(".bub-aim")).toBeVisible();
+  await expect(page.locator(".bub-fire")).toBeVisible();
   await expect(page.locator(".bub-hud")).toContainText(/score/i);
   await expect(page.locator(".bub-hud")).toContainText(/shots left/i);
 });
 
-test("the glowing cells are exactly the core's legal targets", async ({ page }) => {
+test("aiming then firing spends a shot and lands where the core resolves it", async ({ page }) => {
   await page.goto("/bubble/?seed=7");
   await ready(page);
-  const n = await page.evaluate(() => window.__bubble!.legalTargets().length);
-  await expect(page.locator(".bub-target.legal-target")).toHaveCount(n);
+  const before = await shotsLeft(page);
+
+  // Aim a fixed angle, then fire through the real UI path and wait for the shot
+  // to apply. The resulting state hash must equal an independent control replay
+  // of the same single angle from the same deal — proving the UI fires exactly
+  // the core's resolved shot (no invented physics).
+  const control = await page.evaluate((angle) => {
+    const h = window.__bubble!;
+    h.verifier.newGame(h.seed);
+    h.verifier.shoot(angle);
+    return h.verifier.currentHash();
+  }, 80);
+
+  await page.evaluate(async (angle) => {
+    const h = window.__bubble!;
+    h.setAim(angle);
+    await h.fire();
+  }, 80);
+
+  await expect.poll(() => shotsLeft(page)).toBe(before - 1);
+  const got = await page.evaluate(() => window.__bubble!.game.currentHash());
+  expect(got).toBe(control);
 });
 
-test("tapping a legal target fires the launcher and spends a shot", async ({ page }) => {
+test("the aim slider drives the angle and stays within the legal fan", async ({ page }) => {
   await page.goto("/bubble/?seed=7");
   await ready(page);
-  const before = await page.evaluate(() => window.__bubble!.game.board().shotsLeft);
-  const t = await page.evaluate(() => window.__bubble!.legalTargets()[0]!);
-  await page.locator(`.bub-target[data-r="${t[0]}"][data-c="${t[1]}"]`).click();
-  const after = await page.evaluate(() => window.__bubble!.game.board().shotsLeft);
-  expect(after).toBe(before - 1);
+  const { lo, hi } = await page.evaluate(() => ({
+    lo: window.__bubble!.geom.fanLo,
+    hi: window.__bubble!.geom.fanHi,
+  }));
+  const slider = page.locator(".bub-aim");
+  await expect(slider).toHaveAttribute("min", String(lo));
+  await expect(slider).toHaveAttribute("max", String(hi));
+  await slider.fill(String(hi));
+  expect(await page.evaluate(() => window.__bubble!.aim())).toBe(hi);
 });
 
-test("a bubble is not a landing cell — tapping it does nothing (core decides)", async ({ page }) => {
+test("keyboard: arrows re-aim and Space fires a shot", async ({ page }) => {
   await page.goto("/bubble/?seed=7");
   await ready(page);
-  const before = await page.evaluate(() => window.__bubble!.game.board().shotsLeft);
-  // Bubbles render as inert spans, not buttons — a click on one is a no-op.
-  await page.locator(".bub-bubble").first().click();
-  const after = await page.evaluate(() => window.__bubble!.game.board().shotsLeft);
-  expect(after).toBe(before);
+  await page.locator(".bub-canvas").focus();
+  const start = await page.evaluate(() => window.__bubble!.aim());
+  await page.locator(".bub-canvas").press("ArrowLeft");
+  expect(await page.evaluate(() => window.__bubble!.aim())).toBeGreaterThan(start);
+  const before = await shotsLeft(page);
+  await page.locator(".bub-canvas").press(" ");
+  await expect.poll(() => shotsLeft(page)).toBe(before - 1);
 });
 
 test("clearing the board with the committed fixture is a verifiable win; share round-trips", async ({
   page,
 }) => {
-  // The winnable-daily pack's fixture: a seed + a shot line that clears the board
-  // (fetched via the baseURL-relative request API, no page origin needed).
+  // The winnable-daily pack's fixture: a seed + an angle line that clears the
+  // board (fetched baseURL-relative).
   const res = await page.request.get("/bubble-daily-pack.json");
   const env = (await res.json()) as {
-    payload: { fixture: { seed: number; moves: [number, number][] } };
+    payload: { fixture: { seed: number; moves: number[] } };
   };
   const fixture = env.payload.fixture;
   await page.goto(`/bubble/?seed=${fixture.seed}`);
@@ -63,7 +95,7 @@ test("clearing the board with the committed fixture is a verifiable win; share r
 
   await page.evaluate((moves) => {
     const h = window.__bubble!;
-    for (const m of moves) h.game.shoot(m);
+    for (const angle of moves) h.game.shoot(angle);
     h.refresh();
   }, fixture.moves);
 
@@ -80,6 +112,32 @@ test("clearing the board with the committed fixture is a verifiable win; share r
   await expect(shared.locator(".sol-result")).toBeVisible();
   await expect(shared.locator(".sol-verify-badge.ok")).toBeVisible();
   await shared.close();
+});
+
+test("reduced-motion fires instantly (no flight animation)", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/bubble/?seed=7");
+  await ready(page);
+  const before = await shotsLeft(page);
+  // No waiting on a rAF flight — the shot applies synchronously within fire().
+  await page.evaluate(async () => {
+    window.__bubble!.setAim(90);
+    await window.__bubble!.fire();
+  });
+  expect(await shotsLeft(page)).toBe(before - 1);
+});
+
+test("the aim guide is on by default and can be turned off (persists)", async ({ page }) => {
+  await page.goto("/bubble/?seed=7");
+  await ready(page);
+  await page.locator(".sol-settings summary").click();
+  const guide = page.locator(".bub-set-aimguide");
+  await expect(guide).toBeChecked();
+  await guide.uncheck();
+  await page.reload();
+  await ready(page);
+  await page.locator(".sol-settings summary").click();
+  await expect(page.locator(".bub-set-aimguide")).not.toBeChecked();
 });
 
 test("with hints off, 'I'm done' ends the round", async ({ page }) => {

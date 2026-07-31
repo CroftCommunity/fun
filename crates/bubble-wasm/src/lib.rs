@@ -2,17 +2,17 @@
 //! serde-JSON, no `wasm-bindgen` (the `xbuild` pattern, like `match3-wasm`).
 //!
 //! The module holds **one game** (one board per tab): clear-the-board within a
-//! shot budget. Aim is tap-a-target — the host reads `legal_targets_json`, glows
-//! exactly those cells, and calls [`shoot`]; the core decides legality. Reads
-//! (board / legal targets / hash / outcome) are JSON written to one output
-//! buffer the host reads via the return pointer + [`out_len`].
+//! shot budget. Aim is a quantized [`Angle`] — the host reads `trajectory_json`
+//! to draw the aim preview (fixed-point flight path + resolved landing) and
+//! calls [`shoot`] with the angle; the core resolves the landing. Reads (board /
+//! trajectory / hash / outcome) are JSON written to one output buffer the host
+//! reads via the return pointer + [`out_len`].
 //!
 //! **Never panics** (a wasm panic aborts the module): every fallible path maps
 //! to a status code or an empty/`"null"` buffer.
 
 use bubble_core::clear_board_mode::SHOT_BUDGET;
-use bubble_core::engine::legal_targets;
-use bubble_core::{Board, Bubble, Cell, Game};
+use bubble_core::{resolve_shot, Angle, Board, Bubble, Cell, Game};
 use pond_outcome::{attest, Outcome};
 use serde::{Deserialize, Serialize};
 
@@ -130,6 +130,31 @@ struct BoardView {
     cleared: bool,
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct GeomView {
+    /// Bubble diameter in the core's sub-pixel space.
+    diam: i32,
+    /// Bubble radius.
+    radius: i32,
+    /// Row vertical spacing.
+    row_h: i32,
+    /// Legal aim fan lower bound (whole degrees).
+    fan_lo: u16,
+    /// Legal aim fan upper bound (whole degrees).
+    fan_hi: u16,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TrajectoryView {
+    /// Fixed-point flight-path vertices `[x, y]` in the core's sub-pixel space
+    /// (launcher → each wall bounce → stop). Presentational — never hashed.
+    points: Vec<[i32; 2]>,
+    /// The resolved landing cell `[r, c]`.
+    landing: [usize; 2],
+}
+
 fn board_view(s: &Session) -> BoardView {
     let b: &Board = s.game.board();
     let cells = (0..b.height)
@@ -166,22 +191,43 @@ pub extern "C" fn board_json() -> *const u8 {
     }
 }
 
-/// Legal landing cells in the current state as `[[r,c], …]` JSON — the UI glows
-/// exactly these; legality lives in the core.
+/// The fixed sub-pixel geometry + the legal aim fan as JSON — the single source
+/// of truth for the UI's canvas layout and its angle control range.
 #[no_mangle]
-pub extern "C" fn legal_targets_json() -> *const u8 {
-    match session_mut() {
-        Some(s) => {
-            let targets: Vec<[usize; 2]> = legal_targets(s.game.board())
-                .into_iter()
-                .map(|(r, c)| [r, c])
-                .collect();
-            match serde_json::to_vec(&targets) {
-                Ok(bytes) => set_out(bytes),
-                Err(_) => set_out_str("[]"),
-            }
-        }
-        None => set_out_str("[]"),
+pub extern "C" fn geom_json() -> *const u8 {
+    let (fan_lo, fan_hi) = bubble_core::fan();
+    let view = GeomView {
+        diam: bubble_core::aim::DIAM,
+        radius: bubble_core::aim::RADIUS,
+        row_h: bubble_core::aim::ROW_H,
+        fan_lo,
+        fan_hi,
+    };
+    match serde_json::to_vec(&view) {
+        Ok(bytes) => set_out(bytes),
+        Err(_) => set_out_str("null"),
+    }
+}
+
+/// The resolved trajectory for aiming `angle` (whole degrees): the fixed-point
+/// flight path (launcher → wall bounces → stop, sub-pixel `[x,y]` vertices) and
+/// the landing cell `[r,c]`, as JSON. The host draws the preview along `points`
+/// and animates the projectile to `landing`; the core owns both, so the animated
+/// bubble lands exactly where a shot at this angle will (RULES.md "Aim").
+#[no_mangle]
+pub extern "C" fn trajectory_json(angle: u32) -> *const u8 {
+    let Some(s) = session_mut() else {
+        return set_out_str("null");
+    };
+    let deg = u16::try_from(angle).unwrap_or(u16::MAX);
+    let landing = resolve_shot(s.game.board(), Angle(deg));
+    let view = TrajectoryView {
+        points: landing.path.iter().map(|&(x, y)| [x, y]).collect(),
+        landing: [landing.pos.0, landing.pos.1],
+    };
+    match serde_json::to_vec(&view) {
+        Ok(bytes) => set_out(bytes),
+        Err(_) => set_out_str("null"),
     }
 }
 
@@ -218,20 +264,43 @@ pub extern "C" fn is_cleared() -> u32 {
     u32::from(session_mut().is_some_and(|s| s.game.is_won()))
 }
 
-// --- moves (status: 0 applied / 1 illegal / 2 bad state or budget spent) ----------
+// --- moves (status: 0 applied / 2 bad state or budget spent) ----------
 
-/// Fire the current launcher colour at `(r, c)`. An illegal target (occupied /
-/// unreachable) leaves the board unchanged and does not consume a shot.
+/// Fire the current launcher colour along `angle` (whole degrees). The core
+/// resolves the landing and applies the shot — there is no illegal case (every
+/// angle lands somewhere). Returns `2` if there is no game or the budget is
+/// spent (no shot taken), else `0`.
 #[no_mangle]
-pub extern "C" fn shoot(r: u32, c: u32) -> u32 {
+pub extern "C" fn shoot(angle: u32) -> u32 {
     let Some(s) = session_mut() else { return 2 };
     if s.game.shots_left() == 0 {
         return 2; // budget spent
     }
-    match s.game.play((r as usize, c as usize)) {
-        Ok(_) => 0,
-        Err(_) => 1,
+    let deg = u16::try_from(angle).unwrap_or(u16::MAX);
+    s.game.play(Angle(deg));
+    0
+}
+
+/// A suggested aim angle: the reachable shot that pops/drops the most from the
+/// current board (lowest angle on a tie), or the fan midpoint if nothing pops.
+/// `0` if there is no game. A hint is assistance — the host declares it via
+/// [`mark_assistance`].
+#[no_mangle]
+pub extern "C" fn hint_angle() -> u32 {
+    let Some(s) = session_mut() else { return 0 };
+    let (lo, hi) = bubble_core::fan();
+    let mut best_gain = 0usize;
+    let mut best = lo + (hi - lo) / 2; // fan midpoint default when nothing pops
+    for deg in lo..=hi {
+        let mut probe = s.game.clone();
+        let rep = probe.play(Angle(deg));
+        let gain = rep.popped + rep.dropped;
+        if gain > best_gain {
+            best_gain = gain;
+            best = deg;
+        }
     }
+    u32::from(best)
 }
 
 /// Mark the game assisted (a hint was shown), so the outcome reflects it.
@@ -269,41 +338,69 @@ pub extern "C" fn outcome_json(declare: u32) -> *const u8 {
 mod tests {
     use super::*;
 
-    // Exercises the C-ABI end to end (the "wiring test" for B5): start a game,
-    // read the board/targets, shoot the first legal target, and confirm the
-    // outcome JSON parses to a bubble record. Runs native (rlib), not wasm.
-    #[test]
-    fn cabi_new_game_read_shoot_outcome() {
-        new_game(495, 0); // a winnable pack seed
-        assert!(out_len() == 0 || out_len() > 0); // out buffer usable
-        let board_ptr = board_json();
-        assert!(!board_ptr.is_null());
+    /// Read the last output buffer as JSON.
+    fn out_json(ptr: *const u8) -> serde_json::Value {
         let n = out_len() as usize;
-        // SAFETY: single-threaded test; board_json just wrote OUT.
-        let json = unsafe { std::slice::from_raw_parts(board_ptr, n) };
-        let view: serde_json::Value = serde_json::from_slice(json).expect("board json");
-        assert_eq!(view["cleared"], serde_json::json!(false));
-        assert!(view["shotsLeft"].as_u64().unwrap() > 0);
+        // SAFETY: single-threaded test; the preceding call just wrote OUT.
+        let bytes = unsafe { std::slice::from_raw_parts(ptr, n) };
+        serde_json::from_slice(bytes).expect("valid json")
+    }
 
-        // Shoot the first legal target (via the C-ABI read).
-        let tptr = legal_targets_json();
-        let tn = out_len() as usize;
-        let tjson = unsafe { std::slice::from_raw_parts(tptr, tn) };
-        let targets: Vec<[u32; 2]> = serde_json::from_slice(tjson).expect("targets");
-        assert!(!targets.is_empty(), "a fresh board has legal targets");
-        assert_eq!(shoot(targets[0][0], targets[0][1]), 0, "legal shot applies");
+    // ONE C-ABI wiring test (V4/V5): the module holds a single `static mut`
+    // game + output buffer (correct for single-threaded wasm), so all C-ABI
+    // exercise must live in one test — the native harness runs `#[test]`s on
+    // parallel threads and separate tests would race the shared state.
+    // Covers: new_game → geom/hint reads → trajectory → shoot → board changed →
+    // outcome is a bubble v2 record → embedded daily seed.
+    #[test]
+    fn cabi_end_to_end() {
+        new_game(495, 0);
 
-        // An out-of-bounds target is illegal, not a panic.
-        assert_eq!(shoot(999, 999), 1);
+        // Geometry + fan are exposed for the UI (seed-independent constants).
+        let g = out_json(geom_json());
+        assert_eq!(g["diam"], serde_json::json!(256));
+        assert_eq!(g["radius"], serde_json::json!(128));
+        assert_eq!(g["rowH"], serde_json::json!(222));
+        let (lo, hi) = (g["fanLo"].as_u64().unwrap(), g["fanHi"].as_u64().unwrap());
+        assert!(lo < hi, "fan is a non-empty range");
 
-        // Outcome parses to a bubble-kind envelope.
-        let optr = outcome_json(1);
-        let on = out_len() as usize;
-        let ojson = unsafe { std::slice::from_raw_parts(optr, on) };
-        let rec: serde_json::Value = serde_json::from_slice(ojson).expect("outcome json");
+        // A hint is an in-fan angle.
+        let h = u64::from(hint_angle());
+        assert!((lo..=hi).contains(&h), "hint {h} within the fan");
+
+        // A fresh deal: not cleared, shots available.
+        let before = out_json(board_json());
+        assert_eq!(before["cleared"], serde_json::json!(false));
+        let shots_before = before["shotsLeft"].as_u64().unwrap();
+        assert!(shots_before > 0);
+        let hash_before = out_json(current_hash());
+
+        // A straight-up trajectory has a launcher→stop path with a landing cell.
+        let traj = out_json(trajectory_json(90));
+        assert!(
+            traj["points"].as_array().unwrap().len() >= 2,
+            "path has vertices"
+        );
+        assert!(traj["landing"].is_array());
+
+        // Firing that angle applies a shot: a shot is spent and the state hash
+        // moves. (We assert the shot took effect, not that the landing cell is
+        // still filled — a shot that completes a trio pops and empties it.)
+        assert_eq!(shoot(90), 0, "an in-fan angle applies");
+        let after = out_json(board_json());
+        assert_eq!(
+            after["shotsLeft"].as_u64().unwrap(),
+            shots_before - 1,
+            "a shot was spent"
+        );
+        assert_ne!(out_json(current_hash()), hash_before, "the state advanced");
+
+        // The outcome is a bubble-kind v2 envelope.
+        let rec = out_json(outcome_json(1));
         assert_eq!(rec["kind"], serde_json::json!("bubble"));
+        assert_eq!(rec["version"], serde_json::json!(2), "bubble record is v2");
 
-        // Daily seed comes from the embedded pack.
+        // The daily seed comes from the embedded pack.
         assert_ne!(bubble_daily_seed(0), 0, "pack seeds are embedded");
     }
 }

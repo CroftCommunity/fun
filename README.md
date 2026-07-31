@@ -23,7 +23,8 @@ crates/
   pond-outcome/      P8 verifiable-outcome record (replay → state hash)         — built
   match3-wasm/       browser binding over match3-core (raw C-ABI + serde-JSON)   — built
   solitaire-wasm/    browser binding over solitaire-core (raw C-ABI + serde-JSON) — built
-  bubble-core/       deterministic bubble-shooter engine (hex board, tap-target aim, pop/drop) — green
+  bubble-core/       deterministic bubble-shooter engine (hex board, quantized-angle aim →
+                     fixed-point ray-cast/bounce landing, pop/drop) — green
   bubble-solver/     build-time clear-the-board solver + winnable-daily pack generator — green
   bubble-wasm/       browser binding over bubble-core (raw C-ABI + serde-JSON)     — built
   wyrdle-core/       deterministic word-guessing engine (two-pass scoring, embedded license-clean
@@ -59,6 +60,21 @@ tap a gem then an adjacent one to swap (only match-making swaps are legal; the c
 glow), a 20-swap budget graded into 0–3 stars at score thresholds. Moves out → a verifiable score+stars
 record with re-verify + a `?r=` share. Daily board (date seed) + free-play (`?seed=`). v1 uses flat star
 thresholds (no per-deal par yet — see `TODO/match3.md`). Plan: `plans/2026-07-30-match3-playable.md`.
+
+## Bubble (playable — aim-and-shoot)
+
+`/bubble/` is a real Bubble-Shooter: a launcher at the bottom, **aim an angle**
+(point/drag on the board, the ←/→ keys, or the slider), and fire — the bubble
+flies up, **bounces off the walls**, and sticks where it first touches; groups of
+3+ pop and unsupported bubbles drop. The catch is determinism: aim is a
+**quantized integer angle**, resolved in the core by a **fixed-point** ray-cast
+(a committed integer direction table — `wasm32` has no runtime trig), so there
+are no floats on the hashed path and `native == wasm`. The smooth flight is
+cosmetic; the core owns every landing. Clear the board within the shot budget for
+a verifiable win (replay the angle line → re-derive the hash), with re-verify + a
+`?r=` share. A dotted **aim guide** previews the path (optional, on by default);
+daily board (winnable pack) + free-play (`?seed=`). Plan:
+`plans/2026-07-31-bubble-shooter-rebuild.md`.
 
 ## Wyrdle (playable — daily word game)
 
