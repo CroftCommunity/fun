@@ -1,0 +1,26 @@
+{
+  "name": "combo-striped-cross",
+  "seed": 1,
+  "colors": 6,
+  "board": [
+    "01234",
+    "12340",
+    "23401",
+    "34012",
+    "40123"
+  ],
+  "special": [
+    ".....",
+    ".....",
+    ".HH..",
+    ".....",
+    "....."
+  ],
+  "moves": [ [2, 1, 2, 2] ],
+  "expect": {
+    "move_legal": [true],
+    "step0_cleared": [ [[0,2],[1,2],[2,0],[2,1],[2,2],[2,3],[2,4],[3,2],[4,2]] ],
+    "step0_score": [90],
+    "final_state_hash": "66c4292df8946daeca204acd9102dedd45dcd19e53a80f4663cffe88a5f159b0"
+  }
+}

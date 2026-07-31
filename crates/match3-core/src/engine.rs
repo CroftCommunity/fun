@@ -388,6 +388,80 @@ fn fires_on_swap(kind: Option<SpecialKind>) -> bool {
     )
 }
 
+/// Step-0 swap classification when the swap is **not** a combo: sort each swapped
+/// special into how it fires independently — a colour bomb detonates the colour of
+/// the gem it traded with (`bombs`), a fish draws a seeded target (`swapped_fish`),
+/// and a striped/wrapped fires its own blast (`seed`). This is the pre-B5 behaviour,
+/// unchanged; the combo dispatch (RULES.md T1d) routes two-special swaps elsewhere.
+fn classify_swapped_specials(
+    board: &Board,
+    from: Pos,
+    to: Pos,
+) -> (Vec<Pos>, Vec<(Pos, u8)>, Vec<Pos>) {
+    let mut seed = Vec::new();
+    let mut bombs = Vec::new();
+    let mut swapped_fish = Vec::new();
+    for (pos, other) in [(from, to), (to, from)] {
+        match board.special_at(pos.0, pos.1) {
+            Some(SpecialKind::ColorBomb) => {
+                // Target = the colour now at `other` (the gem the bomb traded with).
+                if let Cell::Gem(color) = board.get(other.0, other.1) {
+                    bombs.push((pos, color));
+                }
+            }
+            // A swapped fish fires (B4.2) — its target is drawn in `resolve_move`.
+            Some(SpecialKind::Fish) => swapped_fish.push(pos),
+            k if fires_on_swap(k) => seed.push(pos),
+            _ => {}
+        }
+    }
+    (seed, bombs, swapped_fish)
+}
+
+/// The step-0 swap classification: either a **combo** (both swapped cells hold a
+/// non-fish firing special → one combined blast, RULES.md T1d) or the independent
+/// per-special seeds (a combo's fields stay empty, and vice-versa). Bundled so
+/// `resolve_move` threads one value instead of a wide tuple.
+#[derive(Default)]
+struct Step0Seeds {
+    /// Striped/wrapped specials swapped into place (fire their own blast).
+    seed: Vec<Pos>,
+    /// Colour bombs swapped with a gem, each `(bomb_cell, target_colour)`.
+    bombs: Vec<(Pos, u8)>,
+    /// Fish swapped into place (each draws a seeded target in `resolve_move`).
+    swapped_fish: Vec<Pos>,
+    /// A combo (both cells non-fish specials) — consumes both, mutually exclusive
+    /// with the seeds above.
+    combo: Option<ComboEffect>,
+}
+
+/// Classify a step-0 swap into [`Step0Seeds`]. If both swapped cells hold a
+/// non-fish firing special, dispatch to [`combo`] (both consumed); otherwise fall
+/// back to the independent [`classify_swapped_specials`].
+fn classify_step0(board: &Board, from: Pos, to: Pos) -> Step0Seeds {
+    let is_combo_side = |k: Option<SpecialKind>| matches!(k, Some(kind) if fires_on_swap(Some(kind)) && kind != SpecialKind::Fish);
+    if is_combo_side(board.special_at(from.0, from.1))
+        && is_combo_side(board.special_at(to.0, to.1))
+    {
+        if let Some(clear) = combo(board, from, to, to) {
+            return Step0Seeds {
+                combo: Some(ComboEffect {
+                    clear,
+                    sources: [from, to],
+                }),
+                ..Step0Seeds::default()
+            };
+        }
+    }
+    let (seed, bombs, swapped_fish) = classify_swapped_specials(board, from, to);
+    Step0Seeds {
+        seed,
+        bombs,
+        swapped_fish,
+        combo: None,
+    }
+}
+
 /// A fish's target cell (B4.2) — the cell it swims to and eats. Deterministic:
 /// from the highest non-empty preference tier — (1) a **jellied** cell (advancing
 /// the jelly objective), else (2) any other **gem** — pick via `rng.index` over the
@@ -448,6 +522,82 @@ fn blast_region(board: &Board, pos: Pos) -> Vec<Pos> {
     }
 }
 
+/// Every non-blocker cell in the rectangle `[r0,r1] × [c0,c1]` (clamped by the
+/// caller), sorted row-major — the shared region builder for the combo blasts
+/// (blockers are excluded like [`blast_region`], taking adjacency damage in T2).
+fn region(board: &Board, r0: usize, r1: usize, c0: usize, c1: usize) -> BTreeSet<Pos> {
+    let mut s = BTreeSet::new();
+    for rr in r0..=r1 {
+        for cc in c0..=c1 {
+            if !board.get(rr, cc).is_blocker() {
+                s.insert((rr, cc));
+            }
+        }
+    }
+    s
+}
+
+/// The combined blast produced by swapping **two non-fish specials** together
+/// (RULES.md T1d), centered on the destination cell `center` (= `to`), consuming
+/// both. `a`/`b` are the two specials' post-swap cells. Returns the cells to clear
+/// (blockers excluded), or `None` if the pair is not a B5.1 combo — a colour bomb
+/// (B5.2) or a fish (never reaches here — a fish pair skips the combo dispatch).
+///
+/// - **striped + striped → a cross:** the full row **and** full column through
+///   `center`.
+/// - **striped + wrapped → a thick cross:** a 3-wide row band **and** 3-wide column
+///   band through `center`.
+/// - **wrapped + wrapped → a 5×5 block** around `center` (clamped). A single blast:
+///   both specials are consumed, so there is no survivor to pin/re-blast (the canon
+///   "explodes twice" is a revisable realization — the generic clears the 5×5 once).
+fn combo(board: &Board, a: Pos, b: Pos, center: Pos) -> Option<Vec<Pos>> {
+    use SpecialKind::{StripedH, StripedV, Wrapped};
+    let ka = board.special_at(a.0, a.1)?;
+    let kb = board.special_at(b.0, b.1)?;
+    let striped = |k| matches!(k, StripedH | StripedV);
+    let (r, c) = center;
+    let last_r = board.height.saturating_sub(1);
+    let last_c = board.width.saturating_sub(1);
+    let cells: BTreeSet<Pos> = if striped(ka) && striped(kb) {
+        // Full row ∪ full column through the centre.
+        let mut s = region(board, r, r, 0, last_c);
+        s.extend(region(board, 0, last_r, c, c));
+        s
+    } else if (striped(ka) && kb == Wrapped) || (ka == Wrapped && striped(kb)) {
+        // 3-wide row band ∪ 3-wide column band.
+        let mut s = region(board, r.saturating_sub(1), (r + 1).min(last_r), 0, last_c);
+        s.extend(region(
+            board,
+            0,
+            last_r,
+            c.saturating_sub(1),
+            (c + 1).min(last_c),
+        ));
+        s
+    } else if ka == Wrapped && kb == Wrapped {
+        // 5×5 block, clamped.
+        region(
+            board,
+            r.saturating_sub(2),
+            (r + 2).min(last_r),
+            c.saturating_sub(2),
+            (c + 2).min(last_c),
+        )
+    } else {
+        return None; // colour-bomb combos are B5.2
+    };
+    Some(cells.into_iter().collect())
+}
+
+/// A combo (B5): the combined blast of two swapped specials plus the two source
+/// cells (consumed, so they never fire individually).
+struct ComboEffect {
+    /// The cells the combo clears (blockers excluded), sorted row-major.
+    clear: Vec<Pos>,
+    /// The two swapped special cells — consumed by the combo, not fired.
+    sources: [Pos; 2],
+}
+
 /// The outcome of expanding a matched set by its special blasts (a single cascade
 /// step): `clear` is the full sorted set of cells to clear this step; `pending` is
 /// the wrapped candies that fired their **first** blast and survived — they are
@@ -483,6 +633,7 @@ fn activate(
     reblast: &[Pos],
     bombs: &[(Pos, u8)],
     fish_targets: &[(Pos, Pos)],
+    combo: Option<&ComboEffect>,
 ) -> Activation {
     let mut to_clear: BTreeSet<Pos> = matched.iter().copied().collect();
     let mut pending: BTreeSet<Pos> = BTreeSet::new();
@@ -523,6 +674,22 @@ fn activate(
         if fires_on_match(board.special_at(target.0, target.1)) && !fired.contains(&target) {
             queue.push((target, false));
         }
+    }
+    // Combo (B5): both swapped specials are consumed by the combined blast, so
+    // mark them fired first — they must NOT fire individually (a wrapped source
+    // would otherwise survive/re-blast). Then clear the combo cells, chaining any
+    // *other* firing special the combo sweeps up (bystanders, not the two sources).
+    if let Some(cmb) = combo {
+        fired.insert(cmb.sources[0]);
+        fired.insert(cmb.sources[1]);
+        for &cell in &cmb.clear {
+            to_clear.insert(cell);
+            if fires_on_match(board.special_at(cell.0, cell.1)) && !fired.contains(&cell) {
+                queue.push((cell, false));
+            }
+        }
+        to_clear.insert(cmb.sources[0]);
+        to_clear.insert(cmb.sources[1]);
     }
     while let Some((cell, is_reblast)) = queue.pop() {
         if !fired.insert(cell) {
@@ -1085,37 +1252,22 @@ impl Game {
         let mut reblast_seed: Vec<Pos> = Vec::new();
         loop {
             let matched = find_matches(&self.board);
-            // Step 0 also seeds activation from a special swapped into place: it
-            // fires even with no line match (striped B1.2, wrapped B2.2). A swapped
-            // colour bomb (B3) fires differently — it detonates the colour of the
-            // gem it traded with — so it is split into `bombs` with that target
-            // colour. Later steps have no swap seed.
-            let (seed, bombs, swapped_fish): (Vec<Pos>, Vec<(Pos, u8)>, Vec<Pos>) =
-                if step_index == 0 {
-                    let mut seed = Vec::new();
-                    let mut bombs = Vec::new();
-                    let mut swapped_fish = Vec::new();
-                    for (pos, other) in [(from, to), (to, from)] {
-                        match self.board.special_at(pos.0, pos.1) {
-                            Some(SpecialKind::ColorBomb) => {
-                                // Target = the colour now at `other` (the gem the bomb
-                                // traded places with). A colour bomb swapped with
-                                // another special still uses its underlying colour here
-                                // — the true combo matrix is B5.
-                                if let Cell::Gem(color) = self.board.get(other.0, other.1) {
-                                    bombs.push((pos, color));
-                                }
-                            }
-                            // A swapped fish fires (B4.2) — its target is drawn below.
-                            Some(SpecialKind::Fish) => swapped_fish.push(pos),
-                            k if fires_on_swap(k) => seed.push(pos),
-                            _ => {}
-                        }
-                    }
-                    (seed, bombs, swapped_fish)
-                } else {
-                    (Vec::new(), Vec::new(), Vec::new())
-                };
+            // Step 0 classifies the swapped specials. Combo dispatch (B5, RULES
+            // T1d): if BOTH swapped cells hold a non-fish firing special, they
+            // combine into one larger blast (`combo_effect`) and are consumed —
+            // skipping the independent classification. Otherwise each fires on its
+            // own (striped/wrapped blast `seed` B1.2/B2.2, colour bomb `bombs` B3,
+            // fish `swapped_fish` B4.2). Later steps have no swap seed.
+            let Step0Seeds {
+                seed,
+                bombs,
+                swapped_fish,
+                combo: combo_effect,
+            } = if step_index == 0 {
+                classify_step0(&self.board, from, to)
+            } else {
+                Step0Seeds::default()
+            };
             // Fish that fire this step: those in the matched set (any step) plus any
             // swapped fish (step 0), deduped + in scan order so the target draws are
             // in a fixed sequence. A just-created fish is not yet marked here (the
@@ -1131,6 +1283,7 @@ impl Game {
                 && reblast_seed.is_empty()
                 && bombs.is_empty()
                 && fired_fish.is_empty()
+                && combo_effect.is_none()
             {
                 break;
             }
@@ -1142,7 +1295,13 @@ impl Game {
             } else {
                 None
             };
-            let creations = creations_for(&self.board, swap);
+            // A combo (B5) spawns no new specials — both sources are consumed and
+            // the combined blast just clears. Suppress creation on a combo step.
+            let creations = if combo_effect.is_some() {
+                Vec::new()
+            } else {
+                creations_for(&self.board, swap)
+            };
             // Draw each fired fish's target (B4.2), in scan order, from the seeded
             // RNG — before this step's refill, so the draw order is fixed and folds
             // into `draws`/`state_hash`. The target is a gem, so `clear_cells` eats it.
@@ -1162,6 +1321,7 @@ impl Game {
                 &reblast_seed,
                 &bombs,
                 &fish_targets,
+                combo_effect.as_ref(),
             );
             let activated = act.clear;
             let out = clear_cells(&mut self.board, &activated);

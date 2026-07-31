@@ -39,6 +39,9 @@ Activation (B3, colour bomb): swapping a colour bomb with a gem detonates that g
 lists every cell holding that colour plus the bomb's own cell (see `12`/`13` for the swap-activation shape).
 Creation (B4, fish): a **2×2 square** is a match; a *pure* 2×2 makes a `Fish` (char `F`) — `step0_cleared` lists
 the three cleared cells (the survivor becomes the fish), see `14-fish-from-2x2`. Fish activation is B4.2.
+Combos (B5, RULES T1d): swapping **two** pre-placed specials (both non-fish) combines them — `step0_cleared`
+lists the combined blast centred on the destination cell. See `15-combo-striped-cross` (full row ∪ column),
+`16-combo-striped-wrapped` (3-wide thick cross), `17-combo-wrapped-5x5` (a 5×5 block). Colour-bomb combos are B5.2.
 
 **Specials (B0):** when a move forms a line-4 / L-T / line-5, one matched cell becomes a special candy
 (RULES.md T1b) instead of clearing, so `step0_cleared` lists the *cleared* cells (the special's cell is
