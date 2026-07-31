@@ -240,6 +240,18 @@ pub extern "C" fn guess(l0: u32, l1: u32, l2: u32, l3: u32, l4: u32) -> u32 {
     }
 }
 
+/// A hint, packed as `(position << 8) | letter` for the first not-yet-solved
+/// position, or `0xFFFF_FFFF` if the game is solved or there is no session.
+/// Showing a hint reveals part of the answer — the host also calls
+/// [`mark_assistance`].
+#[no_mangle]
+pub extern "C" fn hint() -> u32 {
+    match session_mut().and_then(|s| s.game.hint()) {
+        Some((pos, letter)) => ((pos as u32) << 8) | u32::from(letter),
+        None => 0xFFFF_FFFF,
+    }
+}
+
 /// Mark the game assisted (a hint was shown), so the outcome reflects it.
 #[no_mangle]
 pub extern "C" fn mark_assistance() {

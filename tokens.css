@@ -48,6 +48,16 @@
   --gem-4: #8a5a00;       /* amber   (surface 5.54:1) */
   --gem-5: #00697a;       /* teal    (surface 5.95:1) */
 
+  /* Wyrdle tiles + keyboard keys. Each state carries a letter, an aria-label,
+     and a distinct lightness (colour-blind safe — never colour alone). Every
+     letter/tile pair clears WCAG AA. */
+  --wy-correct: #2e7d32;      /* solved position — green            */
+  --wy-correct-ink: #ffffff;  /* letter on --wy-correct (5.13:1)    */
+  --wy-present: #c8a11f;      /* in the word, wrong spot — gold     */
+  --wy-present-ink: #1b201c;  /* letter on --wy-present (6.75:1)    */
+  --wy-absent: #5c5c5c;       /* not in the word — grey             */
+  --wy-absent-ink: #ffffff;   /* letter on --wy-absent  (6.69:1)    */
+
   /* Type roles (self-hostable display + system UI fallback). */
   --font-display: "Fredoka", "Baloo 2", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -90,6 +100,14 @@
   --gem-3: #c99ae0;       /* purple  (surface 7.19:1) */
   --gem-4: #e0b24a;       /* amber   (surface 8.33:1) */
   --gem-5: #58c4d6;       /* teal    (surface 8.05:1) */
+
+  /* Wyrdle tiles, re-tuned for dark (each letter/tile pair clears WCAG AA). */
+  --wy-correct: #5aa877;      /* green, lightened                   */
+  --wy-correct-ink: #15130f;  /* dark letter on --wy-correct (6.45:1) */
+  --wy-present: #d9b53c;      /* gold, lightened                    */
+  --wy-present-ink: #15130f;  /* dark letter on --wy-present (9.39:1) */
+  --wy-absent: #565656;       /* grey                               */
+  --wy-absent-ink: #f2efe8;   /* light letter on --wy-absent (6.39:1) */
 
   --theme-color: #123f2b;
 }

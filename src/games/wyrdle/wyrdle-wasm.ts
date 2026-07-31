@@ -44,6 +44,7 @@ interface Exports {
   is_won(): number;
   is_lost(): number;
   guess(l0: number, l1: number, l2: number, l3: number, l4: number): number;
+  hint(): number;
   mark_assistance(): void;
   outcome_json(declare: number): number;
 }
@@ -101,6 +102,13 @@ export class Wyrdle {
   /** Whether `word` is a legal guess — the core decides. */
   isAllowed(word: string): boolean {
     return this.x.is_allowed(...toIndices(word)) === 1;
+  }
+  /** A hint: the first not-yet-solved position + its letter index, or null if
+   *  the puzzle is already solved. Using it counts as assistance. */
+  hint(): { pos: number; letter: number } | null {
+    const packed = this.x.hint();
+    if (packed === 0xffff_ffff) return null;
+    return { pos: (packed >> 8) & 0xff, letter: packed & 0xff };
   }
   markAssistance(): void {
     this.x.mark_assistance();

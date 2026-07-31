@@ -795,3 +795,135 @@ body.fullscreen .play-area {
     --bub: 2rem;
   }
 }
+
+/* ---------- Wyrdle: grid + keyboard + result ---------- */
+
+.wy-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: center;
+  margin: 0.6rem auto;
+}
+.wy-row {
+  display: flex;
+  gap: 0.4rem;
+}
+.wy-row.wy-shake {
+  animation: wy-shake 0.42s ease-in-out;
+}
+@keyframes wy-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-0.4rem); }
+  40%, 80% { transform: translateX(0.4rem); }
+}
+.wy-tile {
+  --wy-tile: 3rem;
+  width: var(--wy-tile);
+  height: var(--wy-tile);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.6rem;
+  line-height: 1;
+  border-radius: 6px;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  text-transform: uppercase;
+}
+.wy-tile.wy-empty {
+  background: var(--surface);
+  border-color: var(--border);
+}
+.wy-tile.wy-filled {
+  border-color: var(--ink-muted);
+}
+.wy-tile.wy-correct {
+  background: var(--wy-correct);
+  color: var(--wy-correct-ink);
+  border-color: var(--wy-correct);
+}
+.wy-tile.wy-present {
+  background: var(--wy-present);
+  color: var(--wy-present-ink);
+  border-color: var(--wy-present);
+}
+.wy-tile.wy-absent {
+  background: var(--wy-absent);
+  color: var(--wy-absent-ink);
+  border-color: var(--wy-absent);
+}
+
+.wy-hud {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin: 0.3rem 0;
+  color: var(--ink);
+}
+
+.wy-keyboard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: 100%;
+  max-width: 32rem;
+  margin: 0.6rem auto 0;
+}
+.wy-kb-row {
+  display: flex;
+  gap: 0.3rem;
+  justify-content: center;
+}
+.wy-key {
+  flex: 1 1 1.8rem;
+  min-width: 1.6rem;
+  padding: 0.9rem 0.2rem;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 1rem;
+  border: none;
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 0 rgb(0 0 0 / 18%);
+  cursor: pointer;
+}
+.wy-key[data-key="enter"],
+.wy-key[data-key="back"] {
+  flex: 1.5 1 2.6rem;
+  font-size: 0.85rem;
+}
+.wy-key.wy-correct {
+  background: var(--wy-correct);
+  color: var(--wy-correct-ink);
+}
+.wy-key.wy-present {
+  background: var(--wy-present);
+  color: var(--wy-present-ink);
+}
+.wy-key.wy-absent {
+  background: var(--wy-absent);
+  color: var(--wy-absent-ink);
+}
+
+.wy-emoji-grid {
+  font-family: var(--font-mono);
+  font-size: 1.4rem;
+  line-height: 1.15;
+  text-align: center;
+  margin: 0.6rem 0;
+}
+
+@media (max-width: 400px) {
+  .wy-tile {
+    --wy-tile: 2.6rem;
+    font-size: 1.4rem;
+  }
+  .wy-key {
+    padding: 0.75rem 0.15rem;
+  }
+}

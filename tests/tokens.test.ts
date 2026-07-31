@@ -75,6 +75,9 @@ const PAIRS: ReadonlyArray<readonly [string, string, number]> = [
   ["gem-3", "surface", 3],
   ["gem-4", "surface", 3],
   ["gem-5", "surface", 3],
+  ["wy-correct-ink", "wy-correct", 4.5], // Wyrdle tile letters on their state fill
+  ["wy-present-ink", "wy-present", 4.5],
+  ["wy-absent-ink", "wy-absent", 4.5],
 ];
 
 describe.each(["light", "dark"] as const)("tokens: %s theme clears WCAG AA", (name) => {

@@ -119,6 +119,26 @@ impl Game {
         state_hash(&self.answer, &self.guesses)
     }
 
+    /// A hint: the first not-yet-solved position and its answer letter (`0..26`),
+    /// or `None` if every position is already correct. Using a hint reveals part
+    /// of the answer — it counts as assistance. A position is "solved" once any
+    /// prior guess placed the correct letter there.
+    #[must_use]
+    pub fn hint(&self) -> Option<(usize, u8)> {
+        let mut solved = [false; WORD_LEN];
+        for g in &self.guesses {
+            for (s, (&gl, &al)) in solved.iter_mut().zip(g.0.iter().zip(self.answer.0.iter())) {
+                if gl == al {
+                    *s = true;
+                }
+            }
+        }
+        solved
+            .iter()
+            .position(|&s| !s)
+            .map(|i| (i, self.answer.0[i]))
+    }
+
     /// Play `guess`, returning its pattern.
     ///
     /// # Errors
@@ -264,6 +284,20 @@ mod tests {
         let before = g.current_hash();
         assert_eq!(g.play(w("zzzzz")), Err(GuessError::NotAWord));
         assert_eq!(g.current_hash(), before, "an illegal guess is a no-op");
+    }
+
+    #[test]
+    fn hint_reveals_an_unsolved_position() {
+        let seed = 11;
+        let answer = answer_for(seed);
+        let mut g = Game::new(seed);
+        // A fresh game: the hint is the first position and its answer letter.
+        let (pos, letter) = g.hint().expect("a fresh game has an unsolved position");
+        assert_eq!(pos, 0);
+        assert_eq!(letter, answer.0[0]);
+        // After guessing the answer, every position is solved -> no hint.
+        g.play(answer).expect("allowed");
+        assert_eq!(g.hint(), None, "a solved game offers no hint");
     }
 
     #[test]

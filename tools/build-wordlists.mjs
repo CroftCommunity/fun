@@ -25,7 +25,6 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 
-const WORD_LEN = 5;
 // The answer pool size. Frequency-ordered, so this keeps the most common words.
 // Larger = more variety; the daily schedule (a year) is a subset of this pool.
 const ANSWER_CAP = 1500;
