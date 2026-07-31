@@ -93,6 +93,7 @@ describe("Tier-2 registry ↔ meta consistency (the gate)", () => {
         expect(entry.attribution.author).toBe(meta.provenance.author);
         expect(entry.attribution.license).toBe(meta.provenance.license);
         expect(entry.attribution.upstreamUrl).toBe(meta.provenance.upstreamUrl);
+        expect(entry.attribution.basedOn).toBe(meta.provenance.basedOn);
       }
     }
   });
