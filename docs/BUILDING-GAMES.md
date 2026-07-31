@@ -330,7 +330,9 @@ bundle). The whole thing is a wrapper + a metadata file; you write no game code.
 ### Mobile + desktop — what a wrap must still honour
 
 The house rules (works on a phone and a desktop, honest, contained) apply to the
-*frame around* the game even though we don't control the game's own input:
+*frame around* the game even though we don't control the game's own input.
+`docs/RESPONSIVE-DESIGN.md` is the full layout/touch playbook; for a wrap it
+governs the chrome + frame, not the vendored game's internals:
 
 - **Both viewports.** The gate checks **no horizontal overflow at 360px** and a
   desktop width; the `.wrapped-game-frame` fills the play area (70vh; 100vh in
