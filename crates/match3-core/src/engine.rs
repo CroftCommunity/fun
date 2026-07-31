@@ -371,9 +371,10 @@ fn fires_on_match(kind: Option<SpecialKind>) -> bool {
 }
 
 /// Whether a special kind fires **when swapped** (swap-activation legality) —
-/// striped (B1.2), wrapped (B2.2), and colour bomb (B3). Kept separate from
-/// [`fires_on_match`] because a colour bomb fires **only** by swap (it is
-/// colourless — never match-fired), so it is in this predicate but not that one.
+/// striped (B1.2), wrapped (B2.2), colour bomb (B3), and fish (B4.2). Kept separate
+/// from [`fires_on_match`]: a colour bomb and a fish are **not** in `fires_on_match`
+/// (a colour bomb is colourless, and a fish's activation needs a seeded target draw
+/// handled in `resolve_move`, not the pure blast queue), yet both are swappable.
 fn fires_on_swap(kind: Option<SpecialKind>) -> bool {
     matches!(
         kind,
@@ -382,8 +383,37 @@ fn fires_on_swap(kind: Option<SpecialKind>) -> bool {
                 | SpecialKind::StripedV
                 | SpecialKind::Wrapped
                 | SpecialKind::ColorBomb
+                | SpecialKind::Fish
         )
     )
+}
+
+/// A fish's target cell (B4.2) — the cell it swims to and eats. Deterministic:
+/// from the highest non-empty preference tier — (1) a **jellied** cell (advancing
+/// the jelly objective), else (2) any other **gem** — pick via `rng.index` over the
+/// candidates in **row-major** order. The fish's own cell is excluded. `None` only
+/// if the board holds no other gem (degenerate; never on a real grid). The target
+/// is always a gem, so [`clear_cells`] handles it (clears it, scrubs its jelly, and
+/// chips any adjacent blocker); direct blocker-eating is a revisable follow-up.
+fn fish_target(board: &Board, fish_pos: Pos, rng: &mut DetRng) -> Option<Pos> {
+    let mut jellied: Vec<Pos> = Vec::new();
+    let mut gems: Vec<Pos> = Vec::new();
+    for r in 0..board.height {
+        for c in 0..board.width {
+            if (r, c) == fish_pos || !board.get(r, c).is_gem() {
+                continue;
+            }
+            gems.push((r, c));
+            if board.jelly_at(r, c) > 0 {
+                jellied.push((r, c));
+            }
+        }
+    }
+    let candidates = if jellied.is_empty() { gems } else { jellied };
+    if candidates.is_empty() {
+        return None;
+    }
+    Some(candidates[rng.index(candidates.len())])
 }
 
 /// The cells a special candy at `pos` blasts, excluding blockers — a blocker in
@@ -452,6 +482,7 @@ fn activate(
     seed: &[Pos],
     reblast: &[Pos],
     bombs: &[(Pos, u8)],
+    fish_targets: &[(Pos, Pos)],
 ) -> Activation {
     let mut to_clear: BTreeSet<Pos> = matched.iter().copied().collect();
     let mut pending: BTreeSet<Pos> = BTreeSet::new();
@@ -480,6 +511,17 @@ fn activate(
                     }
                 }
             }
+        }
+    }
+    // Fish (B4.2): each fired fish eats one target cell (chosen by the seeded rule in
+    // `resolve_move`); the fish's own cell + its target clear, and a striped/wrapped
+    // target chains. The fish fires only from here (matched/swapped) — a fish merely
+    // caught in another blast just clears.
+    for &(fish_pos, target) in fish_targets {
+        to_clear.insert(fish_pos);
+        to_clear.insert(target);
+        if fires_on_match(board.special_at(target.0, target.1)) && !fired.contains(&target) {
+            queue.push((target, false));
         }
     }
     while let Some((cell, is_reblast)) = queue.pop() {
@@ -1048,29 +1090,47 @@ impl Game {
             // colour bomb (B3) fires differently — it detonates the colour of the
             // gem it traded with — so it is split into `bombs` with that target
             // colour. Later steps have no swap seed.
-            let (seed, bombs): (Vec<Pos>, Vec<(Pos, u8)>) = if step_index == 0 {
-                let mut seed = Vec::new();
-                let mut bombs = Vec::new();
-                for (pos, other) in [(from, to), (to, from)] {
-                    match self.board.special_at(pos.0, pos.1) {
-                        Some(SpecialKind::ColorBomb) => {
-                            // Target = the colour now at `other` (the gem the bomb
-                            // traded places with). A colour bomb swapped with another
-                            // special still uses its underlying colour here — the true
-                            // combo matrix is B5.
-                            if let Cell::Gem(color) = self.board.get(other.0, other.1) {
-                                bombs.push((pos, color));
+            let (seed, bombs, swapped_fish): (Vec<Pos>, Vec<(Pos, u8)>, Vec<Pos>) =
+                if step_index == 0 {
+                    let mut seed = Vec::new();
+                    let mut bombs = Vec::new();
+                    let mut swapped_fish = Vec::new();
+                    for (pos, other) in [(from, to), (to, from)] {
+                        match self.board.special_at(pos.0, pos.1) {
+                            Some(SpecialKind::ColorBomb) => {
+                                // Target = the colour now at `other` (the gem the bomb
+                                // traded places with). A colour bomb swapped with
+                                // another special still uses its underlying colour here
+                                // — the true combo matrix is B5.
+                                if let Cell::Gem(color) = self.board.get(other.0, other.1) {
+                                    bombs.push((pos, color));
+                                }
                             }
+                            // A swapped fish fires (B4.2) — its target is drawn below.
+                            Some(SpecialKind::Fish) => swapped_fish.push(pos),
+                            k if fires_on_swap(k) => seed.push(pos),
+                            _ => {}
                         }
-                        k if fires_on_swap(k) => seed.push(pos),
-                        _ => {}
                     }
-                }
-                (seed, bombs)
-            } else {
-                (Vec::new(), Vec::new())
-            };
-            if matched.is_empty() && seed.is_empty() && reblast_seed.is_empty() && bombs.is_empty()
+                    (seed, bombs, swapped_fish)
+                } else {
+                    (Vec::new(), Vec::new(), Vec::new())
+                };
+            // Fish that fire this step: those in the matched set (any step) plus any
+            // swapped fish (step 0), deduped + in scan order so the target draws are
+            // in a fixed sequence. A just-created fish is not yet marked here (the
+            // marker lands after the clear), so it does not fire the step it is made.
+            let mut fired_fish: BTreeSet<Pos> = matched
+                .iter()
+                .copied()
+                .filter(|&(r, c)| self.board.special_at(r, c) == Some(SpecialKind::Fish))
+                .collect();
+            fired_fish.extend(swapped_fish);
+            if matched.is_empty()
+                && seed.is_empty()
+                && reblast_seed.is_empty()
+                && bombs.is_empty()
+                && fired_fish.is_empty()
             {
                 break;
             }
@@ -1083,12 +1143,26 @@ impl Game {
                 None
             };
             let creations = creations_for(&self.board, swap);
+            // Draw each fired fish's target (B4.2), in scan order, from the seeded
+            // RNG — before this step's refill, so the draw order is fixed and folds
+            // into `draws`/`state_hash`. The target is a gem, so `clear_cells` eats it.
+            let fish_targets: Vec<(Pos, Pos)> = fired_fish
+                .iter()
+                .filter_map(|&f| fish_target(&self.board, f, &mut self.rng).map(|t| (f, t)))
+                .collect();
             // Activation: expand the cleared set by the blasts of any firing
-            // special in the matched set (chained) + swap/re-blast seeds. No firing
-            // special -> `act.clear` == `matched`, so plain-gem and B0-creation play
-            // stay byte-identical. `act.pending` = wrapped surviving their first
+            // special in the matched set (chained) + swap/re-blast/bomb/fish seeds. No
+            // firing special -> `act.clear` == `matched`, so plain-gem and B0-creation
+            // play stay byte-identical. `act.pending` = wrapped surviving their first
             // blast (B2), pinned through this gravity and re-blasting next step.
-            let act = activate(&self.board, &matched, &seed, &reblast_seed, &bombs);
+            let act = activate(
+                &self.board,
+                &matched,
+                &seed,
+                &reblast_seed,
+                &bombs,
+                &fish_targets,
+            );
             let activated = act.clear;
             let out = clear_cells(&mut self.board, &activated);
             // Each placement cell survives as a special candy: clear_cells set it

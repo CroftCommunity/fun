@@ -122,3 +122,113 @@ fn a_created_fish_survives_its_creating_step() {
         "the created fish is on the settled board"
     );
 }
+
+// --- B4.2: fish activation (seeded targeting) --------------------------------
+
+use match3_core::engine::{jelly_remaining, legal_swaps};
+
+fn fish_swap_board() -> Board {
+    // A Fish (colour 0) at (1,1); no line/2×2 match, and swapping it forms none
+    // either — so only swap-activation can fire it.
+    Board::from_rows_with_specials(&["123", "405", "231"], &["...", ".F.", "..."]).expect("parses")
+}
+
+#[test]
+fn swapping_a_fish_is_legal_and_fires_it() {
+    // Swapping the fish is legal (swap-activation), and firing eats a target so at
+    // least two cells clear (the fish + its target) and the fish is consumed.
+    assert!(
+        swap_legal(&fish_swap_board(), (1, 1), (1, 2)),
+        "swapping a fish is legal (it fires)"
+    );
+    let mut game = Game::new(fish_swap_board(), 1, 6);
+    let report = game.play_move((1, 1), (1, 2));
+    assert!(report.legal);
+    assert!(
+        report.steps[0].cleared.len() >= 2,
+        "fish + its target cleared"
+    );
+    assert!(report.steps[0].score_gained >= 20, "at least two gems x 10");
+    assert_eq!(
+        count_special(&game.board, SpecialKind::Fish),
+        0,
+        "the fired fish is consumed"
+    );
+}
+
+#[test]
+fn legal_swaps_includes_the_fish_swap() {
+    let swaps = legal_swaps(&fish_swap_board());
+    assert!(
+        swaps.iter().any(|&(f, t)| f == (1, 1) || t == (1, 1)),
+        "the fish at (1,1) is swappable"
+    );
+}
+
+#[test]
+fn a_fired_fish_eats_the_only_jellied_cell() {
+    // With exactly one jellied cell on the board, a fired fish must target it
+    // (tier 1 = jelly; a single candidate is forced), scrubbing that jelly.
+    let mut b = fish_swap_board();
+    b.set_jelly(0, 0, 1);
+    assert_eq!(jelly_remaining(&b), 1);
+    let mut game = Game::new(b, 1, 6);
+    let report = game.play_move((1, 1), (1, 2));
+    assert!(report.legal);
+    assert!(
+        report.steps[0].cleared.contains(&(0, 0)),
+        "the fish ate the jellied cell (0,0)"
+    );
+    assert_eq!(
+        jelly_remaining(&game.board),
+        0,
+        "the fish scrubbed the only jelly by eating that cell"
+    );
+}
+
+#[test]
+fn fish_targeting_is_deterministic_and_in_the_fingerprint() {
+    // The seeded target draw reproduces identically on replay, and dropping the fish
+    // changes the outcome (it is part of the verifiable state).
+    let mut a = Game::new(fish_swap_board(), 7, 6);
+    a.play_move((1, 1), (1, 2));
+    let mut b = Game::new(fish_swap_board(), 7, 6);
+    b.play_move((1, 1), (1, 2));
+    assert_eq!(
+        a.state_hash(),
+        b.state_hash(),
+        "fish targeting replays identically"
+    );
+
+    // A board identical but for the fish marker: swapping is illegal (no fire), so
+    // the move is a no-op and the hash differs.
+    let plain = Board::from_rows(&["123", "405", "231"]).expect("parses");
+    let mut c = Game::new(plain, 7, 6);
+    c.play_move((1, 1), (1, 2));
+    assert_ne!(
+        a.state_hash(),
+        c.state_hash(),
+        "the fish's activation is part of the fingerprint"
+    );
+}
+
+#[test]
+fn a_matched_fish_fires() {
+    // A Fish (colour 0) at (1,1). Swapping (2,0)<->(2,1) forms a vertical 3-run of
+    // 0s in column 1 that includes the fish, so it is match-activated: it eats a
+    // target beyond the 3-match and is consumed.
+    let b = Board::from_rows_with_specials(&["102", "304", "056"], &["...", ".F.", "..."])
+        .expect("parses");
+    let mut game = Game::new(b, 1, 6);
+    let report = game.play_move((2, 0), (2, 1));
+    assert!(report.legal, "the swap forms a 3-run through the fish");
+    assert_eq!(
+        count_special(&game.board, SpecialKind::Fish),
+        0,
+        "the matched fish fired and was consumed"
+    );
+    assert!(
+        report.steps[0].score_gained >= 30,
+        "the 3-match plus the fish's target cleared"
+    );
+}

@@ -152,17 +152,17 @@ The created special's colour is the component's (or square's) gem colour.
 Blast/activation of a created special is in T1c (striped B1, wrapped B2, colour
 bomb B3, fish B4).
 
-### T1c — Activation (striped B1, wrapped B2, colour bomb B3)
+### T1c — Activation (striped B1, wrapped B2, colour bomb B3, fish B4)
 
 A special candy **fires** its blast when it is cleared by a match (or swapped).
 Before the clear (T2), the matched set is expanded by activation:
 
 - **Trigger:** a special fires when (a) it is in the matched set
-  (match-activation: striped, wrapped), or (b) it is **swapped** with an adjacent
-  gem — the swap is legal even with no line match, and fires the special from its
-  post-swap cell (swap-activation: striped B1.2, wrapped B2.2, colour bomb B3).
-  Swapping carries the special marker with its gem. Swapping two specials is the
-  combo matrix (B5) — B1/B2/B3 fire each independently.
+  (match-activation: striped, wrapped, fish), or (b) it is **swapped** with an
+  adjacent gem — the swap is legal even with no line match, and fires the special
+  from its post-swap cell (swap-activation: striped B1.2, wrapped B2.2, colour bomb
+  B3, fish B4.2). Swapping carries the special marker with its gem. Swapping two
+  specials is the combo matrix (B5) — B1/B2/B3/B4 fire each independently.
   - **The colour bomb is swap-only.** It is **colourless** (its overlay sits on a
     `Gem` only because the match core stays byte-identical — the underlying colour
     is a representation artifact, not a play colour), so it is **never match-fired**:
@@ -178,6 +178,19 @@ Before the clear (T2), the matched set is expanded by activation:
     of the target colour** (the colour of the gem it was swapped with) plus its own
     cell (consumed). A striped/wrapped of that colour caught in the clear **fires**
     (chains) — e.g. detonating "all red" sets off a red striped's line.
+  - **Fish (B4.2):** not a positional region — a fired fish **swims to one target
+    cell and eats it** (plus its own cell, consumed). The target is chosen by a
+    **seeded, pinned** rule: from the highest non-empty tier — (1) a **jellied**
+    cell, else (2) any other **gem** — pick `rng.index(candidates.len())` over the
+    candidates in **row-major** order (the fish's own cell excluded). The target is
+    always a gem, so it clears via T2 (scrubbing its jelly, chipping adjacent
+    blockers); a striped/wrapped target **chains**. Direct blocker-eating is a
+    revisable follow-up. **A fish fires only when matched or swapped** (drawing its
+    target in `resolve_move`); a fish merely caught in another special's blast just
+    clears (no target). Multiple fired fish draw in scan order, **before that step's
+    refill**, so the draw order is fixed and folds into `draws`/`state_hash` — the
+    first activation that consumes RNG. (Fish + special / fish + fish by swap are the
+    B5 combo matrix.)
   - A **blocker** in a blast region is *not* cleared — it takes one layer of
     adjacency damage via T2 like any match. (A blocker is never `Gem(target)`, so a
     colour detonation leaves it standing, minus its one adjacency layer.)
