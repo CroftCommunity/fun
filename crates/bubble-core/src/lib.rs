@@ -8,12 +8,14 @@
 
 #![warn(missing_docs)]
 
+pub mod aim;
 pub mod board;
 pub mod engine;
 pub mod game;
 pub mod hash;
 pub mod rng;
 
+pub use aim::{cell_center, fan, resolve_shot, Angle, Landing};
 pub use board::{Board, BoardError, Cell, Pos};
 pub use engine::{deal, Deal};
 pub use game::{Bubble, Game};
