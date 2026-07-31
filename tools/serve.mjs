@@ -26,6 +26,10 @@ createServer(async (req, res) => {
     const file = join(dist, normalize(path).replace(/^(\.\.[/\\])+/, ""));
     const body = await readFile(file);
     res.setHeader("content-type", TYPES[extname(file)] ?? "application/octet-stream");
+    // Tier-2 wrapped games run in an opaque-origin sandboxed iframe; their WebGL
+    // texture loads are cross-origin and CORS-blocked without this header.
+    // GitHub Pages sends it by default — we match that locally + in the e2e.
+    res.setHeader("access-control-allow-origin", "*");
     res.end(body);
   } catch {
     res.statusCode = 404;
