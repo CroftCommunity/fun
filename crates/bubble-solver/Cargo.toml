@@ -1,0 +1,12 @@
+[package]
+name = "bubble-solver"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Build-time clear-the-board solver: a budgeted greedy DFS over bubble-core that finds a shot line clearing the board if one exists within budget, used to generate a byte-identically-regenerable winnable-daily-seed pack (and the fixture clear line the board UI's win-path E2E replays)."
+
+[dependencies]
+bubble-core.workspace = true
+pond-docformat.workspace = true
+serde = { workspace = true }

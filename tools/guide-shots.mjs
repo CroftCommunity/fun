@@ -118,6 +118,35 @@ const SHOTS = [
       await page.waitForSelector(".sol-result");
     },
   },
+  {
+    name: "bubble-board",
+    clip: ".bub-board",
+    async run(page) {
+      await page.goto(`${origin}/bubble/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".bub-board");
+      await page.waitForSelector(".bub-target.legal-target");
+    },
+  },
+  {
+    name: "bubble-win",
+    clip: ".sol-result",
+    async run(page) {
+      await page.goto(`${origin}/bubble/`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".bub-board");
+      await page.waitForFunction(() => Boolean(window.__bubble));
+      const fixture = await (await fetch(`${origin}/bubble-daily-pack.json`)).json();
+      await page.goto(`${origin}/bubble/?seed=${fixture.payload.fixture.seed}`, {
+        waitUntil: "networkidle",
+      });
+      await page.waitForFunction(() => Boolean(window.__bubble));
+      await page.evaluate((moves) => {
+        const h = window.__bubble;
+        for (const m of moves) h.game.shoot(m);
+        h.refresh();
+      }, fixture.payload.fixture.moves);
+      await page.waitForSelector(".sol-result");
+    },
+  },
 ];
 
 const server = spawn("node", [join(root, "tools", "serve.mjs")], { stdio: "ignore" });

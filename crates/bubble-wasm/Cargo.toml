@@ -1,0 +1,16 @@
+[package]
+name = "bubble-wasm"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Browser binding over bubble-core for the shelf: raw C-ABI + serde-JSON (no wasm-bindgen). Holds one clear-the-board game, typed shoot export, board/legal-targets/hash/outcome JSON via an output buffer, embedded winnable-daily pack. Never panics."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+bubble-core = { workspace = true }
+pond-outcome = { workspace = true }
+serde = { workspace = true }
+serde_json.workspace = true

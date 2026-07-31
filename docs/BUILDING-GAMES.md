@@ -19,6 +19,44 @@ the drawer, full-screen, or a standalone tab. It becomes playable by a registry
 entry (`src/registry.ts`) with `status: "playable"` and a `load` factory. Every
 game gets its own static URL `/<id>/` (shareable, new-tab-able, no client router).
 
+### Game isolation — one directory per game
+
+Each game owns a **self-contained directory**; the shelf infrastructure is built
+once and shared, never duplicated per game. Keep mechanics from leaking between
+games.
+
+```
+crates/<game>-core/     the deterministic rules + RULES.md + golden vectors (per game)
+crates/<game>-wasm/      the raw C-ABI browser binding                       (per game)
+src/games/<game>/        the game's front end: <game>.ts (GameModule),
+                         <game>-wasm.ts (typed wrapper), <game>-howto.ts,
+                         and any game-specific assets                        (per game)
+games/<game>/            baked data packs (daily seeds, etc.), if any        (per game)
+
+src/  (chrome.ts, contract.ts, registry.ts, settings.ts, theme.ts,
+      how-to.ts, how-to-page.ts, how-to-registry.ts)                          SHARED
+crates/pond-docformat, crates/pond-outcome, crates/xbuild                     SHARED
+tokens.css, styles.css                                                        SHARED
+```
+
+A game touches SHARED files only at its wiring points (a `registry.ts` entry, a
+`how-to-registry.ts` entry, append-only `tokens.css` tokens, `Cargo.toml` +
+`build.mjs` for its crates/wasm). It never reaches into another game's
+directory. This isolation matters most for **Tier-2 wraps / webxdc-style
+bundles**, which are wholly self-contained under their own directory and must not
+bleed into the shared chrome (see "The two tiers" below).
+
+### The two tiers
+
+The standards in this doc describe **Tier-1 Croft-native** games (build-fresh,
+determinism-first, verifiable). The shelf also admits **Tier-2** opportunistic
+ethical wraps/ports (already-packaged, static, non-extractive, taken as-is, **no
+verifiable outcome — stated honestly**), gated by a real-browser
+containment/legibility harness rather than by the verifiable-outcome + tap-first
+standards. The Tier-2 wrapped-game addendum is drafted in the Tux Racer wrap
+spike (`plans/`) and lands here when ratified. Everything below §1 is Tier-1
+unless noted.
+
 ## 2. Determinism-first core → wasm
 
 - A Rust core crate holds the rules, with a **rules doc + golden vectors** and a

@@ -12,6 +12,9 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/bubble-core",
+    "crates/bubble-solver",
+    "crates/bubble-wasm",
     "crates/match3-core",
     "crates/solitaire-core",
     "crates/pond-docformat",
@@ -44,6 +47,7 @@ hex = "=0.4.3"
 thiserror = "=2.0.18"
 
 # internal crates
+bubble-core = { path = "crates/bubble-core" }
 match3-core = { path = "crates/match3-core" }
 solitaire-core = { path = "crates/solitaire-core" }
 pond-docformat = { path = "crates/pond-docformat" }
