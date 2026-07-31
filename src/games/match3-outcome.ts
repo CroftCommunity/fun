@@ -40,6 +40,7 @@ export const BLOCKERS_KIND = "match3-blockers";
 export const JELLY_KIND = "match3-jelly";
 export const INGREDIENTS_KIND = "match3-ingredients";
 export const CHECKLIST_KIND = "match3-checklist";
+export const OBSTACLES_KIND = "match3-obstacles";
 
 /** The minimal binding surface [`verifyRecord`] drives (the `Match3` wrapper satisfies it). */
 export interface Verifier {
@@ -48,6 +49,7 @@ export interface Verifier {
   newJellyGame(seed: bigint): void;
   newIngredientsGame(seed: bigint): void;
   newChecklistGame(seed: bigint): void;
+  newObstaclesGame(seed: bigint): void;
   play(swap: Swap): unknown;
   currentHash(): string;
   isWon(): boolean;
@@ -79,6 +81,7 @@ export function verifyRecord(v: Verifier, env: M3Envelope): VerifyResult {
   else if (env.kind === JELLY_KIND) v.newJellyGame(BigInt(rec.seed));
   else if (env.kind === INGREDIENTS_KIND) v.newIngredientsGame(BigInt(rec.seed));
   else if (env.kind === CHECKLIST_KIND) v.newChecklistGame(BigInt(rec.seed));
+  else if (env.kind === OBSTACLES_KIND) v.newObstaclesGame(BigInt(rec.seed));
   else v.newGame(BigInt(rec.seed));
   for (const swap of rec.moves) v.play(swap);
   const actual = v.currentHash();

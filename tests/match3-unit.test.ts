@@ -167,6 +167,33 @@ describe("checklist verify-orchestration (real wasm)", () => {
   });
 });
 
+describe("clear-the-obstacles verify-orchestration (real wasm)", () => {
+  let game: Match3;
+  let env: M3Envelope;
+
+  beforeAll(async () => {
+    game = await loadReal();
+    // The committed obstacles pack fixture: seed 72 clears every obstacle in one swap.
+    game.newObstaclesGame(72n);
+    game.play([6, 2, 7, 2]);
+    env = game.outcome(true) as M3Envelope;
+  });
+
+  it("grades a cleared obstacle board as a verifiable Won", () => {
+    expect(env.kind).toBe("match3-obstacles");
+    expect(env.payload.result).toBe("Won");
+    expect(env.payload.score).toBeUndefined(); // obstacles mode has no score/stars
+    const v = verifyRecord(game, env);
+    expect(v.ok).toBe(true);
+    expect(v.actual).toBe(env.payload.final_hash);
+  });
+
+  it("rejects a tampered obstacle swap list", () => {
+    const tampered: M3Envelope = { ...env, payload: { ...env.payload, moves: [[0, 0, 0, 1]] } };
+    expect(verifyRecord(game, tampered).ok).toBe(false);
+  });
+});
+
 describe("target-score par table (real wasm)", () => {
   it("serves the baked ladder tiers for a daily (in-table) seed", async () => {
     const game = await loadReal();

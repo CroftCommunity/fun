@@ -207,11 +207,14 @@ deliverables are built in sequence: **Checklist (Phases 1–4)**, then **Obstacl
   + well-formed/spotcheck. Probe: 40/40 winnable at 3/3 obstacles in budget 30 (~84ms/seed;
   lines 2–30, meringue's layers making some genuinely long).
 
-### Phase 7 (obstacles binding) — `Mode::Obstacles` + outcome + board_view
-- [ ] `match3-wasm` — `Mode::Obstacles`; `new_obstacles_game`; `board_view` obstacle mask
-  (per-cell kind + layer count for meringue pips) + obstacles-remaining/total;
-  `Match3Obstacles` outcome (`match3-obstacles`); `outcome_json` arm. TS wrapper +
-  outcome KIND + verify branch.
+### Phase 7 (obstacles binding) — `Mode::Obstacles` + outcome + board_view — DONE
+- [x] `match3-wasm` — `Mode::Obstacles`; `new_obstacles_game`; `board_view` obstacle mask
+  (per-cell kind `""`/`"licorice"`/`"meringue"` + `obstacle_layers` for meringue pips),
+  reusing `blockers_remaining`/`blockers_total` for the counts (obstacles are blockers);
+  `Match3Obstacles` outcome (`match3-obstacles`); `outcome_json` arm. TS wrapper
+  (`newObstaclesGame` + BoardView fields), `OBSTACLES_KIND` + verify branch. An obstacles
+  verify-orchestration unit test (real wasm, seed-72 fixture: a verifiable `Won` + tamper
+  reject). Full gate: 144 npm unit + 180 e2e; fmt + clippy clean. UI toggle pending (Phase 8).
 
 ### Phase 8 (obstacles UI + how-to + e2e) — toggle, tiles, HUD, ?mode, shots
 - [ ] `match3.ts` — toggle ("Obstacles"), render licorice + meringue tiles (meringue shows
@@ -246,6 +249,14 @@ deliverables are built in sequence: **Checklist (Phases 1–4)**, then **Obstacl
   by a fish" (B4). Meringue/licorice ship as adjacency-cleared flavoured blockers.
 
 ## Review Log
+### Phase 7 (obstacles binding) complete — 2026-07-31
+Green + deployed: `Mode::Obstacles` + `new_obstacles_game`; `board_view` exposes a per-cell
+obstacle kind + `obstacle_layers` (meringue pips), reusing `blockers_remaining`/
+`blockers_total` for the counts (obstacles are blockers, so the win check + HUD counts are
+free); `Match3Obstacles` outcome (`match3-obstacles`). TS wrapper + `OBSTACLES_KIND` + verify
+branch; a real-wasm unit test round-trips the seed-72 fixture (Won + tamper-reject). 144 npm
+unit + 180 e2e; fmt + clippy clean. UI toggle pending (Phase 8), so dormant in the UI.
+
 ### Phase 6 (obstacles solver + pack) complete — 2026-07-31
 Green: `find_obstacles` reuses the board-state `search` (obstacles are blockers, so the
 clear-blockers win check + layers-removed ordering apply directly — meringue's extra layers

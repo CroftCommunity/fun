@@ -13,9 +13,9 @@
 
 use match3_core::{
     blockers_mode, blockers_remaining, checklist_mode, checklist_targets, deal, deal_blockers,
-    deal_ingredients, deal_jelly, ingredients_mode, ingredients_remaining, jelly_mode,
-    jelly_remaining, legal_swaps, reference_score, Cell, ChecklistProgress, ChecklistTargets,
-    Game as M3Game, SpecialKind,
+    deal_ingredients, deal_jelly, deal_obstacles, ingredients_mode, ingredients_remaining,
+    jelly_mode, jelly_remaining, legal_swaps, obstacles_mode, reference_score, Cell,
+    ChecklistProgress, ChecklistTargets, Game as M3Game, Obstacle, SpecialKind,
 };
 use pond_outcome::{attest, Game, Outcome, Replayed};
 use serde::{Deserialize, Serialize};
@@ -42,6 +42,10 @@ enum Mode {
     /// Complete the mixed **checklist** (clear N of a colour, make N striped, make
     /// N wrapped) within the move budget (Track D, T6). The win is path-accumulated.
     Checklist,
+    /// Clear every **obstacle** — licorice + meringue tiles — within the move budget
+    /// (Track D, T7). Obstacles are `Blocker` cells, so the win reuses
+    /// `blockers_remaining == 0`.
+    Obstacles,
 }
 
 // --- the baked par table (parity Track P-now / C1) ---
@@ -160,6 +164,7 @@ impl Session {
             Mode::Jelly => jelly_remaining(&self.game.board) == 0,
             Mode::Ingredients => ingredients_remaining(&self.game.board) == 0,
             Mode::Checklist => self.checklist_progress.met(&self.checklist_targets),
+            Mode::Obstacles => blockers_remaining(&self.game.board) == 0,
         }
     }
 }
@@ -344,13 +349,45 @@ pub extern "C" fn new_checklist_game(seed_lo: u32, seed_hi: u32) {
     });
 }
 
+/// Start a fresh **clear-the-obstacles** game (Track D, T7): deal a winnable board
+/// from `seed` (the daily seeds come from the solver pack) with the obstacles-mode
+/// budget. The objective is to clear every obstacle (licorice + meringue) — they
+/// are `Blocker` cells, so the win + count reuse the blocker machinery.
+#[no_mangle]
+pub extern "C" fn new_obstacles_game(seed_lo: u32, seed_hi: u32) {
+    let seed = (u64::from(seed_hi) << 32) | u64::from(seed_lo);
+    let board = deal_obstacles(
+        seed,
+        obstacles_mode::WIDTH,
+        obstacles_mode::HEIGHT,
+        obstacles_mode::COLORS,
+        obstacles_mode::LICORICE,
+        obstacles_mode::MERINGUE,
+    );
+    let blockers_total = blockers_remaining(&board);
+    set_session(Session {
+        seed,
+        mode: Mode::Obstacles,
+        game: M3Game::new(board, seed, obstacles_mode::COLORS),
+        budget: obstacles_mode::MOVE_BUDGET,
+        targets: [0; 3],
+        blockers_total,
+        jelly_total: 0,
+        ingredients_total: 0,
+        checklist_targets: ChecklistTargets::default(),
+        checklist_progress: ChecklistProgress::default(),
+        swaps: Vec::new(),
+        assistance_used: false,
+    });
+}
+
 // --- reads (JSON via the output buffer) ----------
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct BoardView {
     /// `"target-score"` / `"blockers"` / `"jelly"` / `"ingredients"` /
-    /// `"checklist"` — the UI branches on this.
+    /// `"checklist"` / `"obstacles"` — the UI branches on this.
     mode: &'static str,
     width: usize,
     height: usize,
@@ -391,6 +428,12 @@ struct BoardView {
     checklist_striped_target: u32,
     checklist_wrapped_made: u32,
     checklist_wrapped_target: u32,
+    /// Obstacles mode (T7): per-cell obstacle flavour — `""` (none) / `"licorice"` /
+    /// `"meringue"` — and, for a flavoured blocker, its remaining layer count (for
+    /// meringue pips; `0` elsewhere). The `blockers` mask + `blockers_remaining` /
+    /// `blockers_total` above carry the counts (obstacles are blockers).
+    obstacles: Vec<Vec<&'static str>>,
+    obstacle_layers: Vec<Vec<u8>>,
     won: bool,
 }
 
@@ -429,6 +472,27 @@ fn board_view(s: &Session) -> BoardView {
                 .collect()
         })
         .collect();
+    let obstacles = (0..b.height)
+        .map(|r| {
+            (0..b.width)
+                .map(|c| match b.obstacle_at(r, c) {
+                    None => "",
+                    Some(Obstacle::Licorice) => "licorice",
+                    Some(Obstacle::Meringue) => "meringue",
+                })
+                .collect()
+        })
+        .collect();
+    let obstacle_layers = (0..b.height)
+        .map(|r| {
+            (0..b.width)
+                .map(|c| match b.get(r, c) {
+                    Cell::Blocker(l) if b.obstacle_at(r, c).is_some() => l,
+                    _ => 0,
+                })
+                .collect()
+        })
+        .collect();
     BoardView {
         mode: match s.mode {
             Mode::TargetScore => "target-score",
@@ -436,6 +500,7 @@ fn board_view(s: &Session) -> BoardView {
             Mode::Jelly => "jelly",
             Mode::Ingredients => "ingredients",
             Mode::Checklist => "checklist",
+            Mode::Obstacles => "obstacles",
         },
         width: b.width,
         height: b.height,
@@ -462,6 +527,8 @@ fn board_view(s: &Session) -> BoardView {
         checklist_striped_target: s.checklist_targets.striped,
         checklist_wrapped_made: s.checklist_progress.wrapped_made,
         checklist_wrapped_target: s.checklist_targets.wrapped,
+        obstacles,
+        obstacle_layers,
         won: s.won(),
     }
 }
@@ -742,11 +809,40 @@ impl Game for Match3Checklist {
     }
 }
 
+/// The `pond-outcome` [`Game`] impl for **clear-the-obstacles** (Track D, T7) —
+/// replay `(seed, swaps)` by dealing the obstacle board and applying the swaps; the
+/// win is verifiable (`Won` ⟺ no blocker remains, licorice + meringue alike). Metric
+/// is `move_count`; no score/stars.
+struct Match3Obstacles;
+impl Game for Match3Obstacles {
+    type Move = [u8; 4];
+    const KIND: &'static str = "match3-obstacles";
+    const VERSION: u32 = 1;
+    fn replay(seed: u64, moves: &[[u8; 4]]) -> Replayed {
+        let board = deal_obstacles(
+            seed,
+            obstacles_mode::WIDTH,
+            obstacles_mode::HEIGHT,
+            obstacles_mode::COLORS,
+            obstacles_mode::LICORICE,
+            obstacles_mode::MERINGUE,
+        );
+        let mut game = M3Game::new(board, seed, obstacles_mode::COLORS);
+        for m in moves {
+            let _ = game.play_move(
+                (m[0] as usize, m[1] as usize),
+                (m[2] as usize, m[3] as usize),
+            );
+        }
+        Replayed::new(game.state_hash(), blockers_remaining(&game.board) == 0)
+    }
+}
+
 /// The outcome record for the current game, as a `pond-docformat` envelope JSON.
 /// `declare`: 1 = include the (self-declared) assistance flag, 0 = omit it. A
 /// run that did not meet the objective is `Lost`; a met objective is `Won`. The
 /// envelope `kind` distinguishes the modes (`match3` / `match3-blockers` /
-/// `match3-jelly` / `match3-ingredients` / `match3-checklist`).
+/// `match3-jelly` / `match3-ingredients` / `match3-checklist` / `match3-obstacles`).
 #[no_mangle]
 pub extern "C" fn outcome_json(declare: u32) -> *const u8 {
     let Some(s) = session_mut() else {
@@ -780,6 +876,11 @@ pub extern "C" fn outcome_json(declare: u32) -> *const u8 {
             let record =
                 attest::<Match3Checklist>(s.seed, s.swaps.clone(), Outcome::Lost, assistance);
             pond_outcome::to_doc::<Match3Checklist>(&record)
+        }
+        Mode::Obstacles => {
+            let record =
+                attest::<Match3Obstacles>(s.seed, s.swaps.clone(), Outcome::Lost, assistance);
+            pond_outcome::to_doc::<Match3Obstacles>(&record)
         }
     };
     match bytes {

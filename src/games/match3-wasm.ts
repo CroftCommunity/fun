@@ -3,7 +3,13 @@
 //! wasm holds the game; this wrapper never re-implements rules.
 
 /** The objective the board is being played under. */
-export type Mode = "target-score" | "blockers" | "jelly" | "ingredients" | "checklist";
+export type Mode =
+  | "target-score"
+  | "blockers"
+  | "jelly"
+  | "ingredients"
+  | "checklist"
+  | "obstacles";
 
 /** The board as the UI sees it. */
 export interface BoardView {
@@ -48,8 +54,13 @@ export interface BoardView {
   checklistStripedTarget: number;
   checklistWrappedMade: number;
   checklistWrappedTarget: number;
+  /** Obstacles mode (T7): per-cell obstacle flavour — `""` / `"licorice"` /
+   *  `"meringue"` — and the flavoured blocker's remaining layer count (meringue
+   *  pips; `0` elsewhere). Counts come from `blockers*` (obstacles are blockers). */
+  obstacles: string[][];
+  obstacleLayers: number[][];
   /** Whether the objective is met (1★ target, or every blocker / jelly / ingredient
-   *  cleared, or every checklist goal reached). */
+   *  / obstacle cleared, or every checklist goal reached). */
   won: boolean;
 }
 
@@ -71,6 +82,7 @@ interface Exports {
   new_jelly_game(lo: number, hi: number): void;
   new_ingredients_game(lo: number, hi: number): void;
   new_checklist_game(lo: number, hi: number): void;
+  new_obstacles_game(lo: number, hi: number): void;
   target_daily_seed(day_index: number): number;
   board_json(): number;
   legal_moves_json(): number;
@@ -127,6 +139,10 @@ export class Match3 {
   /** Start a checklist game on `seed` (deal a winnable board with a seed-derived goal list). */
   newChecklistGame(seed: bigint): void {
     this.x.new_checklist_game(Number(seed & 0xffff_ffffn), Number((seed >> 32n) & 0xffff_ffffn));
+  }
+  /** Start a clear-the-obstacles game on `seed` (deal a winnable licorice + meringue board). */
+  newObstaclesGame(seed: bigint): void {
+    this.x.new_obstacles_game(Number(seed & 0xffff_ffffn), Number((seed >> 32n) & 0xffff_ffffn));
   }
   /** The target-score daily seed for `dayIndex` — a seed from the baked par table
    *  (so its stars use the player-ladder par, not the free-play fallback). */
