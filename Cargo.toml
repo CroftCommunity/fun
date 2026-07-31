@@ -14,6 +14,8 @@ resolver = "2"
 members = [
     "crates/bubble-core",
     "crates/wyrdle-core",
+    "crates/twenty48-core",
+    "crates/twenty48-wasm",
     "crates/wyrdle-wasm",
     "crates/bubble-solver",
     "crates/bubble-wasm",

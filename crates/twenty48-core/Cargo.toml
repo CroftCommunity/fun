@@ -1,0 +1,18 @@
+[package]
+name = "twenty48-core"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Deterministic, headless 2048 engine. 4x4 exponent-encoded tiles, seeded ChaCha20 spawns, slide/merge in four directions, score, win (2048) / stuck, state hash. Directional moves, so replay from (seed, directions) is exact and native==wasm. No network."
+
+[dependencies]
+rand.workspace = true
+rand_chacha.workspace = true
+serde = { workspace = true }
+serde_json.workspace = true
+sha2.workspace = true
+hex.workspace = true
+thiserror.workspace = true
+pond-outcome.workspace = true
+pond-docformat.workspace = true

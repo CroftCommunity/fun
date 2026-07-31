@@ -9,7 +9,7 @@ a portable artifact addressable at its own URL.
 `fun.croft.ing` presents games in a **slide-out drawer** over a persistent play area; each game can
 also go **full-screen** or **open in its own tab** (so every game has its own URL). A game is a module
 that implements one contract and renders chrome-agnostically into a mount point — the drawer is built
-once and every game reuses it. Shelf order: **solitaire → match-3 → bubble → wyrdle → cribbage**.
+once and every game reuses it. Shelf order: **solitaire → match-3 → bubble → wyrdle → 2048 → cribbage**.
 
 ## Layout
 
@@ -29,8 +29,12 @@ crates/
   wyrdle-core/       deterministic word-guessing engine (two-pass scoring, embedded license-clean
                      word lists, seed→answer map, answer pack) — green (no solver: trivially winnable)
   wyrdle-wasm/       browser binding over wyrdle-core (raw C-ABI + serde-JSON)     — built
+  twenty48-core/     deterministic 2048 engine (exponent tiles, seeded spawns, slide/merge,
+                     win@2048 / stuck) — green (no solver: every seed is playable)
+  twenty48-wasm/     browser binding over twenty48-core (raw C-ABI + serde-JSON)   — built
 games/solitaire/     daily-pack.json — a year of winnable daily seeds + a fixture win line (v2, seeds-lean)
 games/bubble/        daily-pack.json — a year of winnable clear-the-board seeds + a fixture clear line
+games/2048/          daily-pack.json — a year of shuffled daily seeds + a fixture replay line
 games/wyrdle/        daily-pack.json — a year of shuffled answer seeds + a fixture win line;
                      PROVENANCE.md — the word-list sources + licences (all license-clean)
 src/                 the games drawer UI (vanilla TS + esbuild); each game owns src/games/<game>/
@@ -68,6 +72,22 @@ free-play (`?seed=`). Win or lose leads with a verification-forward result — t
 one-tap re-verify, and **two shares**: a spoiler-free **emoji grid** to copy (🟩🟨⬛) and a self-verifying
 `?r=` link (which carries the guesses, so it re-verifies but reveals the word). Word-list sources +
 licences: `games/wyrdle/PROVENANCE.md`. Plan: `plans/2026-07-31-wyrdle-daily-word-game.md`.
+
+## 2048 (playable — tile-slide)
+
+`/2048/` is the tile-sliding number game (build-fresh; 2048 is MIT and not
+trademarked). Slide the 4×4 board and equal tiles that collide merge into their
+sum; reach the 2048 tile to win, or play until the board is stuck. Three input
+paths all go through the core, which decides legality (a slide that changes
+nothing is a no-op): an on-screen **arrow pad**, **swipe**, and **arrow/WASD
+keys**. Tiles are stored as exponents and the only randomness is the seeded
+post-move spawn (ChaCha20), so a game replays exactly from `(seed, directions)` —
+no floats, native==wasm. Daily board (a shuffled seed from
+`games/2048/daily-pack.json`, UTC rollover) + free-play (`?seed=`). Reaching 2048
+/ stuck / "I'm done" leads with a verification-forward result — the `pond-outcome`
+record (score + best tile, re-derived by replay), one-tap re-verify, and a `?r=`
+share. No solver: every seed is playable (reaching 2048 is skill, not seed).
+Plan: `plans/2026-07-31-2048.md`.
 
 ## Identity (light/dark)
 

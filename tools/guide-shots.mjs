@@ -160,6 +160,45 @@ const SHOTS = [
     },
   },
   {
+    name: "2048-board",
+    clip: ".play-area",
+    async run(page) {
+      await page.goto(`${origin}/2048/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".t48-board");
+      await page.waitForFunction(() => Boolean(window.__t2048));
+      // Play a handful of hint moves so the shot shows a lived-in board.
+      await page.evaluate(() => {
+        for (let i = 0; i < 12; i += 1) {
+          const d = window.__t2048.game.hint();
+          if (!d) break;
+          window.__t2048.playDir(d);
+        }
+      });
+      await page.waitForSelector(".t48-tile.t48-mid, .t48-tile.t48-hi");
+    },
+  },
+  {
+    name: "2048-result",
+    clip: ".sol-result",
+    async run(page) {
+      await page.goto(`${origin}/2048/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".t48-board");
+      await page.waitForFunction(() => Boolean(window.__t2048));
+      await page.evaluate(() => {
+        for (let i = 0; i < 20; i += 1) {
+          const d = window.__t2048.game.hint();
+          if (!d) break;
+          window.__t2048.playDir(d);
+        }
+      });
+      // End the round to reach the verifiable result screen.
+      await page.click(".sol-settings summary");
+      await page.uncheck(".sol-set-hints");
+      await page.click(".sol-stuck");
+      await page.waitForSelector(".sol-result");
+    },
+  },
+  {
     name: "wyrdle-win",
     clip: ".sol-result",
     async run(page) {

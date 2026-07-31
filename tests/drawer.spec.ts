@@ -5,7 +5,7 @@ test("home page lists the games and the drawer opens", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /open games drawer/i }).click();
   await expect(page.locator("#games-drawer")).toBeVisible();
-  await expect(page.locator(".drawer-item")).toHaveCount(6);
+  await expect(page.locator(".drawer-item")).toHaveCount(7);
 });
 
 test("a game page mounts the module; full-screen preserves the same instance", async ({
