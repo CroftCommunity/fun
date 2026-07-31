@@ -424,3 +424,50 @@ fn generate_par_pack_file() {
         path.display()
     );
 }
+
+/// Track C / C2 — the offline **calibration study** over all 365 daily seeds.
+/// Prints the rung spread (random / greedy / specials-beam) so the calibration
+/// note can evaluate whether 3★ reads as strong-but-attainable. Not an assertion —
+/// run with `--release --ignored --nocapture`. Output is a committed note, not code.
+#[test]
+#[ignore = "calibration study — computes all three rungs over 365 seeds (slow)"]
+fn calibration_rung_spread() {
+    use match3_core::{random_score, reference_score_specials, target_score_mode as m};
+    let mut rows: Vec<(u64, u64, u64)> = Vec::new(); // (random, greedy, specials)
+    for seed in 0..365u64 {
+        let random = random_score(seed, m::WIDTH, m::HEIGHT, m::COLORS, m::MOVE_BUDGET);
+        let greedy = reference_score(seed, m::WIDTH, m::HEIGHT, m::COLORS, m::MOVE_BUDGET);
+        let specials =
+            reference_score_specials(seed, m::WIDTH, m::HEIGHT, m::COLORS, m::MOVE_BUDGET, 8);
+        rows.push((random, greedy, specials));
+    }
+    let n = rows.len() as f64;
+    let mean = |f: &dyn Fn(&(u64, u64, u64)) -> u64| -> f64 {
+        rows.iter().map(|r| f(r) as f64).sum::<f64>() / n
+    };
+    let mr = mean(&|r| r.0);
+    let mg = mean(&|r| r.1);
+    let ms = mean(&|r| r.2);
+    // Gap ratios: how much stronger each rung is than the one below.
+    let greedy_over_random = mean(&|r| r.1) / mr;
+    let specials_over_greedy = ms / mg;
+    // Combo headroom: seeds where the specials player strictly beats greedy.
+    let specials_beats_greedy = rows.iter().filter(|r| r.2 > r.1).count();
+    // The specials→greedy uplift per seed, as a %; report the distribution.
+    let mut uplifts: Vec<f64> = rows
+        .iter()
+        .map(|r| (r.2 as f64 / r.1.max(1) as f64 - 1.0) * 100.0)
+        .collect();
+    uplifts.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let pct = |p: f64| uplifts[((uplifts.len() as f64 - 1.0) * p) as usize];
+    println!("CALIB means: random={mr:.0} greedy={mg:.0} specials={ms:.0}");
+    println!("CALIB ratios: greedy/random={greedy_over_random:.3} specials/greedy={specials_over_greedy:.3}");
+    println!("CALIB combo-headroom: specials>greedy on {specials_beats_greedy}/365 seeds");
+    println!(
+        "CALIB specials-uplift%%: p10={:.1} p50={:.1} p90={:.1} max={:.1}",
+        pct(0.10),
+        pct(0.50),
+        pct(0.90),
+        uplifts[uplifts.len() - 1]
+    );
+}

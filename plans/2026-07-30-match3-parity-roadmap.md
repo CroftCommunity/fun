@@ -246,16 +246,18 @@ Execution plan for B0: `plans/2026-07-30-match3-b0-specials.md`.
   re-verifies deterministically; vectors re-locked-and-explained; a11y affordances;
   modes using it stay winnable-daily; deployed.
 
-### Track C — Par ladder (the honest-difficulty overhaul; trails specials)
-- **C1 player ladder + par table:** deterministic players of increasing strength
-  (weak = greedy, medium = beam, strong = deeper search / MCTS); a committed par
-  table mapping seed → per-rung scores → star tiers; regeneration drill.
-- **C2 offline calibration study (LLM subagents):** run a spread of "thinking"
-  models as playtesters on sample boards, offline, once, to check the search rungs
-  correspond to human-ish weak/medium/strong; record findings; tune the rungs.
-  Output is a calibration note, not shipped code.
-- **C3 re-par with specials:** regenerate the par table once specials land so the
-  strong rung uses specials and difficulty stays honest.
+### Track C — Par ladder (the honest-difficulty overhaul) — DONE (2026-07-31)
+- **C1 player ladder + par table — DONE** (Track P-now + B6): 1★ random / 2★ greedy /
+  3★ specials-exploiting beam, baked into `games/match3/par-pack.json` (embedded), with
+  the byte-identical regeneration drill.
+- **C2 offline calibration study — DONE** (note: `plans/2026-07-31-match3-c2-calibration.md`).
+  Data-driven spread over all 365 daily seeds (rungs ~2× separated: random 1162 / greedy
+  2759 / specials 5765; combo headroom on 365/365; 3★ median +111% over greedy, and
+  sub-optimal) plus an illustrative 3-persona model panel (casual ≈ 1★–2★, careful ≈ 2★,
+  expert ≈ 3★). Verdict: keep the rungs + `special_potential` weights; 3★ reads
+  strong-but-attainable. Levers recorded for future live-data tuning.
+- **C3 re-par with specials — DONE** (B6 baked the specials 3★; C2 confirmed no further
+  re-par needed).
 - **DoD:** star tiers are the player ladder; par table baked + verifiable; a
   recorded rationale for the rung choices.
 
