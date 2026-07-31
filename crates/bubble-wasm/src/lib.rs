@@ -132,6 +132,21 @@ struct BoardView {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
+struct GeomView {
+    /// Bubble diameter in the core's sub-pixel space.
+    diam: i32,
+    /// Bubble radius.
+    radius: i32,
+    /// Row vertical spacing.
+    row_h: i32,
+    /// Legal aim fan lower bound (whole degrees).
+    fan_lo: u16,
+    /// Legal aim fan upper bound (whole degrees).
+    fan_hi: u16,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 struct TrajectoryView {
     /// Fixed-point flight-path vertices `[x, y]` in the core's sub-pixel space
     /// (launcher → each wall bounce → stop). Presentational — never hashed.
@@ -173,6 +188,24 @@ pub extern "C" fn board_json() -> *const u8 {
             Err(_) => set_out_str("null"),
         },
         None => set_out_str("null"),
+    }
+}
+
+/// The fixed sub-pixel geometry + the legal aim fan as JSON — the single source
+/// of truth for the UI's canvas layout and its angle control range.
+#[no_mangle]
+pub extern "C" fn geom_json() -> *const u8 {
+    let (fan_lo, fan_hi) = bubble_core::fan();
+    let view = GeomView {
+        diam: bubble_core::aim::DIAM,
+        radius: bubble_core::aim::RADIUS,
+        row_h: bubble_core::aim::ROW_H,
+        fan_lo,
+        fan_hi,
+    };
+    match serde_json::to_vec(&view) {
+        Ok(bytes) => set_out(bytes),
+        Err(_) => set_out_str("null"),
     }
 }
 
@@ -246,6 +279,28 @@ pub extern "C" fn shoot(angle: u32) -> u32 {
     let deg = u16::try_from(angle).unwrap_or(u16::MAX);
     s.game.play(Angle(deg));
     0
+}
+
+/// A suggested aim angle: the reachable shot that pops/drops the most from the
+/// current board (lowest angle on a tie), or the fan midpoint if nothing pops.
+/// `0` if there is no game. A hint is assistance — the host declares it via
+/// [`mark_assistance`].
+#[no_mangle]
+pub extern "C" fn hint_angle() -> u32 {
+    let Some(s) = session_mut() else { return 0 };
+    let (lo, hi) = bubble_core::fan();
+    let mut best_gain = 0usize;
+    let mut best = lo + (hi - lo) / 2; // fan midpoint default when nothing pops
+    for deg in lo..=hi {
+        let mut probe = s.game.clone();
+        let rep = probe.play(Angle(deg));
+        let gain = rep.popped + rep.dropped;
+        if gain > best_gain {
+            best_gain = gain;
+            best = deg;
+        }
+    }
+    u32::from(best)
 }
 
 /// Mark the game assisted (a hint was shown), so the outcome reflects it.
@@ -337,5 +392,25 @@ mod tests {
 
         // Daily seed comes from the embedded pack.
         assert_ne!(bubble_daily_seed(0), 0, "pack seeds are embedded");
+    }
+
+    #[test]
+    fn cabi_geom_and_hint() {
+        new_game(495, 0);
+        // Geometry + fan are exposed for the UI.
+        let gptr = geom_json();
+        let gn = out_len() as usize;
+        let gjson = unsafe { std::slice::from_raw_parts(gptr, gn) };
+        let g: serde_json::Value = serde_json::from_slice(gjson).expect("geom json");
+        assert_eq!(g["diam"], serde_json::json!(256));
+        assert_eq!(g["radius"], serde_json::json!(128));
+        assert_eq!(g["rowH"], serde_json::json!(222));
+        let (lo, hi) = (g["fanLo"].as_u64().unwrap(), g["fanHi"].as_u64().unwrap());
+        assert!(lo < hi, "fan is a non-empty range");
+
+        // A hint is an in-fan angle that applies as a legal shot.
+        let h = hint_angle();
+        assert!(u64::from(h) >= lo && u64::from(h) <= hi, "hint {h} within the fan");
+        assert_eq!(shoot(h), 0, "the hinted angle applies");
     }
 }

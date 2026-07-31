@@ -33,6 +33,16 @@ export interface Trajectory {
   landing: Cell;
 }
 
+/** The core's fixed sub-pixel geometry and legal aim fan — one source of truth
+ *  for the canvas layout and the angle control's range. */
+export interface Geom {
+  diam: number;
+  radius: number;
+  rowH: number;
+  fanLo: number;
+  fanHi: number;
+}
+
 /** Shot application status (`applied`, or `bad` = no game / budget spent). */
 export type ShotStatus = "applied" | "bad";
 
@@ -42,6 +52,7 @@ interface Exports {
   new_game(lo: number, hi: number): void;
   bubble_daily_seed(day_index: number): number;
   board_json(): number;
+  geom_json(): number;
   trajectory_json(angle: number): number;
   current_hash(): number;
   score(): number;
@@ -49,6 +60,7 @@ interface Exports {
   current_color(): number;
   is_cleared(): number;
   shoot(angle: number): number;
+  hint_angle(): number;
   mark_assistance(): void;
   outcome_json(declare: number): number;
 }
@@ -88,6 +100,15 @@ export class Bubble {
   }
   board(): BoardView {
     return JSON.parse(this.read(this.x.board_json())) as BoardView;
+  }
+  /** The core geometry + aim fan (constant for the session). */
+  geom(): Geom {
+    return JSON.parse(this.read(this.x.geom_json())) as Geom;
+  }
+  /** A suggested aim angle (the best reachable pop, or the fan midpoint). A hint
+   *  is assistance — call {@link markAssistance} when surfacing it. */
+  hintAngle(): number {
+    return this.x.hint_angle();
   }
   /** The resolved trajectory for aiming `angle` (whole degrees) — the flight
    *  path to preview and the landing cell the shot will stick to. The core owns
