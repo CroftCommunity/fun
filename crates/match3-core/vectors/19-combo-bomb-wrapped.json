@@ -1,0 +1,26 @@
+{
+  "name": "combo-bomb-wrapped",
+  "seed": 1,
+  "colors": 6,
+  "board": [
+    "01212",
+    "23131",
+    "12323",
+    "31212",
+    "23130"
+  ],
+  "special": [
+    "WC...",
+    ".....",
+    ".....",
+    ".....",
+    "....."
+  ],
+  "moves": [ [0, 0, 0, 1] ],
+  "expect": {
+    "move_legal": [true],
+    "step0_cleared": [ [[0,0],[0,1],[0,2],[1,0],[1,1],[1,2],[3,3],[3,4],[4,3],[4,4]] ],
+    "step0_score": [100],
+    "final_state_hash": "ad7f561bfc76c0cdc075f59c5319bdcdd4def83ae0ec29a004b5b651b2f3eae8"
+  }
+}

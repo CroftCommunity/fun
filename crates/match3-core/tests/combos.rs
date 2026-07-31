@@ -10,7 +10,7 @@
 
 use std::collections::BTreeSet;
 
-use match3_core::board::Board;
+use match3_core::board::{Board, Cell};
 use match3_core::engine::Game;
 use match3_core::Pos;
 
@@ -221,5 +221,159 @@ fn a_fish_swapped_with_a_special_does_not_combo_yet() {
     assert!(
         (0..5).all(|c| cleared.contains(&(2, c))),
         "the striped still fires its row on the independent path"
+    );
+}
+
+// --- B5.2: colour-bomb combos ----------------------------------------------
+//
+// The colour-bomb transforms are computed as a DIRECT equivalent clear-set (no
+// intermediate specials materialized). These oracles independently reimplement
+// the spec formula from the post-swap board so the tests do not just echo the
+// engine.
+
+/// Apply a swap (gem + special marker together) to a copy — the post-swap board
+/// `resolve_move` computes the combo against.
+fn apply_swap(b: &Board, from: Pos, to: Pos) -> Board {
+    let mut nb = b.clone();
+    let (fc, fs) = (b.get(from.0, from.1), b.special_at(from.0, from.1));
+    let (tc, ts) = (b.get(to.0, to.1), b.special_at(to.0, to.1));
+    nb.set(from.0, from.1, tc);
+    nb.set_special(from.0, from.1, ts);
+    nb.set(to.0, to.1, fc);
+    nb.set_special(to.0, to.1, fs);
+    nb
+}
+
+/// bomb + striped: the union of each partner-colour cell's full row + full column
+/// (blockers excluded).
+fn bomb_striped_expected(post: &Board, color: u8) -> BTreeSet<Pos> {
+    let mut s = BTreeSet::new();
+    for r in 0..post.height {
+        for c in 0..post.width {
+            if post.get(r, c) == Cell::Gem(color) {
+                for cc in 0..post.width {
+                    if !post.get(r, cc).is_blocker() {
+                        s.insert((r, cc));
+                    }
+                }
+                for rr in 0..post.height {
+                    if !post.get(rr, c).is_blocker() {
+                        s.insert((rr, c));
+                    }
+                }
+            }
+        }
+    }
+    s
+}
+
+/// bomb + wrapped: the union of each partner-colour cell's 3×3 (clamped, blockers
+/// excluded).
+fn bomb_wrapped_expected(post: &Board, color: u8) -> BTreeSet<Pos> {
+    let mut s = BTreeSet::new();
+    for r in 0..post.height {
+        for c in 0..post.width {
+            if post.get(r, c) == Cell::Gem(color) {
+                for rr in r.saturating_sub(1)..=(r + 1).min(post.height - 1) {
+                    for cc in c.saturating_sub(1)..=(c + 1).min(post.width - 1) {
+                        if !post.get(rr, cc).is_blocker() {
+                            s.insert((rr, cc));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    s
+}
+
+fn gem_color(board: &Board, pos: Pos) -> u8 {
+    match board.get(pos.0, pos.1) {
+        Cell::Gem(c) => c,
+        other => panic!("expected a gem at {pos:?}, got {other:?}"),
+    }
+}
+
+#[test]
+fn bomb_plus_striped_turns_the_partner_colour_into_striped_lines() {
+    // ColorBomb at (2,1), StripedH at (2,2); swap. The bomb turns every gem of the
+    // partner striped's colour into a striped and fires them all → the union of
+    // each such cell's row + column.
+    let board = diag_board(&[".....", ".....", ".CH..", ".....", "....."]);
+    let post = apply_swap(&board, (2, 1), (2, 2));
+    // After swap the striped is at (2,1); its colour is the partner colour.
+    let color = gem_color(&post, (2, 1));
+    let mut expected = bomb_striped_expected(&post, color);
+    expected.insert((2, 2)); // the bomb cell (consumed source)
+
+    let mut game = Game::new(board, 1, 6);
+    let report = game.play_move((2, 1), (2, 2));
+    assert!(report.legal);
+    assert_eq!(
+        cleared_set(&report),
+        expected,
+        "bomb+striped clears every row+column of the partner colour"
+    );
+}
+
+#[test]
+fn bomb_plus_wrapped_turns_the_partner_colour_into_wrapped_blasts() {
+    // ColorBomb at (2,1), Wrapped at (2,2); swap. Every gem of the partner colour
+    // fires a 3×3.
+    let board = diag_board(&[".....", ".....", ".CW..", ".....", "....."]);
+    let post = apply_swap(&board, (2, 1), (2, 2));
+    let color = gem_color(&post, (2, 1));
+    let mut expected = bomb_wrapped_expected(&post, color);
+    expected.insert((2, 2)); // the bomb cell (consumed source)
+
+    let mut game = Game::new(board, 1, 6);
+    let report = game.play_move((2, 1), (2, 2));
+    assert!(report.legal);
+    assert_eq!(
+        cleared_set(&report),
+        expected,
+        "bomb+wrapped clears a 3×3 around every cell of the partner colour"
+    );
+}
+
+#[test]
+fn bomb_plus_bomb_clears_the_entire_board() {
+    // Two colour bombs swapped → every gem on the board clears in step 0.
+    let mut game = Game::new(
+        diag_board(&[".....", ".....", ".CC..", ".....", "....."]),
+        1,
+        6,
+    );
+    let report = game.play_move((2, 1), (2, 2));
+    assert!(report.legal);
+    let cleared = cleared_set(&report);
+    assert_eq!(cleared.len(), 25, "all 25 gem cells cleared");
+    assert!(
+        cleared.contains(&(0, 0)) && cleared.contains(&(4, 4)),
+        "the whole board, corner to corner"
+    );
+    assert_eq!(report.steps[0].score_gained, 250, "25 gems x10");
+}
+
+#[test]
+fn a_bomb_bomb_leaves_a_blocker_standing_minus_one_layer() {
+    // bomb+bomb clears every GEM; a blocker is not a gem, so it survives, taking
+    // exactly one adjacency layer this step (T2), consistent with every other
+    // blast. A thick (5-layer) blocker at (0,0) is chipped, not cleared.
+    let board = Board::from_rows_with_specials(
+        &["E1234", "12340", "23401", "34012", "40123"],
+        &[".....", ".....", ".CC..", ".....", "....."],
+    )
+    .expect("parses");
+    let mut game = Game::new(board, 1, 6);
+    let report = game.play_move((2, 1), (2, 2));
+    assert!(report.legal);
+    assert_eq!(
+        report.steps[0].blocker_layers_removed, 1,
+        "the blocker takes exactly one adjacency layer in the bomb+bomb step (T2)"
+    );
+    assert!(
+        matches!(game.board.get(0, 0), Cell::Blocker(_)),
+        "the blocker survived bomb+bomb (not a gem → not cleared)"
     );
 }

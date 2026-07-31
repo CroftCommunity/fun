@@ -238,23 +238,28 @@ firing each — the combo matrix. Detection + dispatch (step 0 only):
   moved candy's landing — the same "at the moved candy" convention as creation).
   Because `from`/`to` are orthogonally adjacent, a cross / thick cross / 5×5 centred
   on `to` always contains `from` too, so both specials clear.
-- **The striped/wrapped combos (B5.1)** — blockers excluded from every region (a
-  blocker in the region takes one adjacency layer via T2, like any blast):
+- **The six combos** — blockers are excluded from every region (a blocker in a
+  region takes one adjacency layer via T2, like any blast). The **partner colour**
+  (a colour-bomb combo) is the non-bomb special's underlying gem colour:
 
   | Combo | Blast |
   |---|---|
   | striped + striped | the **full row** ∪ **full column** through `to` (a cross) |
   | striped + wrapped | a **3-wide row band** ∪ **3-wide column band** through `to` (a thick cross, clamped) |
   | wrapped + wrapped | the **5×5 block** around `to` (clamped) |
+  | colour bomb + striped | **every gem of the partner's colour** contributes its **full row + full column** |
+  | colour bomb + wrapped | **every gem of the partner's colour** contributes its **3×3** (clamped) |
+  | colour bomb + colour bomb | **every gem cell** on the board (blockers survive, chipped by adjacency) |
 
   (`StripedH`/`StripedV` are both "striped" for combos — orientation is irrelevant.)
-- **The colour-bomb combos (B5.2)** — bomb + striped turns **every gem of the
-  partner's colour** into a striped (∪ each such cell's row + column); bomb + wrapped
-  into a wrapped (∪ each 3×3); **bomb + bomb clears the entire board**. Computed as a
-  **direct equivalent clear-set** (not by materializing intermediate specials).
+- **The colour-bomb combos use the direct equivalent clear-set.** bomb + striped /
+  bomb + wrapped compute the union above directly — they do **not** materialize
+  intermediate striped/wrapped candies. The outcome is identical to "turn all of the
+  colour into specials and fire them", with a simpler determinism surface.
 - **Realization note (revisable pre-users).** wrapped + wrapped is a **single** 5×5
   clear — both specials are consumed, so there is no surviving centre to pin +
-  re-blast (unlike a lone wrapped's canon double, T1c).
+  re-blast (unlike a lone wrapped's canon double, T1c). Likewise the colour-bomb
+  transforms fire each colour cell **once** (a single line / 3×3), not a double.
 - **Chaining.** A **real** firing special the combo blast sweeps up (a striped /
   wrapped elsewhere on the board — **not** the two combo sources) fires too, via the
   same set-union chain queue the single-special blasts use (T1c). Deterministic and

@@ -537,12 +537,33 @@ fn region(board: &Board, r0: usize, r1: usize, c0: usize, c1: usize) -> BTreeSet
     s
 }
 
+/// The union of `f(cell)` over every cell holding `Gem(color)` — the colour-bomb
+/// transform builder (B5.2): `f` is the per-cell region a transformed candy fires
+/// (row+col for a striped transform, 3×3 for a wrapped transform). Blockers are
+/// excluded by [`region`].
+fn colour_transform(
+    board: &Board,
+    color: u8,
+    f: impl Fn(&Board, Pos) -> BTreeSet<Pos>,
+) -> Vec<Pos> {
+    let mut s = BTreeSet::new();
+    for r in 0..board.height {
+        for c in 0..board.width {
+            if board.get(r, c) == Cell::Gem(color) {
+                s.extend(f(board, (r, c)));
+            }
+        }
+    }
+    s.into_iter().collect()
+}
+
 /// The combined blast produced by swapping **two non-fish specials** together
 /// (RULES.md T1d), centered on the destination cell `center` (= `to`), consuming
 /// both. `a`/`b` are the two specials' post-swap cells. Returns the cells to clear
-/// (blockers excluded), or `None` if the pair is not a B5.1 combo — a colour bomb
-/// (B5.2) or a fish (never reaches here — a fish pair skips the combo dispatch).
+/// (blockers excluded), or `None` if the pair is not a handled combo (a fish never
+/// reaches here — a fish pair skips the combo dispatch).
 ///
+/// Striped/wrapped combos (B5.1):
 /// - **striped + striped → a cross:** the full row **and** full column through
 ///   `center`.
 /// - **striped + wrapped → a thick cross:** a 3-wide row band **and** 3-wide column
@@ -550,14 +571,57 @@ fn region(board: &Board, r0: usize, r1: usize, c0: usize, c1: usize) -> BTreeSet
 /// - **wrapped + wrapped → a 5×5 block** around `center` (clamped). A single blast:
 ///   both specials are consumed, so there is no survivor to pin/re-blast (the canon
 ///   "explodes twice" is a revisable realization — the generic clears the 5×5 once).
+///
+/// Colour-bomb combos (B5.2) — the **direct equivalent clear-set**, no intermediate
+/// specials materialized:
+/// - **colour bomb + striped → every gem of the partner's colour** contributes its
+///   full row + full column.
+/// - **colour bomb + wrapped → every gem of the partner's colour** contributes its
+///   3×3.
+/// - **colour bomb + colour bomb → every gem cell** on the board (blockers survive,
+///   chipped by adjacency in T2).
 fn combo(board: &Board, a: Pos, b: Pos, center: Pos) -> Option<Vec<Pos>> {
-    use SpecialKind::{StripedH, StripedV, Wrapped};
+    use SpecialKind::{ColorBomb, StripedH, StripedV, Wrapped};
     let ka = board.special_at(a.0, a.1)?;
     let kb = board.special_at(b.0, b.1)?;
     let striped = |k| matches!(k, StripedH | StripedV);
     let (r, c) = center;
     let last_r = board.height.saturating_sub(1);
     let last_c = board.width.saturating_sub(1);
+    // Colour-bomb combos (B5.2) — a direct equivalent clear-set.
+    if ka == ColorBomb && kb == ColorBomb {
+        // The entire board: every gem cell (a blocker is not a gem → it survives).
+        return Some(region(board, 0, last_r, 0, last_c).into_iter().collect());
+    }
+    if ka == ColorBomb || kb == ColorBomb {
+        // Partner = the non-bomb special; its underlying colour is the target.
+        let (partner, partner_kind) = if ka == ColorBomb { (b, kb) } else { (a, ka) };
+        let Cell::Gem(color) = board.get(partner.0, partner.1) else {
+            return None;
+        };
+        if striped(partner_kind) {
+            // Each colour cell fires a striped: its full row + full column.
+            return Some(colour_transform(board, color, |bd, (rr, cc)| {
+                let mut s = region(bd, rr, rr, 0, bd.width.saturating_sub(1));
+                s.extend(region(bd, 0, bd.height.saturating_sub(1), cc, cc));
+                s
+            }));
+        }
+        if partner_kind == Wrapped {
+            // Each colour cell fires a wrapped: its 3×3.
+            return Some(colour_transform(board, color, |bd, (rr, cc)| {
+                region(
+                    bd,
+                    rr.saturating_sub(1),
+                    (rr + 1).min(bd.height.saturating_sub(1)),
+                    cc.saturating_sub(1),
+                    (cc + 1).min(bd.width.saturating_sub(1)),
+                )
+            }));
+        }
+        return None; // colour bomb + fish is deferred (never reaches here)
+    }
+    // Striped/wrapped combos (B5.1).
     let cells: BTreeSet<Pos> = if striped(ka) && striped(kb) {
         // Full row ∪ full column through the centre.
         let mut s = region(board, r, r, 0, last_c);
