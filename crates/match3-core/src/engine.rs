@@ -929,20 +929,22 @@ fn apply_gravity_pinned(board: &mut Board, pinned: &BTreeSet<Pos>) {
             if !boundary {
                 continue;
             }
-            // Segment is the non-blocker rows [seg_start, r). Carry each gem's
-            // special marker with it as a `(cell, special)` pair so the two
-            // grids cannot desync — a special candy falls with its gem.
-            let gems: Vec<(Cell, Option<SpecialKind>)> = (seg_start..r)
-                .filter(|&rr| board.get(rr, c).is_gem())
+            // Segment is the non-blocker rows [seg_start, r). Carry each **falling**
+            // cell (a gem or an ingredient — Track D) with its special marker as a
+            // `(cell, special)` pair so the two grids cannot desync. An ingredient
+            // falls like a gem (its marker is always `None`); a blocker never enters
+            // a segment (it is the boundary).
+            let falling: Vec<(Cell, Option<SpecialKind>)> = (seg_start..r)
+                .filter(|&rr| board.get(rr, c).is_gem() || board.get(rr, c).is_ingredient())
                 .map(|rr| (board.get(rr, c), board.special_at(rr, c)))
                 .collect();
-            let holes = (r - seg_start) - gems.len();
+            let holes = (r - seg_start) - falling.len();
             for (i, rr) in (seg_start..r).enumerate() {
                 if i < holes {
                     board.set(rr, c, Cell::Empty);
                     board.set_special(rr, c, None);
                 } else {
-                    let (cell, special) = gems[i - holes];
+                    let (cell, special) = falling[i - holes];
                     board.set(rr, c, cell);
                     board.set_special(rr, c, special);
                 }
@@ -1200,6 +1202,67 @@ pub fn deal_jelly(seed: u64, width: usize, height: usize, colors: usize, jelly: 
 #[must_use]
 pub fn jelly_remaining(board: &Board) -> u32 {
     u32::try_from(board.jelly().iter().filter(|&&l| l > 0).count()).unwrap_or(u32::MAX)
+}
+
+/// T5 — **collect** every ingredient that has reached the bottom row (the exit):
+/// each becomes `Empty` and is counted. Called in `resolve_move` after each step's
+/// gravity, before refill, so an ingredient exits the moment it lands. Deterministic
+/// (a bottom-row scan; no RNG). Returns how many exited this call.
+pub fn collect_ingredients(board: &mut Board) -> u32 {
+    if board.height == 0 {
+        return 0;
+    }
+    let bottom = board.height - 1;
+    let mut collected = 0;
+    for c in 0..board.width {
+        if board.get(bottom, c).is_ingredient() {
+            board.set(bottom, c, Cell::Empty);
+            collected += 1;
+        }
+    }
+    collected
+}
+
+/// A seeded starting deal for **clear-the-ingredients**: a settled, no-initial-match,
+/// live board with `ingredients` ingredient cells placed in the **top row** (they
+/// must fall the full height to exit), deterministic from `seed`. A gem fill is drawn,
+/// then distinct top-row columns become `Ingredient`; the fill is redrawn (advancing
+/// the RNG) if the placement leaves no legal move — rare, but the guarantee keeps a
+/// daily board from being a dead start. Ingredients never match, so the board stays
+/// match-free.
+#[must_use]
+pub fn deal_ingredients(
+    seed: u64,
+    width: usize,
+    height: usize,
+    colors: usize,
+    ingredients: usize,
+) -> Board {
+    let mut rng = DetRng::from_seed(seed);
+    let n = ingredients.min(width);
+    for _ in 0..64 {
+        let mut board = fill_no_initial_match(&mut rng, width, height, colors);
+        // Distinct top-row columns, drawn in RNG order (dedup by retrying a draw).
+        let mut chosen: BTreeSet<usize> = BTreeSet::new();
+        while chosen.len() < n {
+            chosen.insert(rng.index(width));
+        }
+        for col in &chosen {
+            board.set(0, *col, Cell::Ingredient);
+        }
+        if has_legal_move(&board) {
+            return board;
+        }
+    }
+    fill_no_initial_match(&mut rng, width, height, colors)
+}
+
+/// How many ingredients remain on the board — the clear-the-ingredients objective is
+/// met when this reaches `0`. Ingredients can only exit (never spawn — refill makes
+/// only gems), so this is monotone non-increasing under play.
+#[must_use]
+pub fn ingredients_remaining(board: &Board) -> u32 {
+    u32::try_from(board.cells().iter().filter(|c| c.is_ingredient()).count()).unwrap_or(u32::MAX)
 }
 
 /// A greedy reference playout: from the `seed` deal, play the highest-scoring
@@ -1578,6 +1641,10 @@ impl Game {
             // as the re-blast seed for their second explosion.
             let pinned: BTreeSet<Pos> = act.pending.iter().copied().collect();
             apply_gravity_pinned(&mut self.board, &pinned);
+            // Track D: an ingredient that gravity dropped into the bottom row exits
+            // now (before refill), so its hole refills as a gem. No-op with no
+            // ingredient on the board, so every other mode is unchanged.
+            collect_ingredients(&mut self.board);
             if trace {
                 snapshots.push(self.board.clone());
             }

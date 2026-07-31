@@ -499,4 +499,3 @@ fn a_fish_swapped_with_a_plain_gem_is_still_the_independent_path() {
         cleared.len()
     );
 }
-

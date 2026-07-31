@@ -1,0 +1,19 @@
+{
+  "name": "ingredient-drop",
+  "seed": 1,
+  "colors": 6,
+  "board": [
+    "*12",
+    "321",
+    "312",
+    "531",
+    "124"
+  ],
+  "moves": [ [3, 0, 3, 1] ],
+  "expect": {
+    "move_legal": [true],
+    "step0_cleared": [ [[1,0],[2,0],[3,0]] ],
+    "step0_score": [30],
+    "final_state_hash": "968768724e1b91fe4278c94c34574d160e0b9216d45de56fdcd934c9964a6ccf"
+  }
+}
