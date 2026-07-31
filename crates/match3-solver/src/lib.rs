@@ -18,9 +18,10 @@ use std::cmp::Reverse;
 use std::collections::HashSet;
 
 use match3_core::{
-    blockers_mode, blockers_remaining, deal_blockers, deal_ingredients, deal_jelly,
-    ingredients_mode, ingredients_remaining, jelly_mode, jelly_remaining, legal_swaps,
-    random_score, reference_score, reference_score_specials, target_score_mode, Game, MoveReport,
+    blockers_mode, blockers_remaining, checklist_mode, checklist_targets, deal, deal_blockers,
+    deal_ingredients, deal_jelly, ingredients_mode, ingredients_remaining, jelly_mode,
+    jelly_remaining, legal_swaps, random_score, reference_score, reference_score_specials,
+    target_score_mode, ChecklistProgress, ChecklistTargets, Game, MoveReport,
 };
 use serde::{Deserialize, Serialize};
 
@@ -106,6 +107,106 @@ pub fn find_ingredients(seed: u64, node_budget: u64) -> Option<Vec<Swap>> {
         |g| ingredients_remaining(&g.board) == 0,
         |r| r.steps.iter().map(|s| s.ingredients_collected).sum(),
     )
+}
+
+/// Find a line that completes the mixed **checklist** (clear N of a colour, make
+/// N striped, make N wrapped) for `seed` within `node_budget` search nodes and the
+/// checklist move budget, or `None` (Track D, T6).
+///
+/// The checklist win is **path-accumulated**, so — unlike [`find_clear`] /
+/// [`find_dejelly`] / [`find_ingredients`], whose win is a function of the current
+/// board — this uses its own DFS carrying a [`ChecklistProgress`]. Memoization keys
+/// on `(state_hash, clamped progress)` (progress is monotone + bounded by the
+/// targets, so the state space stays finite); move-ordering prefers the swap that
+/// advances the checklist most, then score.
+#[must_use]
+pub fn find_checklist(seed: u64, node_budget: u64) -> Option<Vec<Swap>> {
+    use checklist_mode as m;
+    let targets = checklist_targets(seed, m::COLORS);
+    let game = Game::new(deal(seed, m::WIDTH, m::HEIGHT, m::COLORS), seed, m::COLORS);
+    let mut visited = HashSet::new();
+    let mut budget = node_budget;
+    let mut path = Vec::new();
+    if checklist_dfs(
+        &game,
+        ChecklistProgress::default(),
+        &targets,
+        &mut visited,
+        &mut budget,
+        &mut path,
+        m::MOVE_BUDGET,
+    ) {
+        Some(path)
+    } else {
+        None
+    }
+}
+
+/// How far a progress is toward the targets, each goal clamped so overshoot does
+/// not distinguish states or inflate move-ordering (a met goal contributes its
+/// full target and no more).
+fn clamped_progress(p: &ChecklistProgress, t: &ChecklistTargets) -> (u32, u32, u32) {
+    (
+        p.color_cleared.min(t.color_count),
+        p.striped_made.min(t.striped),
+        p.wrapped_made.min(t.wrapped),
+    )
+}
+
+#[allow(clippy::too_many_arguments)] // a self-contained recursive worker; grouping would obscure it
+fn checklist_dfs(
+    game: &Game,
+    progress: ChecklistProgress,
+    targets: &ChecklistTargets,
+    visited: &mut HashSet<String>,
+    budget: &mut u64,
+    path: &mut Vec<Swap>,
+    move_budget: usize,
+) -> bool {
+    if progress.met(targets) {
+        return true;
+    }
+    if *budget == 0 || path.len() >= move_budget {
+        return false;
+    }
+    *budget -= 1;
+    let (pc, ps, pw) = clamped_progress(&progress, targets);
+    if !visited.insert(format!("{}|{pc}|{ps}|{pw}", game.state_hash())) {
+        return false; // this board with this progress was already explored
+    }
+    let mut swaps = legal_swaps(&game.board);
+    // Most checklist progress first, then score — the winning line is usually greedy.
+    swaps.sort_by_cached_key(|&(from, to)| {
+        let mut probe = game.clone();
+        let report = probe.play_move(from, to);
+        let mut next = progress;
+        next.apply(&report, targets.color);
+        let (nc, ns, nw) = clamped_progress(&next, targets);
+        let advance = (nc - pc) + (ns - ps) + (nw - pw);
+        (Reverse(advance), Reverse(report.score_gained))
+    });
+    for (from, to) in swaps {
+        let mut next = game.clone();
+        let report = next.play_move(from, to);
+        if report.legal {
+            let mut next_progress = progress;
+            next_progress.apply(&report, targets.color);
+            path.push([from.0, from.1, to.0, to.1]);
+            if checklist_dfs(
+                &next,
+                next_progress,
+                targets,
+                visited,
+                budget,
+                path,
+                move_budget,
+            ) {
+                return true;
+            }
+            path.pop();
+        }
+    }
+    false
 }
 
 /// The shared budgeted DFS: `won` is the objective's win check, `key` is the
@@ -241,6 +342,18 @@ pub fn generate_ingredients_pack(
     generate(master_seed, count, node_budget, max_seeds, find_ingredients)
 }
 
+/// Generate a winnable-daily **checklist** pack (Track D, T6). Only seeds whose
+/// checklist the solver completes in budget are kept — the winnability guarantee.
+#[must_use]
+pub fn generate_checklist_pack(
+    master_seed: u64,
+    count: usize,
+    node_budget: u64,
+    max_seeds: u64,
+) -> Pack {
+    generate(master_seed, count, node_budget, max_seeds, find_checklist)
+}
+
 fn write_pack(pack: &Pack, kind: &str) -> Result<Vec<u8>, pond_docformat::DocError> {
     pond_docformat::write(kind, 1, pack)
 }
@@ -267,6 +380,14 @@ pub fn jelly_pack_to_doc(pack: &Pack) -> Result<Vec<u8>, pond_docformat::DocErro
 /// Propagates [`pond_docformat::DocError`] on a serialization failure.
 pub fn ingredients_pack_to_doc(pack: &Pack) -> Result<Vec<u8>, pond_docformat::DocError> {
     write_pack(pack, "match3-ingredients-pack")
+}
+
+/// Serialize a checklist pack (`kind = "match3-checklist-pack"`, v1).
+///
+/// # Errors
+/// Propagates [`pond_docformat::DocError`] on a serialization failure.
+pub fn checklist_pack_to_doc(pack: &Pack) -> Result<Vec<u8>, pond_docformat::DocError> {
+    write_pack(pack, "match3-checklist-pack")
 }
 
 // --- target-score par table (parity Track P-now / C1) ---

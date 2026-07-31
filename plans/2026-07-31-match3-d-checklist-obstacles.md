@@ -145,13 +145,14 @@ deliverables are built in sequence: **Checklist (Phases 1–4)**, then **Obstacl
   fields, so it adds nothing to `state_hash` — the existing corpus already locks the
   mechanics. (Deviation from the Pass-1 "vector 25" note; recorded in the Review Log.)
 
-### Phase 2 (checklist solver + pack) — `find_checklist` + winnable-daily pack
-- [ ] `match3-solver` — `find_checklist(seed, node_budget)` (a progress-carrying DFS:
-  memoize on `(state_hash, progress)`, order by checklist-progress then score, `won` =
-  `progress.met(targets)`); `generate_checklist_pack`; `checklist_pack_to_doc` (kind
-  `match3-checklist-pack`). Commit `games/match3/checklist-pack.json` (365 winnable seeds +
-  fixture) + the byte-identical regen drill (`#[ignore]`) + well-formed/spotcheck tests.
-  Tune COLOR/STRIPED/WRAPPED so a healthy seed fraction is winnable in budget 30.
+### Phase 2 (checklist solver + pack) — `find_checklist` + winnable-daily pack — DONE
+- [x] `match3-solver` — `find_checklist(seed, node_budget)` (a progress-carrying DFS:
+  memoize on `(state_hash, clamped progress)`, order by checklist-progress then score, `won`
+  = `progress.met(targets)`); `generate_checklist_pack`; `checklist_pack_to_doc` (kind
+  `match3-checklist-pack`). Committed `games/match3/checklist-pack.json` (365 seeds, fixture
+  seed 3 / 2-move line) + the byte-identical regen drill (`#[ignore]`) + well-formed/
+  spotcheck tests. Knobs 12/2/1 in budget 30 = 40/40 winnable in the probe (specials are the
+  gating goal); pack generated in 0.55s (release).
 
 ### Phase 3 (checklist binding) — `Mode::Checklist` + outcome + board_view tallies
 - [ ] `match3-wasm` — `Mode::Checklist`; `new_checklist_game`; `Session` carries
@@ -236,6 +237,15 @@ deliverables are built in sequence: **Checklist (Phases 1–4)**, then **Obstacl
   by a fish" (B4). Meringue/licorice ship as adjacency-cleared flavoured blockers.
 
 ## Review Log
+### Phase 2 (checklist solver + pack) complete — 2026-07-31
+Green: `find_checklist` is a dedicated progress-carrying DFS (the checklist win is
+path-accumulated, so the shared board-state `search` doesn't apply) — memoized on
+`(state_hash, clamped progress)`, move-ordered by checklist advance then score.
+`generate_checklist_pack` + `checklist_pack_to_doc` (`match3-checklist-pack`) mirror the
+other winnable-daily packs. Probe: 40/40 winnable at knobs 12/2/1 in budget 30 (~21ms/seed
+debug); committed `checklist-pack.json` (365 seeds, fixture seed 3 / 2-move line) generated
+in 0.55s release; regen drill byte-identical. 15 solver tests + fmt + clippy clean.
+
 ### Phase 1 (checklist core) complete — 2026-07-31
 Green: `StepReport` gained two neutral off-hash signals (`gems_cleared_by_color`,
 `striped_created` / `wrapped_created`), populated in `resolve_move` on the pre-clear board

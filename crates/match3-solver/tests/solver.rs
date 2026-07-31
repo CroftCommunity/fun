@@ -12,8 +12,9 @@ use match3_core::{
     ingredients_remaining, jelly_mode, jelly_remaining, Game,
 };
 use match3_solver::{
-    find_clear, find_dejelly, find_ingredients, generate_ingredients_pack, generate_jelly_pack,
-    generate_pack, ingredients_pack_to_doc, jelly_pack_to_doc, pack_to_doc, Pack, PackEntry,
+    checklist_pack_to_doc, find_checklist, find_clear, find_dejelly, find_ingredients,
+    generate_checklist_pack, generate_ingredients_pack, generate_jelly_pack, generate_pack,
+    ingredients_pack_to_doc, jelly_pack_to_doc, pack_to_doc, Pack, PackEntry,
 };
 
 // Fixed, so the pack regenerates byte-identically. A full year of clearable
@@ -469,5 +470,111 @@ fn calibration_rung_spread() {
         pct(0.50),
         pct(0.90),
         uplifts[uplifts.len() - 1]
+    );
+}
+
+// --- checklist (mixed/order) pack (parity Track D, T6) ---
+
+const CPACK_MASTER: u64 = 0;
+const CPACK_COUNT: usize = 365;
+const CPACK_BUDGET: u64 = 600_000;
+const CPACK_MAX_SEEDS: u64 = 4_000;
+
+fn checklist_pack_path() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../games/match3/checklist-pack.json")
+}
+
+// The checklist win is path-accumulated, so replaying re-derives the seed's targets
+// and folds each move's report into a ChecklistProgress, then checks `met`.
+fn checklist_replays_to_win(entry: &PackEntry) -> bool {
+    use match3_core::checklist_mode as m;
+    let targets = match3_core::checklist_targets(entry.seed, m::COLORS);
+    let mut game = Game::new(
+        match3_core::deal(entry.seed, m::WIDTH, m::HEIGHT, m::COLORS),
+        entry.seed,
+        m::COLORS,
+    );
+    let mut progress = match3_core::ChecklistProgress::default();
+    for &mv in &entry.moves {
+        let report = game.play_move((mv[0], mv[1]), (mv[2], mv[3]));
+        progress.apply(&report, targets.color);
+    }
+    progress.met(&targets)
+}
+
+fn read_committed_checklist() -> Pack {
+    let bytes = fs::read(checklist_pack_path())
+        .expect("run the `generate_checklist_pack_file` (ignored) test first to create the pack");
+    pond_docformat::read_as(&bytes, "match3-checklist-pack", 1)
+        .expect("valid checklist pack v1 envelope")
+}
+
+#[test]
+fn find_checklist_respects_budget() {
+    assert!(
+        find_checklist(0, 1).is_none(),
+        "cannot complete the checklist within a one-node budget"
+    );
+}
+
+#[test]
+fn committed_checklist_pack_is_wellformed() {
+    let pack = read_committed_checklist();
+    assert_eq!(pack.seeds.len(), CPACK_COUNT, "a full year of seeds");
+    let unique: HashSet<u64> = pack.seeds.iter().copied().collect();
+    assert_eq!(unique.len(), pack.seeds.len(), "seeds are unique");
+    assert!(
+        pack.seeds.contains(&pack.fixture.seed),
+        "the fixture seed is one of the pack seeds"
+    );
+    assert!(
+        checklist_replays_to_win(&pack.fixture),
+        "fixture seed {} line must replay to every checklist goal met",
+        pack.fixture.seed
+    );
+}
+
+#[test]
+fn committed_checklist_seeds_are_winnable_spotcheck() {
+    let pack = read_committed_checklist();
+    for &seed in pack.seeds.iter().take(3) {
+        assert!(
+            find_checklist(seed, CPACK_BUDGET).is_some(),
+            "committed checklist seed {seed} must be winnable within budget"
+        );
+    }
+}
+
+#[test]
+#[ignore = "P10 regeneration drill — runs the solver (slow)"]
+fn checklist_pack_regenerates_byte_identical() {
+    let pack = generate_checklist_pack(CPACK_MASTER, CPACK_COUNT, CPACK_BUDGET, CPACK_MAX_SEEDS);
+    let bytes = checklist_pack_to_doc(&pack).expect("serialize pack");
+    let committed = fs::read(checklist_pack_path()).expect("read committed pack");
+    assert_eq!(
+        bytes, committed,
+        "checklist pack must regenerate byte-identically"
+    );
+}
+
+#[test]
+#[ignore = "generator — writes games/match3/checklist-pack.json"]
+fn generate_checklist_pack_file() {
+    let pack = generate_checklist_pack(CPACK_MASTER, CPACK_COUNT, CPACK_BUDGET, CPACK_MAX_SEEDS);
+    assert_eq!(
+        pack.seeds.len(),
+        CPACK_COUNT,
+        "expected a full year of seeds"
+    );
+    let bytes = checklist_pack_to_doc(&pack).expect("serialize pack");
+    let path = checklist_pack_path();
+    fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+    fs::write(&path, &bytes).expect("write pack");
+    println!(
+        "wrote {} checklist seeds (fixture seed {} line {} moves) to {}",
+        pack.seeds.len(),
+        pack.fixture.seed,
+        pack.fixture.moves.len(),
+        path.display()
     );
 }
