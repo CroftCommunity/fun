@@ -58,6 +58,19 @@
   --wy-absent: #5c5c5c;       /* not in the word — grey             */
   --wy-absent-ink: #ffffff;   /* letter on --wy-absent  (6.69:1)    */
 
+  /* 2048 tiles, bucketed by magnitude (the numeral is always shown, so colour
+     is never the only signal). Each numeral/tile pair clears the large-glyph
+     floor (numerals are big + bold), most clear AA body. */
+  --t48-empty: #d9d2c0;       /* an empty cell on the board            */
+  --t48-lo: #efe4d3;          /* 2, 4                                  */
+  --t48-lo-ink: #1b201c;      /* numeral on --t48-lo   (13.16:1)       */
+  --t48-mid: #eab463;         /* 8, 16, 32                             */
+  --t48-mid-ink: #1b201c;     /* numeral on --t48-mid  (8.82:1)        */
+  --t48-hi: #c9622a;          /* 64 … 512                              */
+  --t48-hi-ink: #ffffff;      /* numeral on --t48-hi   (3.99:1, large) */
+  --t48-max: #8f1230;         /* 1024, 2048                            */
+  --t48-max-ink: #ffffff;     /* numeral on --t48-max  (9.14:1)        */
+
   /* Type roles (self-hostable display + system UI fallback). */
   --font-display: "Fredoka", "Baloo 2", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -108,6 +121,17 @@
   --wy-present-ink: #15130f;  /* dark letter on --wy-present (9.39:1) */
   --wy-absent: #565656;       /* grey                               */
   --wy-absent-ink: #f2efe8;   /* light letter on --wy-absent (6.39:1) */
+
+  /* 2048 tiles, re-tuned for dark (numeral/tile pairs clear the large-glyph floor). */
+  --t48-empty: #2b2820;       /* an empty cell                         */
+  --t48-lo: #3a352b;          /* 2, 4                                  */
+  --t48-lo-ink: #f2efe8;      /* numeral on --t48-lo   (10.61:1)       */
+  --t48-mid: #d9b53c;         /* 8, 16, 32                             */
+  --t48-mid-ink: #15130f;     /* numeral on --t48-mid  (9.39:1)        */
+  --t48-hi: #a8531e;          /* 64 … 512                              */
+  --t48-hi-ink: #f2efe8;      /* numeral on --t48-hi   (4.66:1)        */
+  --t48-max: #7a0f2a;         /* 1024, 2048                            */
+  --t48-max-ink: #f2efe8;     /* numeral on --t48-max  (9.48:1)        */
 
   --theme-color: #123f2b;
 }
