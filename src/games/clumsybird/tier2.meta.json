@@ -1,0 +1,25 @@
+{
+  "id": "clumsybird",
+  "tier": 2,
+  "provenance": {
+    "upstreamUrl": "https://github.com/ellisonleao/clumsy-bird",
+    "upstreamRef": "master@fae3d487d5102af29fb3f78431cbd45e9b83aed3",
+    "retrieved": "2026-07-31",
+    "author": "ellisonleao",
+    "license": "GPL-3.0",
+    "licenseFile": "vendor/LICENSE.md",
+    "basedOn": "Flappy Bird by Dong Nguyen"
+  },
+  "posture": {
+    "verifiable": false,
+    "containment": "iframe-sandbox",
+    "sandbox": "allow-scripts",
+    "egress": "same-origin",
+    "input": ["pointer", "keyboard", "touch"],
+    "approxSizeKb": 3900,
+    "patches": []
+  },
+  "representation": {
+    "claim": "Wrapped game — no verifiable record."
+  }
+}

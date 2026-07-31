@@ -248,6 +248,20 @@ const SHOTS = [
       await page.waitForTimeout(8000); // track + textures load, race begins
     },
   },
+  {
+    name: "clumsybird-title",
+    clip: ".wrapped-game-frame",
+    async run(page) {
+      await page.goto(`${origin}/clumsybird/`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".wrapped-game-frame");
+      await page
+        .frameLocator(".wrapped-game-frame")
+        .locator("canvas")
+        .first()
+        .waitFor({ state: "attached", timeout: 15000 });
+      await page.waitForTimeout(2000); // let the title screen paint
+    },
+  },
 ];
 
 const server = spawn("node", [join(root, "tools", "serve.mjs")], { stdio: "ignore" });

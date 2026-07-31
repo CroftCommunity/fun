@@ -5,7 +5,7 @@ test("home page lists the games and the drawer opens", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /open games drawer/i }).click();
   await expect(page.locator("#games-drawer")).toBeVisible();
-  await expect(page.locator(".drawer-item")).toHaveCount(9);
+  await expect(page.locator(".drawer-item")).toHaveCount(10);
 });
 
 test("the drawer recollapses via its close button and via clicking off", async ({
