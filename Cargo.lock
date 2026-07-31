@@ -373,6 +373,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "wyrdle-wasm"
+version = "0.0.0"
+dependencies = [
+ "pond-outcome",
+ "serde",
+ "serde_json",
+ "wyrdle-core",
+]
+
+[[package]]
 name = "xbuild"
 version = "0.0.0"
 dependencies = [
