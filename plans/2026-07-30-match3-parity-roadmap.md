@@ -8,6 +8,22 @@ reference) and the owner walk-through of 2026-07-30. Standards:
 This is a multi-session **program**, not a slice. It is authored for phased,
 TDD-first execution: each phase ships green + deployed on its own commit(s).
 
+## Positioning — a generic of the match-3 mechanic set
+
+This game is a **generic implementation** of the match-3 / Candy-Crush mechanic
+set — acetaminophen to Candy Crush's Tylenol. The **mechanics mirror the
+reference exactly**; only the branding differs (no Candy Crush names, art, or
+trademarks). This is precisely *why* the standing steer is "do whatever Candy
+Crush does": for any ambiguous **game-behaviour** question, the reference
+mechanics are the spec — match them, don't re-invent. Genuine **engineering**
+forks (representation, phasing, determinism trade-offs) are still surfaced and
+decided on their merits, since the reference does not prescribe an internal
+implementation. Example (B2, 2026-07-31): the wrapped candy's canon double 3×3
+is fixed by the reference; its deterministic realization was an engineering fork
+— we chose "survive + pin in place, re-blast next step" because it mirrors the
+reference's visible behaviour (the wrapped stays on the board between its two
+explosions, candies fall in around it, then it fires again and is consumed).
+
 ## Problem statement
 
 match-3 today has two objectives (target-score, clear-the-blockers) and a rough,
