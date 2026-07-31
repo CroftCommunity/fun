@@ -1,10 +1,43 @@
 # Bubble shooter rebuild — real aim-and-shoot, deterministic (phase plan)
 
-**Status:** 📋 PLAN FOR REVIEW (Pass 1+2+3, 2026-07-31). Not yet executing —
-awaiting owner review of the approach + the open questions. Rebuilds the shipped
-`/bubble/` from **tap-a-cell-to-place** into a **real Bubble Shooter**
-(aim → shoot → fly → bounce → stick → pop), while keeping the shelf's verifiable
-outcome via a quantized-angle + fixed-point core.
+**Status:** 🚧 EXECUTING (branch `claude/bubble-shooter-rebuild`, worktree
+`worktrees/fun/bubble-v2`). **V0–V4 complete + committed; V5 (aim UI) next.**
+Rebuilds the shipped `/bubble/` from **tap-a-cell-to-place** into a **real Bubble
+Shooter** (aim → shoot → fly → bounce → stick → pop), while keeping the shelf's
+verifiable outcome via a quantized-angle + fixed-point core.
+
+## Execution log
+
+- **V0+V1 (commit `0a21590`):** fixed-point aim → landing resolver (`aim.rs`:
+  `Angle`, `resolve_shot`, committed `directions.json` integer table). 21 tests.
+- **V2a (commit `0565dc3`):** `engine::shoot_angle` = `resolve_shot` then place/
+  pop/drop (extracted `apply_shot`, no legality gate). Additive; workspace green.
+- **V2+V3+V4 (commit `33067d1`) — the atomic `Pos→Angle` flip** (one commit
+  because `Bubble::Move`/`shots()` is one type that couples core+solver+wasm+pack):
+  - **V2 game:** `Game::play(Angle)` (infallible; a `taken` counter tracks the
+    budget separately from the recorded angle line); `Bubble` `Move = Angle`,
+    `VERSION = 2`.
+  - **V3 solver:** the DFS move set is the **reachable-landing set**
+    (`reachable_landings`: distinct cells the fan actually lands on, each with its
+    angle) — *not* `legal_targets`. **Decision (deviation from the plan's
+    landing-space-then-map sketch):** an early landing-space DFS + post-hoc
+    `angle_for_landing` mapping rejected ~all lines, because most legal cells are
+    "tucked" and unreachable by any ray. Searching the physical reachable set
+    directly is correct (every found line replays) and needs no mapping.
+    `angle_for_landing` stays in core as a tested utility. Pack regenerated: 365
+    angle-winnable seeds, fixture seed 495 clears in 7 shots. Aim acceptance
+    ~20% (vs tap-anywhere) — expected; the aim model is harder.
+  - **V4 wasm:** `shoot(angle)` (0/2), `trajectory_json(angle)` (fixed-point path
+    + landing), `legal_targets_json` removed; `bubble-wasm.ts` wrapper updated.
+  - **Verified:** `cargo test --workspace` 229 passed / 17 ignored; fmt + clippy
+    clean; `npm run build:wasm` builds; Node C-ABI smoke fires the fixture's 7
+    angles → clears (score 57) → verifiable bubble **v2** record.
+  - **Known-red until V5:** `bubble.ts` (UI) still calls the old tap-target
+    wrapper API, so `tsc`/e2e fail until the V5 rewrite.
+- **V5 exposure plan:** the aim UI needs geometry + fan from the core (single
+  source of truth) — add `geom_json` (`diam`/`radius`/`rowH`/`fanLo`/`fanHi`) and
+  a reachable-aware `hint_angle` to the wasm; render on a canvas with an
+  accessible `<input type=range>` angle control + pointer/touch aim.
 
 ## Problem Statement
 
