@@ -31,6 +31,9 @@ balance decision is smuggled in.
 - A cell is one of:
   - `Gem(color)` — a movable coloured tile. `color` is `0..colors` (v1: `colors = 6`).
   - `Blocker { layers }` — a fixed, non-movable, non-matchable tile with `layers >= 1` remaining.
+  - `Ingredient` (Track D) — a non-gem object that never matches and cannot be swapped, but —
+    unlike a blocker — **falls** with gravity and **exits** when it reaches the bottom row (T5).
+    The clear-the-ingredients objective is met when none remain.
   - `Empty` — a transient hole that exists only mid-resolution (between clear and refill).
 - A **settled** board has no `Empty` cells (every non-blocker cell holds a `Gem`) **and no match** —
   which, from B4, includes no **2×2 square** (the deal's fill forbids the colour that would complete a 2×2,
@@ -227,12 +230,10 @@ Before the clear (T2), the matched set is expanded by activation:
 Swapping **two specials** together produces a single combined blast larger than
 firing each — the combo matrix. Detection + dispatch (step 0 only):
 
-- **Dispatch rule.** If **both** swapped cells hold a **non-fish** firing special
-  (`StripedH`, `StripedV`, `Wrapped`, `ColorBomb`), the swap is a **combo**: both
-  specials are **consumed** (they do not fire individually) and the combined blast
-  is computed instead. If either cell is a **fish**, there is **no combo** — the
-  existing independent path runs (each special fires on its own; fish combos are a
-  deferred follow-up). A single special swapped with a plain gem is likewise not a
+- **Dispatch rule.** If **both** swapped cells hold a firing special (any kind —
+  `StripedH`, `StripedV`, `Wrapped`, `ColorBomb`, `Fish`), the swap is a **combo**:
+  both specials are **consumed** (they do not fire individually) and the combined
+  blast is computed instead. A single special swapped with a plain gem is **not** a
   combo (it fires alone — B1.2/B2.2/B3/B4.2).
 - **Combo centre = the destination cell `to`.** The blast is centred on `to` (the
   moved candy's landing — the same "at the moved candy" convention as creation).
@@ -260,6 +261,16 @@ firing each — the combo matrix. Detection + dispatch (step 0 only):
   clear — both specials are consumed, so there is no surviving centre to pin +
   re-blast (unlike a lone wrapped's canon double, T1c). Likewise the colour-bomb
   transforms fire each colour cell **once** (a single line / 3×3), not a double.
+- **Fish combos (B5.4).** A combo where **either** swapped cell is a fish. It spawns
+  **N = 3** fish (a canon-derived, tunable count; capped at the available targets),
+  each of which draws a **distinct** seeded target — the same tier rule as a lone fish
+  (T1c: jellied cells first, else any gem; `rng.index`), excluding the two sources and
+  already-chosen targets — and then applies the **partner special's** blast at that
+  target: a full **line** (partner striped, its orientation), a **3×3** (partner
+  wrapped), or a plain eat (**fish + fish**). The two source fish are consumed. The N
+  draws happen in a pinned sequence at step 0 (before that step's refill), folded into
+  `draws`/`state_hash`. **fish + colour bomb** is the exception — a flat **colour clear**
+  of the fish's colour (no RNG, in the direct clear-set with the other bomb combos).
 - **Chaining.** A **real** firing special the combo blast sweeps up (a striped /
   wrapped elsewhere on the board — **not** the two combo sources) fires too, via the
   same set-union chain queue the single-special blasts use (T1c). Deterministic and
@@ -294,12 +305,13 @@ firing each — the combo matrix. Detection + dispatch (step 0 only):
   for auditability).
 - Each column is partitioned into **segments** by its blocker cells: a segment is a maximal contiguous run
   of non-blocker cells bounded by blockers and/or the grid edges. Blockers never move.
-- Within a segment, all `Gem` cells fall to the **bottom** of that segment, preserving their relative order;
-  the `Empty` cells collect at the **top** of the segment.
+- Within a segment, all **falling** cells (a `Gem` **or** an `Ingredient` — Track D) fall to the
+  **bottom** of that segment, preserving their relative order; the `Empty` cells collect at the **top**
+  of the segment. An ingredient is a falling object (like a gem), **not** a segment boundary (unlike a
+  blocker) — it rides inside a segment and can drop below or above gems as their relative order dictates.
 - **Special overlay (B0.2):** a gem's `special` marker falls **with it** — the
   overlay moves in lockstep with its gem (a special candy falls), unlike jelly,
-  which never moves. Vacated holes carry no marker. (Jelly stays fixed under the
-  cell; only the gem-attached special layer moves.)
+  which never moves. Vacated holes carry no marker. An ingredient carries no marker.
 
 ### T4 — Refill
 
@@ -308,6 +320,22 @@ firing each — the combo matrix. Detection + dispatch (step 0 only):
   top→bottom; within a segment, the `Empty` cells top→bottom. Each `Empty` cell consumes the next
   `rng.index(colors)`.
 - After refill the board is settled (no `Empty`), and the cascade loop re-checks for matches (T1).
+
+### T5 — Ingredients (drop-to-bottom, Track D)
+
+The Ingredients objective adds a falling non-gem object (see the Board model). Its lifecycle:
+
+- **Deal:** `deal_ingredients` draws a normal gem fill, then places `INGREDIENTS` `Ingredient` cells in
+  **distinct top-row columns** (they must fall the full height to exit); it redraws if the placement leaves
+  no legal move. Ingredients never match, so the board stays match-free.
+- **Fall:** gravity (T3) treats an ingredient as a falling object — it drops as the gems beneath it clear.
+- **Exit (collect):** after **each** cascade step's gravity, **before** that step's refill, every ingredient
+  now in the **bottom row** (`row = height-1`) is **collected** — set to `Empty` (its hole then refills as
+  a gem). Deterministic (a bottom-row scan; no RNG). An ingredient never scores (it is not a cleared gem).
+- **Win:** `ingredients_remaining == 0`. Ingredients only exit (refill makes only gems), so the count is
+  monotone non-increasing under play.
+- Ingredients are inert to matching and swap legality (they are not `Gem`), and a blocker in the same column
+  still bounds the gravity segment; an ingredient rides inside it.
 
 ## State hash (the verifiable-outcome anchor)
 
@@ -320,6 +348,7 @@ firing each — the combo matrix. Detection + dispatch (step 0 only):
              Empty        -> 0x00
              Gem(c)       -> 0x01, c(u8)
              Blocker(l)   -> 0x02, l(u8)
+             Ingredient   -> 0x03            (Track D; additive — no pre-ingredient board carries it)
         || IF any cell is jellied:     "j\x00" || for each cell: jelly_layers(u8)
         || IF any cell has a special:  "s\x00" || for each cell: special_tag(u8)
 ```

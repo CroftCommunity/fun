@@ -18,9 +18,9 @@ use std::cmp::Reverse;
 use std::collections::HashSet;
 
 use match3_core::{
-    blockers_mode, blockers_remaining, deal_blockers, deal_jelly, jelly_mode, jelly_remaining,
-    legal_swaps, random_score, reference_score, reference_score_specials, target_score_mode, Game,
-    MoveReport,
+    blockers_mode, blockers_remaining, deal_blockers, deal_ingredients, deal_jelly,
+    ingredients_mode, ingredients_remaining, jelly_mode, jelly_remaining, legal_swaps,
+    random_score, reference_score, reference_score_specials, target_score_mode, Game, MoveReport,
 };
 use serde::{Deserialize, Serialize};
 
@@ -84,6 +84,27 @@ pub fn find_dejelly(seed: u64, node_budget: u64) -> Option<Vec<Swap>> {
         m::MOVE_BUDGET,
         |g| jelly_remaining(&g.board) == 0,
         |r| r.steps.iter().map(|s| s.jelly_layers_removed).sum(),
+    )
+}
+
+/// Find a line that drops every ingredient to the bottom (Track D) for `seed`
+/// within `node_budget` search nodes and the ingredients-mode move budget, or
+/// `None`. Progress = ingredients collected, so the search greedily prefers moves
+/// that advance one toward the exit.
+#[must_use]
+pub fn find_ingredients(seed: u64, node_budget: u64) -> Option<Vec<Swap>> {
+    use ingredients_mode as m;
+    let game = Game::new(
+        deal_ingredients(seed, m::WIDTH, m::HEIGHT, m::COLORS, m::INGREDIENTS),
+        seed,
+        m::COLORS,
+    );
+    search(
+        &game,
+        node_budget,
+        m::MOVE_BUDGET,
+        |g| ingredients_remaining(&g.board) == 0,
+        |r| r.steps.iter().map(|s| s.ingredients_collected).sum(),
     )
 }
 
@@ -209,6 +230,17 @@ pub fn generate_jelly_pack(
     generate(master_seed, count, node_budget, max_seeds, find_dejelly)
 }
 
+/// Generate a winnable-daily **clear-the-ingredients** pack (Track D).
+#[must_use]
+pub fn generate_ingredients_pack(
+    master_seed: u64,
+    count: usize,
+    node_budget: u64,
+    max_seeds: u64,
+) -> Pack {
+    generate(master_seed, count, node_budget, max_seeds, find_ingredients)
+}
+
 fn write_pack(pack: &Pack, kind: &str) -> Result<Vec<u8>, pond_docformat::DocError> {
     pond_docformat::write(kind, 1, pack)
 }
@@ -227,6 +259,14 @@ pub fn pack_to_doc(pack: &Pack) -> Result<Vec<u8>, pond_docformat::DocError> {
 /// Propagates [`pond_docformat::DocError`] on a serialization failure.
 pub fn jelly_pack_to_doc(pack: &Pack) -> Result<Vec<u8>, pond_docformat::DocError> {
     write_pack(pack, "match3-jelly-pack")
+}
+
+/// Serialize an ingredients pack (`kind = "match3-ingredients-pack"`, v1).
+///
+/// # Errors
+/// Propagates [`pond_docformat::DocError`] on a serialization failure.
+pub fn ingredients_pack_to_doc(pack: &Pack) -> Result<Vec<u8>, pond_docformat::DocError> {
+    write_pack(pack, "match3-ingredients-pack")
 }
 
 // --- target-score par table (parity Track P-now / C1) ---

@@ -108,6 +108,10 @@ const m3jpack = join(root, "games/match3/jelly-pack.json");
 if (await exists(m3jpack)) await cp(m3jpack, join(dist, "match3-jelly-pack.json"));
 else console.warn("note: match3-jelly-pack.json missing — match-3's clear-the-jelly daily needs it");
 
+const m3ipack = join(root, "games/match3/ingredients-pack.json");
+if (await exists(m3ipack)) await cp(m3ipack, join(dist, "match3-ingredients-pack.json"));
+else console.warn("note: match3-ingredients-pack.json missing — match-3's ingredients daily needs it");
+
 // The bubble-shooter clear-the-board winnable-daily pack (served static so the
 // daily mode and its E2E win-path fixture can fetch it).
 const bpack = join(root, "games/bubble/daily-pack.json");

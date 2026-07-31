@@ -53,9 +53,26 @@ pub mod jelly_mode {
     /// Swap budget: the objective is met by scrubbing every jelly within this.
     pub const MOVE_BUDGET: usize = 30;
 }
+
+/// Clear-the-ingredients mode parameters (Track D), shared by the deal, the
+/// solver's winnable pack, and the wasm binding so all three agree on the same
+/// daily boards.
+pub mod ingredients_mode {
+    /// Board width.
+    pub const WIDTH: usize = 8;
+    /// Board height.
+    pub const HEIGHT: usize = 8;
+    /// Gem colours.
+    pub const COLORS: usize = 6;
+    /// Ingredients placed in the top row of a deal (they must fall to the bottom).
+    pub const INGREDIENTS: usize = 3;
+    /// Swap budget: the objective is met by dropping every ingredient within this.
+    pub const MOVE_BUDGET: usize = 30;
+}
 pub use engine::{
-    apply_gravity, blockers_remaining, clear_cells, deal, deal_blockers, deal_jelly, find_matches,
-    has_legal_move, jelly_remaining, legal_swaps, random_score, reference_score,
-    reference_score_beam, reference_score_specials, refill, reshuffle_if_dead, swap_legal,
-    ClearOutcome, Game, MoveReport, Pos, StepReport,
+    apply_gravity, blockers_remaining, clear_cells, collect_ingredients, deal, deal_blockers,
+    deal_ingredients, deal_jelly, find_matches, has_legal_move, ingredients_remaining,
+    jelly_remaining, legal_swaps, random_score, reference_score, reference_score_beam,
+    reference_score_specials, refill, reshuffle_if_dead, swap_legal, ClearOutcome, Game,
+    MoveReport, Pos, StepReport,
 };

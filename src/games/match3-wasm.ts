@@ -3,7 +3,7 @@
 //! wasm holds the game; this wrapper never re-implements rules.
 
 /** The objective the board is being played under. */
-export type Mode = "target-score" | "blockers" | "jelly";
+export type Mode = "target-score" | "blockers" | "jelly" | "ingredients";
 
 /** The board as the UI sees it. */
 export interface BoardView {
@@ -17,6 +17,8 @@ export interface BoardView {
   blockers: boolean[][];
   /** Row-major jelly layers per cell (`0` = none, jelly mode). */
   jelly: number[][];
+  /** Row-major ingredient mask: `true` where an ingredient sits (ingredients mode). */
+  ingredients: boolean[][];
   /** Row-major special-candy overlay: `""` (plain) / `"striped-h"` / `"striped-v"`
    *  / `"wrapped"` / `"color-bomb"`. A special is a normal swappable gem badged
    *  with its power (created by a line-4 / L-T / line-5 match). */
@@ -34,7 +36,10 @@ export interface BoardView {
   /** Jellied cells still on the board and the deal's original count (jelly mode). */
   jellyRemaining: number;
   jellyTotal: number;
-  /** Whether the objective is met (1★ target, every blocker cleared, or all jelly scrubbed). */
+  /** Ingredients still on the board and the deal's original count (ingredients mode). */
+  ingredientsRemaining: number;
+  ingredientsTotal: number;
+  /** Whether the objective is met (1★ target, or every blocker / jelly / ingredient cleared). */
   won: boolean;
 }
 
@@ -54,6 +59,7 @@ interface Exports {
   new_game(lo: number, hi: number): void;
   new_blockers_game(lo: number, hi: number): void;
   new_jelly_game(lo: number, hi: number): void;
+  new_ingredients_game(lo: number, hi: number): void;
   target_daily_seed(day_index: number): number;
   board_json(): number;
   legal_moves_json(): number;
@@ -102,6 +108,10 @@ export class Match3 {
   /** Start a clear-the-jelly game on `seed` (deal a winnable jelly board). */
   newJellyGame(seed: bigint): void {
     this.x.new_jelly_game(Number(seed & 0xffff_ffffn), Number((seed >> 32n) & 0xffff_ffffn));
+  }
+  /** Start a clear-the-ingredients game on `seed` (deal a winnable ingredient board). */
+  newIngredientsGame(seed: bigint): void {
+    this.x.new_ingredients_game(Number(seed & 0xffff_ffffn), Number((seed >> 32n) & 0xffff_ffffn));
   }
   /** The target-score daily seed for `dayIndex` — a seed from the baked par table
    *  (so its stars use the player-ladder par, not the free-play fallback). */

@@ -27,6 +27,8 @@ pub struct StepReport {
     pub cleared: Vec<Pos>,
     pub blocker_layers_removed: u32,
     pub jelly_layers_removed: u32,
+    /// Ingredients that reached the bottom row and exited this step (Track D).
+    pub ingredients_collected: u32,
     pub score_gained: u64,
 }
 
@@ -430,28 +432,29 @@ struct Step0Seeds {
     bombs: Vec<(Pos, u8)>,
     /// Fish swapped into place (each draws a seeded target in `resolve_move`).
     swapped_fish: Vec<Pos>,
-    /// A combo (both cells non-fish specials) — consumes both, mutually exclusive
-    /// with the seeds above.
+    /// A combo (both cells are specials, any kind incl. fish) — consumes both,
+    /// mutually exclusive with the seeds above.
     combo: Option<ComboEffect>,
 }
 
-/// Classify a step-0 swap into [`Step0Seeds`]. If both swapped cells hold a
-/// non-fish firing special, dispatch to [`combo`] (both consumed); otherwise fall
-/// back to the independent [`classify_swapped_specials`].
-fn classify_step0(board: &Board, from: Pos, to: Pos) -> Step0Seeds {
-    let is_combo_side = |k: Option<SpecialKind>| matches!(k, Some(kind) if fires_on_swap(Some(kind)) && kind != SpecialKind::Fish);
-    if is_combo_side(board.special_at(from.0, from.1))
-        && is_combo_side(board.special_at(to.0, to.1))
-    {
-        if let Some(clear) = combo(board, from, to, to) {
-            return Step0Seeds {
-                combo: Some(ComboEffect {
-                    clear,
-                    sources: [from, to],
-                }),
-                ..Step0Seeds::default()
-            };
-        }
+/// Classify a step-0 swap into [`Step0Seeds`]. If **both** swapped cells hold a
+/// firing special (any kind, incl. fish — B5.4), it is a combo: the pure pairs
+/// (striped/wrapped/bomb, and fish + bomb) come from [`combo`]; the RNG fish combos
+/// (fish + fish/striped/wrapped) draw their targets via [`fish_combo_clear`] (hence
+/// the `rng`). Otherwise it falls back to the independent [`classify_swapped_specials`].
+fn classify_step0(board: &Board, from: Pos, to: Pos, rng: &mut DetRng) -> Step0Seeds {
+    let is_special = |k: Option<SpecialKind>| matches!(k, Some(kind) if fires_on_swap(Some(kind)));
+    if is_special(board.special_at(from.0, from.1)) && is_special(board.special_at(to.0, to.1)) {
+        // Pure combo first (no RNG); else an RNG fish combo.
+        let clear =
+            combo(board, from, to, to).unwrap_or_else(|| fish_combo_clear(board, from, to, rng));
+        return Step0Seeds {
+            combo: Some(ComboEffect {
+                clear,
+                sources: [from, to],
+            }),
+            ..Step0Seeds::default()
+        };
     }
     let (seed, bombs, swapped_fish) = classify_swapped_specials(board, from, to);
     Step0Seeds {
@@ -470,11 +473,22 @@ fn classify_step0(board: &Board, from: Pos, to: Pos) -> Step0Seeds {
 /// is always a gem, so [`clear_cells`] handles it (clears it, scrubs its jelly, and
 /// chips any adjacent blocker); direct blocker-eating is a revisable follow-up.
 fn fish_target(board: &Board, fish_pos: Pos, rng: &mut DetRng) -> Option<Pos> {
+    let mut exclude = BTreeSet::new();
+    exclude.insert(fish_pos);
+    fish_target_excluding(board, &exclude, rng)
+}
+
+/// The seeded target rule of [`fish_target`], generalized to **exclude** an
+/// arbitrary set of cells (a fish's own cell, and — for a fish combo, B5.4 — the
+/// combo sources plus already-chosen targets so the spawned fish hit distinct
+/// cells). Same tiers (jellied first, else any gem) and the same single `rng.index`
+/// draw, so a lone fish (`exclude = {fish_pos}`) is byte-identical to B4.
+fn fish_target_excluding(board: &Board, exclude: &BTreeSet<Pos>, rng: &mut DetRng) -> Option<Pos> {
     let mut jellied: Vec<Pos> = Vec::new();
     let mut gems: Vec<Pos> = Vec::new();
     for r in 0..board.height {
         for c in 0..board.width {
-            if (r, c) == fish_pos || !board.get(r, c).is_gem() {
+            if exclude.contains(&(r, c)) || !board.get(r, c).is_gem() {
                 continue;
             }
             gems.push((r, c));
@@ -581,7 +595,7 @@ fn colour_transform(
 /// - **colour bomb + colour bomb → every gem cell** on the board (blockers survive,
 ///   chipped by adjacency in T2).
 fn combo(board: &Board, a: Pos, b: Pos, center: Pos) -> Option<Vec<Pos>> {
-    use SpecialKind::{ColorBomb, StripedH, StripedV, Wrapped};
+    use SpecialKind::{ColorBomb, Fish, StripedH, StripedV, Wrapped};
     let ka = board.special_at(a.0, a.1)?;
     let kb = board.special_at(b.0, b.1)?;
     let striped = |k| matches!(k, StripedH | StripedV);
@@ -619,7 +633,17 @@ fn combo(board: &Board, a: Pos, b: Pos, center: Pos) -> Option<Vec<Pos>> {
                 )
             }));
         }
-        return None; // colour bomb + fish is deferred (never reaches here)
+        if partner_kind == Fish {
+            // fish + colour bomb (B5.4): a flat clear of every gem of the fish's
+            // colour (the fish supplies the colour; no RNG). The bomb cell is
+            // consumed as a combo source by the caller.
+            return Some(colour_transform(board, color, |_, cell| {
+                let mut s = BTreeSet::new();
+                s.insert(cell);
+                s
+            }));
+        }
+        return None;
     }
     // Striped/wrapped combos (B5.1).
     let cells: BTreeSet<Pos> = if striped(ka) && striped(kb) {
@@ -648,9 +672,55 @@ fn combo(board: &Board, a: Pos, b: Pos, center: Pos) -> Option<Vec<Pos>> {
             (c + 2).min(last_c),
         )
     } else {
-        return None; // colour-bomb combos are B5.2
+        return None; // fish + fish/striped/wrapped is the RNG path (fish_combo_clear)
     };
     Some(cells.into_iter().collect())
+}
+
+/// The clear-set of an **RNG fish combo** (B5.4): fish + fish / striped / wrapped
+/// (fish + colour bomb is a pure colour clear handled in [`combo`]). It spawns `N`
+/// fish that each draw a **distinct** seeded target (via [`fish_target_excluding`],
+/// excluding the two sources and already-chosen targets), then applies the partner
+/// special's blast at each target — a full line for a striped partner, a 3×3 for a
+/// wrapped one, or a plain eat for fish + fish. The two source fish are consumed.
+/// Draws happen in a pinned sequence, folded into `draws`/`state_hash`.
+fn fish_combo_clear(board: &Board, from: Pos, to: Pos, rng: &mut DetRng) -> Vec<Pos> {
+    /// Spawned-fish count (Candy-Crush-derived; a tunable balance knob).
+    const N: usize = 3;
+    let ka = board.special_at(from.0, from.1);
+    let kb = board.special_at(to.0, to.1);
+    // The partner blast = the non-fish special (fish + fish → no blast).
+    let partner = if ka == Some(SpecialKind::Fish) {
+        kb
+    } else {
+        ka
+    };
+    let last_r = board.height.saturating_sub(1);
+    let last_c = board.width.saturating_sub(1);
+
+    let mut exclude: BTreeSet<Pos> = [from, to].into_iter().collect();
+    let mut cells: BTreeSet<Pos> = [from, to].into_iter().collect(); // sources consumed
+    for _ in 0..N {
+        let Some(t) = fish_target_excluding(board, &exclude, rng) else {
+            break; // no distinct target left (tiny board)
+        };
+        exclude.insert(t);
+        cells.insert(t);
+        let blast = match partner {
+            Some(SpecialKind::StripedH) => region(board, t.0, t.0, 0, last_c),
+            Some(SpecialKind::StripedV) => region(board, 0, last_r, t.1, t.1),
+            Some(SpecialKind::Wrapped) => region(
+                board,
+                t.0.saturating_sub(1),
+                (t.0 + 1).min(last_r),
+                t.1.saturating_sub(1),
+                (t.1 + 1).min(last_c),
+            ),
+            _ => BTreeSet::new(), // fish + fish: a plain eat
+        };
+        cells.extend(blast);
+    }
+    cells.into_iter().collect()
 }
 
 /// A combo (B5): the combined blast of two swapped specials plus the two source
@@ -861,20 +931,22 @@ fn apply_gravity_pinned(board: &mut Board, pinned: &BTreeSet<Pos>) {
             if !boundary {
                 continue;
             }
-            // Segment is the non-blocker rows [seg_start, r). Carry each gem's
-            // special marker with it as a `(cell, special)` pair so the two
-            // grids cannot desync — a special candy falls with its gem.
-            let gems: Vec<(Cell, Option<SpecialKind>)> = (seg_start..r)
-                .filter(|&rr| board.get(rr, c).is_gem())
+            // Segment is the non-blocker rows [seg_start, r). Carry each **falling**
+            // cell (a gem or an ingredient — Track D) with its special marker as a
+            // `(cell, special)` pair so the two grids cannot desync. An ingredient
+            // falls like a gem (its marker is always `None`); a blocker never enters
+            // a segment (it is the boundary).
+            let falling: Vec<(Cell, Option<SpecialKind>)> = (seg_start..r)
+                .filter(|&rr| board.get(rr, c).is_gem() || board.get(rr, c).is_ingredient())
                 .map(|rr| (board.get(rr, c), board.special_at(rr, c)))
                 .collect();
-            let holes = (r - seg_start) - gems.len();
+            let holes = (r - seg_start) - falling.len();
             for (i, rr) in (seg_start..r).enumerate() {
                 if i < holes {
                     board.set(rr, c, Cell::Empty);
                     board.set_special(rr, c, None);
                 } else {
-                    let (cell, special) = gems[i - holes];
+                    let (cell, special) = falling[i - holes];
                     board.set(rr, c, cell);
                     board.set_special(rr, c, special);
                 }
@@ -1132,6 +1204,67 @@ pub fn deal_jelly(seed: u64, width: usize, height: usize, colors: usize, jelly: 
 #[must_use]
 pub fn jelly_remaining(board: &Board) -> u32 {
     u32::try_from(board.jelly().iter().filter(|&&l| l > 0).count()).unwrap_or(u32::MAX)
+}
+
+/// T5 — **collect** every ingredient that has reached the bottom row (the exit):
+/// each becomes `Empty` and is counted. Called in `resolve_move` after each step's
+/// gravity, before refill, so an ingredient exits the moment it lands. Deterministic
+/// (a bottom-row scan; no RNG). Returns how many exited this call.
+pub fn collect_ingredients(board: &mut Board) -> u32 {
+    if board.height == 0 {
+        return 0;
+    }
+    let bottom = board.height - 1;
+    let mut collected = 0;
+    for c in 0..board.width {
+        if board.get(bottom, c).is_ingredient() {
+            board.set(bottom, c, Cell::Empty);
+            collected += 1;
+        }
+    }
+    collected
+}
+
+/// A seeded starting deal for **clear-the-ingredients**: a settled, no-initial-match,
+/// live board with `ingredients` ingredient cells placed in the **top row** (they
+/// must fall the full height to exit), deterministic from `seed`. A gem fill is drawn,
+/// then distinct top-row columns become `Ingredient`; the fill is redrawn (advancing
+/// the RNG) if the placement leaves no legal move — rare, but the guarantee keeps a
+/// daily board from being a dead start. Ingredients never match, so the board stays
+/// match-free.
+#[must_use]
+pub fn deal_ingredients(
+    seed: u64,
+    width: usize,
+    height: usize,
+    colors: usize,
+    ingredients: usize,
+) -> Board {
+    let mut rng = DetRng::from_seed(seed);
+    let n = ingredients.min(width);
+    for _ in 0..64 {
+        let mut board = fill_no_initial_match(&mut rng, width, height, colors);
+        // Distinct top-row columns, drawn in RNG order (dedup by retrying a draw).
+        let mut chosen: BTreeSet<usize> = BTreeSet::new();
+        while chosen.len() < n {
+            chosen.insert(rng.index(width));
+        }
+        for col in &chosen {
+            board.set(0, *col, Cell::Ingredient);
+        }
+        if has_legal_move(&board) {
+            return board;
+        }
+    }
+    fill_no_initial_match(&mut rng, width, height, colors)
+}
+
+/// How many ingredients remain on the board — the clear-the-ingredients objective is
+/// met when this reaches `0`. Ingredients can only exit (never spawn — refill makes
+/// only gems), so this is monotone non-increasing under play.
+#[must_use]
+pub fn ingredients_remaining(board: &Board) -> u32 {
+    u32::try_from(board.cells().iter().filter(|c| c.is_ingredient()).count()).unwrap_or(u32::MAX)
 }
 
 /// A greedy reference playout: from the `seed` deal, play the highest-scoring
@@ -1397,19 +1530,19 @@ impl Game {
         let mut reblast_seed: Vec<Pos> = Vec::new();
         loop {
             let matched = find_matches(&self.board);
-            // Step 0 classifies the swapped specials. Combo dispatch (B5, RULES
-            // T1d): if BOTH swapped cells hold a non-fish firing special, they
-            // combine into one larger blast (`combo_effect`) and are consumed —
-            // skipping the independent classification. Otherwise each fires on its
-            // own (striped/wrapped blast `seed` B1.2/B2.2, colour bomb `bombs` B3,
-            // fish `swapped_fish` B4.2). Later steps have no swap seed.
+            // Step 0 classifies the swapped specials. Combo dispatch (B5/B5.4, RULES
+            // T1d): if BOTH swapped cells hold a firing special (any kind, incl. fish)
+            // they combine into one blast (`combo_effect`) and are consumed — skipping
+            // the independent classification. Otherwise each fires on its own
+            // (striped/wrapped blast `seed` B1.2/B2.2, colour bomb `bombs` B3, fish
+            // `swapped_fish` B4.2). A fish combo draws its targets here (needs `rng`).
             let Step0Seeds {
                 seed,
                 bombs,
                 swapped_fish,
                 combo: combo_effect,
             } = if step_index == 0 {
-                classify_step0(&self.board, from, to)
+                classify_step0(&self.board, from, to, &mut self.rng)
             } else {
                 Step0Seeds::default()
             };
@@ -1417,11 +1550,17 @@ impl Game {
             // swapped fish (step 0), deduped + in scan order so the target draws are
             // in a fixed sequence. A just-created fish is not yet marked here (the
             // marker lands after the clear), so it does not fire the step it is made.
-            let mut fired_fish: BTreeSet<Pos> = matched
-                .iter()
-                .copied()
-                .filter(|&(r, c)| self.board.special_at(r, c) == Some(SpecialKind::Fish))
-                .collect();
+            // A combo self-contains its effect (incl. fish combos, whose targets were
+            // drawn in `classify_step0`), so no independent fish fires on a combo step.
+            let mut fired_fish: BTreeSet<Pos> = if combo_effect.is_some() {
+                BTreeSet::new()
+            } else {
+                matched
+                    .iter()
+                    .copied()
+                    .filter(|&(r, c)| self.board.special_at(r, c) == Some(SpecialKind::Fish))
+                    .collect()
+            };
             fired_fish.extend(swapped_fish);
             if matched.is_empty()
                 && seed.is_empty()
@@ -1490,12 +1629,6 @@ impl Game {
                 .into_iter()
                 .filter(|p| !creations.iter().any(|c| c.pos == *p))
                 .collect();
-            steps.push(StepReport {
-                cleared,
-                blocker_layers_removed: out.blocker_layers_removed,
-                jelly_layers_removed: out.jelly_layers_removed,
-                score_gained: step_score,
-            });
             if trace {
                 snapshots.push(self.board.clone());
             }
@@ -1504,6 +1637,10 @@ impl Game {
             // as the re-blast seed for their second explosion.
             let pinned: BTreeSet<Pos> = act.pending.iter().copied().collect();
             apply_gravity_pinned(&mut self.board, &pinned);
+            // Track D: an ingredient that gravity dropped into the bottom row exits
+            // now (before refill), so its hole refills as a gem. No-op with no
+            // ingredient on the board, so every other mode is unchanged.
+            let ingredients_collected = collect_ingredients(&mut self.board);
             if trace {
                 snapshots.push(self.board.clone());
             }
@@ -1511,6 +1648,15 @@ impl Game {
             if trace {
                 snapshots.push(self.board.clone());
             }
+            // The step report is pushed after collection so it can carry the
+            // ingredients that exited this step (the solver orders by that progress).
+            steps.push(StepReport {
+                cleared,
+                blocker_layers_removed: out.blocker_layers_removed,
+                jelly_layers_removed: out.jelly_layers_removed,
+                ingredients_collected,
+                score_gained: step_score,
+            });
             reblast_seed = act.pending;
             step_index += 1;
         }

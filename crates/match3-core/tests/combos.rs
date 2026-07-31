@@ -1,12 +1,13 @@
 //! Track B5 — the combo matrix (special + special by swap). RULES.md T1d.
-//! Swapping two non-fish specials produces a single combined blast (centered on
-//! the destination cell `to`), larger than firing each independently, and both
-//! specials are consumed. A real firing special the combo sweeps up chains.
+//! Swapping two specials produces a single combined blast (centered on the
+//! destination cell `to`), larger than firing each independently, and both specials
+//! are consumed. A real firing special the combo sweeps up chains.
 //!
-//! B5.1 covers the striped/wrapped combos: striped+striped = a cross (full row +
-//! full column), striped+wrapped = a thick cross (3-wide row + 3-wide column),
-//! wrapped+wrapped = a 5×5 blast. Colour-bomb combos are B5.2; fish combos are a
-//! deferred follow-up (a fish swapped with a special still fires independently).
+//! B5.1 striped/wrapped: striped+striped = a cross, striped+wrapped = a thick cross,
+//! wrapped+wrapped = a 5×5. B5.2 colour-bomb: bomb+striped / bomb+wrapped transform
+//! the partner's colour, bomb+bomb clears the board. B5.4 fish: fish+fish/striped/
+//! wrapped spawn N fish that draw distinct seeded targets and apply the partner's
+//! blast; fish+bomb is a colour clear of the fish's colour.
 
 use std::collections::BTreeSet;
 
@@ -203,27 +204,6 @@ fn a_combo_is_deterministic_across_replays() {
     assert_eq!(play(), play(), "identical seed + move -> identical hash");
 }
 
-#[test]
-fn a_fish_swapped_with_a_special_does_not_combo_yet() {
-    // Fish combos are deferred: swapping a Fish with a striped fires each
-    // independently (the fish draws its target, the striped fires its line) — it
-    // is NOT a cross/thick-cross combo. Here we assert the move is legal and both
-    // effects happen (some clearing beyond a single line), without asserting the
-    // exact independent shape.
-    let board = diag_board(&[".....", ".....", ".FH..", ".....", "....."]);
-    let mut game = Game::new(board, 1, 6);
-    let report = game.play_move((2, 1), (2, 2));
-    assert!(report.legal, "swapping a fish + striped is legal");
-    // The striped (now at (2,1)) fires its row; the fish (now at (2,2)) eats a
-    // target. This is the independent path, not the combo thick/cross — so at
-    // minimum the striped's whole row cleared, plus the fish's own cell + target.
-    let cleared = cleared_set(&report);
-    assert!(
-        (0..5).all(|c| cleared.contains(&(2, c))),
-        "the striped still fires its row on the independent path"
-    );
-}
-
 // --- B5.2: colour-bomb combos ----------------------------------------------
 //
 // The colour-bomb transforms are computed as a DIRECT equivalent clear-set (no
@@ -375,5 +355,147 @@ fn a_bomb_bomb_leaves_a_blocker_standing_minus_one_layer() {
     assert!(
         matches!(game.board.get(0, 0), Cell::Blocker(_)),
         "the blocker survived bomb+bomb (not a gem → not cleared)"
+    );
+}
+
+// --- B5.4: fish combos ------------------------------------------------------
+//
+// Swapping a fish with another special is a combo too (RULES.md T1d). Fish combos
+// spawn N=3 fish that each draw a distinct seeded target and apply the partner's
+// blast; fish+bomb is a colour clear of the fish's colour. The two source fish are
+// consumed. Targets are RNG-drawn, so these assert structure + determinism (exact
+// cells are the golden vectors' recorded job).
+
+#[test]
+fn fish_plus_fish_eats_three_distinct_targets() {
+    // Two adjacent fish; swap. Three spawned fish eat three distinct targets; the
+    // two sources are consumed. No partner blast (plain eat), no jelly → 2 + 3 = 5
+    // gem cells clear.
+    let mut game = Game::new(
+        diag_board(&[".....", ".....", ".FF..", ".....", "....."]),
+        1,
+        6,
+    );
+    let report = game.play_move((2, 1), (2, 2));
+    assert!(report.legal, "swapping two fish is legal");
+    let cleared = cleared_set(&report);
+    assert!(
+        cleared.contains(&(2, 1)) && cleared.contains(&(2, 2)),
+        "both source fish are consumed"
+    );
+    assert_eq!(
+        cleared.len(),
+        5,
+        "two consumed sources + three distinct eaten targets"
+    );
+}
+
+#[test]
+fn fish_plus_striped_fires_a_line_at_each_target() {
+    // Fish + StripedH; swap. Three spawned fish each fire a full ROW at their
+    // target — a multi-line blast far bigger than a plain fish+fish.
+    let mut game = Game::new(
+        diag_board(&[".....", ".....", ".FH..", ".....", "....."]),
+        1,
+        6,
+    );
+    let report = game.play_move((2, 1), (2, 2));
+    assert!(report.legal);
+    let cleared = cleared_set(&report);
+    // Three target rows (5 wide each), minus any shared row / source overlap — well
+    // above the 5 a plain fish+fish clears.
+    assert!(
+        cleared.len() >= 10,
+        "fish+striped fires a line per target (got {})",
+        cleared.len()
+    );
+}
+
+#[test]
+fn fish_plus_wrapped_blasts_a_3x3_at_each_target() {
+    // Fish + Wrapped; swap. Three spawned fish each fire a 3×3 at their target.
+    let mut game = Game::new(
+        diag_board(&[".....", ".....", ".FW..", ".....", "....."]),
+        1,
+        6,
+    );
+    let report = game.play_move((2, 1), (2, 2));
+    assert!(report.legal);
+    let cleared = cleared_set(&report);
+    assert!(
+        cleared.len() >= 9,
+        "fish+wrapped fires a 3×3 per target (got {})",
+        cleared.len()
+    );
+}
+
+#[test]
+fn fish_plus_colour_bomb_clears_the_fish_colour() {
+    // Fish + ColorBomb; swap. The bomb clears every gem of the fish's colour (the
+    // fish supplies the colour). On the diag board a colour appears once per row →
+    // five such cells, plus the consumed sources.
+    let board = diag_board(&[".....", ".....", ".FC..", ".....", "....."]);
+    // The fish's colour is the gem under the fish; after the swap the fish lands at
+    // (2,2). Its colour = pre-swap gem at (2,1).
+    let color = match board.get(2, 1) {
+        Cell::Gem(c) => c,
+        other => panic!("expected gem, got {other:?}"),
+    };
+    let mut game = Game::new(board.clone(), 1, 6);
+    let report = game.play_move((2, 1), (2, 2));
+    assert!(report.legal);
+    let cleared = cleared_set(&report);
+    // Every cell of that colour on the (post-swap) board is cleared.
+    for r in 0..5 {
+        for c in 0..5 {
+            if board.get(r, c) == Cell::Gem(color) && (r, c) != (2, 1) {
+                assert!(
+                    cleared.contains(&(r, c)),
+                    "colour-{color} cell {:?} cleared by fish+bomb",
+                    (r, c)
+                );
+            }
+        }
+    }
+    assert!(cleared.contains(&(2, 2)), "the bomb source is consumed");
+}
+
+#[test]
+fn a_fish_combo_is_deterministic() {
+    // The spawned fish draw their targets from the seeded RNG in a pinned order, so
+    // two replays reproduce the same hash.
+    let play = || {
+        let mut g = Game::new(
+            diag_board(&[".....", ".....", ".FF..", ".....", "....."]),
+            9,
+            6,
+        );
+        g.play_move((2, 1), (2, 2));
+        g.state_hash()
+    };
+    assert_eq!(
+        play(),
+        play(),
+        "fish combo folds its target draws into the hash"
+    );
+}
+
+#[test]
+fn a_fish_swapped_with_a_plain_gem_is_still_the_independent_path() {
+    // Guard: one fish + a plain neighbour is NOT a combo — it is the B4 independent
+    // fish (draws one target). Here we just confirm the swap is legal and clears the
+    // fish's own cell + a target (a small clear, not a multi-fish combo).
+    let mut game = Game::new(
+        diag_board(&[".....", ".....", ".F...", ".....", "....."]),
+        1,
+        6,
+    );
+    let report = game.play_move((2, 1), (2, 2));
+    assert!(report.legal, "swapping a lone fish is legal (fires it)");
+    let cleared = cleared_set(&report);
+    assert!(
+        cleared.len() <= 3,
+        "a lone fish eats one target (small clear), not a 3-fish combo (got {})",
+        cleared.len()
     );
 }

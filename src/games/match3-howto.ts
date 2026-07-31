@@ -5,7 +5,7 @@ import type { Guide } from "../how-to.js";
 
 export const MATCH3_GUIDE: Guide = {
   title: "How to play match-3",
-  lede: "Swap adjacent gems to line up three or more of the same kind. Two objectives share the board: score as high as you can for stars (Target score), or clear every blocker in as few swaps as you can (Clear blockers). Every result is a record anyone can re-verify.",
+  lede: "Swap adjacent gems to line up three or more of the same kind. Four objectives share the board: score as high as you can for stars (Target score), or — in as few swaps as you can — clear every blocker, scrub every jelly, or drop every ingredient to the bottom. Every result is a record anyone can re-verify.",
   entries: [
     {
       testid: "howto-goal",
@@ -31,25 +31,26 @@ export const MATCH3_GUIDE: Guide = {
       blocks: [
         {
           kind: "prose",
-          text: "Each gem has both a colour and a shape (circle, triangle, square, diamond, star, plus), so they stay distinct however you see colour. A line of three or more of the same gem — across or down — clears and scores. When gems clear, those above fall to fill the gap and new gems drop in, which can set off chain reactions for extra points. Line up four in a line and one gem becomes a striped candy: match it, or swap it with any neighbour, and it clears its whole row or column (and can set off other specials it hits). Bend a line into an L or T and you make a wrapped candy: match it or swap it, and it bursts the 3×3 block around itself — twice, so more gems fall in and it goes off again. Line up five and you make a colour bomb: swap it with any gem and every gem of that gem's colour clears at once (setting off any specials it sweeps up). Make a 2×2 block of one colour and you get a fish: match it or swap it and it swims off to eat a target, seeking out jelly first. Specials also combine: swap two of them together for one bigger blast. Two striped clear a full row and column; a striped and a wrapped clear a thick cross; two wrapped clear a 5×5. Swap a colour bomb into a striped or wrapped and every gem of that colour turns into that special and goes off; swap two colour bombs and the whole board clears.",
+          text: "Each gem has both a colour and a shape (circle, triangle, square, diamond, star, plus), so they stay distinct however you see colour. A line of three or more of the same gem — across or down — clears and scores. When gems clear, those above fall to fill the gap and new gems drop in, which can set off chain reactions for extra points. Line up four in a line and one gem becomes a striped candy: match it, or swap it with any neighbour, and it clears its whole row or column (and can set off other specials it hits). Bend a line into an L or T and you make a wrapped candy: match it or swap it, and it bursts the 3×3 block around itself — twice, so more gems fall in and it goes off again. Line up five and you make a colour bomb: swap it with any gem and every gem of that gem's colour clears at once (setting off any specials it sweeps up). Make a 2×2 block of one colour and you get a fish: match it or swap it and it swims off to eat a target, seeking out jelly first. Specials also combine: swap two of them together for one bigger blast. Two striped clear a full row and column; a striped and a wrapped clear a thick cross; two wrapped clear a 5×5. Swap a colour bomb into a striped or wrapped and every gem of that colour turns into that special and goes off; swap two colour bombs and the whole board clears. Combine two fish, or a fish with a striped or wrapped, and a small school of fish swims out — each eating a target and carrying that partner's blast; a fish with a colour bomb clears the fish's whole colour.",
         },
       ],
     },
     {
       testid: "howto-blockers",
-      title: "Three objectives: Target score, Clear blockers, Clear jelly",
+      title: "Four objectives: Target score, Clear blockers, Clear jelly, Ingredients",
       toc: "Objectives",
       blocks: [
         {
           kind: "prose",
-          text: "The buttons above the board pick your objective. Target score is the classic mode: bank as many points as you can within your swap budget for one, two, or three stars. Clear blockers gives you a board with locked tiles you cannot swap; a match made next to a blocker chips it away. Clear jelly coats some squares with jelly; a match made on top of a jellied square scrubs it off. In both clear modes you win the moment the board is clear.",
+          text: "The buttons above the board pick your objective. Target score is the classic mode: bank as many points as you can within your swap budget for one, two, or three stars. Clear blockers gives you a board with locked tiles you cannot swap; a match made next to a blocker chips it away. Clear jelly coats some squares with jelly; a match made on top of a jellied square scrubs it off. Ingredients drops a few objects in from the top that you must bring down to the bottom row to collect — clear the gems beneath one and it falls. In all three clear modes you win the moment the board is clear.",
         },
         {
           kind: "steps",
           items: [
             "Blockers do not move and cannot be swapped — clear the gems beside them.",
             "Jellied squares hold ordinary, swappable gems — you clear the jelly by matching the gems sitting on it.",
-            "These boards use single-layer blockers and jelly, so one match clears each; you are graded on how few swaps it takes, and the daily board is always solvable.",
+            "Ingredients cannot be swapped and never match, but they fall like gems — match away what is under one to drop it a row, and it exits when it reaches the bottom.",
+            "These boards use single-layer blockers and jelly and a few ingredients; you are graded on how few swaps it takes, and the daily board is always solvable.",
           ],
         },
       ],

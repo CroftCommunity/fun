@@ -11,6 +11,11 @@ pub enum Cell {
     Gem(u8),
     /// A fixed, non-movable, non-matchable blocker with `layers >= 1` remaining.
     Blocker(u8),
+    /// An **ingredient** (Track D): a non-gem object that never matches and cannot be
+    /// swapped, but — unlike a blocker — **falls** with gravity and **exits** when it
+    /// reaches the bottom row. The clear-the-ingredients objective is met when none
+    /// remain.
+    Ingredient,
 }
 
 impl Cell {
@@ -22,6 +27,11 @@ impl Cell {
     }
     pub fn is_empty(&self) -> bool {
         matches!(self, Cell::Empty)
+    }
+    /// A falling non-gem object (Track D). Falls with gems under gravity but never
+    /// matches or swaps.
+    pub fn is_ingredient(&self) -> bool {
+        matches!(self, Cell::Ingredient)
     }
 }
 
@@ -209,6 +219,7 @@ impl Board {
                 n += 1;
                 let cell = match ch {
                     '.' => Cell::Empty,
+                    '*' => Cell::Ingredient,
                     '0'..='9' => Cell::Gem(ch as u8 - b'0'),
                     'A'..='Z' => Cell::Blocker(ch as u8 - b'A' + 1),
                     other => return Err(BoardError::BadChar(other)),
@@ -284,6 +295,7 @@ impl Board {
                 (0..self.width)
                     .map(|c| match self.get(r, c) {
                         Cell::Empty => '.',
+                        Cell::Ingredient => '*',
                         Cell::Gem(g) => (b'0' + g) as char,
                         Cell::Blocker(l) => (b'A' + l - 1) as char,
                     })

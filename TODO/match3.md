@@ -129,7 +129,12 @@ beam-based par table landing early. Full phasing, DoD, and risks in the roadmap.
         wrapped+wrapped (5×5); B5.2 bomb+striped / bomb+wrapped (partner colour's
         rows+cols / 3×3s, direct clear-set) and bomb+bomb (clear the board). Golden
         vectors 15–20; par pack re-locked (blockers/jelly unchanged); how-to + a combo
-        e2e added. Fish combos deferred (fish + special still fires independently).
+        e2e added.
+  - [x] **B5.4 fish combos** (plan: `plans/2026-07-31-match3-b5.4-fish-combos.md`). A fish
+        swapped with any special now combines: fish+fish/striped/wrapped spawn N=3 fish
+        that draw distinct seeded targets (RNG-in-combo) and apply the partner's blast;
+        fish+bomb = colour-clear of the fish's colour. Vectors 21–23; par re-locked; how-to
+        + e2e added. N=3 is a canon-derived tunable knob.
   - [x] **B6 specials-aware solver/par** (plan: `plans/2026-07-30-match3-b6-specials-par.md`).
         Discovery: the winnability solvers + all par players already play the real engine,
         so specials/combos already participate (winnability never a lie). Owner-chosen
@@ -138,10 +143,19 @@ beam-based par table landing early. Full phasing, DoD, and risks in the roadmap.
         special/combo potential (floored by beam-8), now **3★**. Par re-baked in place
         (D5): 3★ rose on 284/365 seeds (mean +17.7%). Weights are Track C knobs.
   - [ ] **Track C par calibration. Next up: C2/C3.**
-- [ ] **Track C (rest) — par calibration**: C2 offline LLM calibration study of the
-      rung difficulty → C3 re-par after specials land.
-- [ ] **Track D — parity completeness** (confirm each first): ingredients,
-      order/mixed, timed objectives; more obstacle families (licorice, chocolate,
-      meringue, locks, timed bombs).
+- [x] **Track C — par calibration** (DONE 2026-07-31; note:
+      `plans/2026-07-31-match3-c2-calibration.md`). C2 studied the rung spread over all
+      365 daily seeds (rungs ~2× separated; 3★ = specials-beam, +111% median over greedy,
+      combo headroom on every board, sub-optimal) + an illustrative model panel
+      (casual≈1★–2★, careful≈2★, expert≈3★). Verdict: keep the rungs/weights — 3★ reads
+      strong-but-attainable. C3 (re-par with specials) already satisfied by B6.
+- [ ] **Track D — parity completeness** (confirm each first):
+  - [x] **Ingredients (drop-to-bottom)** — owner-confirmed 2026-07-31 (plan:
+        `plans/2026-07-31-match3-d-ingredients.md`). A fourth objective: `Cell::Ingredient`
+        (a falling non-gem that exits at the bottom; hash tag `0x03`, additive) + the full
+        mode template (deal → solver + winnable pack → binding + outcome → UI toggle/tile/
+        HUD + how-to + e2e). Playable at `?mode=ingredients`, winnable-daily, verifiable.
+  - [ ] order/mixed (a checklist); timed (poor fit — no wall-clock); more obstacle families
+        (licorice, chocolate, meringue, locks, timed bombs).
 - [ ] **Backlog — in-browser AI hint/coach** (D6): advisory "show a strong line" /
       smarter hints; design after the parity spine lands.

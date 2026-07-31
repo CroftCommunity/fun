@@ -43,7 +43,11 @@ Combos (B5, RULES T1d): swapping **two** pre-placed specials (both non-fish) com
 lists the combined blast centred on the destination cell. See `15-combo-striped-cross` (full row ∪ column),
 `16-combo-striped-wrapped` (3-wide thick cross), `17-combo-wrapped-5x5` (a 5×5 block). Colour-bomb combos (B5.2):
 `18-combo-bomb-striped` (every partner-colour cell's row+column), `19-combo-bomb-wrapped` (each partner-colour
-cell's 3×3), `20-combo-bomb-bomb` (the entire board).
+cell's 3×3), `20-combo-bomb-bomb` (the entire board). Fish combos (B5.4) spawn N=3 fish that draw distinct
+**seeded** targets, so their `step0_cleared` is a **recorded** set (like B4 fish activation): `21-combo-fish-fish`
+(3 targets eaten), `22-combo-fish-striped` (a line per target), `23-combo-fish-bomb` (a colour clear, no RNG).
+Ingredients (Track D): the `*` char authors an `Ingredient` cell (a falling non-gem); `24-ingredient-drop`
+clears a vertical 3 beneath an ingredient so it falls a row (the drop-to-bottom objective's core loop).
 
 **Specials (B0):** when a move forms a line-4 / L-T / line-5, one matched cell becomes a special candy
 (RULES.md T1b) instead of clearing, so `step0_cleared` lists the *cleared* cells (the special's cell is

@@ -8,11 +8,12 @@ use std::path::PathBuf;
 
 use match3_core::blockers_mode::{BLOCKERS, COLORS, HEIGHT, WIDTH};
 use match3_core::{
-    blockers_remaining, deal_blockers, deal_jelly, jelly_mode, jelly_remaining, Game,
+    blockers_remaining, deal_blockers, deal_ingredients, deal_jelly, ingredients_mode,
+    ingredients_remaining, jelly_mode, jelly_remaining, Game,
 };
 use match3_solver::{
-    find_clear, find_dejelly, generate_jelly_pack, generate_pack, jelly_pack_to_doc, pack_to_doc,
-    Pack, PackEntry,
+    find_clear, find_dejelly, find_ingredients, generate_ingredients_pack, generate_jelly_pack,
+    generate_pack, ingredients_pack_to_doc, jelly_pack_to_doc, pack_to_doc, Pack, PackEntry,
 };
 
 // Fixed, so the pack regenerates byte-identically. A full year of clearable
@@ -225,6 +226,107 @@ fn generate_jelly_pack_file() {
     );
 }
 
+// --- clear-the-ingredients pack (parity Track D) ---
+
+const IPACK_MASTER: u64 = 0;
+const IPACK_COUNT: usize = 365;
+const IPACK_BUDGET: u64 = 400_000;
+const IPACK_MAX_SEEDS: u64 = 4_000;
+
+fn ingredients_pack_path() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../games/match3/ingredients-pack.json")
+}
+
+fn ingredients_replays_to_clear(entry: &PackEntry) -> bool {
+    use ingredients_mode as m;
+    let mut game = Game::new(
+        deal_ingredients(entry.seed, m::WIDTH, m::HEIGHT, m::COLORS, m::INGREDIENTS),
+        entry.seed,
+        m::COLORS,
+    );
+    for &mv in &entry.moves {
+        let _ = game.play_move((mv[0], mv[1]), (mv[2], mv[3]));
+    }
+    ingredients_remaining(&game.board) == 0
+}
+
+fn read_committed_ingredients() -> Pack {
+    let bytes = fs::read(ingredients_pack_path())
+        .expect("run the `generate_ingredients_pack_file` (ignored) test first to create the pack");
+    pond_docformat::read_as(&bytes, "match3-ingredients-pack", 1)
+        .expect("valid ingredients pack v1 envelope")
+}
+
+#[test]
+fn find_ingredients_respects_budget() {
+    assert!(
+        find_ingredients(0, 1).is_none(),
+        "cannot drop every ingredient within a one-node budget"
+    );
+}
+
+#[test]
+fn committed_ingredients_pack_is_wellformed() {
+    let pack = read_committed_ingredients();
+    assert_eq!(pack.seeds.len(), IPACK_COUNT, "a full year of seeds");
+    let unique: HashSet<u64> = pack.seeds.iter().copied().collect();
+    assert_eq!(unique.len(), pack.seeds.len(), "seeds are unique");
+    assert!(
+        pack.seeds.contains(&pack.fixture.seed),
+        "the fixture seed is one of the pack seeds"
+    );
+    assert!(
+        ingredients_replays_to_clear(&pack.fixture),
+        "fixture seed {} line must replay to all-ingredients-collected",
+        pack.fixture.seed
+    );
+}
+
+#[test]
+fn committed_ingredients_seeds_are_clearable_spotcheck() {
+    let pack = read_committed_ingredients();
+    for &seed in pack.seeds.iter().take(3) {
+        assert!(
+            find_ingredients(seed, IPACK_BUDGET).is_some(),
+            "committed ingredients seed {seed} must be clearable within budget"
+        );
+    }
+}
+
+#[test]
+#[ignore = "P10 regeneration drill — runs the solver (slow)"]
+fn ingredients_pack_regenerates_byte_identical() {
+    let pack = generate_ingredients_pack(IPACK_MASTER, IPACK_COUNT, IPACK_BUDGET, IPACK_MAX_SEEDS);
+    let bytes = ingredients_pack_to_doc(&pack).expect("serialize pack");
+    let committed = fs::read(ingredients_pack_path()).expect("read committed pack");
+    assert_eq!(
+        bytes, committed,
+        "ingredients pack must regenerate byte-identically"
+    );
+}
+
+#[test]
+#[ignore = "generator — writes games/match3/ingredients-pack.json"]
+fn generate_ingredients_pack_file() {
+    let pack = generate_ingredients_pack(IPACK_MASTER, IPACK_COUNT, IPACK_BUDGET, IPACK_MAX_SEEDS);
+    assert_eq!(
+        pack.seeds.len(),
+        IPACK_COUNT,
+        "expected a full year of seeds"
+    );
+    let bytes = ingredients_pack_to_doc(&pack).expect("serialize pack");
+    let path = ingredients_pack_path();
+    fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+    fs::write(&path, &bytes).expect("write pack");
+    println!(
+        "wrote {} ingredient seeds (fixture seed {} line {} moves) to {}",
+        pack.seeds.len(),
+        pack.fixture.seed,
+        pack.fixture.moves.len(),
+        path.display()
+    );
+}
+
 // --- target-score par table (parity Track P-now / C1) ---
 
 use match3_core::{reference_score, target_score_mode};
@@ -320,5 +422,52 @@ fn generate_par_pack_file() {
         "wrote {} par entries to {}",
         pack.entries.len(),
         path.display()
+    );
+}
+
+/// Track C / C2 — the offline **calibration study** over all 365 daily seeds.
+/// Prints the rung spread (random / greedy / specials-beam) so the calibration
+/// note can evaluate whether 3★ reads as strong-but-attainable. Not an assertion —
+/// run with `--release --ignored --nocapture`. Output is a committed note, not code.
+#[test]
+#[ignore = "calibration study — computes all three rungs over 365 seeds (slow)"]
+fn calibration_rung_spread() {
+    use match3_core::{random_score, reference_score_specials, target_score_mode as m};
+    let mut rows: Vec<(u64, u64, u64)> = Vec::new(); // (random, greedy, specials)
+    for seed in 0..365u64 {
+        let random = random_score(seed, m::WIDTH, m::HEIGHT, m::COLORS, m::MOVE_BUDGET);
+        let greedy = reference_score(seed, m::WIDTH, m::HEIGHT, m::COLORS, m::MOVE_BUDGET);
+        let specials =
+            reference_score_specials(seed, m::WIDTH, m::HEIGHT, m::COLORS, m::MOVE_BUDGET, 8);
+        rows.push((random, greedy, specials));
+    }
+    let n = rows.len() as f64;
+    let mean = |f: &dyn Fn(&(u64, u64, u64)) -> u64| -> f64 {
+        rows.iter().map(|r| f(r) as f64).sum::<f64>() / n
+    };
+    let mr = mean(&|r| r.0);
+    let mg = mean(&|r| r.1);
+    let ms = mean(&|r| r.2);
+    // Gap ratios: how much stronger each rung is than the one below.
+    let greedy_over_random = mean(&|r| r.1) / mr;
+    let specials_over_greedy = ms / mg;
+    // Combo headroom: seeds where the specials player strictly beats greedy.
+    let specials_beats_greedy = rows.iter().filter(|r| r.2 > r.1).count();
+    // The specials→greedy uplift per seed, as a %; report the distribution.
+    let mut uplifts: Vec<f64> = rows
+        .iter()
+        .map(|r| (r.2 as f64 / r.1.max(1) as f64 - 1.0) * 100.0)
+        .collect();
+    uplifts.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let pct = |p: f64| uplifts[((uplifts.len() as f64 - 1.0) * p) as usize];
+    println!("CALIB means: random={mr:.0} greedy={mg:.0} specials={ms:.0}");
+    println!("CALIB ratios: greedy/random={greedy_over_random:.3} specials/greedy={specials_over_greedy:.3}");
+    println!("CALIB combo-headroom: specials>greedy on {specials_beats_greedy}/365 seeds");
+    println!(
+        "CALIB specials-uplift%%: p10={:.1} p50={:.1} p90={:.1} max={:.1}",
+        pct(0.10),
+        pct(0.50),
+        pct(0.90),
+        uplifts[uplifts.len() - 1]
     );
 }

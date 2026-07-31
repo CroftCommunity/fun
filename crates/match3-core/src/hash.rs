@@ -18,6 +18,9 @@ pub fn state_hash(board: &Board, colors: usize, draws: u64, score: u64) -> Strin
             Cell::Empty => h.update([0x00]),
             Cell::Gem(c) => h.update([0x01, *c]),
             Cell::Blocker(l) => h.update([0x02, *l]),
+            // Track D: a new tag, additive — no board without an ingredient carries
+            // it, so pre-ingredient boards hash exactly as before.
+            Cell::Ingredient => h.update([0x03]),
         }
     }
     // Jelly overlay — appended ONLY when some cell is jellied, so a gem-only

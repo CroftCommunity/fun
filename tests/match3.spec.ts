@@ -215,13 +215,45 @@ test("scrubbing every jelly is a verifiable win (jelly mode)", async ({ page }) 
   await expect(result.locator(".sol-record")).toContainText(/swaps used/i);
 });
 
+test("the Ingredients objective deals an ingredient board with the ingredient HUD", async ({ page }) => {
+  await page.goto("/match3/?mode=ingredients&seed=144");
+  await ready(page);
+  await expect(page.locator(".m3-obj-ingredients")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".m3-hud")).toContainText(/ingredients left/i);
+  // Three ingredient tiles, all in the top row (fixed, non-swappable — not .m3-gem).
+  await expect(page.locator(".m3-ingredient")).toHaveCount(3);
+  expect(await page.evaluate(() => window.__match3!.objective)).toBe("ingredients");
+  // The new ingredient tiles + objective toggle stay accessible.
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
+test("collecting every ingredient is a verifiable win (ingredients mode)", async ({ page }) => {
+  // The committed pack fixture: seed 144 drops all three ingredients in two swaps.
+  await page.goto("/match3/?mode=ingredients&seed=144");
+  await ready(page);
+  await expect(page.locator(".m3-ingredient")).toHaveCount(3);
+
+  await page.evaluate(() => {
+    const h = window.__match3!;
+    h.game.play([5, 5, 5, 6]);
+    h.game.play([6, 4, 7, 4]);
+    h.refresh();
+  });
+
+  const result = page.locator(".sol-result");
+  await expect(result).toBeVisible();
+  await expect(result.locator(".sol-verify-badge.ok")).toBeVisible();
+  await expect(result).toContainText(/all ingredients cleared/i);
+  await expect(result.locator(".sol-record")).toContainText(/swaps used/i);
+});
+
 test("every objective fits a narrow phone with no horizontal overflow", async ({ page }) => {
   // The 3-objective toggle + board must stay within a 360px viewport in each mode.
   await page.setViewportSize({ width: 360, height: 780 });
   const noOverflow = (): Promise<boolean> =>
     page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
 
-  for (const q of ["seed=7", "mode=blockers&seed=30", "mode=jelly&seed=317"]) {
+  for (const q of ["seed=7", "mode=blockers&seed=30", "mode=jelly&seed=317", "mode=ingredients&seed=144"]) {
     await page.goto(`/match3/?${q}`);
     await ready(page);
     await expect(page.locator(".m3-board")).toBeVisible();
@@ -525,4 +557,62 @@ test("swapping two specials fires a combo (a big combined blast reaches the UI)"
   // A combo scores far more than a plain 3-match (30): a striped+striped cross is
   // a full row + full column (~15 gems ≈ 150 on an 8×8), so the jump is large.
   expect(info!.after - info!.before, "the combo's blast is much bigger than a match").toBeGreaterThanOrEqual(100);
+});
+
+test("swapping a fish with a special fires a fish combo (reaches the UI)", async ({ page }) => {
+  await page.goto("/match3/?seed=142");
+  await ready(page);
+
+  // First-legal-move play until a fish sits next to another special, then swap the
+  // pair — a fish combo (B5.4): a small school of fish each eat a target and carry
+  // the partner's blast, a clear well beyond a lone fish's single eat. seed=142
+  // deterministically brings a fish adjacent to a striped within the budget.
+  const info = await page.evaluate(() => {
+    const h = window.__match3!;
+    const fishPair = (sp: string[][]) => {
+      for (let r = 0; r < sp.length; r += 1) {
+        for (let c = 0; c < (sp[r] ?? []).length; c += 1) {
+          if (sp[r]![c] !== "fish") continue;
+          for (const [nr, nc] of [
+            [r + 1, c],
+            [r - 1, c],
+            [r, c + 1],
+            [r, c - 1],
+          ] as const) {
+            if (nr >= 0 && nr < sp.length && nc >= 0 && nc < (sp[nr] ?? []).length && sp[nr]![nc]) {
+              return [r, c, nr, nc] as const;
+            }
+          }
+        }
+      }
+      return null;
+    };
+    for (let i = 0; i < 20; i += 1) {
+      const b = h.game.board();
+      const pair = fishPair(b.specials);
+      if (pair) {
+        const mv = h.game
+          .legalMoves()
+          .find(
+            (m) =>
+              (m[0] === pair[0] && m[1] === pair[1] && m[2] === pair[2] && m[3] === pair[3]) ||
+              (m[0] === pair[2] && m[1] === pair[3] && m[2] === pair[0] && m[3] === pair[1]),
+          );
+        if (!mv) return { fired: false, before: b.score, after: b.score };
+        const before = b.score;
+        h.game.play(mv);
+        h.refresh();
+        return { fired: true, before, after: h.game.board().score };
+      }
+      const m = h.game.legalMoves();
+      if (m.length === 0) break;
+      h.game.play(m[0]!);
+    }
+    return null;
+  });
+  expect(info, "a fish came adjacent to a special within the budget").not.toBeNull();
+  expect(info!.fired, "the fish + special pair can be swapped (a fish combo)").toBe(true);
+  // A fish combo (school of fish, here each firing a line) clears well beyond a
+  // lone fish's single-cell eat (~10).
+  expect(info!.after - info!.before, "the fish combo's blast is large").toBeGreaterThanOrEqual(50);
 });
