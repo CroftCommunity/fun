@@ -49,6 +49,12 @@ export function boot(root: HTMLElement = document.body): Chrome {
     "aria-label": "Games",
     hidden: "",
   });
+  const drawerClose = el("button", {
+    class: "drawer-close",
+    "aria-label": "Close games drawer",
+  });
+  drawerClose.textContent = "✕";
+  drawer.append(el("div", { class: "drawer-head" }, drawerClose));
   const list = el("ul", { class: "drawer-list" });
   for (const g of REGISTRY) {
     const link = el(
@@ -108,9 +114,13 @@ export function boot(root: HTMLElement = document.body): Chrome {
     );
   }
 
+  // Click-off backdrop: covers the page while the drawer is open so a click
+  // anywhere outside the drawer recollapses it.
+  const scrim = el("div", { class: "drawer-scrim", hidden: "" });
+
   const playArea = el("main", { class: "play-area", id: "play-area" });
 
-  root.prepend(header, drawer, playArea);
+  root.prepend(header, scrim, drawer, playArea);
 
   // --- mount the current game / welcome ---
   let mounted: GameModule | null = null;
@@ -136,6 +146,7 @@ export function boot(root: HTMLElement = document.body): Chrome {
   const setOpen = (next: boolean): void => {
     open = next;
     drawer.hidden = !open;
+    scrim.hidden = !open;
     root.classList.toggle("drawer-open", open);
     toggle.setAttribute("aria-expanded", String(open));
     toggle.setAttribute("aria-label", open ? "Close games drawer" : "Open games drawer");
@@ -148,6 +159,8 @@ export function boot(root: HTMLElement = document.body): Chrome {
   };
 
   toggle.addEventListener("click", () => setOpen(!open));
+  drawerClose.addEventListener("click", () => setOpen(false));
+  scrim.addEventListener("click", () => setOpen(false));
 
   drawer.addEventListener("keydown", (e: KeyboardEvent) => {
     if (e.key === "Escape") {

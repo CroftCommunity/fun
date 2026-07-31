@@ -120,6 +120,26 @@ test("the board has no axe violations in light and dark", async ({ page }) => {
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
 
+test("the board is centered and shares a centerline with the arrow pad", async ({ page }) => {
+  await page.goto("/2048/?seed=7");
+  await ready(page);
+  const board = await page.locator(".t48-board").boundingBox();
+  const pad = await page.locator(".t48-pad").boundingBox();
+  const area = await page.locator("#play-area").boundingBox();
+  expect(board).not.toBeNull();
+  expect(pad).not.toBeNull();
+  expect(area).not.toBeNull();
+  const boardCenter = board!.x + board!.width / 2;
+  const padCenter = pad!.x + pad!.width / 2;
+  const areaCenter = area!.x + area!.width / 2;
+  // The board and the d-pad line up on one vertical axis, so the directional
+  // keys read as belonging to the board beneath them.
+  expect(Math.abs(boardCenter - padCenter)).toBeLessThan(8);
+  // And that axis is the play area's centerline — the board is not hugging the
+  // left edge.
+  expect(Math.abs(boardCenter - areaCenter)).toBeLessThan(24);
+});
+
 test("the board fits a narrow phone with no horizontal overflow", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 780 });
   await page.goto("/2048/?seed=7");
