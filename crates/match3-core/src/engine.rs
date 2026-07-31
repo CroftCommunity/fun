@@ -1215,6 +1215,87 @@ pub fn reference_score_beam(
     best
 }
 
+/// A heuristic bonus (B6) rewarding a board that holds specials and **combo-ready**
+/// adjacent special pairs. Used only to keep special-building lines alive in the
+/// [`reference_score_specials`] beam frontier — it is **never** added to the reported
+/// score. The weights are tunable balance knobs (parity Track C calibration).
+fn special_potential(board: &Board) -> u64 {
+    let weight = |k: SpecialKind| -> u64 {
+        match k {
+            SpecialKind::StripedH | SpecialKind::StripedV | SpecialKind::Fish => 20,
+            SpecialKind::Wrapped => 40,
+            SpecialKind::ColorBomb => 80,
+        }
+    };
+    let mut p = 0u64;
+    for r in 0..board.height {
+        for c in 0..board.width {
+            if let Some(k) = board.special_at(r, c) {
+                p += weight(k);
+                // An orthogonally-adjacent special (right / down) is a combo away.
+                if c + 1 < board.width && board.special_at(r, c + 1).is_some() {
+                    p += 100;
+                }
+                if r + 1 < board.height && board.special_at(r + 1, c).is_some() {
+                    p += 100;
+                }
+            }
+        }
+    }
+    p
+}
+
+/// The **specials-exploiting** reference playout (B6): the strong (3★) par rung. The
+/// same beam as [`reference_score_beam`], but the frontier is ranked for **survival**
+/// by `actual_score + special_potential(board)` — so lines that *build* specials (and
+/// thus set up a combo) are not pruned before they pay off, unlike a purely
+/// score-ranked beam that discards them for their low immediate score. It reports
+/// honest **actual** score, and carries the plain beam line as a floor, so it provably
+/// scores **≥ [`reference_score_beam`]** (never a weaker "strong" bar).
+///
+/// Deterministic: a stable sort with an integer key, and the frontier / `legal_swaps`
+/// order are deterministic, so equal-key states keep generation order — the baked par
+/// table is bit-identical on every build target.
+#[must_use]
+pub fn reference_score_specials(
+    seed: u64,
+    width: usize,
+    height: usize,
+    colors: usize,
+    budget: usize,
+    beam_width: usize,
+) -> u64 {
+    let start = Game::new(deal(seed, width, height, colors), seed, colors);
+    let mut frontier = vec![(start, 0u64)];
+    // Floor: the plain beam (which itself carries greedy) => specials >= beam >= greedy.
+    let mut best = reference_score_beam(seed, width, height, colors, budget, beam_width);
+    for _ in 0..budget {
+        let mut next: Vec<(Game, u64)> = Vec::new();
+        for (game, score) in &frontier {
+            for (from, to) in legal_swaps(&game.board) {
+                let mut g = game.clone();
+                let gain = g.play_move(from, to).score_gained;
+                next.push((g, score + gain));
+            }
+        }
+        if next.is_empty() {
+            break;
+        }
+        // Rank for SURVIVAL by actual score + special potential (special-building lines
+        // survive pruning); report the best ACTUAL score. Stable sort keeps equal-key
+        // states in deterministic generation order.
+        next.sort_by(|a, b| {
+            let ka = a.1 + special_potential(&a.0.board);
+            let kb = b.1 + special_potential(&b.0.board);
+            kb.cmp(&ka)
+        });
+        next.truncate(beam_width.max(1));
+        best = best.max(next.iter().map(|(_, s)| *s).max().unwrap_or(0));
+        frontier = next;
+    }
+    best
+}
+
 /// A **weak** reference playout: from the `seed` deal, play a *random* legal swap
 /// each turn for `budget` swaps, and return the total score. The random choice is
 /// a separate seeded stream (tagged off `seed`), so it is deterministic and

@@ -56,6 +56,6 @@ pub mod jelly_mode {
 pub use engine::{
     apply_gravity, blockers_remaining, clear_cells, deal, deal_blockers, deal_jelly, find_matches,
     has_legal_move, jelly_remaining, legal_swaps, random_score, reference_score,
-    reference_score_beam, refill, reshuffle_if_dead, swap_legal, ClearOutcome, Game, MoveReport,
-    Pos, StepReport,
+    reference_score_beam, reference_score_specials, refill, reshuffle_if_dead, swap_legal,
+    ClearOutcome, Game, MoveReport, Pos, StepReport,
 };

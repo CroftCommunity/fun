@@ -2,7 +2,7 @@
 //! highest-scoring legal swap each turn for the move budget. Deterministic from
 //! the seed, so both play-time and verify-time derive the same targets.
 
-use match3_core::{reference_score, reference_score_beam};
+use match3_core::{reference_score, reference_score_beam, reference_score_specials};
 
 #[test]
 fn reference_score_is_deterministic_and_positive() {
@@ -69,4 +69,51 @@ fn beam_reference_beats_greedy_on_some_seed() {
     let improved = (0..40u64)
         .any(|s| reference_score_beam(s, 8, 8, 6, 20, 8) > reference_score(s, 8, 8, 6, 20));
     assert!(improved, "the beam should beat greedy on at least one seed");
+}
+
+// --- B6: the specials-exploiting strong player (the new 3★ rung) ---
+// A beam that ranks its frontier for survival by actual-score + a special/combo
+// potential bonus (so special-building lines are not pruned before they pay off),
+// while reporting honest actual score and carrying the plain beam as a floor.
+
+#[test]
+fn specials_player_is_deterministic() {
+    let a = reference_score_specials(7, 8, 8, 6, 20, 8);
+    let b = reference_score_specials(7, 8, 8, 6, 20, 8);
+    assert_eq!(a, b, "same args => same specials-exploiting score");
+}
+
+#[test]
+fn specials_player_dominates_the_plain_beam_every_seed() {
+    // It carries the beam-8 line as a floor, so it can only match or beat the
+    // current 3★ rung — never regress the "strong" bar.
+    for seed in 0..40u64 {
+        let beam = reference_score_beam(seed, 8, 8, 6, 20, 8);
+        let specials = reference_score_specials(seed, 8, 8, 6, 20, 8);
+        assert!(
+            specials >= beam,
+            "seed {seed}: specials {specials} >= beam {beam}"
+        );
+    }
+}
+
+#[test]
+fn specials_player_beats_the_plain_beam_on_some_seed() {
+    // The whole point: keeping special-building lines in the frontier finds a
+    // strictly higher-scoring combo line the score-ranked beam pruned, on at
+    // least one deal.
+    let improved = (0..60u64).any(|s| {
+        reference_score_specials(s, 8, 8, 6, 20, 8) > reference_score_beam(s, 8, 8, 6, 20, 8)
+    });
+    assert!(
+        improved,
+        "the specials-exploiting player should out-score the plain beam on some seed"
+    );
+}
+
+#[test]
+fn specials_player_grows_with_a_bigger_budget() {
+    let small = reference_score_specials(7, 8, 8, 6, 3, 8);
+    let big = reference_score_specials(7, 8, 8, 6, 20, 8);
+    assert!(big >= small, "more swaps can only score at least as much");
 }
