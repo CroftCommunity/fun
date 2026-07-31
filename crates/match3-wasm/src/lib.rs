@@ -12,8 +12,9 @@
 //! to a status code or an empty/`"null"` buffer.
 
 use match3_core::{
-    blockers_mode, blockers_remaining, deal, deal_blockers, deal_jelly, jelly_mode,
-    jelly_remaining, legal_swaps, reference_score, Cell, Game as M3Game, SpecialKind,
+    blockers_mode, blockers_remaining, deal, deal_blockers, deal_ingredients, deal_jelly,
+    ingredients_mode, ingredients_remaining, jelly_mode, jelly_remaining, legal_swaps,
+    reference_score, Cell, Game as M3Game, SpecialKind,
 };
 use pond_outcome::{attest, Game, Outcome, Replayed};
 use serde::{Deserialize, Serialize};
@@ -35,6 +36,8 @@ enum Mode {
     Blockers,
     /// Scrub every jelly cell within the (larger) move budget.
     Jelly,
+    /// Drop every ingredient to the bottom within the (larger) move budget (Track D).
+    Ingredients,
 }
 
 // --- the baked par table (parity Track P-now / C1) ---
@@ -131,6 +134,8 @@ struct Session {
     blockers_total: u32,
     /// Jellied cells present in the deal (jelly mode); `0` otherwise.
     jelly_total: u32,
+    /// Ingredients present in the deal (ingredients mode); `0` otherwise.
+    ingredients_total: u32,
     /// Applied legal swaps `[from_row, from_col, to_row, to_col]` — the outcome proof.
     swaps: Vec<[u8; 4]>,
     assistance_used: bool,
@@ -144,6 +149,7 @@ impl Session {
             Mode::TargetScore => self.game.score >= self.targets[0],
             Mode::Blockers => blockers_remaining(&self.game.board) == 0,
             Mode::Jelly => jelly_remaining(&self.game.board) == 0,
+            Mode::Ingredients => ingredients_remaining(&self.game.board) == 0,
         }
     }
 }
@@ -200,6 +206,7 @@ pub extern "C" fn new_game(seed_lo: u32, seed_hi: u32) {
         targets: targets_for(seed),
         blockers_total: 0,
         jelly_total: 0,
+        ingredients_total: 0,
         swaps: Vec::new(),
         assistance_used: false,
     });
@@ -227,6 +234,7 @@ pub extern "C" fn new_blockers_game(seed_lo: u32, seed_hi: u32) {
         targets: [0; 3],
         blockers_total,
         jelly_total: 0,
+        ingredients_total: 0,
         swaps: Vec::new(),
         assistance_used: false,
     });
@@ -254,6 +262,36 @@ pub extern "C" fn new_jelly_game(seed_lo: u32, seed_hi: u32) {
         targets: [0; 3],
         blockers_total: 0,
         jelly_total,
+        ingredients_total: 0,
+        swaps: Vec::new(),
+        assistance_used: false,
+    });
+}
+
+/// Start a fresh **clear-the-ingredients** game (Track D): deal a winnable
+/// ingredient board from `seed` (the daily seeds come from the solver pack) with
+/// the ingredients-mode budget. The objective is to drop every ingredient to the
+/// bottom row.
+#[no_mangle]
+pub extern "C" fn new_ingredients_game(seed_lo: u32, seed_hi: u32) {
+    let seed = (u64::from(seed_hi) << 32) | u64::from(seed_lo);
+    let board = deal_ingredients(
+        seed,
+        ingredients_mode::WIDTH,
+        ingredients_mode::HEIGHT,
+        ingredients_mode::COLORS,
+        ingredients_mode::INGREDIENTS,
+    );
+    let ingredients_total = ingredients_remaining(&board);
+    set_session(Session {
+        seed,
+        mode: Mode::Ingredients,
+        game: M3Game::new(board, seed, ingredients_mode::COLORS),
+        budget: ingredients_mode::MOVE_BUDGET,
+        targets: [0; 3],
+        blockers_total: 0,
+        jelly_total: 0,
+        ingredients_total,
         swaps: Vec::new(),
         assistance_used: false,
     });
@@ -275,6 +313,8 @@ struct BoardView {
     blockers: Vec<Vec<bool>>,
     /// Row-major jelly layers per cell (`0` = none), jelly mode.
     jelly: Vec<Vec<u8>>,
+    /// Row-major ingredient mask: `true` where an `Ingredient` sits (ingredients mode).
+    ingredients: Vec<Vec<bool>>,
     /// Row-major special-candy overlay: `""` (plain) / `"striped-h"` /
     /// `"striped-v"` / `"wrapped"` / `"color-bomb"` / `"fish"`. The UI badges +
     /// labels these.
@@ -291,6 +331,9 @@ struct BoardView {
     /// Jelly mode: how many jellied cells remain and how many the deal had.
     jelly_remaining: u32,
     jelly_total: u32,
+    /// Ingredients mode: how many ingredients remain and how many the deal had.
+    ingredients_remaining: u32,
+    ingredients_total: u32,
     won: bool,
 }
 
@@ -312,6 +355,9 @@ fn board_view(s: &Session) -> BoardView {
     let jelly = (0..b.height)
         .map(|r| (0..b.width).map(|c| b.jelly_at(r, c)).collect())
         .collect();
+    let ingredients = (0..b.height)
+        .map(|r| (0..b.width).map(|c| b.get(r, c).is_ingredient()).collect())
+        .collect();
     let specials = (0..b.height)
         .map(|r| {
             (0..b.width)
@@ -331,12 +377,14 @@ fn board_view(s: &Session) -> BoardView {
             Mode::TargetScore => "target-score",
             Mode::Blockers => "blockers",
             Mode::Jelly => "jelly",
+            Mode::Ingredients => "ingredients",
         },
         width: b.width,
         height: b.height,
         cells,
         blockers,
         jelly,
+        ingredients,
         specials,
         score: s.game.score,
         moves_left: s.budget.saturating_sub(s.swaps.len()),
@@ -347,6 +395,8 @@ fn board_view(s: &Session) -> BoardView {
         blockers_total: s.blockers_total,
         jelly_remaining: jelly_remaining(b),
         jelly_total: s.jelly_total,
+        ingredients_remaining: ingredients_remaining(b),
+        ingredients_total: s.ingredients_total,
         won: s.won(),
     }
 }
@@ -557,6 +607,34 @@ impl Game for Match3Jelly {
     }
 }
 
+/// The `pond-outcome` [`Game`] impl for **clear-the-ingredients** (Track D) —
+/// replay `(seed, swaps)` by dealing the ingredient board and applying the swaps;
+/// the win is verifiable (`Won` ⟺ no ingredients remain). Metric is `move_count`;
+/// no score/stars.
+struct Match3Ingredients;
+impl Game for Match3Ingredients {
+    type Move = [u8; 4];
+    const KIND: &'static str = "match3-ingredients";
+    const VERSION: u32 = 1;
+    fn replay(seed: u64, moves: &[[u8; 4]]) -> Replayed {
+        let board = deal_ingredients(
+            seed,
+            ingredients_mode::WIDTH,
+            ingredients_mode::HEIGHT,
+            ingredients_mode::COLORS,
+            ingredients_mode::INGREDIENTS,
+        );
+        let mut game = M3Game::new(board, seed, ingredients_mode::COLORS);
+        for m in moves {
+            let _ = game.play_move(
+                (m[0] as usize, m[1] as usize),
+                (m[2] as usize, m[3] as usize),
+            );
+        }
+        Replayed::new(game.state_hash(), ingredients_remaining(&game.board) == 0)
+    }
+}
+
 /// The outcome record for the current game, as a `pond-docformat` envelope JSON.
 /// `declare`: 1 = include the (self-declared) assistance flag, 0 = omit it. A
 /// run that did not meet the objective is `Lost`; a met objective is `Won`. The
@@ -585,6 +663,11 @@ pub extern "C" fn outcome_json(declare: u32) -> *const u8 {
         Mode::Jelly => {
             let record = attest::<Match3Jelly>(s.seed, s.swaps.clone(), Outcome::Lost, assistance);
             pond_outcome::to_doc::<Match3Jelly>(&record)
+        }
+        Mode::Ingredients => {
+            let record =
+                attest::<Match3Ingredients>(s.seed, s.swaps.clone(), Outcome::Lost, assistance);
+            pond_outcome::to_doc::<Match3Ingredients>(&record)
         }
     };
     match bytes {

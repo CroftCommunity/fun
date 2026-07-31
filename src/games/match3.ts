@@ -37,6 +37,7 @@ declare global {
 const GEM_GLYPH = ["●", "▲", "■", "◆", "★", "✚"];
 const GEM_NAME = ["circle", "triangle", "square", "diamond", "star", "plus"];
 const BLOCKER_GLYPH = "▦";
+const INGREDIENT_GLYPH = "✿";
 
 // Special candies (Track B0): a special is a normal swappable gem carrying a
 // power, drawn with a distinct badge + an a11y suffix (not colour-only). The key
@@ -60,6 +61,7 @@ interface Pack {
 const PACK_URL: Partial<Record<Mode, string>> = {
   blockers: "/match3-blockers-pack.json",
   jelly: "/match3-jelly-pack.json",
+  ingredients: "/match3-ingredients-pack.json",
 };
 
 /** Fetch and unwrap a winnable-daily pack served at `url`. */
@@ -85,15 +87,22 @@ const starString = (stars: number): string => "★★★☆☆☆".slice(3 - sta
 
 // ---------- the result screen (pure DOM) ----------
 
-// The two "clear" objectives (blockers, jelly) are graded on swaps-to-clear with
-// no score/stars; target-score is the odd one out.
+// The "clear" objectives (blockers, jelly, ingredients) are graded on
+// swaps-to-clear with no score/stars; target-score is the odd one out.
 const isClear = (env: M3Envelope): boolean =>
-  env.kind === "match3-blockers" || env.kind === "match3-jelly";
+  env.kind === "match3-blockers" ||
+  env.kind === "match3-jelly" ||
+  env.kind === "match3-ingredients";
 
 function headline(env: M3Envelope, v: VerifyResult): string {
   if (!v.ok) return "Verification FAILED — this result does not check out";
   if (isClear(env)) {
-    const what = env.kind === "match3-jelly" ? "jelly" : "blockers";
+    const what =
+      env.kind === "match3-jelly"
+        ? "jelly"
+        : env.kind === "match3-ingredients"
+          ? "ingredients"
+          : "blockers";
     return env.payload.result === "Won"
       ? `All ${what} cleared in ${env.payload.move_count} swaps — verifiable`
       : `Ran out of swaps — ${what} remain`;
@@ -256,6 +265,8 @@ export function match3Module(): GameModule {
           rowEl.append(g);
         } else if (ch === ".") {
           rowEl.append(el("span", { class: "m3-gem m3-hole" }));
+        } else if (ch === "*") {
+          rowEl.append(el("span", { class: "m3-ingredient" }, INGREDIENT_GLYPH));
         } else {
           rowEl.append(el("span", { class: "m3-blocker" }, BLOCKER_GLYPH));
         }
@@ -398,6 +409,7 @@ export function match3Module(): GameModule {
       objBtn("Target score", "m3-obj-score", "target-score"),
       objBtn("Clear blockers", "m3-obj-blockers", "blockers"),
       objBtn("Clear jelly", "m3-obj-jelly", "jelly"),
+      objBtn("Ingredients", "m3-obj-ingredients", "ingredients"),
     );
 
     const hints = hintsEnabled();
@@ -451,7 +463,9 @@ export function match3Module(): GameModule {
         ? clearHud("blockers", board.blockersRemaining, board.blockersTotal)
         : board.mode === "jelly"
           ? clearHud("jelly", board.jellyRemaining, board.jellyTotal)
-          : el(
+          : board.mode === "ingredients"
+            ? clearHud("ingredients", board.ingredientsRemaining, board.ingredientsTotal)
+            : el(
               "div",
               { class: "m3-hud" },
               el("span", { class: `m3-score${scoreBumped ? " bump" : ""}` }, `Score ${board.score}`),
@@ -476,6 +490,17 @@ export function match3Module(): GameModule {
         if (board.blockers[r]?.[c]) {
           rowEl.append(
             el("span", { class: "m3-blocker", role: "img", "aria-label": `blocker, row ${r + 1} column ${c + 1}` }, BLOCKER_GLYPH),
+          );
+        } else if (board.ingredients?.[r]?.[c]) {
+          // An ingredient is a fixed non-swappable object (not a `.m3-gem`) that
+          // falls with gravity and exits at the bottom; you clear the gems beneath
+          // it to drop it. The a11y label is not colour-only.
+          rowEl.append(
+            el(
+              "span",
+              { class: "m3-ingredient", role: "img", "aria-label": `ingredient, row ${r + 1} column ${c + 1}` },
+              INGREDIENT_GLYPH,
+            ),
           );
         } else {
           // A jellied cell is a normal swappable gem with a jelly backing; a match
@@ -645,12 +670,19 @@ export function match3Module(): GameModule {
 
   async function startGame(nextMode: "daily" | "free", seedOverride?: bigint): Promise<void> {
     if (!game || disposed) return;
-    const clearing = objective === "blockers" || objective === "jelly";
+    const clearing =
+      objective === "blockers" || objective === "jelly" || objective === "ingredients";
     if (clearing && !packCache[objective]) {
       try {
         packCache[objective] = await fetchPack(PACK_URL[objective]!);
       } catch {
-        showLoadError(`Today’s ${objective === "jelly" ? "clear-the-jelly" : "clear-the-blockers"} board could not be loaded.`);
+        const label =
+          objective === "jelly"
+            ? "clear-the-jelly"
+            : objective === "ingredients"
+              ? "ingredients"
+              : "clear-the-blockers";
+        showLoadError(`Today’s ${label} board could not be loaded.`);
         return;
       }
       if (disposed || !game) return;
@@ -662,6 +694,9 @@ export function match3Module(): GameModule {
     } else if (objective === "jelly") {
       seed = seedOverride ?? packSeed(packCache.jelly!, nextMode);
       game.newJellyGame(seed);
+    } else if (objective === "ingredients") {
+      seed = seedOverride ?? packSeed(packCache.ingredients!, nextMode);
+      game.newIngredientsGame(seed);
     } else {
       // Target-score daily uses a seed from the baked par table (ladder tiers);
       // free-play is a random seed (off-table → live fallback tiers).
@@ -747,9 +782,12 @@ export function match3Module(): GameModule {
           await showShared(shared);
           return;
         }
-        // `?mode=blockers` / `?mode=jelly` open a clear objective directly.
+        // `?mode=blockers` / `?mode=jelly` / `?mode=ingredients` open a clear
+        // objective directly.
         const modeParam = url.searchParams.get("mode");
-        if (modeParam === "blockers" || modeParam === "jelly") objective = modeParam;
+        if (modeParam === "blockers" || modeParam === "jelly" || modeParam === "ingredients") {
+          objective = modeParam;
+        }
         const seedParam = url.searchParams.get("seed");
         if (seedParam !== null) {
           await startGame("free", BigInt(seedParam));

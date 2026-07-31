@@ -262,8 +262,14 @@ Execution plan for B0: `plans/2026-07-30-match3-b0-specials.md`.
 ### Track D — Parity completeness (confirm each item before building)
 The rest of the Candy-Crush surface, surfaced honestly so "entirety" isn't a
 pretence. Each is an owner decision like D3/D4 before it is built:
-- **More objectives:** ingredients (drop-to-bottom), order/mixed (a checklist),
-  timed.
+- **More objectives:** ingredients (drop-to-bottom) — **DONE (2026-07-31)**
+  (owner-confirmed; plan `plans/2026-07-31-match3-d-ingredients.md`). A fourth
+  objective over the 8×8 engine: `Cell::Ingredient`, a falling non-gem that exits
+  at the bottom row (hash tag `0x03`, additive — no re-lock); the full mode template
+  (deal → `find_ingredients` + winnable pack → `Mode::Ingredients` binding +
+  `match3-ingredients` outcome → UI toggle/tile/HUD + how-to + e2e). Playable at
+  `?mode=ingredients`, winnable-daily, verifiable, accessible, deployed. — order/mixed
+  (a checklist), timed (poor fit for the no-wall-clock verifiable model) still to confirm.
 - **More obstacle families:** licorice, spreading chocolate, meringue/icing,
   marmalade, locks, timed bombs (each new state → hash + vectors + solver support).
 - **Meta (likely out of scope for the shelf):** boosters, lives, level maps,

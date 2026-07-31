@@ -491,6 +491,23 @@ body.fullscreen .play-area {
   border-radius: var(--r-card);
   cursor: default;
 }
+/* An ingredient (Track D): a fixed non-swappable object that falls with gravity
+   and exits at the bottom. Distinct from a gem (no gem background) and from a
+   blocker (a warm tint + a solid ring), so it reads as a thing to escort down. */
+.m3-ingredient {
+  width: var(--m3-gem);
+  height: var(--m3-gem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--m3-gem) * 0.62);
+  line-height: 1;
+  color: var(--ink);
+  background: radial-gradient(circle at 50% 42%, rgb(255 180 120 / 42%), rgb(255 180 120 / 16%));
+  border: 2px solid rgb(220 120 60 / 80%);
+  border-radius: 50%;
+  cursor: default;
+}
 .m3-hud .m3-goal-left {
   color: var(--ink);
   font-weight: 700;

@@ -127,6 +127,29 @@ Each phase: green + commit; the whole objective is the Track-D boundary.
   interactions beyond "a blast that clears beneath it drops it".
 
 ## Review Log
+### Ingredients complete — 2026-07-31
+Shipped green + deployed across four phases: core (`5cc1c3e`), solver+pack (`6addc95`),
+binding + UI (this commit). The objective is playable at `?mode=ingredients`,
+winnable-daily (365-seed pack, fixture seed 144), verifiable (`match3-ingredients`
+outcome kind, re-verify + share), and accessible (ingredient tiles carry a non-colour
+a11y label; axe-clean). Full gate: cargo core+solver+wasm green (incl. the byte-identical
+regen drill), npm test 107, e2e 142 (both projects incl. axe), golden vector 24.
+- **The one new mechanic was a falling non-gem cell.** `Cell::Ingredient` — inert to
+  matching/legality (they gate on `Cell::Gem`, so no edit there), falls in gravity
+  (generalized "falling" = gem-or-ingredient; a blocker still bounds segments), and
+  exits via `collect_ingredients` after each step's gravity. The hash tag `0x03` is
+  additive, so no pre-ingredient vector re-locked.
+- **Everything else was the proven mode template.** `find_ingredients` reused the shared
+  budgeted DFS (progress = ingredients collected, so `StepReport` gained a per-step
+  `ingredients_collected` field); the binding/outcome/UI are structural copies of
+  blockers/jelly. The wasm `Cell` match was already `_`-safe, so phase 1 deployed with the
+  mode dormant until the binding wired it.
+- **INGREDIENTS=3 / MOVE_BUDGET=30** are tunable knobs; the solver only keeps winnable
+  seeds. The fixture drops all three in two swaps via cascades.
+- Live-smoke against fun.croft.ing after deploy.
+- Next Track D items (order/mixed checklist; obstacle families) await owner confirmation;
+  timed is flagged a poor fit for the no-wall-clock verifiable model.
+
 ### Pass 1 — 2026-07-31
 Plan authored after owner confirmed Ingredients as the next Track D item. The one new
 mechanic is a falling non-gem cell (`Cell::Ingredient`) — everything else is the proven

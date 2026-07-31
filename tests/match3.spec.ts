@@ -215,13 +215,45 @@ test("scrubbing every jelly is a verifiable win (jelly mode)", async ({ page }) 
   await expect(result.locator(".sol-record")).toContainText(/swaps used/i);
 });
 
+test("the Ingredients objective deals an ingredient board with the ingredient HUD", async ({ page }) => {
+  await page.goto("/match3/?mode=ingredients&seed=144");
+  await ready(page);
+  await expect(page.locator(".m3-obj-ingredients")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".m3-hud")).toContainText(/ingredients left/i);
+  // Three ingredient tiles, all in the top row (fixed, non-swappable — not .m3-gem).
+  await expect(page.locator(".m3-ingredient")).toHaveCount(3);
+  expect(await page.evaluate(() => window.__match3!.objective)).toBe("ingredients");
+  // The new ingredient tiles + objective toggle stay accessible.
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
+test("collecting every ingredient is a verifiable win (ingredients mode)", async ({ page }) => {
+  // The committed pack fixture: seed 144 drops all three ingredients in two swaps.
+  await page.goto("/match3/?mode=ingredients&seed=144");
+  await ready(page);
+  await expect(page.locator(".m3-ingredient")).toHaveCount(3);
+
+  await page.evaluate(() => {
+    const h = window.__match3!;
+    h.game.play([5, 5, 5, 6]);
+    h.game.play([6, 4, 7, 4]);
+    h.refresh();
+  });
+
+  const result = page.locator(".sol-result");
+  await expect(result).toBeVisible();
+  await expect(result.locator(".sol-verify-badge.ok")).toBeVisible();
+  await expect(result).toContainText(/all ingredients cleared/i);
+  await expect(result.locator(".sol-record")).toContainText(/swaps used/i);
+});
+
 test("every objective fits a narrow phone with no horizontal overflow", async ({ page }) => {
   // The 3-objective toggle + board must stay within a 360px viewport in each mode.
   await page.setViewportSize({ width: 360, height: 780 });
   const noOverflow = (): Promise<boolean> =>
     page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
 
-  for (const q of ["seed=7", "mode=blockers&seed=30", "mode=jelly&seed=317"]) {
+  for (const q of ["seed=7", "mode=blockers&seed=30", "mode=jelly&seed=317", "mode=ingredients&seed=144"]) {
     await page.goto(`/match3/?${q}`);
     await ready(page);
     await expect(page.locator(".m3-board")).toBeVisible();

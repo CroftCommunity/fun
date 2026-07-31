@@ -38,12 +38,14 @@ export interface VerifyResult {
 /** The `pond-outcome` kinds for the win-objective modes. */
 export const BLOCKERS_KIND = "match3-blockers";
 export const JELLY_KIND = "match3-jelly";
+export const INGREDIENTS_KIND = "match3-ingredients";
 
 /** The minimal binding surface [`verifyRecord`] drives (the `Match3` wrapper satisfies it). */
 export interface Verifier {
   newGame(seed: bigint): void;
   newBlockersGame(seed: bigint): void;
   newJellyGame(seed: bigint): void;
+  newIngredientsGame(seed: bigint): void;
   play(swap: Swap): unknown;
   currentHash(): string;
   isWon(): boolean;
@@ -72,6 +74,7 @@ export function verifyRecord(v: Verifier, env: M3Envelope): VerifyResult {
   const rec = env.payload;
   if (env.kind === BLOCKERS_KIND) v.newBlockersGame(BigInt(rec.seed));
   else if (env.kind === JELLY_KIND) v.newJellyGame(BigInt(rec.seed));
+  else if (env.kind === INGREDIENTS_KIND) v.newIngredientsGame(BigInt(rec.seed));
   else v.newGame(BigInt(rec.seed));
   for (const swap of rec.moves) v.play(swap);
   const actual = v.currentHash();

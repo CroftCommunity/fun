@@ -5,7 +5,7 @@ import type { Guide } from "../how-to.js";
 
 export const MATCH3_GUIDE: Guide = {
   title: "How to play match-3",
-  lede: "Swap adjacent gems to line up three or more of the same kind. Two objectives share the board: score as high as you can for stars (Target score), or clear every blocker in as few swaps as you can (Clear blockers). Every result is a record anyone can re-verify.",
+  lede: "Swap adjacent gems to line up three or more of the same kind. Four objectives share the board: score as high as you can for stars (Target score), or — in as few swaps as you can — clear every blocker, scrub every jelly, or drop every ingredient to the bottom. Every result is a record anyone can re-verify.",
   entries: [
     {
       testid: "howto-goal",
@@ -37,19 +37,20 @@ export const MATCH3_GUIDE: Guide = {
     },
     {
       testid: "howto-blockers",
-      title: "Three objectives: Target score, Clear blockers, Clear jelly",
+      title: "Four objectives: Target score, Clear blockers, Clear jelly, Ingredients",
       toc: "Objectives",
       blocks: [
         {
           kind: "prose",
-          text: "The buttons above the board pick your objective. Target score is the classic mode: bank as many points as you can within your swap budget for one, two, or three stars. Clear blockers gives you a board with locked tiles you cannot swap; a match made next to a blocker chips it away. Clear jelly coats some squares with jelly; a match made on top of a jellied square scrubs it off. In both clear modes you win the moment the board is clear.",
+          text: "The buttons above the board pick your objective. Target score is the classic mode: bank as many points as you can within your swap budget for one, two, or three stars. Clear blockers gives you a board with locked tiles you cannot swap; a match made next to a blocker chips it away. Clear jelly coats some squares with jelly; a match made on top of a jellied square scrubs it off. Ingredients drops a few objects in from the top that you must bring down to the bottom row to collect — clear the gems beneath one and it falls. In all three clear modes you win the moment the board is clear.",
         },
         {
           kind: "steps",
           items: [
             "Blockers do not move and cannot be swapped — clear the gems beside them.",
             "Jellied squares hold ordinary, swappable gems — you clear the jelly by matching the gems sitting on it.",
-            "These boards use single-layer blockers and jelly, so one match clears each; you are graded on how few swaps it takes, and the daily board is always solvable.",
+            "Ingredients cannot be swapped and never match, but they fall like gems — match away what is under one to drop it a row, and it exits when it reaches the bottom.",
+            "These boards use single-layer blockers and jelly and a few ingredients; you are graded on how few swaps it takes, and the daily board is always solvable.",
           ],
         },
       ],

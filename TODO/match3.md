@@ -145,8 +145,13 @@ beam-based par table landing early. Full phasing, DoD, and risks in the roadmap.
   - [ ] **Track C par calibration. Next up: C2/C3.**
 - [ ] **Track C (rest) — par calibration**: C2 offline LLM calibration study of the
       rung difficulty → C3 re-par after specials land.
-- [ ] **Track D — parity completeness** (confirm each first): ingredients,
-      order/mixed, timed objectives; more obstacle families (licorice, chocolate,
-      meringue, locks, timed bombs).
+- [ ] **Track D — parity completeness** (confirm each first):
+  - [x] **Ingredients (drop-to-bottom)** — owner-confirmed 2026-07-31 (plan:
+        `plans/2026-07-31-match3-d-ingredients.md`). A fourth objective: `Cell::Ingredient`
+        (a falling non-gem that exits at the bottom; hash tag `0x03`, additive) + the full
+        mode template (deal → solver + winnable pack → binding + outcome → UI toggle/tile/
+        HUD + how-to + e2e). Playable at `?mode=ingredients`, winnable-daily, verifiable.
+  - [ ] order/mixed (a checklist); timed (poor fit — no wall-clock); more obstacle families
+        (licorice, chocolate, meringue, locks, timed bombs).
 - [ ] **Backlog — in-browser AI hint/coach** (D6): advisory "show a strong line" /
       smarter hints; design after the parity spine lands.
