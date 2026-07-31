@@ -432,3 +432,40 @@ test("a colour bomb can be fired by swapping it (the colour detonation reaches t
   expect(info!.swappable, "the colour bomb is swappable (swap-activation reaches the UI)").toBe(true);
   expect(info!.after, "detonating the colour cleared gems, so the score rose").toBeGreaterThan(info!.before);
 });
+
+test("a fish (2×2) can be created and fired by swapping it (the fish reaches the UI)", async ({ page }) => {
+  await page.goto("/match3/?seed=1");
+  await ready(page);
+
+  // Greedy-first play until a fish (from a 2×2 block) is on the settled board, then
+  // fire it by swapping it — swap-activation makes that legal (B4.2), and the fish
+  // swims to eat a target, so the score rises. seed=1 deterministically forms a 2×2
+  // (and thus a fish) under greedy play within the budget.
+  const info = await page.evaluate(() => {
+    const h = window.__match3!;
+    for (let i = 0; i < 40; i += 1) {
+      const b = h.game.board();
+      for (let r = 0; r < b.specials.length; r += 1) {
+        for (let c = 0; c < (b.specials[r] ?? []).length; c += 1) {
+          if ((b.specials[r]![c] ?? "") === "fish") {
+            const mv = h.game
+              .legalMoves()
+              .find((m) => (m[0] === r && m[1] === c) || (m[2] === r && m[3] === c));
+            if (!mv) return { swappable: false, before: b.score, after: b.score };
+            const before = b.score;
+            h.game.play(mv);
+            h.refresh();
+            return { swappable: true, before, after: h.game.board().score };
+          }
+        }
+      }
+      const m = h.game.legalMoves();
+      if (m.length === 0) break;
+      h.game.play(m[0]!);
+    }
+    return null;
+  });
+  expect(info, "a fish was created within the budget").not.toBeNull();
+  expect(info!.swappable, "the fish is swappable (swap-activation reaches the UI)").toBe(true);
+  expect(info!.after, "the fired fish ate a target, so the score rose").toBeGreaterThan(info!.before);
+});

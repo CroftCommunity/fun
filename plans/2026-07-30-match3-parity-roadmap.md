@@ -200,11 +200,17 @@ Execution plan for B0: `plans/2026-07-30-match3-b0-specials.md`.
   `ColorBomb`, `activate` gains a colour-predicate `bombs` branch. Vector 13; vector
   06 re-locked (its created colour bomb is now a legal swap → no reshuffle); par pack
   re-locked. Colour-bomb-in-a-blast and bomb+bomb/bomb+special combos are B5.
-- **B4 fish (2×2 square):** fish gem. **Includes the 2×2-square match detection
-  moved from B0** — recognising a 2×2 block changes what counts as a *match* and a
-  *legal swap* (new legal moves), plus deal/reshuffle match-avoidance, with its own
-  vector re-lock + winnability re-check. Activation picks targets via **seeded
-  `DetRng`** (deterministic) — prefers jelly/blockers; verify reproduces exactly.
+- **B4 fish (2×2 square) — DONE (2026-07-31)** (plan: `plans/2026-07-30-match3-b4-fish.md`).
+  A 2×2 same-colour square is now a **first-class match** (Option A — folded into
+  `find_matches`), so it makes a swap legal, clears, and is avoided by the deal +
+  reshuffle, all from one authority; a **pure** 2×2 creates a `Fish` (new
+  `SpecialKind`, tag `0x05`). An activated fish (matched/swapped) **swims to eat one
+  target** chosen by a seeded, pinned rule (jelly cell first, else any gem) via
+  `DetRng` — the first RNG-in-activation, drawn before refill so it folds into the
+  fingerprint. The deal changed (fill now avoids 2×2s) → jelly + par packs
+  regenerated, JS jelly fixture + colour-bomb e2e seed re-derived. Vectors 14
+  (creation + cascade activation). Direct blocker-eating + the fish combos are
+  revisable/B5 follow-ups.
 - **B5 combos:** the special + special swap matrix (striped+striped, striped+
   wrapped, wrapped+wrapped, bomb+striped, bomb+wrapped, bomb+bomb = clear board).
   Its own phase — heavy rules + balance.

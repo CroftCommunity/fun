@@ -114,8 +114,15 @@ beam-based par table landing early. Full phasing, DoD, and risks in the roadmap.
         06 re-locked (its created colour bomb is now a legal swap → no reshuffle);
         par pack re-locked; how-to updated. Combos (bomb+bomb/bomb+special, and a
         colour bomb set off by another blast) are B5.
-  - [ ] B4 fish (2×2 + seeded targeting) → B5 combo matrix → B6 specials-aware
-        solver/par. **Next up: B4.**
+  - [x] **B4 fish (2×2 square)** (plan: `plans/2026-07-30-match3-b4-fish.md`).
+        A 2×2 is a first-class match (Option A, folded into `find_matches`): legal
+        swap, clears, deal/reshuffle avoid it. A pure 2×2 makes a `Fish` (tag 0x05);
+        a fired fish (matched/swapped) swims to eat one seeded target (jelly first,
+        else any gem) via `DetRng` — the first RNG-in-activation, drawn before
+        refill so it folds into the fingerprint. Deal changed → jelly+par packs +
+        JS jelly fixture + colour-bomb e2e seed re-derived; vector 14. Direct
+        blocker-eating + fish combos are B5/follow-up.
+  - [ ] B5 combo matrix → B6 specials-aware solver/par. **Next up: B5.**
 - [ ] **Track C (rest) — par calibration**: C2 offline LLM calibration study of the
       rung difficulty → C3 re-par after specials land.
 - [ ] **Track D — parity completeness** (confirm each first): ingredients,
