@@ -281,6 +281,37 @@ test("completing every order is a verifiable win (checklist mode)", async ({ pag
   await expect(result.locator(".sol-record")).toContainText(/swaps used/i);
 });
 
+test("the Obstacles objective deals licorice + meringue tiles with the obstacles HUD", async ({ page }) => {
+  await page.goto("/match3/?mode=obstacles&seed=72");
+  await ready(page);
+  await expect(page.locator(".m3-obj-obstacles")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".m3-hud")).toContainText(/obstacles left/i);
+  // Three licorice + three meringue tiles (the mode deal), distinct from plain blockers.
+  await expect(page.locator(".m3-licorice")).toHaveCount(3);
+  await expect(page.locator(".m3-meringue")).toHaveCount(3);
+  expect(await page.evaluate(() => window.__match3!.objective)).toBe("obstacles");
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
+test("clearing every obstacle is a verifiable win (obstacles mode)", async ({ page }) => {
+  // The committed pack fixture: seed 72 clears all six obstacles in one big-cascade swap.
+  await page.goto("/match3/?mode=obstacles&seed=72");
+  await ready(page);
+  await expect(page.locator(".m3-licorice")).toHaveCount(3);
+
+  await page.evaluate(() => {
+    const h = window.__match3!;
+    h.game.play([6, 2, 7, 2]);
+    h.refresh();
+  });
+
+  const result = page.locator(".sol-result");
+  await expect(result).toBeVisible();
+  await expect(result.locator(".sol-verify-badge.ok")).toBeVisible();
+  await expect(result).toContainText(/all obstacles cleared/i);
+  await expect(result.locator(".sol-record")).toContainText(/swaps used/i);
+});
+
 test("every objective fits a narrow phone with no horizontal overflow", async ({ page }) => {
   // The objective toggle + board must stay within a 360px viewport in each mode.
   await page.setViewportSize({ width: 360, height: 780 });
@@ -293,6 +324,7 @@ test("every objective fits a narrow phone with no horizontal overflow", async ({
     "mode=jelly&seed=317",
     "mode=ingredients&seed=144",
     "mode=checklist&seed=3",
+    "mode=obstacles&seed=72",
   ]) {
     await page.goto(`/match3/?${q}`);
     await ready(page);

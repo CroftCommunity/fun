@@ -120,6 +120,10 @@ const m3cpack = join(root, "games/match3/checklist-pack.json");
 if (await exists(m3cpack)) await cp(m3cpack, join(dist, "match3-checklist-pack.json"));
 else console.warn("note: match3-checklist-pack.json missing — match-3's checklist (orders) daily needs it");
 
+const m3opack = join(root, "games/match3/obstacles-pack.json");
+if (await exists(m3opack)) await cp(m3opack, join(dist, "match3-obstacles-pack.json"));
+else console.warn("note: match3-obstacles-pack.json missing — match-3's clear-the-obstacles daily needs it");
+
 // The bubble-shooter clear-the-board winnable-daily pack (served static so the
 // daily mode and its E2E win-path fixture can fetch it).
 const bpack = join(root, "games/bubble/daily-pack.json");

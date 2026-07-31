@@ -577,6 +577,37 @@ body.fullscreen .play-area {
   border-radius: 50%;
   cursor: default;
 }
+/* Obstacle tiles (Track D, T7): fixed non-swappable blocker-flavour tiles, drawn
+   distinctly from the plain blocker and from each other. Licorice is a single-hit
+   swirl; meringue is a durable multi-hit tile showing its remaining layer count. */
+.m3-obstacle {
+  width: var(--m3-gem);
+  height: var(--m3-gem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--m3-gem) * 0.5);
+  line-height: 1;
+  border-radius: var(--r-card);
+  cursor: default;
+  color: var(--ink);
+}
+.m3-licorice {
+  font-size: calc(var(--m3-gem) * 0.62);
+  background: radial-gradient(circle at 50% 42%, rgb(140 90 160 / 45%), rgb(90 50 110 / 22%));
+  border: 2px solid rgb(120 70 150 / 80%);
+}
+.m3-meringue {
+  font-weight: 700;
+  background: repeating-linear-gradient(
+    135deg,
+    rgb(150 200 210 / 34%),
+    rgb(150 200 210 / 34%) 3px,
+    rgb(120 175 190 / 20%) 3px,
+    rgb(120 175 190 / 20%) 6px
+  );
+  border: 2px solid rgb(90 150 165 / 80%);
+}
 .m3-hud .m3-goal-left {
   color: var(--ink);
   font-weight: 700;

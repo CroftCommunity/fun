@@ -1,6 +1,6 @@
 //! Match-3's "How to play" guide (pure data — see src/how-to.ts). Walks the whole
 //! play experience in order: the goal, how to move, matches + cascades, the special
-//! candies, combining two specials, the five objectives, help, and the verifiable
+//! candies, combining two specials, the six objectives, help, and the verifiable
 //! result. Each section is scannable (short prose + step lists), and the copy is
 //! unit-tested, so it stays in sync with the game.
 
@@ -8,7 +8,7 @@ import type { Guide } from "../how-to.js";
 
 export const MATCH3_GUIDE: Guide = {
   title: "How to play match-3",
-  lede: "Swap two neighbouring gems to line up three or more of the same kind. Play toward one of five objectives, and earn a result anyone can re-verify — no account, no server.",
+  lede: "Swap two neighbouring gems to line up three or more of the same kind. Play toward one of six objectives, and earn a result anyone can re-verify — no account, no server.",
   entries: [
     {
       testid: "howto-goal",
@@ -17,7 +17,7 @@ export const MATCH3_GUIDE: Guide = {
       blocks: [
         {
           kind: "prose",
-          text: "Match-3 gives you a board of coloured, shaped gems and a fixed number of swaps. Line gems up to clear them and drive toward your objective. The classic one is Target score: bank as many points as you can within your swap budget for one, two, or three stars. Four other objectives — clear blockers, clear jelly, drop ingredients, and complete an order checklist — share the same board and controls; the buttons above the board pick which you play.",
+          text: "Match-3 gives you a board of coloured, shaped gems and a fixed number of swaps. Line gems up to clear them and drive toward your objective. The classic one is Target score: bank as many points as you can within your swap budget for one, two, or three stars. Five other objectives — clear blockers, clear jelly, drop ingredients, complete an order checklist, and clear obstacles — share the same board and controls; the buttons above the board pick which you play.",
         },
         {
           kind: "shot",
@@ -111,12 +111,12 @@ export const MATCH3_GUIDE: Guide = {
     },
     {
       testid: "howto-objectives",
-      title: "The five objectives",
+      title: "The six objectives",
       toc: "Objectives",
       blocks: [
         {
           kind: "prose",
-          text: "The buttons above the board pick what you are playing for. Target score is graded on points and stars; the other four are graded on how few swaps it takes, and you win the moment the objective is met.",
+          text: "The buttons above the board pick what you are playing for. Target score is graded on points and stars; the other five are graded on how few swaps it takes, and you win the moment the objective is met.",
         },
         {
           kind: "steps",
@@ -126,11 +126,12 @@ export const MATCH3_GUIDE: Guide = {
             "Clear jelly — some squares are coated with jelly; a match made on top of a jellied square scrubs it off. Scrub it all.",
             "Ingredients — a few objects drop in at the top; they cannot be swapped, but clearing the gems beneath one drops it, and it is collected when it reaches the bottom row. Bring them all down.",
             "Orders — a checklist of goals to finish: clear a set number of one colour, and make a set number of striped and wrapped candies. The bar above the board tallies each goal and ticks it off when you reach it; finish the whole list to win.",
+            "Clear obstacles — a mix of licorice (single-hit) and meringue (a durable tile that needs several hits — it shows how many are left). A match made next to one chips it, like a blocker. Clear every obstacle.",
           ],
         },
         {
           kind: "note",
-          text: "The clear objectives use single-layer blockers and jelly and a few ingredients, so one match clears each; Orders asks for goals a strong line can reach in the budget. Every daily board is solver-checked, so it is always solvable.",
+          text: "The clear objectives use single-layer blockers and jelly and a few ingredients, so one match clears each; meringue takes a few, and Orders asks for goals a strong line can reach in the budget. Every daily board is solver-checked, so it is always solvable.",
         },
       ],
     },

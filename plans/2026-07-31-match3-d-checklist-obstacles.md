@@ -216,15 +216,18 @@ deliverables are built in sequence: **Checklist (Phases 1–4)**, then **Obstacl
   verify-orchestration unit test (real wasm, seed-72 fixture: a verifiable `Won` + tamper
   reject). Full gate: 144 npm unit + 180 e2e; fmt + clippy clean. UI toggle pending (Phase 8).
 
-### Phase 8 (obstacles UI + how-to + e2e) — toggle, tiles, HUD, ?mode, shots
-- [ ] `match3.ts` — toggle ("Obstacles"), render licorice + meringue tiles (meringue shows
-  its layer count/pips), an obstacles-left HUD, `?mode=obstacles`, the pack branch;
-  `styles.css` licorice/meringue tile styles; `build.mjs` serves the pack.
-- [ ] `match3-howto.ts` — the obstacles objective + the two new tiles.
-- [ ] `tests/match3.spec.ts` — the obstacles HUD + a verifiable clear via the fixture (both
-  projects incl. axe); guide shots for the new tiles (`guide:shots`, add only the match3
-  shot).
-- [ ] Deploy + live-smoke `?mode=obstacles`.
+### Phase 8 (obstacles UI + how-to + e2e) — toggle, tiles, HUD, ?mode, shots — DONE
+- [x] `match3.ts` — an "Obstacles" toggle; licorice + meringue tiles (meringue shows its
+  remaining layer count as a non-colour durability cue, with a "N layers left" a11y label);
+  an obstacles-left HUD (reusing `clearHud` with the blocker counts); `?mode=obstacles`; the
+  pack branch; `styles.css` `.m3-licorice`/`.m3-meringue`; **`build.mjs` serves the pack**
+  (the missing copy 404'd the board in e2e until added).
+- [x] `match3-howto.ts` — six objectives (lede + goal prose + objectives step + note).
+- [x] `tests/match3.spec.ts` — the obstacles HUD (+ axe, both projects) + a verifiable clear
+  via the seed-72 fixture + the overflow sweep extended to obstacles.
+- [x] Guide shots: `guide:shots` produced no match3 change (the 6-button toggle renders within
+  the captured region); unrelated churn reverted.
+- [ ] Deploy + live-smoke `?mode=obstacles` — after this push deploys.
 
 ### Phase 9 (Track-D closeout) — ticks + the honest out-of-scope boundary
 - [ ] `TODO/match3.md` + `plans/2026-07-30-match3-parity-roadmap.md` — tick the checklist
@@ -249,6 +252,15 @@ deliverables are built in sequence: **Checklist (Phases 1–4)**, then **Obstacl
   by a fish" (B4). Meringue/licorice ship as adjacency-cleared flavoured blockers.
 
 ## Review Log
+### Phase 8 (obstacles UI + how-to + e2e) complete — 2026-07-31
+Green: clear-the-obstacles is playable at `?mode=obstacles` with an "Obstacles" toggle,
+distinct licorice + meringue tiles (meringue renders its remaining layer count — a
+non-colour durability cue + "N layers left" a11y label), an obstacles-left HUD, and a
+verifiable-clear result. how-to updated to six objectives. Two e2e (HUD+axe + a seed-72
+verifiable win), both projects; overflow sweep extended. **Bug caught by e2e:** the obstacles
+pack had no `build.mjs` copy, so the board 404'd — added it; e2e then 184 green. Guide shots
+unchanged. 144 npm unit + 184 e2e. Live-smoke pending the deploy.
+
 ### Phase 7 (obstacles binding) complete — 2026-07-31
 Green + deployed: `Mode::Obstacles` + `new_obstacles_game`; `board_view` exposes a per-cell
 obstacle kind + `obstacle_layers` (meringue pips), reusing `blockers_remaining`/

@@ -38,6 +38,8 @@ const GEM_GLYPH = ["●", "▲", "■", "◆", "★", "✚"];
 const GEM_NAME = ["circle", "triangle", "square", "diamond", "star", "plus"];
 const BLOCKER_GLYPH = "▦";
 const INGREDIENT_GLYPH = "✿";
+const LICORICE_GLYPH = "◉";
+const MERINGUE_GLYPH = "❖";
 
 // Special candies (Track B0): a special is a normal swappable gem carrying a
 // power, drawn with a distinct badge + an a11y suffix (not colour-only). The key
@@ -63,6 +65,7 @@ const PACK_URL: Partial<Record<Mode, string>> = {
   jelly: "/match3-jelly-pack.json",
   ingredients: "/match3-ingredients-pack.json",
   checklist: "/match3-checklist-pack.json",
+  obstacles: "/match3-obstacles-pack.json",
 };
 
 /** Fetch and unwrap a winnable-daily pack served at `url`. */
@@ -94,7 +97,8 @@ const isClear = (env: M3Envelope): boolean =>
   env.kind === "match3-blockers" ||
   env.kind === "match3-jelly" ||
   env.kind === "match3-ingredients" ||
-  env.kind === "match3-checklist";
+  env.kind === "match3-checklist" ||
+  env.kind === "match3-obstacles";
 
 function headline(env: M3Envelope, v: VerifyResult): string {
   if (!v.ok) return "Verification FAILED — this result does not check out";
@@ -109,7 +113,9 @@ function headline(env: M3Envelope, v: VerifyResult): string {
         ? "jelly"
         : env.kind === "match3-ingredients"
           ? "ingredients"
-          : "blockers";
+          : env.kind === "match3-obstacles"
+            ? "obstacles"
+            : "blockers";
     return env.payload.result === "Won"
       ? `All ${what} cleared in ${env.payload.move_count} swaps — verifiable`
       : `Ran out of swaps — ${what} remain`;
@@ -418,6 +424,7 @@ export function match3Module(): GameModule {
       objBtn("Clear jelly", "m3-obj-jelly", "jelly"),
       objBtn("Ingredients", "m3-obj-ingredients", "ingredients"),
       objBtn("Orders", "m3-obj-checklist", "checklist"),
+      objBtn("Obstacles", "m3-obj-obstacles", "obstacles"),
     );
 
     const hints = hintsEnabled();
@@ -501,9 +508,11 @@ export function match3Module(): GameModule {
           ? clearHud("jelly", board.jellyRemaining, board.jellyTotal)
           : board.mode === "ingredients"
             ? clearHud("ingredients", board.ingredientsRemaining, board.ingredientsTotal)
-            : board.mode === "checklist"
-              ? checklistHud(board)
-              : el(
+            : board.mode === "obstacles"
+              ? clearHud("obstacles", board.blockersRemaining, board.blockersTotal)
+              : board.mode === "checklist"
+                ? checklistHud(board)
+                : el(
               "div",
               { class: "m3-hud" },
               el("span", { class: `m3-score${scoreBumped ? " bump" : ""}` }, `Score ${board.score}`),
@@ -526,9 +535,36 @@ export function match3Module(): GameModule {
         // A blocker is a fixed, non-swappable tile (not a `.m3-gem`, so taps and
         // drags skip it); its neighbours' matches clear it.
         if (board.blockers[r]?.[c]) {
-          rowEl.append(
-            el("span", { class: "m3-blocker", role: "img", "aria-label": `blocker, row ${r + 1} column ${c + 1}` }, BLOCKER_GLYPH),
-          );
+          // A blocker cell. In obstacles mode it carries a flavour (licorice /
+          // meringue) rendered as a distinct tile; meringue shows its remaining
+          // layer count (a non-colour durability cue). Otherwise a plain blocker.
+          const obs = board.obstacles?.[r]?.[c] ?? "";
+          if (obs === "licorice") {
+            rowEl.append(
+              el(
+                "span",
+                { class: "m3-obstacle m3-licorice", role: "img", "aria-label": `licorice, row ${r + 1} column ${c + 1}` },
+                LICORICE_GLYPH,
+              ),
+            );
+          } else if (obs === "meringue") {
+            const layers = board.obstacleLayers?.[r]?.[c] ?? 1;
+            rowEl.append(
+              el(
+                "span",
+                {
+                  class: "m3-obstacle m3-meringue",
+                  role: "img",
+                  "aria-label": `meringue, ${layers} ${layers === 1 ? "layer" : "layers"} left, row ${r + 1} column ${c + 1}`,
+                },
+                `${MERINGUE_GLYPH}${layers}`,
+              ),
+            );
+          } else {
+            rowEl.append(
+              el("span", { class: "m3-blocker", role: "img", "aria-label": `blocker, row ${r + 1} column ${c + 1}` }, BLOCKER_GLYPH),
+            );
+          }
         } else if (board.ingredients?.[r]?.[c]) {
           // An ingredient is a fixed non-swappable object (not a `.m3-gem`) that
           // falls with gravity and exits at the bottom; you clear the gems beneath
@@ -712,7 +748,8 @@ export function match3Module(): GameModule {
       objective === "blockers" ||
       objective === "jelly" ||
       objective === "ingredients" ||
-      objective === "checklist";
+      objective === "checklist" ||
+      objective === "obstacles";
     if (clearing && !packCache[objective]) {
       try {
         packCache[objective] = await fetchPack(PACK_URL[objective]!);
@@ -724,7 +761,9 @@ export function match3Module(): GameModule {
               ? "ingredients"
               : objective === "checklist"
                 ? "orders"
-                : "clear-the-blockers";
+                : objective === "obstacles"
+                  ? "obstacles"
+                  : "clear-the-blockers";
         showLoadError(`Today’s ${label} board could not be loaded.`);
         return;
       }
@@ -743,6 +782,9 @@ export function match3Module(): GameModule {
     } else if (objective === "checklist") {
       seed = seedOverride ?? packSeed(packCache.checklist!, nextMode);
       game.newChecklistGame(seed);
+    } else if (objective === "obstacles") {
+      seed = seedOverride ?? packSeed(packCache.obstacles!, nextMode);
+      game.newObstaclesGame(seed);
     } else {
       // Target-score daily uses a seed from the baked par table (ladder tiers);
       // free-play is a random seed (off-table → live fallback tiers).
@@ -835,7 +877,8 @@ export function match3Module(): GameModule {
           modeParam === "blockers" ||
           modeParam === "jelly" ||
           modeParam === "ingredients" ||
-          modeParam === "checklist"
+          modeParam === "checklist" ||
+          modeParam === "obstacles"
         ) {
           objective = modeParam;
         }
