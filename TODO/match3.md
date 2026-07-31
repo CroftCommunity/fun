@@ -122,7 +122,15 @@ beam-based par table landing early. Full phasing, DoD, and risks in the roadmap.
         refill so it folds into the fingerprint. Deal changed → jelly+par packs +
         JS jelly fixture + colour-bomb e2e seed re-derived; vector 14. Direct
         blocker-eating + fish combos are B5/follow-up.
-  - [ ] B5 combo matrix → B6 specials-aware solver/par. **Next up: B5.**
+  - [x] **B5 combo matrix** (plan: `plans/2026-07-30-match3-b5-combos.md`).
+        Swapping two non-fish specials combines them (RULES.md T1d) via a `combo()`
+        classifier feeding `activate` (a new `ComboEffect` input; no-combo path
+        byte-identical). B5.1 striped+striped (cross), striped+wrapped (thick cross),
+        wrapped+wrapped (5×5); B5.2 bomb+striped / bomb+wrapped (partner colour's
+        rows+cols / 3×3s, direct clear-set) and bomb+bomb (clear the board). Golden
+        vectors 15–20; par pack re-locked (blockers/jelly unchanged); how-to + a combo
+        e2e added. Fish combos deferred (fish + special still fires independently).
+  - [ ] **B6 specials-aware solver/par. Next up: B6.**
 - [ ] **Track C (rest) — par calibration**: C2 offline LLM calibration study of the
       rung difficulty → C3 re-par after specials land.
 - [ ] **Track D — parity completeness** (confirm each first): ingredients,

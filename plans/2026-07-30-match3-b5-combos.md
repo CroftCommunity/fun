@@ -214,6 +214,31 @@ Resolved by the generic-of-Candy-Crush positioning + the owner decisions above:
 - [DEFERRED to B6] Specials-/combos-aware solver + par re-tune once the matrix lands.
 
 ## Review Log
+### B5 complete — 2026-07-31
+Shipped green + deployed: B5.1 `6206825` (striped/wrapped combos + the `combo()`→
+`activate` plumbing), B5.2 `614d00f` (colour-bomb combos incl. bomb+bomb), B5.3 `<this>`
+(how-to + combo e2e + docs). Final gate: cargo core+solver (incl. byte-identical regen
+drills), npm test 96, e2e 122 (both projects incl. axe). Golden vectors 15–20 locked.
+- **Containment held — no pre-B5 vector re-locked.** The combo path only triggers when
+  both swapped cells are non-fish specials, and it *seeds* `activate` (a new
+  `ComboEffect`) rather than restructuring it, so all of B0–B4 stayed byte-identical.
+  The only churn was the **par pack**, twice: B5.1 and B5.2 each shifted the beam 3★ for
+  the handful of seeds whose greedy/beam line swaps two adjacent specials (blockers/jelly
+  deals unchanged → their packs + JS fixtures untouched, unlike B4).
+- **`play()` returns a status, not a report.** The combo e2e measures the blast by its
+  **score jump** (a cross ≈ 150 vs a plain match's 30), not a cleared-cell count — the
+  wasm `play_swap` binding returns only a `MoveStatus`.
+- **Seed 45 gives a natural two-adjacent-striped combo.** A throwaway probe over
+  first-legal-move play found seed 45 brings two `StripedV` together by step 5 and holds
+  them — the e2e plays to that state and fires the combo (the same "re-probe a magic seed"
+  pattern B4 used for its special e2e tests).
+- **Two realizations flagged revisable** (documented in RULES T1d, decided under the
+  generic-of-Candy-Crush latitude): wrapped+wrapped is a single 5×5 (both consumed → no
+  centre to pin/re-blast), and the colour-bomb transforms fire each colour cell once.
+- **B6 (specials-/combos-aware solver + par re-tune) is next** — the packs currently keep
+  specials optional in the winnability requirement; B6 teaches the solvers about specials
+  and re-tunes the par ladder with the full matrix in hand.
+
 ### Pass 1 — 2026-07-31
 Plan authored after surfacing the three engineering forks (combo plumbing, colour-bomb
 transform representation, fish-combo scope) and the owner deciding all three toward the

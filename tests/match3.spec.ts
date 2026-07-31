@@ -469,3 +469,60 @@ test("a fish (2×2) can be created and fired by swapping it (the fish reaches th
   expect(info!.swappable, "the fish is swappable (swap-activation reaches the UI)").toBe(true);
   expect(info!.after, "the fired fish ate a target, so the score rose").toBeGreaterThan(info!.before);
 });
+
+test("swapping two specials fires a combo (a big combined blast reaches the UI)", async ({ page }) => {
+  await page.goto("/match3/?seed=45");
+  await ready(page);
+
+  // First-legal-move play until TWO orthogonally-adjacent special candies sit on
+  // the board, then swap the pair — that is a combo (B5), a single blast bigger
+  // than firing each alone (a striped+striped cross clears a full row AND column).
+  // seed=45 deterministically brings two adjacent striped candies together under
+  // first-legal-move play within the budget.
+  const info = await page.evaluate(() => {
+    const h = window.__match3!;
+    const adjacentPair = (sp: string[][]) => {
+      for (let r = 0; r < sp.length; r += 1) {
+        for (let c = 0; c < (sp[r] ?? []).length; c += 1) {
+          if (!sp[r]![c]) continue;
+          for (const [nr, nc] of [
+            [r + 1, c],
+            [r, c + 1],
+          ] as const) {
+            if (nr < sp.length && nc < (sp[nr] ?? []).length && sp[nr]![nc]) {
+              return [r, c, nr, nc] as const;
+            }
+          }
+        }
+      }
+      return null;
+    };
+    for (let i = 0; i < 20; i += 1) {
+      const b = h.game.board();
+      const pair = adjacentPair(b.specials);
+      if (pair) {
+        const mv = h.game
+          .legalMoves()
+          .find(
+            (m) =>
+              (m[0] === pair[0] && m[1] === pair[1] && m[2] === pair[2] && m[3] === pair[3]) ||
+              (m[0] === pair[2] && m[1] === pair[3] && m[2] === pair[0] && m[3] === pair[1]),
+          );
+        if (!mv) return { fired: false, before: b.score, after: b.score };
+        const before = b.score;
+        h.game.play(mv);
+        h.refresh();
+        return { fired: true, before, after: h.game.board().score };
+      }
+      const m = h.game.legalMoves();
+      if (m.length === 0) break;
+      h.game.play(m[0]!);
+    }
+    return null;
+  });
+  expect(info, "two adjacent specials came together within the budget").not.toBeNull();
+  expect(info!.fired, "the two specials can be swapped (a combo)").toBe(true);
+  // A combo scores far more than a plain 3-match (30): a striped+striped cross is
+  // a full row + full column (~15 gems ≈ 150 on an 8×8), so the jump is large.
+  expect(info!.after - info!.before, "the combo's blast is much bigger than a match").toBeGreaterThanOrEqual(100);
+});

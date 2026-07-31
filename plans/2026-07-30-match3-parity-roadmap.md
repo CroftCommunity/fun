@@ -211,9 +211,18 @@ Execution plan for B0: `plans/2026-07-30-match3-b0-specials.md`.
   regenerated, JS jelly fixture + colour-bomb e2e seed re-derived. Vectors 14
   (creation + cascade activation). Direct blocker-eating + the fish combos are
   revisable/B5 follow-ups.
-- **B5 combos:** the special + special swap matrix (striped+striped, striped+
-  wrapped, wrapped+wrapped, bomb+striped, bomb+wrapped, bomb+bomb = clear board).
-  Its own phase — heavy rules + balance.
+- **B5 combos — DONE (2026-07-31)** (plan: `plans/2026-07-30-match3-b5-combos.md`).
+  The special + special swap matrix: a `combo()` classifier in `resolve_move` step-0
+  detects two swapped non-fish specials and feeds a combined clear-set into `activate`
+  (a new `ComboEffect` input, mirroring B3 `bombs` / B4 `fish_targets`); both specials
+  are consumed and the no-combo path stays byte-identical. B5.1 striped+striped (cross),
+  striped+wrapped (thick cross), wrapped+wrapped (5×5); B5.2 bomb+striped / bomb+wrapped
+  (the partner colour's rows+cols / 3×3s, via a direct equivalent clear-set) and
+  bomb+bomb (clear the board). Golden vectors 15–20; par pack re-locked (combos raise
+  the beam for seeds whose line swaps two adjacent specials; blockers/jelly unchanged);
+  no pre-B5 vector re-locked. **Fish combos deferred** (a fish + special still fires
+  independently). Realizations flagged revisable pre-users: wrapped+wrapped is a single
+  5×5, and the colour-bomb transforms fire each colour cell once (no double).
 - **B6 solver + winnability + par for specials:** teach the mode solvers about
   specials so packs stay winnable; extend the par ladder's players to use specials
   (feeds Track C).
