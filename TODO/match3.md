@@ -106,8 +106,16 @@ beam-based par table landing early. Full phasing, DoD, and risks in the roadmap.
         legal with no line match (B2.2). Golden vectors 10/11/12; par pack re-locked
         (blockers/jelly byte-identical); the re-blast carry is transient (not in
         `state_hash`); how-to updated.
-  - [ ] B3 colour bomb → B4 fish (2×2 + seeded targeting) → B5 combo matrix → B6
-        specials-aware solver/par. **Next up: B3.**
+  - [x] **B3 colour-bomb activation** (plan: `plans/2026-07-30-match3-b3-colorbomb.md`).
+        5-in-a-row → colour bomb; **swap it with a gem to clear all of that gem's
+        colour** (bomb consumed), chaining any striped/wrapped of that colour.
+        Swap-only (colourless → never match-fired): `fires_on_swap` += `ColorBomb`,
+        `activate` gains a colour-predicate `bombs` branch. Golden vector 13; vector
+        06 re-locked (its created colour bomb is now a legal swap → no reshuffle);
+        par pack re-locked; how-to updated. Combos (bomb+bomb/bomb+special, and a
+        colour bomb set off by another blast) are B5.
+  - [ ] B4 fish (2×2 + seeded targeting) → B5 combo matrix → B6 specials-aware
+        solver/par. **Next up: B4.**
 - [ ] **Track C (rest) — par calibration**: C2 offline LLM calibration study of the
       rung difficulty → C3 re-par after specials land.
 - [ ] **Track D — parity completeness** (confirm each first): ingredients,

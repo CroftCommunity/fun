@@ -193,8 +193,13 @@ Execution plan for B0: `plans/2026-07-30-match3-b0-specials.md`.
   (B2.2). Vectors 10/11/12; par pack re-locked (blockers/jelly byte-identical);
   how-to updated. The re-blast carry is transient within `resolve_move` (not in
   `state_hash`).
-- **B3 colour bomb:** 5-in-a-row → colour bomb; swap-with-gem clears all of that
-  colour.
+- **B3 colour bomb — DONE (2026-07-31)** (plan: `plans/2026-07-30-match3-b3-colorbomb.md`).
+  5-in-a-row → colour bomb; **swapping it with a gem clears every gem of that gem's
+  colour** (bomb consumed), sweeping up + firing any striped/wrapped of that colour.
+  Swap-only (the colour bomb is colourless → never match-fired); `fires_on_swap` +=
+  `ColorBomb`, `activate` gains a colour-predicate `bombs` branch. Vector 13; vector
+  06 re-locked (its created colour bomb is now a legal swap → no reshuffle); par pack
+  re-locked. Colour-bomb-in-a-blast and bomb+bomb/bomb+special combos are B5.
 - **B4 fish (2×2 square):** fish gem. **Includes the 2×2-square match detection
   moved from B0** — recognising a 2×2 block changes what counts as a *match* and a
   *legal swap* (new legal moves), plus deal/reshuffle match-avoidance, with its own
