@@ -170,6 +170,24 @@ Resolved by the generic-of-Candy-Crush positioning:
   colour caught in the colour-clear fires (chains) via the existing queue.
 
 ## Review Log
+### B3 complete — 2026-07-31
+Shipped green + deployed: B3.1 `c51fbcc` (swap-activation core + legality + par
+re-lock + vector 06 re-lock), B3.2 `<this>` (how-to + e2e + docs). Final gate:
+cargo 96, npm test 87, e2e 104 (both projects, incl. axe); golden vector 13 locked.
+- **Vector 06 re-locked (expected).** Making the colour bomb swappable turned its
+  created-colour-bomb final board from "dead → reshuffled" into "live → no
+  reshuffle", so vector 06's final hash moved (step-0 unchanged). Same shape as
+  B1.2's reshuffle re-lock — a legality change rippling to the deadlock check.
+- **Colour bomb is the first colour-predicate special.** Its activation is not a
+  positional `blast_region` but "clear all `Gem(target)`", so `activate` grew a
+  `bombs` input rather than a `blast_region` arm, and it is swap-only (colourless →
+  excluded from `fires_on_match`). The `bombs` list is transient (swap-seeded per
+  move), so no `state_hash` surface.
+- **Only par moved (again).** Both the legality change and the colour-clear left the
+  blockers/jelly fixture lines byte-identical; only the par table shifted.
+- **B4 (fish: a 2×2-square match + seeded `DetRng` targeting) is next** — it changes
+  what counts as a *match* and a *legal swap*, so it is the heaviest special phase.
+
 ### Pass 1 — 2026-07-31
 Plan authored from deep B1/B2 context (same files/patterns). The colour bomb is the
 first special whose activation is a **colour predicate**, not a position `blast_region`
