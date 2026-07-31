@@ -46,6 +46,31 @@ describe("games drawer chrome", () => {
     expect(chrome.isDrawerOpen()).toBe(false);
   });
 
+  it("a close button inside the drawer recollapses it", () => {
+    const chrome = boot();
+    chrome.openDrawer();
+    expect(chrome.isDrawerOpen()).toBe(true);
+    const closeBtn = document.querySelector<HTMLButtonElement>(
+      "#games-drawer .drawer-close",
+    );
+    expect(closeBtn).not.toBeNull();
+    closeBtn!.click();
+    expect(chrome.isDrawerOpen()).toBe(false);
+  });
+
+  it("clicking the scrim off the drawer recollapses it", () => {
+    const chrome = boot();
+    const scrim = document.querySelector<HTMLElement>(".drawer-scrim");
+    expect(scrim).not.toBeNull();
+    expect(scrim!.hidden).toBe(true); // no scrim while closed
+    chrome.openDrawer();
+    expect(chrome.isDrawerOpen()).toBe(true);
+    expect(scrim!.hidden).toBe(false);
+    scrim!.click();
+    expect(chrome.isDrawerOpen()).toBe(false);
+    expect(scrim!.hidden).toBe(true);
+  });
+
   it("lists every registry game as a link to its own URL", () => {
     boot();
     const ids = [...document.querySelectorAll(".drawer-item")].map((a) =>

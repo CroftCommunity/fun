@@ -8,6 +8,31 @@ test("home page lists the games and the drawer opens", async ({ page }) => {
   await expect(page.locator(".drawer-item")).toHaveCount(7);
 });
 
+test("the drawer recollapses via its close button and via clicking off", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const openBtn = page.getByRole("button", { name: /open games drawer/i });
+  const drawer = page.locator("#games-drawer");
+
+  // Close button inside the drawer.
+  await openBtn.click();
+  await expect(drawer).toBeVisible();
+  await drawer.getByRole("button", { name: /close games drawer/i }).click();
+  await expect(drawer).toBeHidden();
+
+  // Click-off: tapping the backdrop beside the drawer recollapses it. Click the
+  // off-area to the right of the drawer (the drawer sits above the scrim, so a
+  // tap over the drawer navigates instead — that is not "clicking off").
+  await openBtn.click();
+  await expect(drawer).toBeVisible();
+  const scrim = page.locator(".drawer-scrim");
+  const box = await scrim.boundingBox();
+  expect(box).not.toBeNull();
+  await scrim.click({ position: { x: box!.width - 12, y: 120 } });
+  await expect(drawer).toBeHidden();
+});
+
 test("a game page mounts the module; full-screen preserves the same instance", async ({
   page,
 }) => {
