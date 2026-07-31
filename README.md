@@ -9,7 +9,7 @@ a portable artifact addressable at its own URL.
 `fun.croft.ing` presents games in a **slide-out drawer** over a persistent play area; each game can
 also go **full-screen** or **open in its own tab** (so every game has its own URL). A game is a module
 that implements one contract and renders chrome-agnostically into a mount point — the drawer is built
-once and every game reuses it. Shelf order: **solitaire → match-3 → bubble → cribbage**.
+once and every game reuses it. Shelf order: **solitaire → match-3 → bubble → wyrdle → cribbage**.
 
 ## Layout
 
@@ -26,8 +26,13 @@ crates/
   bubble-core/       deterministic bubble-shooter engine (hex board, tap-target aim, pop/drop) — green
   bubble-solver/     build-time clear-the-board solver + winnable-daily pack generator — green
   bubble-wasm/       browser binding over bubble-core (raw C-ABI + serde-JSON)     — built
+  wyrdle-core/       deterministic word-guessing engine (two-pass scoring, embedded license-clean
+                     word lists, seed→answer map, answer pack) — green (no solver: trivially winnable)
+  wyrdle-wasm/       browser binding over wyrdle-core (raw C-ABI + serde-JSON)     — built
 games/solitaire/     daily-pack.json — a year of winnable daily seeds + a fixture win line (v2, seeds-lean)
 games/bubble/        daily-pack.json — a year of winnable clear-the-board seeds + a fixture clear line
+games/wyrdle/        daily-pack.json — a year of shuffled answer seeds + a fixture win line;
+                     PROVENANCE.md — the word-list sources + licences (all license-clean)
 src/                 the games drawer UI (vanilla TS + esbuild); each game owns src/games/<game>/
 plans/               the phase-plans governing this repo
 ```
@@ -50,6 +55,19 @@ tap a gem then an adjacent one to swap (only match-making swaps are legal; the c
 glow), a 20-swap budget graded into 0–3 stars at score thresholds. Moves out → a verifiable score+stars
 record with re-verify + a `?r=` share. Daily board (date seed) + free-play (`?seed=`). v1 uses flat star
 thresholds (no per-deal par yet — see `TODO/match3.md`). Plan: `plans/2026-07-30-match3-playable.md`.
+
+## Wyrdle (playable — daily word game)
+
+`/wyrdle/` is a daily 5-letter word-guessing game (Wordle-family, built fresh — original name, original
+license-clean word lists, our own look). Guess the hidden word in six tries; each guess is scored per
+letter (correct / present / absent, with correct duplicate-letter handling). Tap the on-screen keyboard
+or type on a physical one; the **core decides legality** — a non-word shakes and changes nothing. The
+answer is a pure function of the seed (`ANSWERS[seed % N]`, no runtime RNG), so a game replays exactly
+from `(seed, guesses)`. Daily word (a shuffled seed from `games/wyrdle/daily-pack.json`, UTC rollover) +
+free-play (`?seed=`). Win or lose leads with a verification-forward result — the `pond-outcome` record,
+one-tap re-verify, and **two shares**: a spoiler-free **emoji grid** to copy (🟩🟨⬛) and a self-verifying
+`?r=` link (which carries the guesses, so it re-verifies but reveals the word). Word-list sources +
+licences: `games/wyrdle/PROVENANCE.md`. Plan: `plans/2026-07-31-wyrdle-daily-word-game.md`.
 
 ## Identity (light/dark)
 
