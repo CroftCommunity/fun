@@ -1,12 +1,53 @@
 # SuperTuxKart — Tier-2 wrap (the "big-download-then-offline" class-definer)
 
-**Status:** Pass 1 (planning) 2026-07-31. Not started. This is the **first real
+**Status:** Pass 1 + **Phase 0 recon done 2026-07-31**. **Blocked on a build
+environment** — see "Phase 0 recon findings" below. This is the **first real
 Tier-2 wrap** on `fun.croft.ing`, so it does double duty: it wraps SuperTuxKart
 **and** ratifies the reusable Tier-2 standard the Tux Racer spike drafted
 (`plans/2026-07-30-tux-racer-wrap-spike.md`) — the vendored-bundle pattern, the
 Playwright containment/legibility gate, honest representation, and the
 big-download disclosure. Owner adopted SuperTuxKart 2026-07-30 (discovery
-COHESION §62). Pass 2/3 pending before execution.
+COHESION §62). **Hosting (Q1) resolved by owner 2026-07-31: NOT GitHub Pages —
+local preview now, and object-storage blob if it proves awesome.** The recon
+found the bundle is not statically vendorable and must be produced by an
+Emscripten build, which this sandbox can't run — so execution moves to a proper
+build environment. Pass 2/3 pending.
+
+## Phase 0 recon findings (2026-07-31)
+
+Probed the source repo + the live demo before committing to a vendor path:
+
+- **D0.1 license — GPL** (repo `COPYING`); STK art/audio are the usual
+  CC-BY-SA — still to be confirmed file-by-file at build time. Redistributable
+  as an aggregated, attributed bundle with a source offer.
+- **D0.2 hosting — DECIDED (owner): not GitHub Pages.** ~120 MB exceeds Pages'
+  ~100 MB/file guidance; **local preview now → object-storage blob** if it earns
+  a place. This resolves the former BLOCKING Q1.
+- **No static bundle to vendor.** `ading2210/stk-code` (wasm branch) is
+  **source-only** (build via its `INSTALL.md` + Emscripten). The live demo
+  (`supertuxkart.pages.dev`) loads its engine from `/game/supertuxkart.js` and
+  **downloads assets at runtime into an IndexedDB filesystem (IDBFS)** — assets
+  are not a static file set to mirror. So "vendor the demo" is not a clean path;
+  producing a bundle means a real build.
+- **Build = a heavyweight Emscripten job**, not an in-session task: emsdk +
+  CMake + the `stk-code` wasm branch + the separate **`stk-assets`** (hundreds of
+  MB), cross-compiled to wasm. This sandbox can't run it (toolchain weight; and
+  browser egress here is blocked for a live 120 MB load, so even previewing the
+  demo in-session is out). **Execution belongs in a dedicated build environment.**
+
+### The build + local-preview recipe (for a real environment)
+
+1. Install **emsdk** (Emscripten SDK), CMake, and the STK build deps.
+2. `git clone -b wasm https://github.com/ading2210/stk-code` and follow its
+   `INSTALL.md` wasm section; fetch the matching **`stk-assets`**.
+3. `emcmake` / `emmake` build → static `supertuxkart.js` + `.wasm` + the packaged
+   asset data.
+4. **Preview locally:** serve the build output over a static server + open in a
+   real browser; confirm it runs offline after first load; **evaluate "is it
+   awesome."**
+5. If awesome → push the bundle to **object storage** (the blob candidate) and
+   wire the wrapper's fetch URL there; then Phases 1–4 (vendor-record + wrapper +
+   containment harness + wire/deploy) proceed against that URL.
 
 > Wrap, not build. STK is a full 3D kart racer; rebuilding it Tier-1 is not on
 > the table. TDD here governs the **wrapper + containment harness** we write, not
@@ -222,7 +263,10 @@ badge Tier-2 games honestly — a small shared-contract change.
 
 ## Open Questions
 
-- [RECOMMENDED: BLOCKING] **Q1 — where do 120 MB of assets live?** GitHub Pages
+- [CONFIRMED: RESOLVED (owner 2026-07-31)] **Q1 — where do 120 MB of assets
+  live? NOT GitHub Pages.** Local preview during evaluation; **object-storage
+  blob** if SuperTuxKart proves awesome. The wrapper fetches from that
+  object-storage URL. (Superseded — kept for the record.) GitHub Pages
   limits (~100 MB/file, ~1 GB/site) may not suit a 120 MB bundle. Chunk on Pages,
   a GitHub release asset / CDN fetched at runtime, or Git LFS? *Rationale:
   everything downstream depends on the host; resolve in Phase 0 D0.2. Recommend
