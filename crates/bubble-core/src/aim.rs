@@ -70,10 +70,11 @@ fn direction(angle: Angle) -> (i64, i64) {
     (d[1], d[2])
 }
 
-/// The sub-pixel center of hex cell `(r, c)` on a `width`-wide board.
+/// The sub-pixel center of hex cell `(r, c)`. Odd rows are shifted half a bubble
+/// (staggered hex); the x-offset is column-relative, so it needs no board width.
 #[must_use]
-pub fn cell_center(width: usize, r: usize, c: usize) -> (i32, i32) {
-    let x = if r % 2 == 0 {
+pub fn cell_center(r: usize, c: usize) -> (i32, i32) {
+    let x = if r.is_multiple_of(2) {
         RADIUS + (c as i32) * DIAM
     } else {
         RADIUS + DIAM / 2 + (c as i32) * DIAM
@@ -96,7 +97,7 @@ fn collides(board: &Board, px: i64, py: i64) -> bool {
     for r in 0..board.height {
         for c in 0..Board::row_len(board.width, r) {
             if is_occupied(board, r, c) {
-                let (cx, cy) = cell_center(board.width, r, c);
+                let (cx, cy) = cell_center(r, c);
                 let ddx = px - i64::from(cx);
                 let ddy = py - i64::from(cy);
                 if ddx * ddx + ddy * ddy < d2 {
@@ -115,7 +116,7 @@ fn nearest_empty(board: &Board, px: i64, py: i64) -> Pos {
     for r in 0..board.height {
         for c in 0..Board::row_len(board.width, r) {
             if is_empty(board, r, c) {
-                let (cx, cy) = cell_center(board.width, r, c);
+                let (cx, cy) = cell_center(r, c);
                 let ddx = px - i64::from(cx);
                 let ddy = py - i64::from(cy);
                 let d = ddx * ddx + ddy * ddy;

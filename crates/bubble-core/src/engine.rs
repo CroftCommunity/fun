@@ -3,6 +3,7 @@
 
 use std::collections::HashSet;
 
+use crate::aim::{resolve_shot, Angle};
 use crate::board::{Board, Cell, Pos};
 use crate::rng::DetRng;
 
@@ -150,16 +151,12 @@ fn drop_floating(board: &mut Board) -> usize {
     dropped
 }
 
-/// Fire a `color` bubble at `target`: place, pop the connected same-colour
-/// cluster if ≥ 3, then drop any now-floating clusters (RULES.md "The shot").
-///
-/// # Errors
-/// Returns `IllegalTarget` if `target` is not a legal landing cell; the board is
-/// left unchanged in that case.
-pub fn shoot(board: &mut Board, target: Pos, color: u8) -> Result<ShotReport, ShotError> {
-    if !is_legal_target(board, target) {
-        return Err(ShotError::IllegalTarget);
-    }
+/// Place a `color` bubble at `target` (assumed empty), pop the connected
+/// same-colour cluster if ≥ 3, then drop any now-floating clusters (RULES.md
+/// "The shot"). This is the raw place→pop→drop with **no legality gate** — the
+/// caller owns where the shot lands ([`shoot`] gates on a legal tap-target;
+/// [`shoot_angle`] takes the landing the aim resolver computed).
+pub(crate) fn apply_shot(board: &mut Board, target: Pos, color: u8) -> ShotReport {
     board.set(target.0, target.1, Cell::Bubble(color));
     let cluster = connected_same_color(board, target, color);
     let popped = if cluster.len() >= 3 {
@@ -172,11 +169,36 @@ pub fn shoot(board: &mut Board, target: Pos, color: u8) -> Result<ShotReport, Sh
     };
     let dropped = drop_floating(board);
     let score_gain = popped as u64 + 2 * dropped as u64;
-    Ok(ShotReport {
+    ShotReport {
         popped,
         dropped,
         score_gain,
-    })
+    }
+}
+
+/// Fire a `color` bubble at tap-target `target`: place, pop, drop (RULES.md
+/// "The shot"). Legacy tap-target entry — the aim-and-shoot loop uses
+/// [`shoot_angle`].
+///
+/// # Errors
+/// Returns `IllegalTarget` if `target` is not a legal landing cell; the board is
+/// left unchanged in that case.
+pub fn shoot(board: &mut Board, target: Pos, color: u8) -> Result<ShotReport, ShotError> {
+    if !is_legal_target(board, target) {
+        return Err(ShotError::IllegalTarget);
+    }
+    Ok(apply_shot(board, target, color))
+}
+
+/// Aim by `angle`, resolve the landing with the fixed-point ray-cast
+/// ([`resolve_shot`]), and apply the shot there. **Infallible**: every angle
+/// resolves to some empty cell, so there is no illegal-shot case — the core
+/// decides the landing and the UI never does (RULES.md "Aim"). The projectile
+/// flight path is available separately via [`resolve_shot`] for the UI.
+#[must_use]
+pub fn shoot_angle(board: &mut Board, angle: Angle, color: u8) -> ShotReport {
+    let landing = resolve_shot(board, angle);
+    apply_shot(board, landing.pos, color)
 }
 
 #[cfg(test)]
@@ -265,6 +287,34 @@ mod b2_tests {
         assert_eq!(rep.dropped, 1, "the stranded colour-1 bubble drops");
         assert_eq!(rep.score_gain, 4 + 2, "dropped bubbles score double");
         assert!(is_cleared(&b));
+    }
+
+    #[test]
+    fn shoot_angle_places_at_the_resolved_landing() {
+        // Straight up on an empty 8×11 board sticks a single bubble on the
+        // ceiling row where resolve_shot says — no pop (one bubble, no trio).
+        let mut b = Board::new_empty(8, 11).expect("dims");
+        let landing = crate::aim::resolve_shot(&b, Angle(90)).pos;
+        let rep = shoot_angle(&mut b, Angle(90), 3);
+        assert_eq!(rep.popped, 0, "a lone bubble does not pop");
+        assert_eq!(
+            b.get(landing.0, landing.1),
+            Some(Cell::Bubble(3)),
+            "the bubble is placed at the ray-cast landing"
+        );
+    }
+
+    #[test]
+    fn shoot_angle_completing_a_trio_pops() {
+        // Two colour-0 bubbles straddling the centre of the ceiling row; a
+        // straight-up colour-0 shot sticks between/below them and completes a
+        // popping cluster. Verifies shoot_angle runs the full place→pop path.
+        let mut b = Board::new_empty(8, 11).expect("dims");
+        for c in 0..Board::row_len(8, 0) {
+            b.set(0, c, Cell::Bubble(0));
+        }
+        let rep = shoot_angle(&mut b, Angle(90), 0);
+        assert!(rep.popped >= 3, "completes a poppable cluster, got {rep:?}");
     }
 
     #[test]
