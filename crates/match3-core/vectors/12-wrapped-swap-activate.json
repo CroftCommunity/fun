@@ -1,0 +1,22 @@
+{
+  "name": "wrapped-swap-activate",
+  "seed": 1,
+  "colors": 6,
+  "board": [
+    "123",
+    "405",
+    "231"
+  ],
+  "special": [
+    "...",
+    ".W.",
+    "..."
+  ],
+  "moves": [ [1, 1, 1, 2] ],
+  "expect": {
+    "move_legal": [true],
+    "step0_cleared": [ [[0, 1], [0, 2], [1, 1], [2, 1], [2, 2]] ],
+    "step0_score": [50],
+    "final_state_hash": "f882701135ca65a1816005d5604495db66f9bcd3f040dce47c53bae2fb48b2e4"
+  }
+}

@@ -500,3 +500,65 @@ fn a_blocker_in_the_3x3_is_not_cleared_but_takes_one_layer() {
         "one layer removed, blocker still standing after blast 1"
     );
 }
+
+// --- B2.2: wrapped swap-activation (fire a wrapped by swapping it) -----------
+
+fn wrapped_swap_board() -> Board {
+    // A Wrapped (colour 0) at (1,1); no line matches, and swapping it with any
+    // neighbour forms no match either — so only swap-activation can fire it (the
+    // striped_board layout, marker changed H -> W).
+    Board::from_rows_with_specials(&["123", "405", "231"], &["...", ".W.", "..."]).expect("parses")
+}
+
+#[test]
+fn swap_legal_allows_firing_a_wrapped_without_a_match() {
+    let b = wrapped_swap_board();
+    assert!(
+        swap_legal(&b, (1, 1), (1, 2)),
+        "swapping the wrapped is legal (it fires)"
+    );
+    assert!(
+        !swap_legal(&b, (0, 0), (0, 1)),
+        "a plain no-match swap is still illegal"
+    );
+}
+
+#[test]
+fn legal_swaps_includes_the_wrapped_swap() {
+    let swaps = legal_swaps(&wrapped_swap_board());
+    assert!(
+        swaps.iter().any(|&(f, t)| f == (1, 1) || t == (1, 1)),
+        "the wrapped at (1,1) can be swapped with a neighbour"
+    );
+}
+
+#[test]
+fn swapping_a_wrapped_fires_its_double_and_carries_the_marker() {
+    // Swap the Wrapped (1,1)<->(1,2): no line match forms, but the wrapped — now
+    // carried to (1,2) — fires its 3×3 double from there. Its first blast clears
+    // the 3×3 around (1,2) minus its own (surviving) centre; it then re-blasts.
+    let mut game = Game::new(wrapped_swap_board(), 1, 6);
+    let (report, snaps) = game.play_move_traced((1, 1), (1, 2));
+    assert!(report.legal, "the wrapped swap is legal");
+    let cleared0 = &report.steps[0].cleared;
+    for cell in [(0, 1), (0, 2), (1, 1), (2, 1), (2, 2)] {
+        assert!(
+            cleared0.contains(&cell),
+            "{cell:?} cleared by the fired wrapped's first blast"
+        );
+    }
+    assert!(
+        !cleared0.contains(&(1, 2)),
+        "the wrapped's own centre survives its first blast"
+    );
+    assert_eq!(report.steps[0].score_gained, 50, "5 ring gems x 10");
+    assert_eq!(
+        snaps[1].special_at(1, 2),
+        Some(SpecialKind::Wrapped),
+        "the wrapped carried to (1,2) and survived — the marker moved with the swap"
+    );
+    assert!(
+        report.steps.len() >= 2 && report.steps[1].cleared.contains(&(1, 2)),
+        "the wrapped re-blasts and is consumed on the next step"
+    );
+}

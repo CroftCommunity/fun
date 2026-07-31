@@ -304,11 +304,14 @@ fn fires_on_match(kind: Option<SpecialKind>) -> bool {
 }
 
 /// Whether a special kind fires **when swapped** (swap-activation legality) —
-/// striped (B1.2); wrapped swap-activation lands in B2.2. Kept separate from
-/// [`fires_on_match`] so B2.1 can add wrapped match-activation without also
-/// changing swap legality (which re-locks packs — its own phase, B1's pattern).
+/// striped (B1.2) and wrapped (B2.2). Colour-bomb swap-activation is B3. Kept
+/// separate from [`fires_on_match`] so a phase can add a kind's match-activation
+/// without also changing swap legality (which re-locks packs — B1's pattern).
 fn fires_on_swap(kind: Option<SpecialKind>) -> bool {
-    matches!(kind, Some(SpecialKind::StripedH | SpecialKind::StripedV))
+    matches!(
+        kind,
+        Some(SpecialKind::StripedH | SpecialKind::StripedV | SpecialKind::Wrapped)
+    )
 }
 
 /// The cells a special candy at `pos` blasts, excluding blockers — a blocker in
