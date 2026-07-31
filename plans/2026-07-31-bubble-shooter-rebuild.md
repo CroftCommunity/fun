@@ -1,10 +1,10 @@
 # Bubble shooter rebuild — real aim-and-shoot, deterministic (phase plan)
 
-**Status:** 🚧 EXECUTING (branch `claude/bubble-shooter-rebuild`, worktree
-`worktrees/fun/bubble-v2`). **V0–V4 complete + committed; V5 (aim UI) next.**
-Rebuilds the shipped `/bubble/` from **tap-a-cell-to-place** into a **real Bubble
-Shooter** (aim → shoot → fly → bounce → stick → pop), while keeping the shelf's
-verifiable outcome via a quantized-angle + fixed-point core.
+**Status:** ✅ **COMPLETE — V0–V6 executed + committed** (branch
+`claude/bubble-shooter-rebuild`, worktree `worktrees/fun/bubble-v2`). `/bubble/`
+is a real Bubble Shooter (aim → shoot → fly → bounce → stick → pop) with the
+shelf's verifiable outcome preserved via a quantized-angle + fixed-point core.
+Not pushed/PR'd (awaiting owner).
 
 ## Execution log
 
@@ -34,10 +34,27 @@ verifiable outcome via a quantized-angle + fixed-point core.
     angles → clears (score 57) → verifiable bubble **v2** record.
   - **Known-red until V5:** `bubble.ts` (UI) still calls the old tap-target
     wrapper API, so `tsc`/e2e fail until the V5 rewrite.
-- **V5 exposure plan:** the aim UI needs geometry + fan from the core (single
-  source of truth) — add `geom_json` (`diam`/`radius`/`rowH`/`fanLo`/`fanHi`) and
-  a reachable-aware `hint_angle` to the wasm; render on a canvas with an
-  accessible `<input type=range>` angle control + pointer/touch aim.
+- **V5a (commit `c9a1cab`… wasm bits in a prior commit):** wasm `geom_json`
+  (`diam`/`radius`/`rowH`/`fanLo`/`fanHi`) + reachable-aware `hint_angle`;
+  wrapper `geom()`/`hintAngle()`.
+- **V5 (commit `c9a1cab`):** the aim UI. Canvas board drawn in the core's
+  sub-pixel space (`bubble-aim.ts` pure helpers, unit-tested); aim by
+  pointer/drag + ←/→ + an accessible angle slider; a dotted trajectory preview
+  + landing ring; rAF flight along the core path (reduced-motion snaps);
+  reachable-aware hint; record moves are angles. **Guardrail (e2e):** firing
+  angle A through the UI yields the same state hash as a control replay of
+  `shoot(A)` — the UI never invents physics. 18 e2e green (chromium +
+  mobile-webkit).
+- **Owner refinement (V6):** the trajectory preview is a **setting, on by
+  default** (`aimGuideEnabled`) — off is a harder aiming challenge, not outcome
+  assistance.
+- **V6:** how-to rewritten (aim-and-shoot + the aim-guide toggle); guide-shots
+  updated (aimed shot showing the dotted guide) + regenerated;
+  `docs/BUILDING-GAMES.md` §4 gains the "continuous-feeling games quantize the
+  input, not the illusion" principle; `README.md` gains a Bubble section;
+  `TODO/bubble.md` reworked to v2; v1 plan marked superseded. Full gate green
+  (cargo `--workspace` + fmt + clippy; tsc + eslint + vitest 115 + build; bubble
+  e2e 20).
 
 ## Problem Statement
 

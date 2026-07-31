@@ -127,6 +127,19 @@ test("reduced-motion fires instantly (no flight animation)", async ({ page }) =>
   expect(await shotsLeft(page)).toBe(before - 1);
 });
 
+test("the aim guide is on by default and can be turned off (persists)", async ({ page }) => {
+  await page.goto("/bubble/?seed=7");
+  await ready(page);
+  await page.locator(".sol-settings summary").click();
+  const guide = page.locator(".bub-set-aimguide");
+  await expect(guide).toBeChecked();
+  await guide.uncheck();
+  await page.reload();
+  await ready(page);
+  await page.locator(".sol-settings summary").click();
+  await expect(page.locator(".bub-set-aimguide")).not.toBeChecked();
+});
+
 test("with hints off, 'I'm done' ends the round", async ({ page }) => {
   await page.goto("/bubble/?seed=7");
   await ready(page);

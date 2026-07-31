@@ -20,8 +20,10 @@ import {
 } from "./bubble-outcome.js";
 import { dayIndexUTC } from "../share.js";
 import {
+  aimGuideEnabled,
   declareAssistanceEnabled,
   hintsEnabled,
+  setAimGuide,
   setDeclareAssistance,
   setHintsEnabled,
 } from "../../settings.js";
@@ -256,9 +258,10 @@ export function bubbleModule(): GameModule {
       drawBubble(ctx, p, flight.x, flight.y, board.currentColor);
       return;
     }
-    if (gameOver()) return;
+    if (gameOver() || !aimGuideEnabled()) return;
 
-    // Dotted trajectory preview + a landing ring where the shot resolves.
+    // Dotted trajectory preview + a landing ring where the shot resolves (the
+    // optional aim guide — off = a harder aiming challenge).
     const traj = game.trajectory(aim);
     ctx.save();
     ctx.strokeStyle = p.aimLine;
@@ -429,6 +432,10 @@ export function bubbleModule(): GameModule {
       setting(declareAssistanceEnabled(), "Declare assistance used", "sol-set-assist", (on) => {
         setDeclareAssistance(on);
       }),
+      setting(aimGuideEnabled(), "Show aim guide (trajectory preview)", "bub-set-aimguide", (on) => {
+        setAimGuide(on);
+        drawScene();
+      }),
     );
 
     const color = board.currentColor;
@@ -560,7 +567,15 @@ export function bubbleModule(): GameModule {
     }
     const board = game.board();
     aim = clampAngle(aim, geom);
-    container.replaceChildren(renderControls(board), renderCanvas(board), renderAimBar(), statusEl);
+    const root = el(
+      "div",
+      { class: "bub-game" },
+      renderControls(board),
+      renderCanvas(board),
+      renderAimBar(),
+      statusEl,
+    );
+    container.replaceChildren(root);
     syncControlsDisabled();
     drawScene();
     exposeHook();

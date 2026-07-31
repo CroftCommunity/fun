@@ -120,11 +120,14 @@ const SHOTS = [
   },
   {
     name: "bubble-board",
-    clip: ".bub-board",
+    clip: ".bub-game",
     async run(page) {
       await page.goto(`${origin}/bubble/?seed=7`, { waitUntil: "networkidle" });
-      await page.waitForSelector(".bub-board");
-      await page.waitForSelector(".bub-target.legal-target");
+      await page.waitForSelector(".bub-canvas");
+      await page.waitForFunction(() => Boolean(window.__bubble));
+      // Aim an angled shot so the dotted trajectory guide + landing ring show.
+      await page.evaluate(() => window.__bubble.setAim(115));
+      await page.waitForTimeout(120);
     },
   },
   {
@@ -132,7 +135,7 @@ const SHOTS = [
     clip: ".sol-result",
     async run(page) {
       await page.goto(`${origin}/bubble/`, { waitUntil: "networkidle" });
-      await page.waitForSelector(".bub-board");
+      await page.waitForSelector(".bub-canvas");
       await page.waitForFunction(() => Boolean(window.__bubble));
       const fixture = await (await fetch(`${origin}/bubble-daily-pack.json`)).json();
       await page.goto(`${origin}/bubble/?seed=${fixture.payload.fixture.seed}`, {

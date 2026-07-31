@@ -410,7 +410,10 @@ mod tests {
 
         // A hint is an in-fan angle that applies as a legal shot.
         let h = hint_angle();
-        assert!(u64::from(h) >= lo && u64::from(h) <= hi, "hint {h} within the fan");
+        assert!(
+            u64::from(h) >= lo && u64::from(h) <= hi,
+            "hint {h} within the fan"
+        );
         assert_eq!(shoot(h), 0, "the hinted angle applies");
     }
 }
