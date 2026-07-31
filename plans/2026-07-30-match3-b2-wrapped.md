@@ -221,6 +221,26 @@ Resolved by the generic-of-Candy-Crush positioning + the owner's B2 decision:
   pending set is subtracted from the clear); special-by-swap combos are B5.
 
 ## Review Log
+### B2 complete — 2026-07-31
+Shipped green + deployed: B2.1 `c669a57` (match-activation + double-blast core +
+par re-lock), B2.2 `346eded` (swap-activation + par re-lock), B2.3 `10b53bf`
+(how-to + e2e + docs). Final gate: cargo (match3-core + match3-solver, incl. 8 new
+specials tests), npm test 87, e2e 102 (both projects, incl. axe); golden vectors
+10/11/12 locked; blockers/jelly packs byte-identical (only par shifted each phase).
+- **Only the par pack moved.** Both rule changes (match-activation, then swap
+  legality) shifted a par solve line but left the blockers/jelly fixture lines
+  byte-identical — so no stale hardcoded e2e/unit fixtures this time (the B0.4
+  hazard didn't bite, but the full gate was still run to confirm).
+- **A merged-in breakage surfaced, fixed separately.** The parallel-session bubble
+  game (merged from `origin/main`) registered a 5th drawer entry but left
+  `drawer.spec.ts` asserting 4 — the shared e2e gate was already red on arrival.
+  Bumped the count to 5 in its own commit `db1429c` (unrelated to B2) so B2 could
+  land on a green gate.
+- **No gravity-tracking needed.** The pin keeps a surviving wrapped's coordinates
+  stable between its two blasts, so the transient re-blast seed is a fixed
+  `Vec<Pos>` — the design avoided threading positions through gravity entirely.
+- **B3 (colour bomb: swap-with-a-gem clears all of that colour) is next.**
+
 ### Pass 1 — 2026-07-31
 Plan authored from deep B1 context (same files/patterns as B1.1/B1.2). Owner surfaced
 the double-blast realization as an engineering fork and chose "survive + pin in place"
