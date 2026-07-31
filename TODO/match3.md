@@ -129,7 +129,12 @@ beam-based par table landing early. Full phasing, DoD, and risks in the roadmap.
         wrapped+wrapped (5×5); B5.2 bomb+striped / bomb+wrapped (partner colour's
         rows+cols / 3×3s, direct clear-set) and bomb+bomb (clear the board). Golden
         vectors 15–20; par pack re-locked (blockers/jelly unchanged); how-to + a combo
-        e2e added. Fish combos deferred (fish + special still fires independently).
+        e2e added.
+  - [x] **B5.4 fish combos** (plan: `plans/2026-07-31-match3-b5.4-fish-combos.md`). A fish
+        swapped with any special now combines: fish+fish/striped/wrapped spawn N=3 fish
+        that draw distinct seeded targets (RNG-in-combo) and apply the partner's blast;
+        fish+bomb = colour-clear of the fish's colour. Vectors 21–23; par re-locked; how-to
+        + e2e added. N=3 is a canon-derived tunable knob.
   - [x] **B6 specials-aware solver/par** (plan: `plans/2026-07-30-match3-b6-specials-par.md`).
         Discovery: the winnability solvers + all par players already play the real engine,
         so specials/combos already participate (winnability never a lie). Owner-chosen

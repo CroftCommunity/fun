@@ -220,9 +220,16 @@ Execution plan for B0: `plans/2026-07-30-match3-b0-specials.md`.
   (the partner colour's rows+cols / 3×3s, via a direct equivalent clear-set) and
   bomb+bomb (clear the board). Golden vectors 15–20; par pack re-locked (combos raise
   the beam for seeds whose line swaps two adjacent specials; blockers/jelly unchanged);
-  no pre-B5 vector re-locked. **Fish combos deferred** (a fish + special still fires
-  independently). Realizations flagged revisable pre-users: wrapped+wrapped is a single
-  5×5, and the colour-bomb transforms fire each colour cell once (no double).
+  no pre-B5 vector re-locked. Realizations flagged revisable pre-users: wrapped+wrapped is
+  a single 5×5, and the colour-bomb transforms fire each colour cell once (no double).
+- **B5.4 fish combos — DONE (2026-07-31)** (plan: `plans/2026-07-31-match3-b5.4-fish-combos.md`).
+  Closed the deferred combo: a fish swapped with any special now combines. fish+fish/
+  striped/wrapped spawn **N=3** fish that each draw a distinct seeded target (RNG-in-combo,
+  extending B4's fish targeting) and apply the partner's blast (line / 3×3 / plain eat);
+  fish+bomb is a flat colour-clear of the fish's colour (no RNG). Reuses the `ComboEffect`
+  plumbing (targets drawn in `classify_step0`, fed to `activate`). Golden vectors 21–23
+  (recorded step0, like B4); par pack re-locked (the specials-player now routes fish into
+  combos — 3★ moved both ways, mean +88 vs B6.2). N=3 is a canon-derived tunable knob.
 - **B6 solver + winnability + par for specials — DONE (2026-07-31)** (plan:
   `plans/2026-07-30-match3-b6-specials-par.md`). Phase-0 discovery found the
   winnability solvers **and** all par-ladder players already play the real engine, so

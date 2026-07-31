@@ -526,3 +526,61 @@ test("swapping two specials fires a combo (a big combined blast reaches the UI)"
   // a full row + full column (~15 gems ≈ 150 on an 8×8), so the jump is large.
   expect(info!.after - info!.before, "the combo's blast is much bigger than a match").toBeGreaterThanOrEqual(100);
 });
+
+test("swapping a fish with a special fires a fish combo (reaches the UI)", async ({ page }) => {
+  await page.goto("/match3/?seed=142");
+  await ready(page);
+
+  // First-legal-move play until a fish sits next to another special, then swap the
+  // pair — a fish combo (B5.4): a small school of fish each eat a target and carry
+  // the partner's blast, a clear well beyond a lone fish's single eat. seed=142
+  // deterministically brings a fish adjacent to a striped within the budget.
+  const info = await page.evaluate(() => {
+    const h = window.__match3!;
+    const fishPair = (sp: string[][]) => {
+      for (let r = 0; r < sp.length; r += 1) {
+        for (let c = 0; c < (sp[r] ?? []).length; c += 1) {
+          if (sp[r]![c] !== "fish") continue;
+          for (const [nr, nc] of [
+            [r + 1, c],
+            [r - 1, c],
+            [r, c + 1],
+            [r, c - 1],
+          ] as const) {
+            if (nr >= 0 && nr < sp.length && nc >= 0 && nc < (sp[nr] ?? []).length && sp[nr]![nc]) {
+              return [r, c, nr, nc] as const;
+            }
+          }
+        }
+      }
+      return null;
+    };
+    for (let i = 0; i < 20; i += 1) {
+      const b = h.game.board();
+      const pair = fishPair(b.specials);
+      if (pair) {
+        const mv = h.game
+          .legalMoves()
+          .find(
+            (m) =>
+              (m[0] === pair[0] && m[1] === pair[1] && m[2] === pair[2] && m[3] === pair[3]) ||
+              (m[0] === pair[2] && m[1] === pair[3] && m[2] === pair[0] && m[3] === pair[1]),
+          );
+        if (!mv) return { fired: false, before: b.score, after: b.score };
+        const before = b.score;
+        h.game.play(mv);
+        h.refresh();
+        return { fired: true, before, after: h.game.board().score };
+      }
+      const m = h.game.legalMoves();
+      if (m.length === 0) break;
+      h.game.play(m[0]!);
+    }
+    return null;
+  });
+  expect(info, "a fish came adjacent to a special within the budget").not.toBeNull();
+  expect(info!.fired, "the fish + special pair can be swapped (a fish combo)").toBe(true);
+  // A fish combo (school of fish, here each firing a line) clears well beyond a
+  // lone fish's single-cell eat (~10).
+  expect(info!.after - info!.before, "the fish combo's blast is large").toBeGreaterThanOrEqual(50);
+});

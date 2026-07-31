@@ -1,0 +1,26 @@
+{
+  "name": "combo-fish-bomb",
+  "seed": 1,
+  "colors": 6,
+  "board": [
+    "01234",
+    "12340",
+    "23401",
+    "34012",
+    "40123"
+  ],
+  "special": [
+    ".....",
+    ".....",
+    ".FC..",
+    ".....",
+    "....."
+  ],
+  "moves": [ [2, 1, 2, 2] ],
+  "expect": {
+    "move_legal": [true],
+    "step0_cleared": [ [[0,3],[1,2],[2,1],[2,2],[3,0],[4,4]] ],
+    "step0_score": [60],
+    "final_state_hash": "f5f91656efa91c88dc6208c20811a9cff50fbae9f4a7b0feae9957b73f39e75e"
+  }
+}

@@ -227,12 +227,10 @@ Before the clear (T2), the matched set is expanded by activation:
 Swapping **two specials** together produces a single combined blast larger than
 firing each — the combo matrix. Detection + dispatch (step 0 only):
 
-- **Dispatch rule.** If **both** swapped cells hold a **non-fish** firing special
-  (`StripedH`, `StripedV`, `Wrapped`, `ColorBomb`), the swap is a **combo**: both
-  specials are **consumed** (they do not fire individually) and the combined blast
-  is computed instead. If either cell is a **fish**, there is **no combo** — the
-  existing independent path runs (each special fires on its own; fish combos are a
-  deferred follow-up). A single special swapped with a plain gem is likewise not a
+- **Dispatch rule.** If **both** swapped cells hold a firing special (any kind —
+  `StripedH`, `StripedV`, `Wrapped`, `ColorBomb`, `Fish`), the swap is a **combo**:
+  both specials are **consumed** (they do not fire individually) and the combined
+  blast is computed instead. A single special swapped with a plain gem is **not** a
   combo (it fires alone — B1.2/B2.2/B3/B4.2).
 - **Combo centre = the destination cell `to`.** The blast is centred on `to` (the
   moved candy's landing — the same "at the moved candy" convention as creation).
@@ -260,6 +258,16 @@ firing each — the combo matrix. Detection + dispatch (step 0 only):
   clear — both specials are consumed, so there is no surviving centre to pin +
   re-blast (unlike a lone wrapped's canon double, T1c). Likewise the colour-bomb
   transforms fire each colour cell **once** (a single line / 3×3), not a double.
+- **Fish combos (B5.4).** A combo where **either** swapped cell is a fish. It spawns
+  **N = 3** fish (a canon-derived, tunable count; capped at the available targets),
+  each of which draws a **distinct** seeded target — the same tier rule as a lone fish
+  (T1c: jellied cells first, else any gem; `rng.index`), excluding the two sources and
+  already-chosen targets — and then applies the **partner special's** blast at that
+  target: a full **line** (partner striped, its orientation), a **3×3** (partner
+  wrapped), or a plain eat (**fish + fish**). The two source fish are consumed. The N
+  draws happen in a pinned sequence at step 0 (before that step's refill), folded into
+  `draws`/`state_hash`. **fish + colour bomb** is the exception — a flat **colour clear**
+  of the fish's colour (no RNG, in the direct clear-set with the other bomb combos).
 - **Chaining.** A **real** firing special the combo blast sweeps up (a striped /
   wrapped elsewhere on the board — **not** the two combo sources) fires too, via the
   same set-union chain queue the single-special blasts use (T1c). Deterministic and
