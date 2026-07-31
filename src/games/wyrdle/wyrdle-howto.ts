@@ -49,6 +49,10 @@ export const WYRDLE_GUIDE: Guide = {
           text: "Enter a guess with the on-screen keyboard or by typing on a physical one — both work the same way.",
         },
         {
+          kind: "note",
+          text: "Every guess must be a real five-letter word. Random letters (like “DKDKD”) are rejected: the row shakes, a “Not in word list” message shows, and no guess is used up — so you can’t spend a row on letters that aren’t a word.",
+        },
+        {
           kind: "steps",
           items: [
             "Tap or type five letters to fill a row.",

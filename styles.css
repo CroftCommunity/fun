@@ -1051,3 +1051,41 @@ body.fullscreen .play-area {
     transition: none;
   }
 }
+
+/* 2048 legibility: a goal banner, a merge score-float, and a subtle tile pop. */
+.t48-banner {
+  max-width: 22rem;
+  margin: 0.2rem auto 0;
+  text-align: center;
+  color: var(--ink-muted);
+  font-size: 0.95rem;
+}
+.t48-score {
+  position: relative;
+}
+.t48-float {
+  position: absolute;
+  left: 50%;
+  top: -0.2rem;
+  transform: translateX(-50%);
+  font-weight: 700;
+  color: var(--active);
+  animation: t48-rise 0.9s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes t48-rise {
+  0% { opacity: 0; transform: translate(-50%, 0.2rem); }
+  25% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -1.2rem); }
+}
+.t48-tile:not(.t48-empty) {
+  animation: t48-pop 0.12s ease-out;
+}
+@keyframes t48-pop {
+  0% { transform: scale(0.88); }
+  100% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .t48-float { animation: none; opacity: 1; }
+  .t48-tile:not(.t48-empty) { animation: none; }
+}
