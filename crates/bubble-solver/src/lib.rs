@@ -121,7 +121,7 @@ fn dfs(
     for (angle, pos) in reachable_landings(game.board()) {
         let mut probe = game.clone();
         let rep = probe.play(angle);
-        let gain = rep.popped + rep.dropped;
+        let gain = rep.popped.len() + rep.dropped.len();
         if gain > 0 || adjacent_to_current(game, pos) {
             scored.push((gain, angle));
         }
