@@ -165,15 +165,20 @@ deliverables are built in sequence: **Checklist (Phases 1–4)**, then **Obstacl
 - [x] a checklist verify-orchestration unit test (real wasm, seed-3 fixture): a completed
   checklist grades a verifiable `Won`, a tampered swap list is rejected.
 
-### Phase 4 (checklist UI + how-to + e2e) — toggle, tally HUD, ?mode, shots
-- [ ] `match3.ts` — an objective toggle ("Orders"/"Checklist"), a **tally HUD** (a colour
-  swatch + `n/target`, a striped icon + `n/target`, a wrapped icon + `n/target`, each
-  ticked when met), `?mode=checklist`, the `startGame` branch + `PACK_URL` +
-  `packSeed`; result headline for a checklist win; `build.mjs` serves the pack.
-- [ ] `match3-howto.ts` — five objectives (update the lede + objectives step).
-- [ ] `tests/match3.spec.ts` — the tally HUD + a verifiable win via the pack fixture
-  (both projects incl. axe). Guide shots only if a new visual is added.
-- [ ] Deploy + live-smoke `?mode=checklist` on fun.croft.ing (standalone Playwright).
+### Phase 4 (checklist UI + how-to + e2e) — toggle, tally HUD, ?mode, shots — DONE
+- [x] `match3.ts` — an "Orders" objective toggle, a **tally HUD** (the target colour's
+  shape glyph + `n/target`, striped + `n/target`, wrapped + `n/target`, each ticked ✓ when
+  met — non-colour cues), `?mode=checklist`, the `startGame` branch + `PACK_URL` +
+  `packSeed`; a checklist result headline; `build.mjs` serves the pack; `styles.css`
+  `.m3-checklist-hud`/`.m3-goal` + **`flex-wrap` on `.m3-objectives`** (the 5th button
+  overflowed 360px otherwise).
+- [x] `match3-howto.ts` — five objectives (lede + goal prose + objectives step + note).
+- [x] `tests/match3.spec.ts` — the tally HUD + a verifiable win via the seed-3 fixture
+  (both projects incl. axe) + the narrow-phone overflow sweep extended to checklist.
+- [x] Guide shots regenerated for the new 5-button toggle (`match3-board`, `match3-select`);
+  other games' shots reverted.
+- [ ] Deploy + live-smoke `?mode=checklist` on fun.croft.ing (standalone Playwright) —
+  after this push deploys.
 
 ### Phase 5 (obstacles core) — flavour overlay, deal, hash section, vectors
 - [ ] `board.rs` — an `Obstacle { Licorice, Meringue }` enum + a parallel
@@ -239,6 +244,17 @@ deliverables are built in sequence: **Checklist (Phases 1–4)**, then **Obstacl
   by a fish" (B4). Meringue/licorice ship as adjacency-cleared flavoured blockers.
 
 ## Review Log
+### Phase 4 (checklist UI + how-to + e2e) complete — 2026-07-31
+Green: the Orders (checklist) objective is playable at `?mode=checklist` with an "Orders"
+toggle + a goal-tally HUD (colour shape-glyph + striped + wrapped, each `n/target` ticked ✓
+when met — non-colour cues, `--ink` text so contrast holds). `startGame` fetches the pack;
+a checklist result headline ("Checklist complete in N swaps — verifiable"). how-to updated to
+five objectives; guide shots regenerated for the 5-button toggle. Two e2e (HUD+axe, a
+verifiable seed-3 win) added, both projects. **Overflow fix:** the 5th toggle button
+overflowed a 360px phone, so `.m3-objectives` gained `flex-wrap` (both the new sweep and the
+pre-existing narrow-phone test caught it). Full gate: 142 npm unit + 180 e2e; earlier Rust
+gate unchanged. Live-smoke pending the deploy.
+
 ### Phase 3 (checklist binding) complete — 2026-07-31
 Green + deployed: the checklist mode is now reachable and verifiable. `Mode::Checklist` +
 `new_checklist_game` (plain-gem deal, seed-derived targets); `Session` folds

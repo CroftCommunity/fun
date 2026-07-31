@@ -62,6 +62,7 @@ const PACK_URL: Partial<Record<Mode, string>> = {
   blockers: "/match3-blockers-pack.json",
   jelly: "/match3-jelly-pack.json",
   ingredients: "/match3-ingredients-pack.json",
+  checklist: "/match3-checklist-pack.json",
 };
 
 /** Fetch and unwrap a winnable-daily pack served at `url`. */
@@ -92,10 +93,16 @@ const starString = (stars: number): string => "★★★☆☆☆".slice(3 - sta
 const isClear = (env: M3Envelope): boolean =>
   env.kind === "match3-blockers" ||
   env.kind === "match3-jelly" ||
-  env.kind === "match3-ingredients";
+  env.kind === "match3-ingredients" ||
+  env.kind === "match3-checklist";
 
 function headline(env: M3Envelope, v: VerifyResult): string {
   if (!v.ok) return "Verification FAILED — this result does not check out";
+  if (env.kind === "match3-checklist") {
+    return env.payload.result === "Won"
+      ? `Checklist complete in ${env.payload.move_count} swaps — verifiable`
+      : "Ran out of swaps — the checklist is incomplete";
+  }
   if (isClear(env)) {
     const what =
       env.kind === "match3-jelly"
@@ -410,6 +417,7 @@ export function match3Module(): GameModule {
       objBtn("Clear blockers", "m3-obj-blockers", "blockers"),
       objBtn("Clear jelly", "m3-obj-jelly", "jelly"),
       objBtn("Ingredients", "m3-obj-ingredients", "ingredients"),
+      objBtn("Orders", "m3-obj-checklist", "checklist"),
     );
 
     const hints = hintsEnabled();
@@ -458,6 +466,34 @@ export function match3Module(): GameModule {
         ),
         el("span", { class: "m3-moves" }, `Swaps left ${board.movesLeft}`),
       );
+    // The checklist (Orders) HUD: a tally of the three goals — clear N of a
+    // colour, make N striped, make N wrapped — each ticked when reached. The
+    // colour goal uses the gem's shape glyph + name (not colour-only) for a11y.
+    const goalSpan = (label: string, made: number, target: number, aria: string): HTMLElement => {
+      const done = made >= target;
+      return el(
+        "span",
+        {
+          class: `m3-goal${done ? " done" : ""}`,
+          "aria-label": `${aria}: ${Math.min(made, target)} of ${target}${done ? ", done" : ""}`,
+        },
+        `${label} ${Math.min(made, target)}/${target}${done ? " ✓" : ""}`,
+      );
+    };
+    const checklistHud = (b: BoardView): HTMLElement =>
+      el(
+        "div",
+        { class: "m3-hud m3-checklist-hud" },
+        goalSpan(
+          `${GEM_GLYPH[b.checklistColor] ?? "?"} clear`,
+          b.checklistColorCleared,
+          b.checklistColorTarget,
+          `clear ${GEM_NAME[b.checklistColor] ?? "gem"} gems`,
+        ),
+        goalSpan("striped", b.checklistStripedMade, b.checklistStripedTarget, "make striped candies"),
+        goalSpan("wrapped", b.checklistWrappedMade, b.checklistWrappedTarget, "make wrapped candies"),
+        el("span", { class: "m3-moves" }, `Swaps left ${b.movesLeft}`),
+      );
     const hud =
       board.mode === "blockers"
         ? clearHud("blockers", board.blockersRemaining, board.blockersTotal)
@@ -465,7 +501,9 @@ export function match3Module(): GameModule {
           ? clearHud("jelly", board.jellyRemaining, board.jellyTotal)
           : board.mode === "ingredients"
             ? clearHud("ingredients", board.ingredientsRemaining, board.ingredientsTotal)
-            : el(
+            : board.mode === "checklist"
+              ? checklistHud(board)
+              : el(
               "div",
               { class: "m3-hud" },
               el("span", { class: `m3-score${scoreBumped ? " bump" : ""}` }, `Score ${board.score}`),
@@ -671,7 +709,10 @@ export function match3Module(): GameModule {
   async function startGame(nextMode: "daily" | "free", seedOverride?: bigint): Promise<void> {
     if (!game || disposed) return;
     const clearing =
-      objective === "blockers" || objective === "jelly" || objective === "ingredients";
+      objective === "blockers" ||
+      objective === "jelly" ||
+      objective === "ingredients" ||
+      objective === "checklist";
     if (clearing && !packCache[objective]) {
       try {
         packCache[objective] = await fetchPack(PACK_URL[objective]!);
@@ -681,7 +722,9 @@ export function match3Module(): GameModule {
             ? "clear-the-jelly"
             : objective === "ingredients"
               ? "ingredients"
-              : "clear-the-blockers";
+              : objective === "checklist"
+                ? "orders"
+                : "clear-the-blockers";
         showLoadError(`Today’s ${label} board could not be loaded.`);
         return;
       }
@@ -697,6 +740,9 @@ export function match3Module(): GameModule {
     } else if (objective === "ingredients") {
       seed = seedOverride ?? packSeed(packCache.ingredients!, nextMode);
       game.newIngredientsGame(seed);
+    } else if (objective === "checklist") {
+      seed = seedOverride ?? packSeed(packCache.checklist!, nextMode);
+      game.newChecklistGame(seed);
     } else {
       // Target-score daily uses a seed from the baked par table (ladder tiers);
       // free-play is a random seed (off-table → live fallback tiers).
@@ -782,10 +828,15 @@ export function match3Module(): GameModule {
           await showShared(shared);
           return;
         }
-        // `?mode=blockers` / `?mode=jelly` / `?mode=ingredients` open a clear
-        // objective directly.
+        // `?mode=blockers` / `?mode=jelly` / `?mode=ingredients` / `?mode=checklist`
+        // open a non-target-score objective directly.
         const modeParam = url.searchParams.get("mode");
-        if (modeParam === "blockers" || modeParam === "jelly" || modeParam === "ingredients") {
+        if (
+          modeParam === "blockers" ||
+          modeParam === "jelly" ||
+          modeParam === "ingredients" ||
+          modeParam === "checklist"
+        ) {
           objective = modeParam;
         }
         const seedParam = url.searchParams.get("seed");

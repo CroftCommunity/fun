@@ -247,13 +247,53 @@ test("collecting every ingredient is a verifiable win (ingredients mode)", async
   await expect(result.locator(".sol-record")).toContainText(/swaps used/i);
 });
 
+test("the Orders (checklist) objective deals a plain board with the goal-tally HUD", async ({ page }) => {
+  await page.goto("/match3/?mode=checklist&seed=3");
+  await ready(page);
+  await expect(page.locator(".m3-obj-checklist")).toHaveAttribute("aria-pressed", "true");
+  // A tally of three goals (clear a colour, make striped, make wrapped).
+  await expect(page.locator(".m3-checklist-hud")).toContainText(/striped/i);
+  await expect(page.locator(".m3-checklist-hud")).toContainText(/wrapped/i);
+  await expect(page.locator(".m3-checklist-hud .m3-goal")).toHaveCount(3);
+  // Checklist plays plain gems — no blocker / ingredient / jelly tiles at the deal.
+  await expect(page.locator(".m3-blocker, .m3-ingredient, .m3-gem.m3-jellied")).toHaveCount(0);
+  expect(await page.evaluate(() => window.__match3!.objective)).toBe("checklist");
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
+test("completing every order is a verifiable win (checklist mode)", async ({ page }) => {
+  // The committed pack fixture: seed 3 completes every order goal in two swaps.
+  await page.goto("/match3/?mode=checklist&seed=3");
+  await ready(page);
+  await expect(page.locator(".m3-obj-checklist")).toHaveAttribute("aria-pressed", "true");
+
+  await page.evaluate(() => {
+    const h = window.__match3!;
+    h.game.play([5, 4, 5, 5]);
+    h.game.play([6, 3, 6, 4]);
+    h.refresh();
+  });
+
+  const result = page.locator(".sol-result");
+  await expect(result).toBeVisible();
+  await expect(result.locator(".sol-verify-badge.ok")).toBeVisible();
+  await expect(result).toContainText(/checklist complete/i);
+  await expect(result.locator(".sol-record")).toContainText(/swaps used/i);
+});
+
 test("every objective fits a narrow phone with no horizontal overflow", async ({ page }) => {
-  // The 3-objective toggle + board must stay within a 360px viewport in each mode.
+  // The objective toggle + board must stay within a 360px viewport in each mode.
   await page.setViewportSize({ width: 360, height: 780 });
   const noOverflow = (): Promise<boolean> =>
     page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
 
-  for (const q of ["seed=7", "mode=blockers&seed=30", "mode=jelly&seed=317", "mode=ingredients&seed=144"]) {
+  for (const q of [
+    "seed=7",
+    "mode=blockers&seed=30",
+    "mode=jelly&seed=317",
+    "mode=ingredients&seed=144",
+    "mode=checklist&seed=3",
+  ]) {
     await page.goto(`/match3/?${q}`);
     await ready(page);
     await expect(page.locator(".m3-board")).toBeVisible();

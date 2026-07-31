@@ -536,6 +536,7 @@ body.fullscreen .play-area {
    button styling; the pressed one uses the accent like the board-mode buttons. */
 .m3-objectives {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.25rem;
 }
 /* A fixed blocker tile: same footprint as a gem, visibly locked and non-clickable. */
@@ -579,6 +580,24 @@ body.fullscreen .play-area {
 .m3-hud .m3-goal-left {
   color: var(--ink);
   font-weight: 700;
+}
+/* The checklist (Orders) HUD: a wrapped row of goal tallies. A reached goal is
+   shown bold with a ✓ (non-colour cues) plus a subtle accent chip — the text
+   stays --ink so contrast holds in both themes (the chip is decorative). */
+.m3-checklist-hud {
+  flex-wrap: wrap;
+  gap: 0.3rem 0.55rem;
+}
+.m3-hud .m3-goal {
+  color: var(--ink);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.m3-hud .m3-goal.done {
+  font-weight: 700;
+  padding: 0 0.3rem;
+  border-radius: var(--r-card);
+  background: rgb(200 161 31 / 18%);
 }
 /* A jellied cell: a normal swappable gem sitting on a translucent jelly backing
    that a match over it scrubs away. Kept subtle so the gem glyph stays legible. */
