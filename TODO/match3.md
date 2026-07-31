@@ -130,7 +130,14 @@ beam-based par table landing early. Full phasing, DoD, and risks in the roadmap.
         rows+cols / 3×3s, direct clear-set) and bomb+bomb (clear the board). Golden
         vectors 15–20; par pack re-locked (blockers/jelly unchanged); how-to + a combo
         e2e added. Fish combos deferred (fish + special still fires independently).
-  - [ ] **B6 specials-aware solver/par. Next up: B6.**
+  - [x] **B6 specials-aware solver/par** (plan: `plans/2026-07-30-match3-b6-specials-par.md`).
+        Discovery: the winnability solvers + all par players already play the real engine,
+        so specials/combos already participate (winnability never a lie). Owner-chosen
+        work: a strong rung that *deliberately* exploits specials —
+        `reference_score_specials`, a beam ranking its frontier by actual-score +
+        special/combo potential (floored by beam-8), now **3★**. Par re-baked in place
+        (D5): 3★ rose on 284/365 seeds (mean +17.7%). Weights are Track C knobs.
+  - [ ] **Track C par calibration. Next up: C2/C3.**
 - [ ] **Track C (rest) — par calibration**: C2 offline LLM calibration study of the
       rung difficulty → C3 re-par after specials land.
 - [ ] **Track D — parity completeness** (confirm each first): ingredients,

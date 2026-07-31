@@ -126,6 +126,24 @@ the delta is reported; all gates green; no `VERSION` bump (D5).
   the pack skips unwinnable seeds; owner picked the player instead).
 
 ## Review Log
+### B6 complete — 2026-07-31
+Shipped green: B6.1 (the player, additive/unwired) + B6.2 (wire into `par_tiers` + re-bake
++ docs). The **3★ re-grade** measured against the B5 table: 3★ rose on **284/365** seeds,
+**mean 4824 → 5677 (+17.7%)**, median delta 770, max 3510, and **no seed decreased** (the
+beam-8 floor holds) — a meaningful "strong" bump, not a near-optimal blowout, so
+"strong-but-attainable" roughly survives (a Track-C calibration signal, not a blocker).
+- **B6 was smaller than the roadmap framed it.** "Teach the solver about specials" was
+  already structurally true (every player plays the real engine); the real deliverable
+  was a rung that *deliberately* seeks specials. The heuristic-guided beam (frontier
+  ranked by actual-score + `special_potential`, reporting actual score, floored by beam-8)
+  delivers that deterministically, `>=` beam-8, with tunable weights for Track C.
+- **Par re-baked in place, no `VERSION` bump** (D5, no users). Byte-identical regen drill
+  green; the wasm re-embeds the new table; no hardcoded JS star assertion staled (stars
+  derive from the table). Full gate: cargo core+solver (incl. drills), npm test 107, e2e
+  136 (both projects incl. axe).
+- **Track C is next** — C2 offline model-calibration study of whether the rungs map to
+  human weak/medium/strong (and tuning the `special_potential` weights), then C3 re-par.
+
 ### Pass 1 — 2026-07-31
 Plan authored after Phase-0 discovery found the solver + par players already play the real
 engine (specials/combos included), reframing B6 from "teach the solver" to "raise the

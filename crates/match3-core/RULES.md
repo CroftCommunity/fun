@@ -348,9 +348,12 @@ strength — so stars mean "you played as well as a {weak, competent, strong} so
 
 - **1★ = `random_score`** — a random-legal-move player (a gentle floor most players pass).
 - **2★ = `reference_score`** — the greedy best-swap playout (competent play).
-- **3★ = `reference_score_beam` (beam-8)** — a less-myopic beam that provably scores ≥ greedy
-  (strong-but-attainable). Deeper beams (16/32/64) keep climbing — there is no cheap near-optimal
-  ceiling — so they stay as headroom / the "100% reference", never a star bar.
+- **3★ = `reference_score_specials` (beam-8, specials-exploiting)** — the strong rung (Track B6). It runs
+  the same beam as `reference_score_beam` but ranks its frontier for survival by *actual score + a special/
+  combo potential bonus*, so lines that build specials and set up a combo are not pruned before they pay
+  off; it reports honest actual score and **carries the plain beam as a floor**, so it provably scores ≥
+  beam-8 ≥ greedy (strong-but-attainable). The potential weights are tunable balance knobs (Track C
+  calibration). Swapping this in raised 3★ on 284/365 daily seeds (mean +17.7%; no seed decreased).
 
 The strong player is too slow to run live at verify time, so `par_tiers(seed)` (in `match3-solver`) is
 computed **offline** into a committed table (`games/match3/par-pack.json`, kind `match3-par-pack`), which

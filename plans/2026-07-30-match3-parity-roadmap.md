@@ -223,9 +223,18 @@ Execution plan for B0: `plans/2026-07-30-match3-b0-specials.md`.
   no pre-B5 vector re-locked. **Fish combos deferred** (a fish + special still fires
   independently). Realizations flagged revisable pre-users: wrapped+wrapped is a single
   5×5, and the colour-bomb transforms fire each colour cell once (no double).
-- **B6 solver + winnability + par for specials:** teach the mode solvers about
-  specials so packs stay winnable; extend the par ladder's players to use specials
-  (feeds Track C).
+- **B6 solver + winnability + par for specials — DONE (2026-07-31)** (plan:
+  `plans/2026-07-30-match3-b6-specials-par.md`). Phase-0 discovery found the
+  winnability solvers **and** all par-ladder players already play the real engine, so
+  specials/combos already fire in their playouts (winnability was never a lie — the
+  blockers/jelly dailies win via plain play, specials optional). The owner-chosen work
+  was a strong rung that *deliberately* exploits specials: `reference_score_specials`,
+  a beam ranking its frontier by *actual score + special/combo potential* (so
+  special-building lines survive pruning), reporting actual score and floored by
+  beam-8. It replaces beam-8 as **3★**; the par table re-baked in place (D5, no
+  `VERSION` bump): 3★ rose on 284/365 seeds (mean +17.7%, no decrease). Potential
+  weights are tunable knobs handed to Track C. Solver move-ordering enhancement not
+  taken (no stuck daily today).
 - **DoD per B-phase:** the special is created, activates, cascades, scores, and
   re-verifies deterministically; vectors re-locked-and-explained; a11y affordances;
   modes using it stay winnable-daily; deployed.

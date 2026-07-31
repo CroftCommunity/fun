@@ -19,7 +19,7 @@ use std::collections::HashSet;
 
 use match3_core::{
     blockers_mode, blockers_remaining, deal_blockers, deal_jelly, jelly_mode, jelly_remaining,
-    legal_swaps, random_score, reference_score, reference_score_beam, target_score_mode, Game,
+    legal_swaps, random_score, reference_score, reference_score_specials, target_score_mode, Game,
     MoveReport,
 };
 use serde::{Deserialize, Serialize};
@@ -238,17 +238,18 @@ pub fn jelly_pack_to_doc(pack: &Pack) -> Result<Vec<u8>, pond_docformat::DocErro
 ///
 /// Rungs (provisional, tunable — validated later by the offline model-calibration
 /// study): **1★ = a random-legal-move player** (a gentle floor most players pass),
-/// **2★ = greedy** (competent), **3★ = a beam-8 playout** (strong-but-attainable;
-/// deeper beams stay as headroom, never a star bar). Tiers are forced strictly
-/// increasing so 0–3 stars are always distinct.
+/// **2★ = greedy** (competent), **3★ = the specials-exploiting player** (B6 —
+/// a beam that deliberately builds and combos specials; strong-but-attainable).
+/// It carries the plain beam as a floor, so 3★ ≥ beam-8 ≥ greedy. Tiers are forced
+/// strictly increasing so 0–3 stars are always distinct.
 #[must_use]
 pub fn par_tiers(seed: u64) -> [u64; 3] {
     use target_score_mode as m;
     let weak = random_score(seed, m::WIDTH, m::HEIGHT, m::COLORS, m::MOVE_BUDGET);
     let medium = reference_score(seed, m::WIDTH, m::HEIGHT, m::COLORS, m::MOVE_BUDGET);
-    let strong = reference_score_beam(seed, m::WIDTH, m::HEIGHT, m::COLORS, m::MOVE_BUDGET, 8);
-    // weak <= medium <= strong holds by construction (beam carries greedy); nudge
-    // the rare tie so the thresholds are strictly increasing.
+    let strong = reference_score_specials(seed, m::WIDTH, m::HEIGHT, m::COLORS, m::MOVE_BUDGET, 8);
+    // weak <= medium <= strong holds by construction (the specials player carries the
+    // beam, which carries greedy); nudge the rare tie so thresholds strictly increase.
     let t1 = weak.min(medium);
     let t2 = medium.max(t1 + 1);
     let t3 = strong.max(t2 + 1);
