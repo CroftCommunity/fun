@@ -164,10 +164,24 @@ export function twenty48Module(): GameModule {
 
   const playDir = (dir: Direction): void => {
     if (!game || gameOver()) return;
+    const before = game.board().score;
     const status = game.move(dir);
     if (status !== "applied") return; // the core decides; illegal = no-op
+    const gained = game.board().score - before;
     setStatus("");
     render();
+    if (gained > 0) showScoreFloat(gained); // a merge scored — make it visible
+  };
+
+  // A brief "+N" that floats up from the score, so a merge is legible even
+  // without a full slide animation. Decorative + aria-hidden; reduced-motion safe.
+  const showScoreFloat = (gained: number): void => {
+    if (!container) return;
+    const host = container.querySelector<HTMLElement>(".t48-score");
+    if (!host) return;
+    const float = el("span", { class: "t48-float", "aria-hidden": "true" }, `+${gained}`);
+    host.append(float);
+    setTimeout(() => float.remove(), 900);
   };
 
   // --- hints ---
@@ -366,7 +380,12 @@ export function twenty48Module(): GameModule {
       return;
     }
     const board = game.board();
-    container.replaceChildren(renderControls(board), renderBoard(board), renderPad(), statusEl);
+    const banner = el(
+      "p",
+      { class: "t48-banner" },
+      "Slide the board — matching numbers combine (2+2=4). Reach the 2048 tile.",
+    );
+    container.replaceChildren(renderControls(board), banner, renderBoard(board), renderPad(), statusEl);
   }
 
   async function startGame(nextMode: "daily" | "free", seedOverride?: bigint): Promise<void> {

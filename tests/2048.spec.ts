@@ -24,6 +24,8 @@ test("the board, arrow pad, and HUD render", async ({ page }) => {
   await expect(page.locator(".t48-pad")).toBeVisible();
   await expect(page.locator(".t48-hud")).toContainText(/score/i);
   await expect(page.locator(".t48-hud")).toContainText(/best tile/i);
+  // A goal banner explains the game (matching numbers combine to reach 2048).
+  await expect(page.locator(".t48-banner")).toContainText(/combine.*2048/i);
   // A fresh board has exactly two spawned tiles.
   expect(await filled(page)).toBe(2);
 });

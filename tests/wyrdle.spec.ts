@@ -44,7 +44,11 @@ test("a non-word is rejected by the core — shake, nothing changes", async ({ p
   await ready(page);
   const before = await page.evaluate(() => window.__wyrdle!.game.board().guesses.length);
   await typeWord(page, "qwxzj"); // not in the allowed list
-  await expect(page.locator(".sol-status")).toContainText(/not in word list/i);
+  // A prominent toast (above the board) reports the rejection, not just a
+  // status line below the keyboard.
+  const toast = page.locator(".wy-toast.show");
+  await expect(toast).toBeVisible();
+  await expect(toast).toContainText(/not in word list/i);
   const after = await page.evaluate(() => window.__wyrdle!.game.board().guesses.length);
   expect(after).toBe(before); // the core decided; the guess was not recorded
 });
