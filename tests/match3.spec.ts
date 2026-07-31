@@ -354,3 +354,42 @@ test("a striped candy can be fired by swapping it (swap-activation reaches the U
   expect(info!.swappable, "the striped is swappable (swap-activation reaches the UI)").toBe(true);
   expect(info!.after, "firing the striped cleared a line, so the score rose").toBeGreaterThan(info!.before);
 });
+
+test("a wrapped candy can be fired by swapping it (the 3×3 double reaches the UI)", async ({ page }) => {
+  await page.goto("/match3/?seed=3");
+  await ready(page);
+
+  // Greedy-first play until a wrapped candy is on the settled board, then fire it
+  // by swapping it with a neighbour — swap-activation makes that swap legal (B2.2),
+  // and its 3×3 double blast clears several gems so the score jumps. seed=3 is a
+  // deterministic deal that produces a swappable wrapped within the budget.
+  const info = await page.evaluate(() => {
+    const h = window.__match3!;
+    for (let i = 0; i < 40; i += 1) {
+      const b = h.game.board();
+      for (let r = 0; r < b.specials.length; r += 1) {
+        for (let c = 0; c < (b.specials[r] ?? []).length; c += 1) {
+          if ((b.specials[r]![c] ?? "").startsWith("wrapped")) {
+            const mv = h.game
+              .legalMoves()
+              .find((m) => (m[0] === r && m[1] === c) || (m[2] === r && m[3] === c));
+            if (!mv) return { swappable: false, before: b.score, after: b.score };
+            const before = b.score;
+            h.game.play(mv);
+            h.refresh();
+            return { swappable: true, before, after: h.game.board().score };
+          }
+        }
+      }
+      const m = h.game.legalMoves();
+      if (m.length === 0) break;
+      h.game.play(m[0]!);
+    }
+    return null;
+  });
+  expect(info, "a wrapped candy was created within the budget").not.toBeNull();
+  expect(info!.swappable, "the wrapped is swappable (swap-activation reaches the UI)").toBe(true);
+  expect(info!.after, "firing the wrapped's 3×3 double cleared gems, so the score rose").toBeGreaterThan(
+    info!.before,
+  );
+});

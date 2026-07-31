@@ -183,7 +183,16 @@ Execution plan for B0: `plans/2026-07-30-match3-b0-specials.md`.
   no line match (B1.2). The swap carries the special marker, and a latent
   `reshuffle_if_dead` marker-desync (shipped since B0) was fixed (vectors
   04/05/06 re-locked). Vectors 08/09; packs re-locked; how-to updated.
-- **B2 wrapped:** L/T → wrapped gem; activation = 3×3 explosion, twice.
+- **B2 wrapped — DONE (2026-07-31)** (plan: `plans/2026-07-30-match3-b2-wrapped.md`).
+  L/T → wrapped gem; activation = the canon **double 3×3**: the wrapped clears the
+  3×3 minus its own centre (it survives), is **pinned** through that step's gravity
+  (candies fall in around it), then re-blasts the full 3×3 (consumed) next step —
+  mirroring the reference's visible behaviour (owner-chosen realization; the game is
+  a generic of the match-3 mechanic set). Chains (a chained wrapped does its own
+  double); triggered by matching it (B2.1) or swapping it — legal with no line match
+  (B2.2). Vectors 10/11/12; par pack re-locked (blockers/jelly byte-identical);
+  how-to updated. The re-blast carry is transient within `resolve_move` (not in
+  `state_hash`).
 - **B3 colour bomb:** 5-in-a-row → colour bomb; swap-with-gem clears all of that
   colour.
 - **B4 fish (2×2 square):** fish gem. **Includes the 2×2-square match detection

@@ -96,8 +96,18 @@ beam-based par table landing early. Full phasing, DoD, and risks in the roadmap.
         permuted gems without their markers, shipped since B0) is fixed —
         vectors 04/05/06 re-locked to corrected hashes. UI renders the blast via
         the existing cascade animation; how-to updated. Packs re-locked.
-  - [ ] B2 wrapped → B3 colour bomb → B4 fish (2×2 + seeded targeting) → B5 combo
-        matrix → B6 specials-aware solver/par. **Next up: B2.**
+  - [x] **B2 wrapped activation** (plan: `plans/2026-07-30-match3-b2-wrapped.md`).
+        L/T → wrapped; activation = the canon **double 3×3**. First blast clears the
+        3×3 minus the wrapped's own centre (it survives), the wrapped is **pinned**
+        through that step's gravity (candies fall in around it), then it re-blasts
+        the full 3×3 (consumed) next step — mirroring the reference (owner-chosen
+        realization; the game is a generic of the mechanic set). Chains (a chained
+        wrapped does its own double); triggered by matching it (B2.1) or swapping it,
+        legal with no line match (B2.2). Golden vectors 10/11/12; par pack re-locked
+        (blockers/jelly byte-identical); the re-blast carry is transient (not in
+        `state_hash`); how-to updated.
+  - [ ] B3 colour bomb → B4 fish (2×2 + seeded targeting) → B5 combo matrix → B6
+        specials-aware solver/par. **Next up: B3.**
 - [ ] **Track C (rest) — par calibration**: C2 offline LLM calibration study of the
       rung difficulty → C3 re-par after specials land.
 - [ ] **Track D — parity completeness** (confirm each first): ingredients,
