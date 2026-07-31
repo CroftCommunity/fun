@@ -546,7 +546,8 @@ pub extern "C" fn play_swap(r1: u32, c1: u32, r2: u32, c2: u32) -> u32 {
         // Checklist mode's win is path-accumulated: fold this move's report into
         // the running progress. A no-op for every other mode.
         if s.mode == Mode::Checklist {
-            s.checklist_progress.apply(&report, s.checklist_targets.color);
+            s.checklist_progress
+                .apply(&report, s.checklist_targets.color);
         }
         s.swaps.push([r1 as u8, c1 as u8, r2 as u8, c2 as u8]);
         0
@@ -579,7 +580,8 @@ pub extern "C" fn play_swap_traced(r1: u32, c1: u32, r2: u32, c2: u32) -> *const
         return set_out_str("[]");
     }
     if s.mode == Mode::Checklist {
-        s.checklist_progress.apply(&report, s.checklist_targets.color);
+        s.checklist_progress
+            .apply(&report, s.checklist_targets.color);
     }
     s.swaps.push([r1 as u8, c1 as u8, r2 as u8, c2 as u8]);
     let frames: Vec<Vec<String>> = snapshots.iter().map(match3_core::Board::to_rows).collect();

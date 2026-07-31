@@ -19,9 +19,10 @@ use std::collections::HashSet;
 
 use match3_core::{
     blockers_mode, blockers_remaining, checklist_mode, checklist_targets, deal, deal_blockers,
-    deal_ingredients, deal_jelly, ingredients_mode, ingredients_remaining, jelly_mode,
-    jelly_remaining, legal_swaps, random_score, reference_score, reference_score_specials,
-    target_score_mode, ChecklistProgress, ChecklistTargets, Game, MoveReport,
+    deal_ingredients, deal_jelly, deal_obstacles, ingredients_mode, ingredients_remaining,
+    jelly_mode, jelly_remaining, legal_swaps, obstacles_mode, random_score, reference_score,
+    reference_score_specials, target_score_mode, ChecklistProgress, ChecklistTargets, Game,
+    MoveReport,
 };
 use serde::{Deserialize, Serialize};
 
@@ -106,6 +107,35 @@ pub fn find_ingredients(seed: u64, node_budget: u64) -> Option<Vec<Swap>> {
         m::MOVE_BUDGET,
         |g| ingredients_remaining(&g.board) == 0,
         |r| r.steps.iter().map(|s| s.ingredients_collected).sum(),
+    )
+}
+
+/// Find a line that clears every obstacle (licorice + meringue) for `seed` within
+/// `node_budget` search nodes and the obstacles-mode move budget, or `None` (Track
+/// D, T7). Obstacles are `Blocker` cells, so this reuses the board-state
+/// [`search`] with the same clear-blockers win check + layers-removed ordering as
+/// [`find_clear`] — meringue's extra layers just take more matches.
+#[must_use]
+pub fn find_obstacles(seed: u64, node_budget: u64) -> Option<Vec<Swap>> {
+    use obstacles_mode as m;
+    let game = Game::new(
+        deal_obstacles(
+            seed,
+            m::WIDTH,
+            m::HEIGHT,
+            m::COLORS,
+            m::LICORICE,
+            m::MERINGUE,
+        ),
+        seed,
+        m::COLORS,
+    );
+    search(
+        &game,
+        node_budget,
+        m::MOVE_BUDGET,
+        |g| blockers_remaining(&g.board) == 0,
+        |r| r.steps.iter().map(|s| s.blocker_layers_removed).sum(),
     )
 }
 
@@ -354,6 +384,17 @@ pub fn generate_checklist_pack(
     generate(master_seed, count, node_budget, max_seeds, find_checklist)
 }
 
+/// Generate a winnable-daily **clear-the-obstacles** pack (Track D, T7).
+#[must_use]
+pub fn generate_obstacles_pack(
+    master_seed: u64,
+    count: usize,
+    node_budget: u64,
+    max_seeds: u64,
+) -> Pack {
+    generate(master_seed, count, node_budget, max_seeds, find_obstacles)
+}
+
 fn write_pack(pack: &Pack, kind: &str) -> Result<Vec<u8>, pond_docformat::DocError> {
     pond_docformat::write(kind, 1, pack)
 }
@@ -388,6 +429,14 @@ pub fn ingredients_pack_to_doc(pack: &Pack) -> Result<Vec<u8>, pond_docformat::D
 /// Propagates [`pond_docformat::DocError`] on a serialization failure.
 pub fn checklist_pack_to_doc(pack: &Pack) -> Result<Vec<u8>, pond_docformat::DocError> {
     write_pack(pack, "match3-checklist-pack")
+}
+
+/// Serialize an obstacles pack (`kind = "match3-obstacles-pack"`, v1).
+///
+/// # Errors
+/// Propagates [`pond_docformat::DocError`] on a serialization failure.
+pub fn obstacles_pack_to_doc(pack: &Pack) -> Result<Vec<u8>, pond_docformat::DocError> {
+    write_pack(pack, "match3-obstacles-pack")
 }
 
 // --- target-score par table (parity Track P-now / C1) ---

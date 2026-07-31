@@ -13,8 +13,9 @@ use match3_core::{
 };
 use match3_solver::{
     checklist_pack_to_doc, find_checklist, find_clear, find_dejelly, find_ingredients,
-    generate_checklist_pack, generate_ingredients_pack, generate_jelly_pack, generate_pack,
-    ingredients_pack_to_doc, jelly_pack_to_doc, pack_to_doc, Pack, PackEntry,
+    find_obstacles, generate_checklist_pack, generate_ingredients_pack, generate_jelly_pack,
+    generate_obstacles_pack, generate_pack, ingredients_pack_to_doc, jelly_pack_to_doc,
+    obstacles_pack_to_doc, pack_to_doc, Pack, PackEntry,
 };
 
 // Fixed, so the pack regenerates byte-identically. A full year of clearable
@@ -572,6 +573,114 @@ fn generate_checklist_pack_file() {
     fs::write(&path, &bytes).expect("write pack");
     println!(
         "wrote {} checklist seeds (fixture seed {} line {} moves) to {}",
+        pack.seeds.len(),
+        pack.fixture.seed,
+        pack.fixture.moves.len(),
+        path.display()
+    );
+}
+
+// --- clear-the-obstacles pack (parity Track D, T7) ---
+
+const OPACK_MASTER: u64 = 0;
+const OPACK_COUNT: usize = 365;
+const OPACK_BUDGET: u64 = 400_000;
+const OPACK_MAX_SEEDS: u64 = 4_000;
+
+fn obstacles_pack_path() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../games/match3/obstacles-pack.json")
+}
+
+fn obstacles_replays_to_clear(entry: &PackEntry) -> bool {
+    use match3_core::obstacles_mode as m;
+    let mut game = Game::new(
+        match3_core::deal_obstacles(
+            entry.seed,
+            m::WIDTH,
+            m::HEIGHT,
+            m::COLORS,
+            m::LICORICE,
+            m::MERINGUE,
+        ),
+        entry.seed,
+        m::COLORS,
+    );
+    for &mv in &entry.moves {
+        let _ = game.play_move((mv[0], mv[1]), (mv[2], mv[3]));
+    }
+    blockers_remaining(&game.board) == 0
+}
+
+fn read_committed_obstacles() -> Pack {
+    let bytes = fs::read(obstacles_pack_path())
+        .expect("run the `generate_obstacles_pack_file` (ignored) test first to create the pack");
+    pond_docformat::read_as(&bytes, "match3-obstacles-pack", 1)
+        .expect("valid obstacles pack v1 envelope")
+}
+
+#[test]
+fn find_obstacles_respects_budget() {
+    assert!(
+        find_obstacles(0, 1).is_none(),
+        "cannot clear every obstacle within a one-node budget"
+    );
+}
+
+#[test]
+fn committed_obstacles_pack_is_wellformed() {
+    let pack = read_committed_obstacles();
+    assert_eq!(pack.seeds.len(), OPACK_COUNT, "a full year of seeds");
+    let unique: HashSet<u64> = pack.seeds.iter().copied().collect();
+    assert_eq!(unique.len(), pack.seeds.len(), "seeds are unique");
+    assert!(
+        pack.seeds.contains(&pack.fixture.seed),
+        "the fixture seed is one of the pack seeds"
+    );
+    assert!(
+        obstacles_replays_to_clear(&pack.fixture),
+        "fixture seed {} line must replay to all-obstacles-cleared",
+        pack.fixture.seed
+    );
+}
+
+#[test]
+fn committed_obstacles_seeds_are_clearable_spotcheck() {
+    let pack = read_committed_obstacles();
+    for &seed in pack.seeds.iter().take(3) {
+        assert!(
+            find_obstacles(seed, OPACK_BUDGET).is_some(),
+            "committed obstacles seed {seed} must be clearable within budget"
+        );
+    }
+}
+
+#[test]
+#[ignore = "P10 regeneration drill — runs the solver (slow)"]
+fn obstacles_pack_regenerates_byte_identical() {
+    let pack = generate_obstacles_pack(OPACK_MASTER, OPACK_COUNT, OPACK_BUDGET, OPACK_MAX_SEEDS);
+    let bytes = obstacles_pack_to_doc(&pack).expect("serialize pack");
+    let committed = fs::read(obstacles_pack_path()).expect("read committed pack");
+    assert_eq!(
+        bytes, committed,
+        "obstacles pack must regenerate byte-identically"
+    );
+}
+
+#[test]
+#[ignore = "generator — writes games/match3/obstacles-pack.json"]
+fn generate_obstacles_pack_file() {
+    let pack = generate_obstacles_pack(OPACK_MASTER, OPACK_COUNT, OPACK_BUDGET, OPACK_MAX_SEEDS);
+    assert_eq!(
+        pack.seeds.len(),
+        OPACK_COUNT,
+        "expected a full year of seeds"
+    );
+    let bytes = obstacles_pack_to_doc(&pack).expect("serialize pack");
+    let path = obstacles_pack_path();
+    fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+    fs::write(&path, &bytes).expect("write pack");
+    println!(
+        "wrote {} obstacle seeds (fixture seed {} line {} moves) to {}",
         pack.seeds.len(),
         pack.fixture.seed,
         pack.fixture.moves.len(),

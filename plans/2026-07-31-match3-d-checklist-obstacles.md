@@ -199,11 +199,13 @@ deliverables are built in sequence: **Checklist (Phases 1–4)**, then **Obstacl
   licorice chipped by an adjacent match, score 50 = 30 gems + 20 layer; meringue untouched;
   locked hash) — the vector harness gained an `obstacle` grid.
 
-### Phase 6 (obstacles solver + pack) — `find_obstacles` + winnable-daily pack
-- [ ] `match3-solver` — `find_obstacles` (reuse `search`, `won` = `blockers_remaining==0`,
-  key = blocker layers removed); `generate_obstacles_pack`; `obstacles_pack_to_doc` (kind
-  `match3-obstacles-pack`). Commit `games/match3/obstacles-pack.json` (365 + fixture) +
-  regen drill + well-formed/spotcheck tests.
+### Phase 6 (obstacles solver + pack) — `find_obstacles` + winnable-daily pack — DONE
+- [x] `match3-solver` — `find_obstacles` (reuses the board-state `search`, `won` =
+  `blockers_remaining==0`, key = blocker layers removed — same as `find_clear`);
+  `generate_obstacles_pack`; `obstacles_pack_to_doc` (`match3-obstacles-pack`). Committed
+  `games/match3/obstacles-pack.json` (365 seeds, fixture seed 72 / 1-move line) + regen drill
+  + well-formed/spotcheck. Probe: 40/40 winnable at 3/3 obstacles in budget 30 (~84ms/seed;
+  lines 2–30, meringue's layers making some genuinely long).
 
 ### Phase 7 (obstacles binding) — `Mode::Obstacles` + outcome + board_view
 - [ ] `match3-wasm` — `Mode::Obstacles`; `new_obstacles_game`; `board_view` obstacle mask
@@ -244,6 +246,14 @@ deliverables are built in sequence: **Checklist (Phases 1–4)**, then **Obstacl
   by a fish" (B4). Meringue/licorice ship as adjacency-cleared flavoured blockers.
 
 ## Review Log
+### Phase 6 (obstacles solver + pack) complete — 2026-07-31
+Green: `find_obstacles` reuses the board-state `search` (obstacles are blockers, so the
+clear-blockers win check + layers-removed ordering apply directly — meringue's extra layers
+just take more matches). `generate_obstacles_pack` + `obstacles_pack_to_doc`
+(`match3-obstacles-pack`). Committed `obstacles-pack.json` (365 seeds, fixture seed 72 /
+1-move big-cascade line). Probe: 40/40 winnable at 3+3 obstacles in budget 30. 18 solver
+tests + regen drill byte-identical; fmt + clippy clean.
+
 ### Phase 5 (obstacles core) complete — 2026-07-31
 Green: licorice + meringue ship as distinct, mechanically-separate obstacle tiles via a
 blocker-flavour overlay (`Obstacle { Licorice, Meringue }`), additive to the hash (`o\x00`
