@@ -139,6 +139,34 @@ describe("clear-the-jelly verify-orchestration (real wasm)", () => {
   });
 });
 
+describe("checklist verify-orchestration (real wasm)", () => {
+  let game: Match3;
+  let env: M3Envelope;
+
+  beforeAll(async () => {
+    game = await loadReal();
+    // The committed checklist pack fixture: seed 3 completes every goal in two swaps.
+    game.newChecklistGame(3n);
+    game.play([5, 4, 5, 5]);
+    game.play([6, 3, 6, 4]);
+    env = game.outcome(true) as M3Envelope;
+  });
+
+  it("grades a completed checklist as a verifiable Won", () => {
+    expect(env.kind).toBe("match3-checklist");
+    expect(env.payload.result).toBe("Won");
+    expect(env.payload.score).toBeUndefined(); // checklist mode has no score/stars
+    const v = verifyRecord(game, env);
+    expect(v.ok).toBe(true);
+    expect(v.actual).toBe(env.payload.final_hash);
+  });
+
+  it("rejects a tampered checklist swap list", () => {
+    const tampered: M3Envelope = { ...env, payload: { ...env.payload, moves: [[0, 0, 0, 1]] } };
+    expect(verifyRecord(game, tampered).ok).toBe(false);
+  });
+});
+
 describe("target-score par table (real wasm)", () => {
   it("serves the baked ladder tiers for a daily (in-table) seed", async () => {
     const game = await loadReal();

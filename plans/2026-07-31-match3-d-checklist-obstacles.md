@@ -154,14 +154,16 @@ deliverables are built in sequence: **Checklist (Phases 1–4)**, then **Obstacl
   spotcheck tests. Knobs 12/2/1 in budget 30 = 40/40 winnable in the probe (specials are the
   gating goal); pack generated in 0.55s (release).
 
-### Phase 3 (checklist binding) — `Mode::Checklist` + outcome + board_view tallies
-- [ ] `match3-wasm` — `Mode::Checklist`; `new_checklist_game`; `Session` carries
+### Phase 3 (checklist binding) — `Mode::Checklist` + outcome + board_view tallies — DONE
+- [x] `match3-wasm` — `Mode::Checklist`; `new_checklist_game`; `Session` carries
   `checklist_targets` + a running `checklist_progress` folded in `play_swap` /
   `play_swap_traced` on a legal move; `won()` = `progress.met(targets)`; `board_view`
   exposes the target colour + the three (progress, target) pairs; `Match3Checklist`
   outcome (`match3-checklist`, replay re-accumulates progress); `outcome_json` arm.
-- [ ] `match3-wasm.ts` (`Mode` union, BoardView checklist fields, `newChecklistGame`),
+- [x] `match3-wasm.ts` (`Mode` union, BoardView checklist fields, `newChecklistGame`),
   `match3-outcome.ts` (`CHECKLIST_KIND` + `verifyRecord` branch + verifier method).
+- [x] a checklist verify-orchestration unit test (real wasm, seed-3 fixture): a completed
+  checklist grades a verifiable `Won`, a tampered swap list is rejected.
 
 ### Phase 4 (checklist UI + how-to + e2e) — toggle, tally HUD, ?mode, shots
 - [ ] `match3.ts` — an objective toggle ("Orders"/"Checklist"), a **tally HUD** (a colour
@@ -237,6 +239,17 @@ deliverables are built in sequence: **Checklist (Phases 1–4)**, then **Obstacl
   by a fish" (B4). Meringue/licorice ship as adjacency-cleared flavoured blockers.
 
 ## Review Log
+### Phase 3 (checklist binding) complete — 2026-07-31
+Green + deployed: the checklist mode is now reachable and verifiable. `Mode::Checklist` +
+`new_checklist_game` (plain-gem deal, seed-derived targets); `Session` folds
+`checklist_progress` from each legal move's report in `play_swap`/`play_swap_traced`
+(no-op for other modes); `won()` = `progress.met(targets)`; `board_view` exposes the
+target colour + the three (progress, target) pairs; `Match3Checklist` outcome
+(`match3-checklist`, replay re-accumulates progress). TS wrapper (`newChecklistGame` +
+BoardView fields), `CHECKLIST_KIND` + verify branch. A real-wasm unit test round-trips the
+seed-3 fixture (Won + tamper-reject). Full gate: 137 core + 15 solver + npm 142 unit + 176
+e2e; fmt + clippy clean. UI toggle still pending (Phase 4), so the mode is dormant in the UI.
+
 ### Phase 2 (checklist solver + pack) complete — 2026-07-31
 Green: `find_checklist` is a dedicated progress-carrying DFS (the checklist win is
 path-accumulated, so the shared board-state `search` doesn't apply) — memoized on

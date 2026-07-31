@@ -32,7 +32,7 @@ pub const WRAPPED_TARGET: u32 = 1;
 
 /// One seed's checklist goals: a target colour + the three counts. A pure,
 /// deterministic function of the seed (see [`checklist_targets`]).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ChecklistTargets {
     /// The colour whose gems must be cleared (`0..colors`).
     pub color: u8,
