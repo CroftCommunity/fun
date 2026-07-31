@@ -1,5 +1,15 @@
 # Tux Racer wrap — a scoping spike (does a vendored arcade game belong on the shelf?)
 
+> **Update 2026-07-31 — the standard this spike drafted is now RATIFIED and
+> SHIPPED.** The reusable Tier-2 wrap path (containment/legibility harness,
+> honest-representation chrome, vendored-bundle + provenance/posture metadata) was
+> built and ratified in `docs/BUILDING-GAMES.md` §9, with **Astray** as the
+> reference implementation (`plans/2026-07-31-tier2-wraps.md`). TuxRacer.js itself
+> remains **un-adopted** — this spike's T1–T5 evaluation of *that specific
+> candidate* was never completed; the tier's machinery, which was its larger
+> purpose, exists now regardless. If TuxRacer.js is revisited, it now slots into a
+> shipped standard rather than defining one.
+
 **Status:** 📋 **DRAFT (Pass 1) 2026-07-30.** Not started. A **bounded spike**,
 not a build. **Charter decision made by the owner 2026-07-30: widen the shelf to
 two tiers** — Tier 1 Croft-native (build-fresh, determinism-first, verifiable)
