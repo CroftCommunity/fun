@@ -13,7 +13,11 @@ const dist = join(root, "dist");
 
 // Game entry pages: "" is the home/drawer page (no game mounted); the rest carry
 // <body data-game> so the chrome knows what to mount.
-const GAME_PAGES = ["", "placeholder", "solitaire", "match3", "bubble", "wyrdle", "2048", "cribbage"];
+const GAME_PAGES = ["", "placeholder", "solitaire", "match3", "bubble", "wyrdle", "2048", "astray", "cribbage"];
+
+// Tier-2 wrapped games: their vendored bundle ships under src/games/<id>/vendor/
+// and is served at /<id>/vendor/ for the sandboxed iframe to load same-origin.
+const TIER2_VENDORS = ["astray"];
 
 // Pre-paint theme resolution: set [data-theme] before first paint so the felt
 // table never flashes the wrong theme. Same rule as src/theme.ts resolveTheme.
@@ -132,6 +136,19 @@ else console.warn("note: 2048-daily-pack.json missing — 2048's daily mode need
 // the self-hosted display font.
 const assets = join(root, "assets");
 if (await exists(assets)) await cp(assets, join(dist, "assets"), { recursive: true });
+
+// Tier-2 vendored bundles: copy src/games/<id>/vendor -> dist/<id>/vendor so the
+// wrapped game's sandboxed iframe loads it same-origin (no runtime third-party
+// fetch — every asset is ours, served from our origin).
+for (const id of TIER2_VENDORS) {
+  const vendor = join(root, "src", "games", id, "vendor");
+  if (await exists(vendor)) {
+    await mkdir(join(dist, id), { recursive: true });
+    await cp(vendor, join(dist, id, "vendor"), { recursive: true });
+  } else {
+    console.warn(`note: ${id} vendor dir missing (src/games/${id}/vendor) — Tier-2 wrap needs it`);
+  }
+}
 
 for (const id of GAME_PAGES) {
   const dir = id ? join(dist, id) : dist;

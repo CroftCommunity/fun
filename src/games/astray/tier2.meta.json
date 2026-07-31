@@ -1,0 +1,30 @@
+{
+  "id": "astray",
+  "tier": 2,
+  "provenance": {
+    "upstreamUrl": "https://github.com/wwwtyro/Astray",
+    "upstreamRef": "master@d3c4f61f2cbbe35752fbfa205f85a41d7f9fe0f0",
+    "retrieved": "2026-07-31",
+    "author": "wwwtyro",
+    "license": "The Unlicense",
+    "licenseFile": "vendor/License.md"
+  },
+  "posture": {
+    "verifiable": false,
+    "containment": "iframe-sandbox",
+    "sandbox": "allow-scripts",
+    "egress": "same-origin",
+    "input": ["keyboard"],
+    "approxSizeKb": 1585,
+    "patches": [
+      {
+        "file": "vendor/index.html",
+        "change": "absolute texture paths '/ball.png' '/concrete.png' '/brick.png' -> relative 'ball.png' etc.",
+        "reason": "vendored under /astray/, not the domain root; absolute paths 404 there"
+      }
+    ]
+  },
+  "representation": {
+    "claim": "Wrapped game — no verifiable record."
+  }
+}

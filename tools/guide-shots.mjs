@@ -218,6 +218,22 @@ const SHOTS = [
       await page.waitForSelector(".sol-result");
     },
   },
+  {
+    name: "astray-maze",
+    clip: ".wrapped-game-frame",
+    async run(page) {
+      await page.goto(`${origin}/astray/`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".wrapped-game-frame");
+      // Let the wrapped game boot: Three.js appends its canvas, then the maze
+      // textures load. Wait for the canvas, then a beat for the first frames.
+      await page
+        .frameLocator(".wrapped-game-frame")
+        .locator("canvas")
+        .first()
+        .waitFor({ state: "attached", timeout: 15000 });
+      await page.waitForTimeout(1500);
+    },
+  },
 ];
 
 const server = spawn("node", [join(root, "tools", "serve.mjs")], { stdio: "ignore" });
