@@ -342,6 +342,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "twenty48-core"
+version = "0.0.0"
+dependencies = [
+ "hex",
+ "rand",
+ "rand_chacha",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+]
+
+[[package]]
 name = "typenum"
 version = "1.20.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
