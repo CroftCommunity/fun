@@ -80,6 +80,17 @@ unless noted.
   determinism-critical core stays untouched. If the new state changes scoring or
   clearing, remember it also shifts any committed solver/par packs — regenerate
   and re-lock them in the same commit (see the match-3 B0 plan).
+- **When the new state is a new *kind* of cell, not a facet of a gem, add a `Cell`
+  variant instead of an overlay.** match-3's **ingredient** (Track D) is a non-gem
+  object that occupies a cell and *falls* — no gem lives under it, so an overlay
+  cannot model it. A new `Cell::Ingredient` with an **additive hash tag** (a byte no
+  pre-existing board carries) keeps the additive property — gem-only boards hash
+  unchanged, so vectors still do not re-lock — while the compiler's exhaustive-match
+  checks guide the edits. Gate matching/legality on `Cell::Gem` so the new kind is
+  inert there (an ingredient never matches or swaps), and generalize gravity to the
+  behaviour you want (an ingredient *falls* like a gem; a blocker stays a fixed
+  shelf). Same pack-regeneration rule applies if it shifts play (see the match-3
+  Track D ingredients plan).
 
 ## 3. Verifiable outcomes — the pond property
 
