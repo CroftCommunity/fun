@@ -162,14 +162,15 @@ test("the Clear-blockers objective deals a blocker board with the blocker HUD", 
 });
 
 test("clearing every blocker is a verifiable win (blockers mode)", async ({ page }) => {
-  // The committed pack fixture: seed 30 clears in a single swap [4,4]→[5,4].
-  await page.goto("/match3/?mode=blockers&seed=30");
+  // The committed pack fixture (re-locked after the B0 specials pack regen):
+  // seed 19 clears in a single swap [5,5]→[6,5].
+  await page.goto("/match3/?mode=blockers&seed=19");
   await ready(page);
   await expect(page.locator(".m3-blocker")).toHaveCount(6);
 
   await page.evaluate(() => {
     const h = window.__match3!;
-    h.game.play([4, 4, 5, 4]);
+    h.game.play([5, 5, 6, 5]);
     h.refresh();
   });
 
@@ -276,4 +277,80 @@ test("the board fits a narrow phone with no horizontal overflow", async ({ page 
     () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
   );
   expect(noOverflow).toBe(true);
+});
+
+test("a line-4+ match creates a special candy: rendered, badged, and labelled", async ({ page }) => {
+  await page.goto("/match3/?seed=13");
+  await ready(page);
+
+  // The binding exposes an 8×8 specials overlay grid (the render contract).
+  const grid = await page.evaluate(() => window.__match3!.game.board().specials);
+  expect(grid.length).toBe(8);
+  expect(grid[0]!.length).toBe(8);
+
+  // Greedy-first play (deterministic for the seed) creates a special candy that
+  // survives to the settled board; find where, then re-render.
+  const found = await page.evaluate(() => {
+    const h = window.__match3!;
+    for (let i = 0; i < 20; i += 1) {
+      const m = h.game.legalMoves();
+      if (m.length === 0) break;
+      h.game.play(m[0]!);
+      const sp = h.game.board().specials;
+      for (let r = 0; r < sp.length; r += 1) {
+        for (let c = 0; c < (sp[r] ?? []).length; c += 1) {
+          if (sp[r]![c]) {
+            h.refresh();
+            return { r, c, kind: sp[r]![c]! };
+          }
+        }
+      }
+    }
+    h.refresh();
+    return null;
+  });
+  expect(found, "greedy-first play creates a special within the budget").not.toBeNull();
+
+  // The engine's special renders on that tile with its power-badge class and an
+  // a11y label (not colour-only) — the full engine → board_json → DOM chain.
+  const tile = page.locator(`.m3-gem[data-r="${found!.r}"][data-c="${found!.c}"]`);
+  await expect(tile).toHaveClass(/\bm3-special\b/);
+  await expect(tile).toHaveClass(new RegExp(`m3-special-${found!.kind}`));
+  await expect(tile).toHaveAttribute("aria-label", /candy|colour bomb/i);
+});
+
+test("a striped candy can be fired by swapping it (swap-activation reaches the UI)", async ({ page }) => {
+  await page.goto("/match3/?seed=13");
+  await ready(page);
+
+  // Greedy-first play until a striped candy is on the settled board, then fire
+  // it by swapping it with a neighbour — swap-activation makes that swap legal
+  // (no line match needed), and firing clears a whole line so the score jumps.
+  const info = await page.evaluate(() => {
+    const h = window.__match3!;
+    for (let i = 0; i < 20; i += 1) {
+      const b = h.game.board();
+      for (let r = 0; r < b.specials.length; r += 1) {
+        for (let c = 0; c < (b.specials[r] ?? []).length; c += 1) {
+          if ((b.specials[r]![c] ?? "").startsWith("striped")) {
+            const mv = h.game
+              .legalMoves()
+              .find((m) => (m[0] === r && m[1] === c) || (m[2] === r && m[3] === c));
+            if (!mv) return { swappable: false, before: b.score, after: b.score };
+            const before = b.score;
+            h.game.play(mv);
+            h.refresh();
+            return { swappable: true, before, after: h.game.board().score };
+          }
+        }
+      }
+      const m = h.game.legalMoves();
+      if (m.length === 0) break;
+      h.game.play(m[0]!);
+    }
+    return null;
+  });
+  expect(info, "a striped candy was created within the budget").not.toBeNull();
+  expect(info!.swappable, "the striped is swappable (swap-activation reaches the UI)").toBe(true);
+  expect(info!.after, "firing the striped cleared a line, so the score rose").toBeGreaterThan(info!.before);
 });

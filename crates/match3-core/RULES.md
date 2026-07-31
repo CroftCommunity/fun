@@ -81,7 +81,8 @@ A move swaps two cells. Resolution order:
    Each iteration is one **cascade step**; step 0 is the one triggered directly by the swap.
 4. **Deadlock reshuffle.** After the cascade settles, if the board has **no legal swap**, reshuffle:
    deterministically permute the gem cells (a Fisher-Yates shuffle consuming `rng` draws in order,
-   **blockers stay fixed**) into a board that has a legal swap and no rest-matches, retrying up to 64
+   **blockers stay fixed**; a gem's **special marker travels with it**, so a shuffled special candy stays
+   in sync with its gem) into a board that has a legal swap and no rest-matches, retrying up to 64
    times. A board that already has a legal swap is left untouched and consumes **no draws**, so a
    still-live move is byte-identical to the pre-reshuffle engine. Because the reshuffle lives here (not
    in the UI) and folds into the state hash, `Match3::replay` — which just re-applies `play_move` — is
@@ -103,6 +104,65 @@ a determinism bug.
   intersecting horizontal and vertical run appears **once**. Because the result is a set, detection order
   does not affect the outcome — but the canonical scan is rows top→bottom, then columns left→right.
 
+### T1b — Shape classification + special creation (B0.3)
+
+Beyond the flat match set (T1), a match's **shape** decides which special candy
+it creates. `find_runs` returns the maximal same-colour runs of ≥3 (rows first,
+top→bottom/left→right; then columns, left→right/top→bottom) — the *union* of run
+cells is exactly `find_matches`, so the clear set is unchanged. Runs sharing a
+cell form a **component**; each component creates **at most one** special, by
+this priority:
+
+| Component shape | Special | Priority |
+|---|---|---|
+| a run of length ≥5 | `ColorBomb` | 1 (highest) |
+| both a horizontal and a vertical run (L/T) | `Wrapped` | 2 |
+| a single run of length 4 | `StripedH` (horizontal) / `StripedV` (vertical) | 3 |
+| a single run of length 3 | none (plain clear) | — |
+
+**Creation placement (tie-break table).** The special spawns on one cell of the
+component; the other matched cells clear normally (so a 4-run scores 3 cleared
+gems, not 4 — the survivor is *transformed*, not cleared). The placement cell:
+
+1. **Step 0 (the swap-triggered step):** if the swapped candy (`to`, else
+   `from`) lies in the candidate set, spawn there (Candy-Crush "at the moved
+   candy"). Candidates are the **junction cells** (shared by ≥2 runs) for
+   `Wrapped`, else the **dominant run's cells** (the longest; ties keep the
+   earlier in scan order).
+2. **Otherwise (cascade steps, or no swapped candy in the set):** the anchor —
+   the earliest (row, col) junction for `Wrapped`, else the dominant run's
+   **median** cell (`cells[len/2]` in scan order).
+
+The created special's colour is the component's gem colour. Blast/activation of
+a created special is in T1c (striped, B1); wrapped/colour-bomb activation is
+B2/B3; the 2×2 **fish** shape is deferred to B4.
+
+### T1c — Activation (striped, B1)
+
+A striped candy **fires** a line blast when it is cleared by a match. Before the
+clear (T2), the matched set is expanded by activation:
+
+- **Trigger:** a striped candy fires when (a) it is in the matched set
+  (match-activation), or (b) it is **swapped** with an adjacent gem — the swap is
+  legal even with no line match, and fires the striped from its post-swap cell
+  (swap-activation, B1.2). Swapping carries the special marker with its gem.
+  Wrapped/colour-bomb firing is B2/B3; swapping two specials is the combo matrix
+  (B5) — B1 fires each independently.
+- **Blast region:** `StripedH` clears its entire **row**, `StripedV` its entire
+  **column**. A **blocker** in the line is *not* cleared — it takes one layer of
+  adjacency damage via T2 like any match. (Orientation = stripe direction;
+  revisable pre-users.)
+- **Chaining:** if a blast cell holds another striped, that striped fires too.
+  Resolution is a deterministic set-union (each striped fires at most once; the
+  result is order-independent), so it reproduces identically on every device.
+- **Just-created specials survive.** A special *created this step* (T1b) is
+  restored after the clear, so a simultaneous blast over its cell does not destroy
+  it (it is transformed, not cleared). Special-meets-special *by swap* is the
+  combo matrix (B5); B1 does no combos.
+- **Scoring/jelly/cascade:** blast-cleared gems score +10 each (flat, T2); jelly
+  under a blasted cell scrubs one layer; the expanded clear feeds gravity/refill
+  and can cascade like any step.
+
 ### T2 — Clear + scoring
 
 - All matched cells become `Empty` **simultaneously** (one set, not sequential).
@@ -114,6 +174,10 @@ a determinism bug.
   - `+10` per gem cleared;
   - `+20` per blocker layer removed.
   - Score is accumulated across all cascade steps of the move.
+- **Special overlay (B0.2):** a cleared cell's `special` marker is **scrubbed**
+  with the gem (an `Empty` hole carries no marker). Activation of a *matched*
+  special (its blast) is B1+; B0 creation, which spawns a special on a survivor
+  cell of a qualifying match, is applied after the clear (B0.3–B0.4).
 
 ### T3 — Gravity (blockers are fixed shelves)
 
@@ -123,6 +187,10 @@ a determinism bug.
   of non-blocker cells bounded by blockers and/or the grid edges. Blockers never move.
 - Within a segment, all `Gem` cells fall to the **bottom** of that segment, preserving their relative order;
   the `Empty` cells collect at the **top** of the segment.
+- **Special overlay (B0.2):** a gem's `special` marker falls **with it** — the
+  overlay moves in lockstep with its gem (a special candy falls), unlike jelly,
+  which never moves. Vacated holes carry no marker. (Jelly stays fixed under the
+  cell; only the gem-attached special layer moves.)
 
 ### T4 — Refill
 

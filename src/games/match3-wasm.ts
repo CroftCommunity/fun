@@ -17,6 +17,10 @@ export interface BoardView {
   blockers: boolean[][];
   /** Row-major jelly layers per cell (`0` = none, jelly mode). */
   jelly: number[][];
+  /** Row-major special-candy overlay: `""` (plain) / `"striped-h"` / `"striped-v"`
+   *  / `"wrapped"` / `"color-bomb"`. A special is a normal swappable gem badged
+   *  with its power (created by a line-4 / L-T / line-5 match). */
+  specials: string[][];
   score: number;
   movesLeft: number;
   moveBudget: number;

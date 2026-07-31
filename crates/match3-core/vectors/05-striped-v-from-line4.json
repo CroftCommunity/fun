@@ -1,0 +1,18 @@
+{
+  "name": "striped-v-from-line4",
+  "seed": 1,
+  "colors": 6,
+  "board": [
+    "03",
+    "04",
+    "50",
+    "06"
+  ],
+  "moves": [ [2, 1, 2, 0] ],
+  "expect": {
+    "move_legal": [true],
+    "step0_cleared": [ [[0, 0], [1, 0], [3, 0]] ],
+    "step0_score": [30],
+    "final_state_hash": "80aedda8862d19ff4f5d3867af7c819fd2cbe13c4220ef01bdf5baa5fbe38ab5"
+  }
+}

@@ -1,9 +1,9 @@
 //! The deterministic match-3 engine: match / clear / gravity / refill / cascade.
 //! All ordering is fixed by the tie-break tables in RULES.md.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
-use crate::board::{Board, Cell};
+use crate::board::{Board, Cell, SpecialKind};
 use crate::hash::state_hash;
 use crate::rng::DetRng;
 
@@ -85,6 +85,198 @@ fn same_gem(a: Cell, b: Cell) -> bool {
     matches!((a, b), (Cell::Gem(x), Cell::Gem(y)) if x == y)
 }
 
+/// Orientation of a match run — fixes which striped candy a line-4 creates.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Orientation {
+    /// A run within one row.
+    Horizontal,
+    /// A run within one column.
+    Vertical,
+}
+
+/// A maximal same-colour run of ≥3 gems in a single row or column — the run-
+/// structured detection specials need (`find_matches` returns only the flat
+/// union). `cells` are in scan order (H: left→right, V: top→bottom).
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Run {
+    /// The run's cells, in scan order.
+    pub cells: Vec<Pos>,
+    /// Whether the run lies along a row or a column.
+    pub orientation: Orientation,
+}
+
+/// Every maximal same-colour run of ≥3 gems: horizontal runs first (rows
+/// top→bottom, left→right), then vertical (columns left→right, top→bottom). The
+/// **union** of all run cells equals [`find_matches`] exactly (proven in
+/// `tests/shapes.rs`), so the flat clear set is unchanged — only the structure
+/// (which cells form which run) is new. This is the same scan as `find_matches`.
+#[must_use]
+pub fn find_runs(board: &Board) -> Vec<Run> {
+    let mut runs = Vec::new();
+    for r in 0..board.height {
+        let mut run_start = 0;
+        for c in 1..=board.width {
+            let same = c < board.width && same_gem(board.get(r, c), board.get(r, run_start));
+            if !same {
+                if c - run_start >= 3 {
+                    runs.push(Run {
+                        cells: (run_start..c).map(|cc| (r, cc)).collect(),
+                        orientation: Orientation::Horizontal,
+                    });
+                }
+                run_start = c;
+            }
+        }
+    }
+    for c in 0..board.width {
+        let mut run_start = 0;
+        for r in 1..=board.height {
+            let same = r < board.height && same_gem(board.get(r, c), board.get(run_start, c));
+            if !same {
+                if r - run_start >= 3 {
+                    runs.push(Run {
+                        cells: (run_start..r).map(|rr| (rr, c)).collect(),
+                        orientation: Orientation::Vertical,
+                    });
+                }
+                run_start = r;
+            }
+        }
+    }
+    runs
+}
+
+/// A special candy to spawn where a qualifying match resolved (RULES.md
+/// "Special candies"). The placement cell keeps its colour and gains the marker;
+/// the other matched cells clear normally.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct Creation {
+    /// Where the special spawns (a cell of the matched component).
+    pub pos: Pos,
+    /// Which special (by shape).
+    pub kind: SpecialKind,
+    /// The component's gem colour (all cells in a component share a colour).
+    pub color: u8,
+}
+
+/// Classify the current matches into the specials they create. `swap` is
+/// `Some((from, to))` for the swap-triggered step (step 0), enabling the
+/// "spawn at the moved candy" rule; `None` for cascade steps (spawn at the
+/// deterministic anchor). At most **one** special per connected match component,
+/// by the priority **colour-bomb (≥5) > wrapped (L/T) > striped (line-4)**.
+#[must_use]
+pub fn creations_for(board: &Board, swap: Option<(Pos, Pos)>) -> Vec<Creation> {
+    let runs = find_runs(board);
+    let mut out = Vec::new();
+    for comp in group_runs(&runs) {
+        let comp_runs: Vec<&Run> = comp.iter().map(|&i| &runs[i]).collect();
+        let max_len = comp_runs.iter().map(|r| r.cells.len()).max().unwrap_or(0);
+        let has_h = comp_runs
+            .iter()
+            .any(|r| r.orientation == Orientation::Horizontal);
+        let has_v = comp_runs
+            .iter()
+            .any(|r| r.orientation == Orientation::Vertical);
+        // The dominant run (longest; ties keep the earlier = scan order) anchors
+        // striped / colour-bomb placement.
+        let dominant = comp_runs
+            .iter()
+            .copied()
+            .reduce(|a, b| if b.cells.len() > a.cells.len() { b } else { a })
+            .expect("a component has at least one run");
+        let kind = if max_len >= 5 {
+            SpecialKind::ColorBomb
+        } else if has_h && has_v {
+            SpecialKind::Wrapped
+        } else if max_len == 4 {
+            match dominant.orientation {
+                Orientation::Horizontal => SpecialKind::StripedH,
+                Orientation::Vertical => SpecialKind::StripedV,
+            }
+        } else {
+            continue; // a lone line-3 makes no special
+        };
+        let pos = placement(&comp_runs, dominant, kind, swap);
+        // Placement is always a matched gem cell; skip defensively otherwise.
+        if let Cell::Gem(color) = board.get(pos.0, pos.1) {
+            out.push(Creation { pos, kind, color });
+        }
+    }
+    out
+}
+
+/// Connected components of runs (runs sharing a cell), as ascending index
+/// groups. `n` runs per clear step is tiny, so a simple union-find is ample.
+fn group_runs(runs: &[Run]) -> Vec<Vec<usize>> {
+    let n = runs.len();
+    let mut parent: Vec<usize> = (0..n).collect();
+    fn root(parent: &mut [usize], mut i: usize) -> usize {
+        while parent[i] != i {
+            parent[i] = parent[parent[i]];
+            i = parent[i];
+        }
+        i
+    }
+    for i in 0..n {
+        for j in (i + 1)..n {
+            if runs[i].cells.iter().any(|c| runs[j].cells.contains(c)) {
+                let (ri, rj) = (root(&mut parent, i), root(&mut parent, j));
+                parent[ri] = rj;
+            }
+        }
+    }
+    let mut groups: BTreeMap<usize, Vec<usize>> = BTreeMap::new();
+    for i in 0..n {
+        let r = root(&mut parent, i);
+        groups.entry(r).or_default().push(i);
+    }
+    groups.into_values().collect()
+}
+
+/// The deterministic placement cell (RULES.md creation tie-break table): on
+/// step 0, prefer the swapped candy (`to`, then `from`) if it lies in the
+/// candidate set; else the anchor — the earliest junction (wrapped) or the
+/// dominant run's median (striped / colour-bomb).
+fn placement(
+    comp_runs: &[&Run],
+    dominant: &Run,
+    kind: SpecialKind,
+    swap: Option<(Pos, Pos)>,
+) -> Pos {
+    let candidates: Vec<Pos> = if kind == SpecialKind::Wrapped {
+        // Junctions: cells shared by ≥2 runs (the L/T corner), earliest first.
+        let mut js: Vec<Pos> = Vec::new();
+        for (i, r) in comp_runs.iter().enumerate() {
+            for &cell in &r.cells {
+                let shared = comp_runs
+                    .iter()
+                    .enumerate()
+                    .any(|(j, r2)| j != i && r2.cells.contains(&cell));
+                if shared && !js.contains(&cell) {
+                    js.push(cell);
+                }
+            }
+        }
+        js.sort_unstable();
+        js
+    } else {
+        dominant.cells.clone()
+    };
+    if let Some((from, to)) = swap {
+        if candidates.contains(&to) {
+            return to;
+        }
+        if candidates.contains(&from) {
+            return from;
+        }
+    }
+    if kind == SpecialKind::Wrapped {
+        candidates[0]
+    } else {
+        candidates[candidates.len() / 2]
+    }
+}
+
 fn neighbours(board: &Board, r: usize, c: usize) -> Vec<Pos> {
     let mut v = Vec::with_capacity(4);
     if r > 0 {
@@ -100,6 +292,62 @@ fn neighbours(board: &Board, r: usize, c: usize) -> Vec<Pos> {
         v.push((r, c + 1));
     }
     v
+}
+
+/// Whether a special kind fires a blast in B1 (striped only; wrapped / colour-
+/// bomb activation is B2 / B3).
+fn fires(kind: Option<SpecialKind>) -> bool {
+    matches!(kind, Some(SpecialKind::StripedH | SpecialKind::StripedV))
+}
+
+/// The cells a striped candy at `pos` blasts: its whole row (`StripedH`) or
+/// column (`StripedV`), excluding blockers — a blocker in the line is not cleared
+/// but takes adjacency damage via [`clear_cells`], like any match. A non-striped
+/// or non-special cell blasts nothing.
+fn blast_region(board: &Board, pos: Pos) -> Vec<Pos> {
+    let (r, c) = pos;
+    match board.special_at(r, c) {
+        Some(SpecialKind::StripedH) => (0..board.width)
+            .map(|cc| (r, cc))
+            .filter(|&(rr, cc)| !board.get(rr, cc).is_blocker())
+            .collect(),
+        Some(SpecialKind::StripedV) => (0..board.height)
+            .map(|rr| (rr, c))
+            .filter(|&(rr, cc)| !board.get(rr, cc).is_blocker())
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// B1 activation — expand the matched set by the line blasts of any **striped**
+/// candy in it, chaining: a blast cell holding another striped fires it too. The
+/// result is the full set of cells to clear this step, sorted. Deterministic —
+/// each striped fires at most once and the union is order-independent. Wrapped /
+/// colour-bomb do not fire yet (B2 / B3), so a matched wrapped/bomb just clears.
+fn activate(board: &Board, matched: &[Pos], seed: &[Pos]) -> Vec<Pos> {
+    let mut to_clear: BTreeSet<Pos> = matched.iter().copied().collect();
+    let mut fired: BTreeSet<Pos> = BTreeSet::new();
+    // Fire every striped in the matched set (match-activation, B1.1) plus any
+    // striped swapped into place this step (swap-activation, B1.2). A fired
+    // striped's own cell is in its blast region, so it clears too.
+    let mut queue: Vec<Pos> = matched
+        .iter()
+        .copied()
+        .chain(seed.iter().copied())
+        .filter(|&(r, c)| fires(board.special_at(r, c)))
+        .collect();
+    while let Some(cell) = queue.pop() {
+        if !fired.insert(cell) {
+            continue;
+        }
+        for bc in blast_region(board, cell) {
+            to_clear.insert(bc);
+            if fires(board.special_at(bc.0, bc.1)) && !fired.contains(&bc) {
+                queue.push(bc);
+            }
+        }
+    }
+    to_clear.into_iter().collect()
 }
 
 /// T2 — clear the matched cells to `Empty` and damage adjacent blockers by at
@@ -129,6 +377,9 @@ pub fn clear_cells(board: &mut Board, matched: &[Pos]) -> ClearOutcome {
             board.set_jelly(r, c, jelly - 1);
         }
         board.set(r, c, Cell::Empty);
+        // A cleared cell holds no special candy (the marker is scrubbed with the
+        // gem). Activation of a matched special lands in B1+; B0 only creates.
+        board.set_special(r, c, None);
     }
 
     let mut blocker_layers_removed = 0;
@@ -160,17 +411,22 @@ pub fn apply_gravity(board: &mut Board) {
             if !boundary {
                 continue;
             }
-            // Segment is the non-blocker rows [seg_start, r).
-            let gems: Vec<Cell> = (seg_start..r)
-                .map(|rr| board.get(rr, c))
-                .filter(|cell| cell.is_gem())
+            // Segment is the non-blocker rows [seg_start, r). Carry each gem's
+            // special marker with it as a `(cell, special)` pair so the two
+            // grids cannot desync — a special candy falls with its gem.
+            let gems: Vec<(Cell, Option<SpecialKind>)> = (seg_start..r)
+                .filter(|&rr| board.get(rr, c).is_gem())
+                .map(|rr| (board.get(rr, c), board.special_at(rr, c)))
                 .collect();
             let holes = (r - seg_start) - gems.len();
             for (i, rr) in (seg_start..r).enumerate() {
                 if i < holes {
                     board.set(rr, c, Cell::Empty);
+                    board.set_special(rr, c, None);
                 } else {
-                    board.set(rr, c, gems[i - holes]);
+                    let (cell, special) = gems[i - holes];
+                    board.set(rr, c, cell);
+                    board.set_special(rr, c, special);
                 }
             }
             seg_start = r + 1;
@@ -200,6 +456,12 @@ pub fn swap_legal(board: &Board, from: Pos, to: Pos) -> bool {
     }
     if !board.get(from.0, from.1).is_gem() || !board.get(to.0, to.1).is_gem() {
         return false;
+    }
+    // B1.2 swap-activation: swapping a striped candy is legal even with no line
+    // match — the swap fires it. (Only firing kinds; wrapped/bomb swap-fire is
+    // B2/B3.) A board with no firing special takes the unchanged match-only path.
+    if fires(board.special_at(from.0, from.1)) || fires(board.special_at(to.0, to.1)) {
+        return true;
     }
     let mut b = board.clone();
     let tmp = b.get(from.0, from.1);
@@ -247,15 +509,24 @@ pub fn reshuffle_if_dead(board: &mut Board, rng: &mut DetRng) -> bool {
         .filter(|&(r, c)| board.get(r, c).is_gem())
         .collect();
     for _ in 0..64 {
-        let mut values: Vec<Cell> = positions.iter().map(|&(r, c)| board.get(r, c)).collect();
+        // Shuffle the (gem, special-marker) pairs together so a special candy's
+        // marker travels with its gem — a bare `Vec<Cell>` shuffle would desync
+        // the overlay (leaving a marker on a moved gem). Markers are all `None`
+        // on a gem-only board, so this is byte-identical to the pre-specials
+        // reshuffle there.
+        let mut values: Vec<(Cell, Option<SpecialKind>)> = positions
+            .iter()
+            .map(|&(r, c)| (board.get(r, c), board.special_at(r, c)))
+            .collect();
         // Fisher-Yates from the top; each step consumes exactly one rng draw so
         // the shuffle folds into the state hash and replays identically.
         for i in (1..values.len()).rev() {
             let j = rng.index(i + 1);
             values.swap(i, j);
         }
-        for (&(r, c), &v) in positions.iter().zip(values.iter()) {
-            board.set(r, c, v);
+        for (&(r, c), &(cell, special)) in positions.iter().zip(values.iter()) {
+            board.set(r, c, cell);
+            board.set_special(r, c, special);
         }
         if find_matches(board).is_empty() && has_legal_move(board) {
             return true;
@@ -557,26 +828,74 @@ impl Game {
             );
         }
 
-        let tmp = self.board.get(from.0, from.1);
+        // Swap the two cells AND their special markers, so a special candy moves
+        // with its gem (a striped swapped into a match — or fired by the swap —
+        // carries its power). Markers are both `None` for a plain swap → no-op.
+        let tmp_cell = self.board.get(from.0, from.1);
+        let tmp_special = self.board.special_at(from.0, from.1);
         self.board.set(from.0, from.1, self.board.get(to.0, to.1));
-        self.board.set(to.0, to.1, tmp);
+        self.board
+            .set_special(from.0, from.1, self.board.special_at(to.0, to.1));
+        self.board.set(to.0, to.1, tmp_cell);
+        self.board.set_special(to.0, to.1, tmp_special);
         if trace {
             snapshots.push(self.board.clone());
         }
 
         let mut steps = Vec::new();
         let mut score_gained = 0u64;
+        let mut step_index = 0usize;
         loop {
             let matched = find_matches(&self.board);
-            if matched.is_empty() {
+            // Step 0 also seeds activation from a striped swapped into place: it
+            // fires even with no line match (B1.2). Later steps have no swap seed.
+            let seed: Vec<Pos> = if step_index == 0 {
+                [from, to]
+                    .into_iter()
+                    .filter(|&(r, c)| fires(self.board.special_at(r, c)))
+                    .collect()
+            } else {
+                Vec::new()
+            };
+            if matched.is_empty() && seed.is_empty() {
                 break;
             }
-            let out = clear_cells(&mut self.board, &matched);
-            let step_score = out.gems_cleared as u64 * 10 + out.blocker_layers_removed as u64 * 20;
+            // Which specials this step's shapes create — step 0 uses the swap so
+            // the special spawns at the moved candy (RULES.md). Computed on the
+            // pre-clear board (the gems must still be present).
+            let swap = if step_index == 0 {
+                Some((from, to))
+            } else {
+                None
+            };
+            let creations = creations_for(&self.board, swap);
+            // B1 activation: expand the cleared set by the blasts of any striped
+            // candy in the matched set (chained). No matched striped -> `activated`
+            // == `matched`, so plain-gem and B0-creation play stay byte-identical.
+            let activated = activate(&self.board, &matched, &seed);
+            let out = clear_cells(&mut self.board, &activated);
+            // Each placement cell survives as a special candy: clear_cells set it
+            // Empty (and scrubbed its jelly + damaged adjacent blockers as part of
+            // the match), so restore it as a gem carrying the marker. It is
+            // transformed, not cleared, so it does not score as a cleared gem.
+            for cr in &creations {
+                self.board.set(cr.pos.0, cr.pos.1, Cell::Gem(cr.color));
+                self.board.set_special(cr.pos.0, cr.pos.1, Some(cr.kind));
+            }
+            let created = u32::try_from(creations.len()).unwrap_or(0);
+            let gems_scored = out.gems_cleared.saturating_sub(created);
+            let step_score =
+                u64::from(gems_scored) * 10 + u64::from(out.blocker_layers_removed) * 20;
             score_gained += step_score;
             self.score += step_score;
+            // Report the truly-cleared cells (the activated set minus the
+            // survivors that became specials), so step0_cleared stays computable.
+            let cleared: Vec<Pos> = activated
+                .into_iter()
+                .filter(|p| !creations.iter().any(|c| c.pos == *p))
+                .collect();
             steps.push(StepReport {
-                cleared: matched,
+                cleared,
                 blocker_layers_removed: out.blocker_layers_removed,
                 jelly_layers_removed: out.jelly_layers_removed,
                 score_gained: step_score,
@@ -592,6 +911,7 @@ impl Game {
             if trace {
                 snapshots.push(self.board.clone());
             }
+            step_index += 1;
         }
 
         // The cascade has settled; if it settled into a dead board, reshuffle so
