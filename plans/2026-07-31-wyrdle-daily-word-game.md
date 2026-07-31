@@ -624,3 +624,14 @@ resolves it) but does not block starting W0.
     stale-making change sits in its own phase (RULES.md at W1–W3, README/registries
     at W6), no trailing docs-only phase. Discovery Exemption noted for W0.
   - **Confirmed ready:** yes — W0 can start now; W0-Q1 is resolved by W0 itself.
+- **2026-07-31 W0 executed (discovery).** Sources confirmed from primary
+  LICENSE files. **W0-Q1 RESOLVED:** `allowed` = union of dwyl `words_alpha`
+  (Unlicense/PD) + web2 (PD) 5-letter = **15922** words; `answers` = top-1500
+  frequency-ordered 5-letter words from **hermitdave/FrequencyWords (MIT)** ∩
+  both dictionaries (every answer ∈ allowed, verified). **Rejected**
+  google-10000-english (its LICENSE forbids commercial use w/o an LDC licence —
+  not clean) and SCOWL (clean licence but ships aspell-binary `.cwl`, not worth
+  the extra build dep). Embedded size ≈ 104 KB (under the ~150 KB budget).
+  Committed `tools/build-wordlists.mjs` (re-runnable, off-gate),
+  `crates/wyrdle-core/data/{allowed,answers}.txt`, `games/wyrdle/PROVENANCE.md`.
+  D3 (`include_str!` embed/parse) folded into W1's tests (the crate lands there).
