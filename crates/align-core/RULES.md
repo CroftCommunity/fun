@@ -4,7 +4,7 @@
 falling-block stacker (Tier-1, build-fresh). It is the single source of truth for
 the rules; the wasm binding and the UI never re-implement them.
 
-> **IP posture.** Align never uses the word "tetris"/"-tris" or the trademarked
+> **IP posture.** Align never uses the trademarked falling-block name or the "-tris" suffix, nor the trademarked
 > glossary; a 4-line clear is an **Align**. The palette is original (violet I /
 > coral O / teal T / gold S / sky Z / rose J / green L) — deliberately *not* the
 > guideline shape-to-colour mapping. Piece letters are internal shape ids only.

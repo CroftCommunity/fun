@@ -610,7 +610,7 @@ impl Engine {
     }
 
     /// A hint: the four absolute cells of a good legal placement for the active
-    /// piece, by a greedy one-piece heuristic (El-Tetris-style weights). `None`
+    /// piece, by a greedy one-piece heuristic (aggregate-height / holes / bumpiness weights). `None`
     /// when there is no active piece. Using a hint counts as assistance.
     #[must_use]
     pub fn hint(&self) -> Option<[(i32, i32); 4]> {
@@ -644,7 +644,7 @@ impl Engine {
         best.map(|(_, cells)| cells)
     }
 
-    /// The El-Tetris heuristic score of writing `cells` onto a copy of the board
+    /// The stacking heuristic score of writing `cells` onto a copy of the board
     /// (higher is better). Fixed-point (×1000) so it stays integer.
     fn placement_score(&self, _kind: PieceKind, cells: &[(i32, i32); 4]) -> i64 {
         let mut b = self.board.clone();
@@ -677,7 +677,7 @@ impl Engine {
             agg += *hcell;
         }
         let bump: i64 = heights.windows(2).map(|p| (p[0] - p[1]).abs()).sum();
-        // El-Tetris weights ×1000: rows +760, aggHeight -510, holes -3600, bump -180.
+        // Classic stacking weights ×1000: rows +760, aggHeight -510, holes -3600, bump -180.
         760 * cleared - 510 * agg - 3600 * holes - 180 * bump
     }
 

@@ -168,6 +168,22 @@ Tier-1. Everything in §§2–8 is Tier-1 unless noted.
   replay, and a client-asserted time is forgeable, so a time-out loss can't be a
   verifiable result (§9 "no faked verifiable outcome"). Reference:
   `crates/bubble-core/src/levels.rs`.
+- **A real-time game is verifiable by a tick-stamped input record.** When play is
+  continuous *and* clock-driven (a falling-block stacker, where gravity advances
+  whether or not the player acts), model the core as a **fixed-timestep integer
+  tick engine** and record the run as a **tick-stamped stream of atomic actions**
+  (`[(tick, action)]`). Each `tick()` advances one integer timestep of gravity +
+  lock resolution; the front-end's wall clock only drives the accumulator (how
+  many `tick()`s this frame) and stamps captured inputs with the engine's current
+  tick — it never decides the outcome. Handling (DAS/ARR/SDF) resolves held keys
+  into the *atomic* actions in the input layer, so the record is
+  handling-independent and a shared `?r=` reproduces the exact moves. The float
+  gravity curve is baked into an integer ticks-per-row table so nothing float
+  touches the hashed path. The state hash includes the tick, pinning the whole
+  timeline: a run and its replay agree only if every gravity/lock tick lined up.
+  Align (`crates/align-core/`, `src/games/align/`) is the reference — the same
+  move-derived-pressure contract as the bubble shooter, applied to a clock-driven
+  game.
 
 ### Centre the play surface — the default layout
 
