@@ -1,0 +1,35 @@
+{
+  "id": "puzzles",
+  "tier": 2,
+  "provenance": {
+    "upstreamUrl": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/",
+    "upstreamRef": "js build 20260720.3c36322 (net)",
+    "retrieved": "2026-07-31",
+    "author": "Simon Tatham",
+    "license": "MIT",
+    "licenseFile": "vendor/LICENCE"
+  },
+  "posture": {
+    "verifiable": false,
+    "containment": "iframe-sandbox",
+    "sandbox": "allow-scripts",
+    "egress": "same-origin",
+    "input": ["pointer", "keyboard"],
+    "approxSizeKb": 520,
+    "patches": [
+      {
+        "file": "vendor/net.html",
+        "change": "inject <script defer src=\"wasm-inline.js\"> immediately before the net.js script",
+        "reason": "sets window.Module.wasmBinary before the emscripten glue runs, so the opaque-origin sandbox never fetches net.wasm (a null-origin cross-origin request that static hosting cannot satisfy)"
+      },
+      {
+        "file": "vendor/wasm-inline.js",
+        "change": "generated: base64-inlines net.wasm (sha256 3195eba328b17eab5d71de3c0c9783139b1083ea67c6e7c88e08f1a8c0e04892) into window.Module.wasmBinary; net.wasm itself is not shipped",
+        "reason": "removes the runtime wasm fetch entirely so the puzzle runs under allow-scripts with no allow-same-origin; the sha256 ties the inlined bytes back to upstream net.wasm"
+      }
+    ]
+  },
+  "representation": {
+    "claim": "Wrapped games — no verifiable record."
+  }
+}
