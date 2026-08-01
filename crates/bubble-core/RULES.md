@@ -18,6 +18,34 @@ flat index of `(row, col)` is `sum(row_len(0..row)) + col`, where
 
 Each `Cell` is `Empty` or `Bubble(color)` where `color` is a `u8` in `0..colors`.
 
+### Parity offset — so a new row can be pushed in at the top
+
+The board carries an explicit **`parity_offset ∈ {0, 1}`**: row `r` is *full*
+(`width` cells) when `(r + parity_offset)` is even, else *short* (`width - 1`). A
+fresh board has offset `0` — the base layout above (even rows full). The offset is
+what lets the descending-stack pressure (below) push a single new row in at the
+top without disturbing the existing bubbles' geometry. `parity_offset` is **not**
+folded into the state hash: it is a pure function of the number of top-inserts,
+which is itself a deterministic function of the recorded move list, so replay
+always reconstructs the identical board (cells laid out under the identical
+parity) and hashes identical cells. Clear-board mode never inserts, so its offset
+stays `0` and its hashes are unchanged.
+
+## Descending pressure — top-row insertion (levels mode)
+
+`Board::insert_top_row(new_top)` pushes a new row in at the top: it shifts every
+row down one, **flips `parity_offset`**, and writes `new_top` into the new row 0.
+Flipping the offset exactly cancels the `+1` index shift, so every existing bubble
+keeps its full/short classification and its six-neighbour set — only a new top row
+is added; the old bottom row's content is pushed off the fixed-height board (the
+mechanical half of the deadline loss). A parity flip preserves the flat cell count
+only when `height` is **even**, so the levels mode uses an even height; clear-board
+mode (odd height) never inserts. The new row's colours come from a **seeded**
+stream (folded into `draws`, exactly like the deal), and the insertion is triggered
+on the **shot/miss count** — both deterministic functions of `(seed, moves)` — so
+`(seed, angles)` still replays byte-identically. No wall-clock ever drives a state
+transition.
+
 ## Adjacency — six neighbours
 
 A cell has up to six neighbours: two in-row (`c-1`, `c+1`) and two on each of the

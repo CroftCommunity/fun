@@ -177,7 +177,7 @@ fn board_view(s: &Session) -> BoardView {
     let b: &Board = s.game.board();
     let cells = (0..b.height)
         .map(|r| {
-            (0..Board::row_len(b.width, r))
+            (0..b.row_len_at(r))
                 .map(|c| match b.get(r, c) {
                     Some(Cell::Bubble(col)) => i16::from(col),
                     _ => -1,

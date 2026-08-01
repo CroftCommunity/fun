@@ -70,17 +70,25 @@ fn direction(angle: Angle) -> (i64, i64) {
     (d[1], d[2])
 }
 
-/// The sub-pixel center of hex cell `(r, c)`. Odd rows are shifted half a bubble
-/// (staggered hex); the x-offset is column-relative, so it needs no board width.
+/// The sub-pixel center of hex cell `(r, c)` at `parity_offset`. Short rows are
+/// shifted half a bubble (staggered hex); a row is short when `(r +
+/// parity_offset)` is odd. The x-offset is column-relative, so it needs no width.
 #[must_use]
-pub fn cell_center(r: usize, c: usize) -> (i32, i32) {
-    let x = if r.is_multiple_of(2) {
+pub fn cell_center_off(r: usize, c: usize, parity_offset: usize) -> (i32, i32) {
+    let x = if (r + parity_offset).is_multiple_of(2) {
         RADIUS + (c as i32) * DIAM
     } else {
         RADIUS + DIAM / 2 + (c as i32) * DIAM
     };
     let y = RADIUS + (r as i32) * ROW_H;
     (x, y)
+}
+
+/// The sub-pixel center of hex cell `(r, c)` in the base (offset-0) layout.
+/// Parity-carrying code uses [`cell_center_off`] with the board's offset.
+#[must_use]
+pub fn cell_center(r: usize, c: usize) -> (i32, i32) {
+    cell_center_off(r, c, 0)
 }
 
 fn is_occupied(board: &Board, r: usize, c: usize) -> bool {
@@ -94,10 +102,11 @@ fn is_empty(board: &Board, r: usize, c: usize) -> bool {
 /// Does a bubble centered at `(px, py)` overlap any occupied cell?
 fn collides(board: &Board, px: i64, py: i64) -> bool {
     let d2 = (DIAM as i64) * (DIAM as i64);
+    let off = board.parity_offset();
     for r in 0..board.height {
-        for c in 0..Board::row_len(board.width, r) {
+        for c in 0..board.row_len_at(r) {
             if is_occupied(board, r, c) {
-                let (cx, cy) = cell_center(r, c);
+                let (cx, cy) = cell_center_off(r, c, off);
                 let ddx = px - i64::from(cx);
                 let ddy = py - i64::from(cy);
                 if ddx * ddx + ddy * ddy < d2 {
@@ -113,10 +122,11 @@ fn collides(board: &Board, px: i64, py: i64) -> bool {
 fn nearest_empty(board: &Board, px: i64, py: i64) -> Pos {
     let mut best: Pos = (0, 0);
     let mut best_d = i64::MAX;
+    let off = board.parity_offset();
     for r in 0..board.height {
-        for c in 0..Board::row_len(board.width, r) {
+        for c in 0..board.row_len_at(r) {
             if is_empty(board, r, c) {
-                let (cx, cy) = cell_center(r, c);
+                let (cx, cy) = cell_center_off(r, c, off);
                 let ddx = px - i64::from(cx);
                 let ddy = py - i64::from(cy);
                 let d = ddx * ddx + ddy * ddy;

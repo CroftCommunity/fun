@@ -1,11 +1,25 @@
 # Bubble shooter — level tiers, ramping difficulty, descending rows, optional timer (phase plan)
 
-**Status:** 🟡 **PLANNED — awaiting owner review before executing V0.** Branch
+**Status:** 🟢 **APPROVED — executing (owner OK 2026-08-01).** Branch
 `claude/bubble-shooter-levels-difficulty-727jfc`. Adds a **leveled, ramping**
 bubble-shooter mode on top of today's clear-the-board game: point-gated level
 tiers, a classic Puzzle-Bobble **new-row-at-the-top** pressure mechanic, and an
 **optional presentational timer** — all while keeping the shelf's verifiable
 `(seed, angles)` → `state_hash` outcome intact.
+
+**BS-Q1 resolved (owner, 2026-08-01):** canonical pressure is **shot-driven**
+(reach the target before the descending stack crosses the deadline; inserts
+trigger on shot/miss count, new rows from the seeded RNG folded into the hash —
+so `(seed, angles)` replays exactly). The **timer is a presentational overlay**,
+honestly labelled "not part of the verified result." No verified loss is ever
+decided by a wall clock.
+
+## Execution log
+
+- **V1 (in progress):** parity-offset `Board` + `insert_top_row` (single-row top
+  insert = shift-down + parity flip; `parity_offset` defaults to 0 so all prior
+  behaviour/tests are unchanged), `state_hash` folds the offset, `aim.rs` short-
+  row indent keys on `(r + parity_offset)`.
 
 ## Problem Statement
 

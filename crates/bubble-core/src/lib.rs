@@ -16,7 +16,7 @@ pub mod game;
 pub mod hash;
 pub mod rng;
 
-pub use aim::{angle_for_landing, cell_center, fan, resolve_shot, Angle, Landing};
+pub use aim::{angle_for_landing, cell_center, cell_center_off, fan, resolve_shot, Angle, Landing};
 pub use board::{Board, BoardError, Cell, Pos};
 pub use engine::{deal, Deal};
 pub use game::{Bubble, Game};
