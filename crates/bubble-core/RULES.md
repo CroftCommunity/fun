@@ -46,6 +46,39 @@ on the **shot/miss count** — both deterministic functions of `(seed, moves)` �
 `(seed, angles)` still replays byte-identically. No wall-clock ever drives a state
 transition.
 
+## Levels mode — escalating, point-gated survival
+
+`LevelGame` (`levels.rs`) is the second mode (clear-board is the first). Endless
+survival on one continuous, descending board:
+
+- **Scoring (arcade fidelity):** a shot scores `10 · popped + drop_score(dropped)`,
+  where `drop_score(n) = 20 · 2^(n-1)` capped at `1_310_720` for `n ≥ 17`
+  (`drop_score(0) = 0`). Big drops are the skill the targets reward.
+- **Levels + ramp:** starting at level 1, when the per-level score meets
+  `target_score(level)` the level advances (excess carries over), and the per-level
+  knobs harden — more colours (`colors_at`, up to `MAX_COLORS`), a tighter insert
+  cadence (`insert_cadence_at`, down to `CADENCE_FLOOR`), a higher target
+  (`target_score_at`). All are pure functions of `level` on a [`LevelConfig`]
+  (`LevelConfig::default_mode` reads `levels_mode`; tests/calibration vary it).
+- **Pressure:** every `insert_cadence(level)` **shots** a new top row of seeded
+  colours (the level's palette) is pushed in via `Board::insert_top_row`. The
+  trigger is the shot count and the colours are a seeded stream (folded into
+  `draws`), so replay reproduces every insert.
+- **Deadline / loss:** the run ends (`is_lost`) when a bubble reaches the reserved
+  bottom `DEADLINE_ROWS` — placed there by a shot or shifted there by an insert
+  (or pushed off the bottom entirely). There is **no** terminal win (`is_won` is
+  always false); the run's value is its cumulative score + highest level.
+- **The timer is presentational.** `time_limit_secs_at(level)` is exposed for the
+  UI's optional countdown only; it is **never** read by `play` and never decides a
+  loss — a wall clock can't be reproduced by replay, so it can't back a verifiable
+  outcome (`docs/BUILDING-GAMES.md` §9).
+
+The state hash folds `MAX_COLORS` (stable palette metadata), the combined RNG
+position (deal + launcher + insert streams), and the cumulative score. The
+verifiable outcome is `BubbleLevels` (`KIND = "bubble-levels"`, `VERSION = 1`):
+`replay(seed, angles)` reproduces the final hash + total score + a 0–3 star grade
+of the highest level reached (`grade`).
+
 ## Adjacency — six neighbours
 
 A cell has up to six neighbours: two in-row (`c-1`, `c+1`) and two on each of the
