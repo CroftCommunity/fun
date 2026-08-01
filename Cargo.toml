@@ -29,6 +29,7 @@ members = [
     "crates/match3-solver",
     "crates/adversary-core",
     "crates/drop4-core",
+    "crates/drop4-solver",
     "crates/xbuild",
 ]
 

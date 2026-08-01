@@ -1,0 +1,13 @@
+[package]
+name = "drop4-solver"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Perfect Drop 4 (Four-in-a-Row) engine: a bitboard negamax solver (alpha-beta, transposition table, centre-first ordering, null-window iterative deepening, per Pascal Pons). Doubles as the classic opponent (with difficulty levels) and the exact oracle the AI-scoring harness grades against — it returns the game-theoretic value (win/draw/loss + distance) of any position. No network."
+
+[dependencies]
+adversary-core = { path = "../adversary-core" }
+drop4-core = { path = "../drop4-core" }
+rand.workspace = true
+rand_chacha.workspace = true
