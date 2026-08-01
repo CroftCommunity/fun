@@ -11,4 +11,5 @@ guide). These files are the running, checkbox-level worklist.
 - [match3.md](match3.md) — **playable**; par-tuning/variants/specials follow-ups.
 - [bubble.md](bubble.md) — **playable**; aim-preview/specials/ceiling-advance follow-ups.
 - [cribbage.md](cribbage.md) — **gated**; needs P2P transport + fair-reveal first.
+- [digger.md](digger.md) — **concept, not started**; Tier-1 build-fresh (our own take on an LD29 digger — the original is all-rights-reserved, so not wrappable).
 - [supertuxkart.md](supertuxkart.md) — **Tier-2, under owner review**; local preview built + served, awesome-or-not test pending.
