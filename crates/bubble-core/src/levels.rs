@@ -570,4 +570,45 @@ mod tests {
         assert_eq!(<BubbleLevels as pond_outcome::Game>::KIND, "bubble-levels");
         assert_eq!(<BubbleLevels as pond_outcome::Game>::VERSION, 1);
     }
+
+    /// Reachability sanity (V3): the shipped difficulty curve must be *possible* —
+    /// good play reaches at least level 2 (i.e. earns `target_score(1) = 1500`)
+    /// before the descending stack crosses the deadline. Greedy play maximises
+    /// pop+drop each shot (the `hint_angle` heuristic). A regression that makes a
+    /// level target unreachable fails here rather than shipping an impossible ramp.
+    #[test]
+    fn the_shipped_level_one_target_is_reachable_by_good_play() {
+        let (lo, hi) = crate::fan();
+        let mut reached_level_2_before_loss = false;
+        // A few seeds so the check isn't a single lucky deal.
+        for seed in [1u64, 7, 42, 100] {
+            let mut g = LevelGame::new(seed);
+            for _ in 0..250 {
+                if g.is_lost() || g.level() >= 2 {
+                    break;
+                }
+                // Pick the fan angle that removes the most bubbles this shot.
+                let mut best = lo;
+                let mut best_gain = 0usize;
+                for deg in lo..=hi {
+                    let mut probe = g.clone();
+                    let rep = probe.play(Angle(deg));
+                    let gain = rep.popped.len() + rep.dropped.len();
+                    if gain > best_gain {
+                        best_gain = gain;
+                        best = deg;
+                    }
+                }
+                g.play(Angle(best));
+            }
+            if g.level() >= 2 {
+                reached_level_2_before_loss = true;
+                break;
+            }
+        }
+        assert!(
+            reached_level_2_before_loss,
+            "good play must be able to clear level 1's target before the deadline"
+        );
+    }
 }
