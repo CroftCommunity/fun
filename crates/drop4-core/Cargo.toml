@@ -1,0 +1,17 @@
+[package]
+name = "drop4-core"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Deterministic, headless Drop 4 (Four-in-a-Row) engine. 7x6 board, drop-a-column moves, four-in-a-row win / full-board draw, canonical state hash. Implements the shared Adversary trait and pond_outcome::Game, so a two-player match replays from (seed, moves) exactly and native==wasm. No floats on the hashed path, no network."
+
+[dependencies]
+adversary-core = { path = "../adversary-core" }
+serde = { workspace = true }
+sha2.workspace = true
+hex.workspace = true
+pond-outcome.workspace = true
+
+[dev-dependencies]
+pond-docformat.workspace = true

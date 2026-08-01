@@ -27,6 +27,8 @@ members = [
     "crates/solitaire-wasm",
     "crates/solitaire-solver",
     "crates/match3-solver",
+    "crates/adversary-core",
+    "crates/drop4-core",
     "crates/xbuild",
 ]
 
