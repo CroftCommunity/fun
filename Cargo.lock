@@ -3,6 +3,31 @@
 version = 4
 
 [[package]]
+name = "align-core"
+version = "0.0.0"
+dependencies = [
+ "hex",
+ "pond-docformat",
+ "pond-outcome",
+ "rand",
+ "rand_chacha",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+]
+
+[[package]]
+name = "align-wasm"
+version = "0.0.0"
+dependencies = [
+ "align-core",
+ "pond-outcome",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "block-buffer"
 version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"

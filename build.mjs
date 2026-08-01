@@ -13,7 +13,7 @@ const dist = join(root, "dist");
 
 // Game entry pages: "" is the home/drawer page (no game mounted); the rest carry
 // <body data-game> so the chrome knows what to mount.
-const GAME_PAGES = ["", "placeholder", "solitaire", "match3", "bubble", "wyrdle", "2048", "astray", "hexgl", "clumsybird", "puzzles", "cribbage"];
+const GAME_PAGES = ["", "placeholder", "solitaire", "match3", "bubble", "wyrdle", "2048", "align", "astray", "hexgl", "clumsybird", "puzzles", "cribbage"];
 
 // Tier-2 wrapped games: their vendored bundle ships under src/games/<id>/vendor/
 // and is served at /<id>/vendor/ for the sandboxed iframe to load same-origin.
@@ -95,6 +95,10 @@ else console.warn("note: wyrdle.wasm not built yet — run `npm run build:wasm` 
 const t48wasm = join(root, "target/wasm32-unknown-unknown/release/twenty48_wasm.wasm");
 if (await exists(t48wasm)) await cp(t48wasm, join(dist, "2048.wasm"));
 else console.warn("note: 2048.wasm not built yet — run `npm run build:wasm` (2048 needs it)");
+
+const alwasm = join(root, "target/wasm32-unknown-unknown/release/align_wasm.wasm");
+if (await exists(alwasm)) await cp(alwasm, join(dist, "align.wasm"));
+else console.warn("note: align.wasm not built yet — run `npm run build:wasm` (align needs it)");
 
 // The winnable-daily pack (Phase S) — served static so the daily mode and the
 // E2E win-path fixture can fetch it. `payload[0]` is the win-path fixture.

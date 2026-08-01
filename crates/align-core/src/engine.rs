@@ -609,6 +609,78 @@ impl Engine {
         })
     }
 
+    /// A hint: the four absolute cells of a good legal placement for the active
+    /// piece, by a greedy one-piece heuristic (El-Tetris-style weights). `None`
+    /// when there is no active piece. Using a hint counts as assistance.
+    #[must_use]
+    pub fn hint(&self) -> Option<[(i32, i32); 4]> {
+        let p = self.active?;
+        let mut best: Option<(i64, [(i32, i32); 4])> = None;
+        // Start the drop with the whole piece box inside the ceiling (max cell
+        // offset is +3), then descend to the landing.
+        let top = crate::board::HEIGHT as i32 - 4;
+        for rot in [RotState::Zero, RotState::R, RotState::Two, RotState::L] {
+            for x in -2..(crate::board::WIDTH as i32 + 2) {
+                if self.collides(p.kind, rot, x, top) {
+                    continue;
+                }
+                let mut y = top;
+                while !self.collides(p.kind, rot, x, y - 1) {
+                    y -= 1;
+                }
+                let cells = Self::cells_at(p.kind, rot, x, y);
+                if cells
+                    .iter()
+                    .any(|&(cx, cy)| cx < 0 || cx >= crate::board::WIDTH as i32 || cy < 0)
+                {
+                    continue;
+                }
+                let score = self.placement_score(p.kind, &cells);
+                if best.is_none_or(|(bs, _)| score > bs) {
+                    best = Some((score, cells));
+                }
+            }
+        }
+        best.map(|(_, cells)| cells)
+    }
+
+    /// The El-Tetris heuristic score of writing `cells` onto a copy of the board
+    /// (higher is better). Fixed-point (×1000) so it stays integer.
+    fn placement_score(&self, _kind: PieceKind, cells: &[(i32, i32); 4]) -> i64 {
+        let mut b = self.board.clone();
+        for &(x, y) in cells {
+            if x >= 0 && y >= 0 {
+                b.set(x as usize, y as usize, 1);
+            }
+        }
+        let w = crate::board::WIDTH;
+        let h = crate::board::HEIGHT;
+        let cleared = {
+            let mut c = b.clone();
+            c.clear_full_rows() as i64
+        };
+        let mut heights = vec![0i64; w];
+        let mut agg = 0i64;
+        let mut holes = 0i64;
+        for (x, hcell) in heights.iter_mut().enumerate() {
+            let mut seen = false;
+            for y in (0..h).rev() {
+                if b.get(x as i32, y as i32) != 0 {
+                    if !seen {
+                        *hcell = y as i64 + 1;
+                        seen = true;
+                    }
+                } else if seen {
+                    holes += 1;
+                }
+            }
+            agg += *hcell;
+        }
+        let bump: i64 = heights.windows(2).map(|p| (p[0] - p[1]).abs()).sum();
+        // El-Tetris weights ×1000: rows +760, aggHeight -510, holes -3600, bump -180.
+        760 * cleared - 510 * agg - 3600 * holes - 180 * bump
+    }
+
     /// Per-run stats for the result screen: (pieces, tspins, aligns, max_combo).
     #[must_use]
     pub fn stats(&self) -> (u32, u32, u32, u32) {

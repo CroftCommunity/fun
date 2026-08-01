@@ -1,0 +1,16 @@
+[package]
+name = "align-wasm"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Browser binding over align-core for the shelf: raw C-ABI + serde-JSON (no wasm-bindgen). Holds one Align run, exposes tick() and atomic input(), board/hash/hint/outcome JSON via an output buffer, embedded daily seed-pack. Never panics."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+align-core = { path = "../align-core" }
+pond-outcome = { workspace = true }
+serde = { workspace = true }
+serde_json.workspace = true

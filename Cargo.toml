@@ -13,6 +13,7 @@
 resolver = "2"
 members = [
     "crates/align-core",
+    "crates/align-wasm",
     "crates/bubble-core",
     "crates/wyrdle-core",
     "crates/twenty48-core",
