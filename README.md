@@ -9,7 +9,7 @@ a portable artifact addressable at its own URL.
 `fun.croft.ing` presents games in a **slide-out drawer** over a persistent play area; each game can
 also go **full-screen** or **open in its own tab** (so every game has its own URL). A game is a module
 that implements one contract and renders chrome-agnostically into a mount point — the drawer is built
-once and every game reuses it. Shelf order: **solitaire → match-3 → bubble → wyrdle → 2048 → cribbage**.
+once and every game reuses it. Shelf order: **solitaire → match-3 → bubble → wyrdle → 2048 → align → cribbage**.
 
 ## Layout
 
@@ -33,6 +33,9 @@ crates/
   wyrdle-wasm/       browser binding over wyrdle-core (raw C-ABI + serde-JSON)     — built
   twenty48-core/     deterministic 2048 engine (exponent tiles, seeded spawns, slide/merge,
                      win@2048 / stuck) — green (no solver: every seed is playable)
+  align-core/        deterministic falling-block engine (fixed-timestep tick sim, 7-bag,
+                     SRS kicks, integer gravity, guideline scoring) — green
+  align-wasm/        browser binding over align-core (raw C-ABI + serde-JSON)          — built
   twenty48-wasm/     browser binding over twenty48-core (raw C-ABI + serde-JSON)   — built
 games/solitaire/     daily-pack.json — a year of winnable daily seeds + a fixture win line (v2, seeds-lean)
 games/bubble/        daily-pack.json — a year of winnable clear-the-board seeds + a fixture clear line
@@ -116,6 +119,25 @@ no floats, native==wasm. Daily board (a shuffled seed from
 record (score + best tile, re-derived by replay), one-tap re-verify, and a `?r=`
 share. No solver: every seed is playable (reaching 2048 is skill, not seed).
 Plan: `plans/2026-07-31-2048.md`.
+
+## Align (playable — falling-block stacker)
+
+`/align/` is a real-time falling-block stacker (build-fresh; original name,
+palette, and presentation — no "-tris" name, not the guideline shape-to-colour
+mapping). Pieces fall; slide/rotate them (with SRS-compatible wall kicks) to pack
+complete rows, which clear; four at once is an **Align**. It is the shelf's first
+real-time game, and it earns a verifiable outcome the same way the turn-based ones
+do: the core is a **fixed-timestep integer tick engine** whose recorded artifact
+is a **tick-stamped stream of atomic actions**, so a whole run replays
+byte-identically from `(seed, moves)` — no floats, no wall clock on the hashed
+path, native==wasm. The wall clock only drives the render accumulator and stamps
+inputs, never the outcome (BUILDING-GAMES §4). Guideline scoring (T-spins,
+back-to-back, combo, perfect clear); Marathon + Sprint modes; hold, ghost, a
+five-piece preview; keyboard + on-screen touch controls; hints/assistance.
+Daily board (`games/align/daily-pack.json`, UTC rollover) + free-play (`?seed=`).
+A top-out / "End run" leads with a verification-forward result and a
+self-verifying `?r=` share. No solver: every seed is playable.
+Plan: `plans/2026-08-01-align-falling-blocks.md`.
 
 ## Identity (light/dark)
 

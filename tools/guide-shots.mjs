@@ -202,6 +202,39 @@ const SHOTS = [
     },
   },
   {
+    name: "align-board",
+    clip: ".al-game",
+    async run(page) {
+      await page.goto(`${origin}/align/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".al-board");
+      await page.waitForFunction(() => Boolean(window.__align));
+      // Build a lived-in stack, then show a hint so the outlined placement reads.
+      await page.evaluate(() => {
+        const h = window.__align;
+        const seq = ["ShiftL", "ShiftL", "HardDrop", "ShiftR", "ShiftR", "HardDrop",
+          "RotCW", "HardDrop", "ShiftR", "HardDrop", "ShiftL", "RotCW", "HardDrop"];
+        for (const a of seq) { h.input(a); h.tick(2); }
+      });
+      await page.click(".sol-hint");
+      await page.waitForTimeout(120);
+    },
+  },
+  {
+    name: "align-result",
+    clip: ".sol-result",
+    async run(page) {
+      await page.goto(`${origin}/align/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".al-board");
+      await page.waitForFunction(() => Boolean(window.__align));
+      // Hard-drop in place until the stack tops out — a real game-over result.
+      await page.evaluate(() => {
+        const h = window.__align;
+        for (let i = 0; i < 400 && !h.board().over; i += 1) { h.input("HardDrop"); h.tick(1); }
+      });
+      await page.waitForSelector(".sol-result");
+    },
+  },
+  {
     name: "wyrdle-win",
     clip: ".sol-result",
     async run(page) {

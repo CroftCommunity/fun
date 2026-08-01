@@ -7,6 +7,7 @@ import { MATCH3_GUIDE } from "./games/match3-howto.js";
 import { BUBBLE_GUIDE } from "./games/bubble/bubble-howto.js";
 import { WYRDLE_GUIDE } from "./games/wyrdle/wyrdle-howto.js";
 import { TWENTY48_GUIDE } from "./games/2048/2048-howto.js";
+import { ALIGN_GUIDE } from "./games/align/align-howto.js";
 import { ASTRAY_GUIDE } from "./games/astray/astray-howto.js";
 import { HEXGL_GUIDE } from "./games/hexgl/hexgl-howto.js";
 import { CLUMSYBIRD_GUIDE } from "./games/clumsybird/clumsybird-howto.js";
@@ -18,6 +19,7 @@ export const GUIDES: Readonly<Record<string, Guide>> = {
   bubble: BUBBLE_GUIDE,
   wyrdle: WYRDLE_GUIDE,
   "2048": TWENTY48_GUIDE,
+  align: ALIGN_GUIDE,
   astray: ASTRAY_GUIDE,
   hexgl: HEXGL_GUIDE,
   clumsybird: CLUMSYBIRD_GUIDE,

@@ -12,6 +12,8 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/align-core",
+    "crates/align-wasm",
     "crates/bubble-core",
     "crates/wyrdle-core",
     "crates/twenty48-core",
@@ -51,6 +53,7 @@ hex = "=0.4.3"
 thiserror = "=2.0.18"
 
 # internal crates
+align-core = { path = "crates/align-core" }
 bubble-core = { path = "crates/bubble-core" }
 wyrdle-core = { path = "crates/wyrdle-core" }
 match3-core = { path = "crates/match3-core" }

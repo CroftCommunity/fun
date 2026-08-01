@@ -71,6 +71,21 @@
   --t48-max: #8f1230;         /* 1024, 2048                            */
   --t48-max-ink: #ffffff;     /* numeral on --t48-max  (9.14:1)        */
 
+  /* Align — original falling-block palette (graphical: piece cells on the
+     always-dark play surface, theme-independent; not text, so not in PAIRS).
+     Deliberately NOT the guideline shape-to-colour mapping (IP guardrail). */
+  --al-board: #12141c;        /* the dark play surface                 */
+  --al-grid: #262b3b;         /* subtle grid line                      */
+  --al-well: #0c0e15;         /* the well border / frame               */
+  --al-ghost: #6b7186;        /* ghost / hint outline                  */
+  --al-i: #7c5cff;            /* violet   line piece                   */
+  --al-o: #ff6b5e;            /* coral    square piece                 */
+  --al-t: #1fb6a6;            /* teal     tee piece                    */
+  --al-s: #e8b93e;            /* gold     S piece                      */
+  --al-z: #4aa8ff;            /* sky      Z piece                      */
+  --al-j: #e05c8f;            /* rose     J piece                      */
+  --al-l: #5cc96a;            /* green    L piece                      */
+
   /* Type roles (self-hostable display + system UI fallback). */
   --font-display: "Fredoka", "Baloo 2", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
