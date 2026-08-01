@@ -913,6 +913,9 @@ assert(!ENVIRONMENT_IS_SHELL, 'shell environment detected but not enabled at bui
 
 var wasmBinary;
 if (Module['wasmBinary']) wasmBinary = Module['wasmBinary'];
+// Croft vendor patch: use the base64-inlined wasm (set by wasm-inline.js) so the
+// opaque-origin sandbox never fetches net.wasm. See ../tier2.meta.json.
+if (!wasmBinary && typeof window != 'undefined' && window.__NET_WASM_BYTES__) wasmBinary = window.__NET_WASM_BYTES__;
 legacyModuleProp('wasmBinary', 'wasmBinary');
 if (typeof WebAssembly != 'object') {
   err('no native wasm support detected');

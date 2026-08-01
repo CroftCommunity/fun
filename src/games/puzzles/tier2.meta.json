@@ -19,13 +19,18 @@
     "patches": [
       {
         "file": "vendor/net.html",
-        "change": "inject <script defer src=\"wasm-inline.js\"> immediately before the net.js script",
-        "reason": "sets window.Module.wasmBinary before the emscripten glue runs, so the opaque-origin sandbox never fetches net.wasm (a null-origin cross-origin request that static hosting cannot satisfy)"
+        "change": "inject a non-deferred <script src=\"wasm-inline.js\"> immediately before the deferred net.js script",
+        "reason": "runs the inlined-wasm shim during parse, before net.js, so the byte global exists before net.js initialises"
       },
       {
         "file": "vendor/wasm-inline.js",
-        "change": "generated: base64-inlines net.wasm (sha256 3195eba328b17eab5d71de3c0c9783139b1083ea67c6e7c88e08f1a8c0e04892) into window.Module.wasmBinary; net.wasm itself is not shipped",
-        "reason": "removes the runtime wasm fetch entirely so the puzzle runs under allow-scripts with no allow-same-origin; the sha256 ties the inlined bytes back to upstream net.wasm"
+        "change": "generated: base64-inlines net.wasm (sha256 3195eba328b17eab5d71de3c0c9783139b1083ea67c6e7c88e08f1a8c0e04892) into the plain global window.__NET_WASM_BYTES__; net.wasm itself is not shipped",
+        "reason": "a plain global (not Module.wasmBinary, which net.js reassigns at startup) carries the bytes so no runtime wasm fetch happens; the sha256 ties the inlined bytes back to upstream net.wasm"
+      },
+      {
+        "file": "vendor/net.js",
+        "change": "one line after the Module['wasmBinary'] read: seed the local wasmBinary from window.__NET_WASM_BYTES__ when present",
+        "reason": "makes the emscripten loader use the inlined bytes so it never fetches net.wasm — required under the opaque-origin sandbox (allow-scripts, no allow-same-origin), where a null-origin fetch of net.wasm is CORS-blocked on static hosting"
       }
     ]
   },
