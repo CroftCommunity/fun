@@ -128,6 +128,7 @@ interface Exports {
   level_hint_angle(): number;
   level_mark_assistance(): void;
   level_is_lost(): number;
+  level_current_hash(): number;
   level_outcome_json(declare: number): number;
 }
 
@@ -247,6 +248,10 @@ export class Bubble {
   /** Whether the levels run has ended (a bubble crossed the deadline). */
   levelIsLost(): boolean {
     return this.x.level_is_lost() === 1;
+  }
+  /** The canonical state hash of the current levels state (for `?r=` re-verify). */
+  levelCurrentHash(): string {
+    return JSON.parse(this.read(this.x.level_current_hash())) as string;
   }
   levelOutcome(declareAssistance: boolean): unknown {
     return JSON.parse(this.read(this.x.level_outcome_json(declareAssistance ? 1 : 0)));

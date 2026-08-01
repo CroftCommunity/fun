@@ -623,6 +623,16 @@ pub extern "C" fn level_is_lost() -> u32 {
     u32::from(level_session_mut().is_some_and(|s| s.game.is_lost()))
 }
 
+/// The canonical `state_hash` of the current levels state (quoted JSON string) —
+/// the anchor a share re-verifies against by replaying `(seed, shots)`.
+#[no_mangle]
+pub extern "C" fn level_current_hash() -> *const u8 {
+    match level_session_mut() {
+        Some(s) => set_out_str(&format!("\"{}\"", s.game.current_hash())),
+        None => set_out_str("\"\""),
+    }
+}
+
 /// The levels outcome record as a `pond-docformat` envelope JSON
 /// (`kind = "bubble-levels"`). `declare`: 1 = include the assistance flag, 0 =
 /// omit. The run is `Lost` (deadline) or `Abandoned`; never `Won` (endless

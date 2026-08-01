@@ -20,6 +20,8 @@ export interface BubbleRecord {
   assistance: boolean | null;
   /** Cumulative pop/drop score (surfaced as a secondary metric). */
   score?: number;
+  /** Star grade (0–3) for a graded game (levels mode). */
+  stars?: number;
 }
 
 /** A `pond-docformat` envelope wrapping a [`BubbleRecord`]. */
@@ -70,4 +72,29 @@ export function verifyRecord(v: Verifier, env: BubbleEnvelope): VerifyResult {
   const resultOk = rec.result !== "Won" || v.isCleared();
   const scoreOk = rec.score === undefined || rec.score === v.score();
   return { ok: hashOk && resultOk && scoreOk, expected: rec.final_hash, actual };
+}
+
+/** The minimal binding surface [`verifyLevelRecord`] drives (the `Bubble` wrapper
+ *  satisfies it). Levels replay through the `bubble-levels` core. */
+export interface LevelVerifier {
+  newLevelGame(seed: bigint): void;
+  levelShoot(angle: number): unknown;
+  levelCurrentHash(): string;
+  levelBoard(): { totalScore: number };
+}
+
+/**
+ * Re-verify a `bubble-levels` record by replaying `(seed, shots)` through the
+ * levels core and re-hashing — never trusts the stored `final_hash`. Levels runs
+ * are endless survival (never `Won`), so the check is hash-match plus the
+ * re-derived cumulative score matching any stored score claim.
+ */
+export function verifyLevelRecord(v: LevelVerifier, env: BubbleEnvelope): VerifyResult {
+  const rec = env.payload;
+  v.newLevelGame(BigInt(rec.seed));
+  for (const angle of rec.moves) v.levelShoot(angle);
+  const actual = v.levelCurrentHash();
+  const hashOk = actual === rec.final_hash;
+  const scoreOk = rec.score === undefined || rec.score === v.levelBoard().totalScore;
+  return { ok: hashOk && scoreOk, expected: rec.final_hash, actual };
 }

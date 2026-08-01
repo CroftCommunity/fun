@@ -17,7 +17,7 @@ const shotsLeft = (page: Page): Promise<number> =>
   page.evaluate(() => window.__bubble!.game.board().shotsLeft);
 
 test("the board renders a canvas, a launcher chip, an aim control and the HUD", async ({ page }) => {
-  await page.goto("/bubble/?seed=7");
+  await page.goto("/bubble/?variant=classic&seed=7");
   await ready(page);
   await expect(page.locator(".bub-canvas")).toHaveAttribute("aria-label", /bubbles left/i);
   await expect(page.locator(".bub-loaded")).toBeVisible();
@@ -28,7 +28,7 @@ test("the board renders a canvas, a launcher chip, an aim control and the HUD", 
 });
 
 test("previews the next colour, and firing promotes it to the launcher", async ({ page }) => {
-  await page.goto("/bubble/?seed=7");
+  await page.goto("/bubble/?variant=classic&seed=7");
   await ready(page);
 
   // The on-deck chip is present and announces the next colour for a screen reader.
@@ -48,7 +48,7 @@ test("previews the next colour, and firing promotes it to the launcher", async (
 });
 
 test("aiming then firing spends a shot and lands where the core resolves it", async ({ page }) => {
-  await page.goto("/bubble/?seed=7");
+  await page.goto("/bubble/?variant=classic&seed=7");
   await ready(page);
   const before = await shotsLeft(page);
 
@@ -75,7 +75,7 @@ test("aiming then firing spends a shot and lands where the core resolves it", as
 });
 
 test("the aim slider drives the angle and stays within the legal fan", async ({ page }) => {
-  await page.goto("/bubble/?seed=7");
+  await page.goto("/bubble/?variant=classic&seed=7");
   await ready(page);
   const { lo, hi } = await page.evaluate(() => ({
     lo: window.__bubble!.geom.fanLo,
@@ -89,7 +89,7 @@ test("the aim slider drives the angle and stays within the legal fan", async ({ 
 });
 
 test("keyboard: arrows re-aim and Space fires a shot", async ({ page }) => {
-  await page.goto("/bubble/?seed=7");
+  await page.goto("/bubble/?variant=classic&seed=7");
   await ready(page);
   await page.locator(".bub-canvas").focus();
   const start = await page.evaluate(() => window.__bubble!.aim());
@@ -110,7 +110,7 @@ test("clearing the board with the committed fixture is a verifiable win; share r
     payload: { fixture: { seed: number; moves: number[] } };
   };
   const fixture = env.payload.fixture;
-  await page.goto(`/bubble/?seed=${fixture.seed}`);
+  await page.goto(`/bubble/?variant=classic&seed=${fixture.seed}`);
   await ready(page);
 
   await page.evaluate((moves) => {
@@ -136,7 +136,7 @@ test("clearing the board with the committed fixture is a verifiable win; share r
 
 test("reduced-motion fires instantly (no flight animation)", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/bubble/?seed=7");
+  await page.goto("/bubble/?variant=classic&seed=7");
   await ready(page);
   const before = await shotsLeft(page);
   // No waiting on a rAF flight — the shot applies synchronously within fire().
@@ -148,7 +148,7 @@ test("reduced-motion fires instantly (no flight animation)", async ({ page }) =>
 });
 
 test("the aim guide is on by default and can be turned off (persists)", async ({ page }) => {
-  await page.goto("/bubble/?seed=7");
+  await page.goto("/bubble/?variant=classic&seed=7");
   await ready(page);
   await page.locator(".sol-settings summary").click();
   const guide = page.locator(".bub-set-aimguide");
@@ -161,7 +161,7 @@ test("the aim guide is on by default and can be turned off (persists)", async ({
 });
 
 test("with hints off, 'I'm done' ends the round", async ({ page }) => {
-  await page.goto("/bubble/?seed=7");
+  await page.goto("/bubble/?variant=classic&seed=7");
   await ready(page);
   await page.locator(".sol-settings summary").click();
   await page.locator(".sol-set-hints").uncheck();
@@ -170,7 +170,7 @@ test("with hints off, 'I'm done' ends the round", async ({ page }) => {
 });
 
 test("the board has no axe violations in light and dark", async ({ page }) => {
-  await page.goto("/bubble/?seed=7");
+  await page.goto("/bubble/?variant=classic&seed=7");
   await ready(page);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.getByRole("button", { name: /toggle light or dark theme/i }).click();
@@ -180,7 +180,7 @@ test("the board has no axe violations in light and dark", async ({ page }) => {
 
 test("the board fits a narrow phone with no horizontal overflow", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 780 });
-  await page.goto("/bubble/?seed=7");
+  await page.goto("/bubble/?variant=classic&seed=7");
   await ready(page);
   const noOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
