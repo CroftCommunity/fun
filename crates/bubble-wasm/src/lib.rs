@@ -63,6 +63,9 @@ struct Session {
     seed: u64,
     game: Game,
     assistance_used: bool,
+    /// The most recent shot's pop/drop cells, so the host can animate the
+    /// resolution (burst + fall) before re-rendering. `None` before any shot.
+    last_shot: Option<bubble_core::engine::ShotReport>,
 }
 
 static mut STATE: Option<Session> = None;
@@ -105,6 +108,7 @@ pub extern "C" fn new_game(seed_lo: u32, seed_hi: u32) {
             seed,
             game: Game::new(seed),
             assistance_used: false,
+            last_shot: None,
         });
     }
 }
@@ -123,11 +127,25 @@ struct BoardView {
     cells: Vec<Vec<i16>>,
     /// The colour the next shot places.
     current_color: u8,
+    /// The on-deck colour — previewed as the next-piece indicator.
+    next_color: u8,
     score: u64,
     shots_left: usize,
     shot_budget: usize,
     /// Whether the board is cleared (the objective is met).
     cleared: bool,
+}
+
+/// One removed cell for the resolution animation: `[row, col, colour]`.
+type CellView = [i32; 3];
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LastShotView {
+    /// Cells the pop removed (burst animation), `[r, c, colour]` each.
+    popped: Vec<CellView>,
+    /// Cells that dropped as orphans (fall animation), `[r, c, colour]` each.
+    dropped: Vec<CellView>,
 }
 
 #[derive(Serialize)]
@@ -172,6 +190,7 @@ fn board_view(s: &Session) -> BoardView {
         height: b.height,
         cells,
         current_color: s.game.current_color(),
+        next_color: s.game.next_color(),
         score: s.game.score(),
         shots_left: s.game.shots_left(),
         shot_budget: SHOT_BUDGET,
@@ -188,6 +207,39 @@ pub extern "C" fn board_json() -> *const u8 {
             Err(_) => set_out_str("null"),
         },
         None => set_out_str("null"),
+    }
+}
+
+/// The most recent shot's removed cells as JSON (`{popped, dropped}`, each a list
+/// of `[r, c, colour]`) so the host can animate the burst + orphan-fall before
+/// re-rendering. `{"popped":[],"dropped":[]}` before any shot. Presentational —
+/// never hashed.
+#[no_mangle]
+pub extern "C" fn last_shot_json() -> *const u8 {
+    let cells = |v: &[(bubble_core::Pos, u8)]| -> Vec<CellView> {
+        v.iter()
+            .map(|&((r, c), color)| {
+                [
+                    i32::try_from(r).unwrap_or(-1),
+                    i32::try_from(c).unwrap_or(-1),
+                    i32::from(color),
+                ]
+            })
+            .collect()
+    };
+    let view = match session_mut().and_then(|s| s.last_shot.as_ref()) {
+        Some(rep) => LastShotView {
+            popped: cells(&rep.popped),
+            dropped: cells(&rep.dropped),
+        },
+        None => LastShotView {
+            popped: Vec::new(),
+            dropped: Vec::new(),
+        },
+    };
+    match serde_json::to_vec(&view) {
+        Ok(bytes) => set_out(bytes),
+        Err(_) => set_out_str("{\"popped\":[],\"dropped\":[]}"),
     }
 }
 
@@ -258,6 +310,12 @@ pub extern "C" fn current_color() -> u32 {
     session_mut().map_or(0, |s| u32::from(s.game.current_color()))
 }
 
+/// The on-deck colour (`0..colors`) — the next-piece preview.
+#[no_mangle]
+pub extern "C" fn next_color() -> u32 {
+    session_mut().map_or(0, |s| u32::from(s.game.next_color()))
+}
+
 /// `1` if the board is cleared (the objective is met).
 #[no_mangle]
 pub extern "C" fn is_cleared() -> u32 {
@@ -277,7 +335,7 @@ pub extern "C" fn shoot(angle: u32) -> u32 {
         return 2; // budget spent
     }
     let deg = u16::try_from(angle).unwrap_or(u16::MAX);
-    s.game.play(Angle(deg));
+    s.last_shot = Some(s.game.play(Angle(deg)));
     0
 }
 
@@ -294,7 +352,7 @@ pub extern "C" fn hint_angle() -> u32 {
     for deg in lo..=hi {
         let mut probe = s.game.clone();
         let rep = probe.play(Angle(deg));
-        let gain = rep.popped + rep.dropped;
+        let gain = rep.popped.len() + rep.dropped.len();
         if gain > best_gain {
             best_gain = gain;
             best = deg;
@@ -373,6 +431,13 @@ mod tests {
         assert_eq!(before["cleared"], serde_json::json!(false));
         let shots_before = before["shotsLeft"].as_u64().unwrap();
         assert!(shots_before > 0);
+        // The board view previews both the loaded and the on-deck colour.
+        assert!(before["currentColor"].is_u64(), "loaded colour is present");
+        assert!(before["nextColor"].is_u64(), "on-deck colour is previewed");
+        // No shot yet: the last-shot detail is empty.
+        let ls0 = out_json(last_shot_json());
+        assert_eq!(ls0["popped"].as_array().unwrap().len(), 0);
+        assert_eq!(ls0["dropped"].as_array().unwrap().len(), 0);
         let hash_before = out_json(current_hash());
 
         // A straight-up trajectory has a launcher→stop path with a landing cell.
@@ -395,10 +460,19 @@ mod tests {
         );
         assert_ne!(out_json(current_hash()), hash_before, "the state advanced");
 
-        // The outcome is a bubble-kind v2 envelope.
+        // After a shot, the last-shot detail is a well-formed {popped, dropped}
+        // of [r, c, colour] triples (either may be empty for this angle/seed).
+        let ls1 = out_json(last_shot_json());
+        for key in ["popped", "dropped"] {
+            for cell in ls1[key].as_array().expect("array") {
+                assert_eq!(cell.as_array().unwrap().len(), 3, "[r,c,colour] triple");
+            }
+        }
+
+        // The outcome is a bubble-kind v3 envelope (2-deep launcher bumped it).
         let rec = out_json(outcome_json(1));
         assert_eq!(rec["kind"], serde_json::json!("bubble"));
-        assert_eq!(rec["version"], serde_json::json!(2), "bubble record is v2");
+        assert_eq!(rec["version"], serde_json::json!(3), "bubble record is v3");
 
         // The daily seed comes from the embedded pack.
         assert_ne!(bubble_daily_seed(0), 0, "pack seeds are embedded");

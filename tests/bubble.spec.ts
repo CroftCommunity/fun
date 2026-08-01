@@ -27,6 +27,26 @@ test("the board renders a canvas, a launcher chip, an aim control and the HUD", 
   await expect(page.locator(".bub-hud")).toContainText(/shots left/i);
 });
 
+test("previews the next colour, and firing promotes it to the launcher", async ({ page }) => {
+  await page.goto("/bubble/?seed=7");
+  await ready(page);
+
+  // The on-deck chip is present and announces the next colour for a screen reader.
+  await expect(page.locator(".bub-next")).toHaveAttribute("aria-label", /next up/i);
+
+  // The previewed on-deck colour is exactly the colour the next shot will load:
+  // fire once, and the new launcher colour equals the colour that was on deck.
+  const onDeck = await page.evaluate(() => window.__bubble!.game.board().nextColor);
+  await page.evaluate(async () => {
+    const h = window.__bubble!;
+    h.setAim(80);
+    await h.fire();
+  });
+  await expect
+    .poll(() => page.evaluate(() => window.__bubble!.game.board().currentColor))
+    .toBe(onDeck);
+});
+
 test("aiming then firing spends a shot and lands where the core resolves it", async ({ page }) => {
   await page.goto("/bubble/?seed=7");
   await ready(page);

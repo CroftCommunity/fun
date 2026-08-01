@@ -9,7 +9,7 @@
 //! via `?r=`.
 
 import type { GameModule } from "../../contract.js";
-import { Bubble, type BoardView, type Geom } from "./bubble-wasm.js";
+import { Bubble, type BoardView, type Geom, type LastShot } from "./bubble-wasm.js";
 import { boardSubpixelSize, cellCenter, clampAngle, launcherOrigin, pointerToAngle } from "./bubble-aim.js";
 import {
   decodeRecord,
@@ -220,16 +220,34 @@ export function bubbleModule(): GameModule {
     x: number,
     y: number,
     color: number,
+    scale = 1,
+    alpha = 1,
   ): void => {
+    const r = geom.radius * 0.92 * scale;
+    ctx.save();
+    ctx.globalAlpha = alpha;
     ctx.beginPath();
-    ctx.arc(x, y, geom.radius * 0.92, 0, Math.PI * 2);
+    ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fillStyle = p.surface;
     ctx.fill();
     ctx.fillStyle = p.gems[color] ?? p.ink;
-    ctx.font = `${Math.round(geom.radius * 1.15)}px system-ui, sans-serif`;
+    ctx.font = `${Math.round(geom.radius * 1.15 * scale)}px system-ui, sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(BUBBLE_GLYPH[color] ?? "●", x, y + geom.radius * 0.06);
+    ctx.fillText(BUBBLE_GLYPH[color] ?? "●", x, y + geom.radius * 0.06 * scale);
+    ctx.restore();
+  };
+
+  // The on-deck ("next") bubble, drawn small and dimmed beside the launcher so
+  // the player can plan the shot after this one (a next-piece preview).
+  const drawOnDeck = (
+    ctx: CanvasRenderingContext2D,
+    p: Palette,
+    o: { x: number; y: number },
+    color: number,
+  ): void => {
+    const x = o.x + geom.diam * 0.95;
+    drawBubble(ctx, p, x, o.y, color, 0.58, 0.7);
   };
 
   // Draw the board + launcher, plus (when `flight` is null) the dotted aim
@@ -252,7 +270,10 @@ export function bubbleModule(): GameModule {
     });
 
     const o = origin(board);
-    if (!board.cleared) drawBubble(ctx, p, o.x, o.y, board.currentColor);
+    if (!board.cleared) {
+      drawBubble(ctx, p, o.x, o.y, board.currentColor);
+      drawOnDeck(ctx, p, o, board.nextColor);
+    }
 
     if (flight) {
       drawBubble(ctx, p, flight.x, flight.y, board.currentColor);
@@ -321,6 +342,53 @@ export function bubbleModule(): GameModule {
       raf = requestAnimationFrame(step);
     });
 
+  // The shot resolution: popped bubbles burst (scale up + fade), orphaned
+  // bubbles fall away (translate down + fade) over the settled board — so a pop
+  // and its knock-on drops read as cause→effect instead of vanishing. Drawn on
+  // the post-shot board; skipped under reduced motion (the caller checks).
+  const animateResolve = (ls: LastShot): Promise<void> =>
+    new Promise((resolve) => {
+      if (!canvas || !game) return resolve();
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return resolve();
+      const p = palette();
+      const board = game.board(); // settled (post-shot) board
+      const o = origin(board);
+      const dur = 380;
+      const start = performance.now();
+      const step = (now: number): void => {
+        if (disposed || !canvas) return resolve();
+        const t = Math.min(1, (now - start) / dur);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        board.cells.forEach((rowCells, r) => {
+          rowCells.forEach((color, c) => {
+            if (color >= 0) {
+              const { x, y } = cellCenter(r, c, geom);
+              drawBubble(ctx, p, x, y, color);
+            }
+          });
+        });
+        if (!board.cleared) {
+          drawBubble(ctx, p, o.x, o.y, board.currentColor);
+          drawOnDeck(ctx, p, o, board.nextColor);
+        }
+        // Popped: a quick outward burst that fades.
+        for (const [r, c, color] of ls.popped) {
+          const { x, y } = cellCenter(r, c, geom);
+          drawBubble(ctx, p, x, y, color, 1 + 0.7 * t, 1 - t);
+        }
+        // Orphans: accelerate downward (gravity) and fade as they leave.
+        const fall = t * t * geom.rowH * 7;
+        for (const [r, c, color] of ls.dropped) {
+          const { x, y } = cellCenter(r, c, geom);
+          drawBubble(ctx, p, x, y + fall, color, 1, 1 - 0.85 * t);
+        }
+        if (t >= 1) return resolve();
+        raf = requestAnimationFrame(step);
+      };
+      raf = requestAnimationFrame(step);
+    });
+
   const fire = async (): Promise<void> => {
     if (!game || gameOver() || animating) return;
     const angle = aim;
@@ -331,9 +399,17 @@ export function bubbleModule(): GameModule {
     if (!prefersReducedMotion() && traj.points.length >= 2) {
       await animateFlight(traj.points);
     }
+    if (disposed || !game) {
+      animating = false;
+      return;
+    }
+    game.shoot(angle);
+    const ls = game.lastShot();
+    if (!prefersReducedMotion() && (ls.popped.length > 0 || ls.dropped.length > 0)) {
+      await animateResolve(ls);
+    }
     animating = false;
     if (disposed || !game) return;
-    game.shoot(angle);
     render();
   };
 
@@ -439,6 +515,7 @@ export function bubbleModule(): GameModule {
     );
 
     const color = board.currentColor;
+    const nextColor = board.nextColor;
     const hud = el(
       "div",
       { class: "bub-hud" },
@@ -450,6 +527,15 @@ export function bubbleModule(): GameModule {
           "aria-label": `Launcher loaded: ${BUBBLE_NAME[color] ?? "bubble"}`,
         },
         BUBBLE_GLYPH[color] ?? "●",
+      ),
+      el(
+        "span",
+        {
+          class: `bub-next bub-color-${nextColor}`,
+          role: "img",
+          "aria-label": `Next up: ${BUBBLE_NAME[nextColor] ?? "bubble"}`,
+        },
+        BUBBLE_GLYPH[nextColor] ?? "●",
       ),
       el("span", { class: "bub-score" }, `Score ${board.score}`),
       el("span", { class: "bub-shots" }, `Shots left ${board.shotsLeft}`),

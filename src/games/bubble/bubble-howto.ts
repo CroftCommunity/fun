@@ -5,7 +5,7 @@ import type { Guide } from "../../how-to.js";
 
 export const BUBBLE_GUIDE: Guide = {
   title: "How to play the bubble shooter",
-  lede: "Clear every bubble off the board before your shots run out. The launcher at the bottom loads a colour; aim an angle and fire — the bubble flies up, bounces off the walls, and sticks where it first touches. Three or more of the same colour touching pop, and anything left hanging drops. Every cleared board is a record anyone can re-verify.",
+  lede: "Clear every bubble off the board before your shots run out. The launcher at the bottom holds a colour to fire and shows the next one on deck; aim an angle and fire — the bubble flies up, bounces off the walls, and sticks where it first touches. Three or more of the same colour touching pop, and anything left hanging falls away. Every cleared board is a record anyone can re-verify.",
   entries: [
     {
       testid: "howto-goal",
@@ -19,8 +19,8 @@ export const BUBBLE_GUIDE: Guide = {
         {
           kind: "shot",
           name: "bubble-board",
-          alt: "A staggered honeycomb of coloured, shaped bubbles on a green felt table, with a launcher at the bottom, a dotted aim line and a landing ring showing where the next shot will stick, and a score / shots-left bar.",
-          caption: "The board, the launcher with your next colour, the dotted aim guide showing where the shot will land, and the bar: your score and shots left.",
+          alt: "A staggered honeycomb of coloured, shaped bubbles on a green felt table, with a launcher at the bottom holding the loaded colour and a smaller on-deck colour beside it, a dotted aim line and a landing ring showing where the shot will stick, and a score / shots-left bar.",
+          caption: "The board, the launcher showing the loaded colour and the next one on deck, the dotted aim guide showing where the shot will land, and the bar: your score and shots left.",
         },
       ],
     },
@@ -31,7 +31,7 @@ export const BUBBLE_GUIDE: Guide = {
       blocks: [
         {
           kind: "prose",
-          text: "Each bubble has both a colour and a shape (circle, triangle, square, diamond, star, plus), so they stay distinct however you see colour. The launcher only ever loads a colour that is still on the board, so every shot can do something.",
+          text: "Each bubble has both a colour and a shape (circle, triangle, square, diamond, star, plus), so they stay distinct however you see colour. The launcher shows two colours — the one loaded now and the next one on deck — so you can plan two shots ahead. The on-deck colour is picked a shot early, so now and then it lands with nothing to match yet; plan around it.",
         },
       ],
     },
@@ -65,7 +65,7 @@ export const BUBBLE_GUIDE: Guide = {
       blocks: [
         {
           kind: "prose",
-          text: "When your shot makes a group of three or more of the same colour touching, the whole group pops. Better still: any bubbles left hanging with nothing connecting them to the top of the board drop away too — so popping the right group can clear a whole cluster at once. Both popped and dropped bubbles score, and drops are worth double.",
+          text: "When your shot makes a group of three or more of the same colour touching, the whole group pops in a burst. Better still: any bubbles left hanging with nothing connecting them to the top of the board come loose and fall away — so popping the right group can clear a whole cluster at once. Both popped and dropped bubbles score, and drops are worth double.",
         },
       ],
     },
