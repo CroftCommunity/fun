@@ -1329,3 +1329,111 @@ body.fullscreen .play-area {
   .t48-float { animation: none; opacity: 1; }
   .t48-tile:not(.t48-empty) { animation: none; }
 }
+
+/* ---- Align (falling-block stacker) ---------------------------------------- */
+/* One centred column: controls, callout, stage (hold · board · next), the touch
+   pad, status. The board canvas draws its own dark play surface (--al-board);
+   the surrounding chrome uses semantic tokens so it stays theme-aware + AA. */
+.al-game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.7rem;
+  width: fit-content;
+  margin-inline: auto;
+  max-width: 100%;
+}
+.al-stage {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.7rem;
+  max-width: 100%;
+}
+.al-board {
+  display: block;
+  border-radius: var(--r-card);
+  box-shadow: 0 6px 22px rgb(0 0 0 / 28%);
+  touch-action: manipulation;
+  max-width: 100%;
+  height: auto;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.al-board:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+.al-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+  min-width: 3.2rem;
+}
+.al-mini {
+  max-width: 100%;
+  height: auto;
+}
+.al-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.al-mini {
+  border-radius: var(--r-card);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.al-hud {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+}
+.al-stat {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.al-stat b {
+  font-size: 1.15rem;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.al-callout {
+  min-height: 1.4rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-align: center;
+}
+.al-touch {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+}
+.al-tbtn {
+  min-width: 3rem;
+  min-height: 3rem;
+  font-size: 1.2rem;
+  border-radius: var(--r-card);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  touch-action: manipulation;
+  cursor: pointer;
+}
+.al-tbtn:active {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+@media (min-width: 720px) {
+  /* On a real keyboard the touch pad is optional — keep it but shrink it. */
+  .al-touch .al-tbtn { min-width: 2.6rem; min-height: 2.6rem; }
+}

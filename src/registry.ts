@@ -9,6 +9,7 @@ import { match3Module } from "./games/match3.js";
 import { bubbleModule } from "./games/bubble/bubble.js";
 import { wyrdleModule } from "./games/wyrdle/wyrdle.js";
 import { twenty48Module } from "./games/2048/2048.js";
+import { alignModule } from "./games/align/align.js";
 import { astrayModule } from "./games/astray/astray.js";
 import { hexglModule } from "./games/hexgl/hexgl.js";
 import { clumsybirdModule } from "./games/clumsybird/clumsybird.js";
@@ -27,6 +28,7 @@ export const REGISTRY: readonly GameEntry[] = [
   { id: "bubble", title: "Bubble", icon: "🫧", status: "playable", load: bubbleModule },
   { id: "wyrdle", title: "Wyrdle", icon: "🐉", status: "playable", load: wyrdleModule },
   { id: "2048", title: "2048", icon: "🔢", status: "playable", load: twenty48Module },
+  { id: "align", title: "Align", icon: "🟪", status: "playable", load: alignModule },
   {
     id: "astray",
     title: "Astray",

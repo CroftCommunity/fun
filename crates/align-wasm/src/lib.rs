@@ -81,6 +81,20 @@ struct Session {
 
 static mut STATE: Option<Session> = None;
 static mut OUT: Vec<u8> = Vec::new();
+static mut IN: Vec<u8> = Vec::new();
+
+/// Reserve `len` bytes of input buffer and return a pointer the host writes a
+/// shared record's envelope bytes into (for [`verify_shared`]).
+#[no_mangle]
+pub extern "C" fn alloc(len: u32) -> *mut u8 {
+    // SAFETY: single-threaded; no wasm allocation happens between this and the
+    // host's write, so the returned pointer stays valid.
+    unsafe {
+        let p = core::ptr::addr_of_mut!(IN);
+        (*p) = vec![0u8; len as usize];
+        (*p).as_mut_ptr()
+    }
+}
 
 fn session_mut() -> Option<&'static mut Session> {
     // SAFETY: single-threaded wasm; host calls are sequential.
@@ -303,6 +317,41 @@ pub extern "C" fn outcome_json(declare: u32) -> *const u8 {
     }
 }
 
+/// Verify a shared record previously written into the input buffer (via
+/// [`alloc`]) with `len` bytes. Runs the authoritative `pond_outcome::verify` —
+/// never trusts the stored hash. Writes a JSON `{ok, expected, actual, seed,
+/// score, won, mode, startLevel}` to the output buffer and returns its pointer.
+#[no_mangle]
+pub extern "C" fn verify_shared(len: u32) -> *const u8 {
+    // SAFETY: single-threaded read of the input buffer.
+    let bytes = unsafe { core::ptr::addr_of!(IN).as_ref().unwrap().clone() };
+    let bytes = &bytes[..(len as usize).min(bytes.len())];
+    let Ok(record) = pond_outcome::from_doc::<Align>(bytes) else {
+        return set_out_str(r#"{"ok":false,"expected":"","actual":"","reason":"decode"}"#);
+    };
+    let v = pond_outcome::verify::<Align>(&record);
+    let won = matches!(record.result, Outcome::Won);
+    let (mode, start_level) = match record.moves.first() {
+        Some(align_core::game::AlignMove::Begin { mode, start_level }) => (*mode, *start_level),
+        _ => (0, 1),
+    };
+    let out = serde_json::json!({
+        "ok": v.ok,
+        "expected": v.expected,
+        "actual": v.actual,
+        "seed": record.seed,
+        "score": record.score,
+        "won": won,
+        "mode": mode,
+        "startLevel": start_level,
+        "moveCount": record.move_count,
+    });
+    match serde_json::to_vec(&out) {
+        Ok(b) => set_out(b),
+        Err(_) => set_out_str(r#"{"ok":false,"expected":"","actual":""}"#),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -346,9 +395,20 @@ mod tests {
         assert_eq!(input(6), 0, "hard drop applies");
 
         // Outcome parses to an align-kind envelope.
-        let rec: serde_json::Value =
-            serde_json::from_slice(&read_out(outcome_json(1))).expect("outcome json");
+        let out_bytes = read_out(outcome_json(0));
+        let rec: serde_json::Value = serde_json::from_slice(&out_bytes).expect("outcome json");
         assert_eq!(rec["kind"], serde_json::json!("align"));
+
+        // verify_shared round-trips the outcome bytes and confirms the record.
+        let p = alloc(out_bytes.len() as u32);
+        // SAFETY: single-threaded test; alloc reserved exactly this many bytes.
+        unsafe {
+            std::slice::from_raw_parts_mut(p, out_bytes.len()).copy_from_slice(&out_bytes);
+        }
+        let vr: serde_json::Value =
+            serde_json::from_slice(&read_out(verify_shared(out_bytes.len() as u32)))
+                .expect("verify json");
+        assert_eq!(vr["ok"], serde_json::json!(true), "the record verifies");
 
         // Daily seed comes from the embedded pack.
         assert_ne!(daily_seed(0), 0, "pack seeds are embedded");
