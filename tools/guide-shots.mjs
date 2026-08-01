@@ -122,9 +122,12 @@ const SHOTS = [
     name: "bubble-board",
     clip: ".bub-game",
     async run(page) {
+      // Levels is the default: the level HUD (level, score->target progress, and
+      // the "stack drops in" pressure readout) plus the aim guide.
       await page.goto(`${origin}/bubble/?seed=7`, { waitUntil: "networkidle" });
       await page.waitForSelector(".bub-canvas");
       await page.waitForFunction(() => Boolean(window.__bubble));
+      await page.waitForSelector(".bub-level");
       // Aim an angled shot so the dotted trajectory guide + landing ring show.
       await page.evaluate(() => window.__bubble.setAim(115));
       await page.waitForTimeout(120);
@@ -134,19 +137,16 @@ const SHOTS = [
     name: "bubble-win",
     clip: ".sol-result",
     async run(page) {
-      await page.goto(`${origin}/bubble/`, { waitUntil: "networkidle" });
+      // Drive the levels run until the descending stack crosses the deadline, so
+      // the shot shows the verifiable "reached level N" result.
+      await page.goto(`${origin}/bubble/?seed=7`, { waitUntil: "networkidle" });
       await page.waitForSelector(".bub-canvas");
       await page.waitForFunction(() => Boolean(window.__bubble));
-      const fixture = await (await fetch(`${origin}/bubble-daily-pack.json`)).json();
-      await page.goto(`${origin}/bubble/?seed=${fixture.payload.fixture.seed}`, {
-        waitUntil: "networkidle",
+      await page.evaluate(() => {
+        const g = window.__bubble.game;
+        for (let i = 0; i < 500 && !g.levelIsLost(); i += 1) g.levelShoot(10 + ((i * 23) % 161));
+        window.__bubble.refresh();
       });
-      await page.waitForFunction(() => Boolean(window.__bubble));
-      await page.evaluate((moves) => {
-        const h = window.__bubble;
-        for (const m of moves) h.game.shoot(m);
-        h.refresh();
-      }, fixture.payload.fixture.moves);
       await page.waitForSelector(".sol-result");
     },
   },
@@ -267,7 +267,14 @@ const SHOTS = [
 const server = spawn("node", [join(root, "tools", "serve.mjs")], { stdio: "ignore" });
 await new Promise((r) => setTimeout(r, 700)); // let the server bind (fixed wait)
 
-const browser = await chromium.launch();
+// `PLAYWRIGHT_EXECUTABLE_PATH` pins a specific Chromium binary (e.g. a
+// sandbox/CI image whose pre-installed build differs from @playwright/test's
+// pinned revision); unset = Playwright's default resolution.
+const browser = await chromium.launch(
+  process.env.PLAYWRIGHT_EXECUTABLE_PATH
+    ? { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH }
+    : {},
+);
 try {
   for (const shot of SHOTS) {
     const context = await browser.newContext({

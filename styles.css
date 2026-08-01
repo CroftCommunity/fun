@@ -984,7 +984,7 @@ body.fullscreen .play-area {
 .bub-progress-fill {
   display: block;
   height: 100%;
-  background: var(--active, #10b981);
+  background: var(--active);
   border-radius: 999px;
   transition: width 0.25s ease;
 }
@@ -996,12 +996,12 @@ body.fullscreen .play-area {
   font-weight: 600;
   padding: 0.05rem 0.4rem;
   border-radius: 0.4rem;
-  background: color-mix(in srgb, var(--focus, #3b82f6) 18%, transparent);
+  background: color-mix(in srgb, var(--focus) 18%, transparent);
 }
 .bub-stars {
   font-size: 1.5rem;
   letter-spacing: 0.15rem;
-  color: var(--gem-4, #eab308);
+  color: var(--gem-4);
   margin: 0.1rem 0 0.3rem;
 }
 

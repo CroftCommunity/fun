@@ -16,10 +16,35 @@ decided by a wall clock.
 
 ## Execution log
 
-- **V1 (in progress):** parity-offset `Board` + `insert_top_row` (single-row top
-  insert = shift-down + parity flip; `parity_offset` defaults to 0 so all prior
-  behaviour/tests are unchanged), `state_hash` folds the offset, `aim.rs` short-
-  row indent keys on `(r + parity_offset)`.
+- **V1 (done, commit `615ba90`):** parity-offset `Board` + `insert_top_row`
+  (single-row top insert = shift-down + parity flip; `parity_offset` defaults to 0
+  so all prior behaviour/tests unchanged), `aim.rs` short-row indent keys on
+  `(r + parity_offset)`. **Deviation:** `state_hash` is *not* changed — parity is a
+  pure function of the insert count (from the move list), so replay reconstructs
+  the identical board + hashes identical cells; folding it would needlessly change
+  clear-board's pinned hashes/version. 5 new board tests; bubble-core/wasm/solver
+  green.
+- **V2 (done, commit `5b58298`):** `levels_mode` + `LevelGame`/`LevelConfig` —
+  arcade scoring (`10·pop + 20·2^(n-1)` capped), per-level target/colours/cadence
+  ramp, shot-driven seeded inserts, deadline loss; `BubbleLevels` outcome
+  (`bubble-levels` v1, score + star grade). 8 levels tests.
+- **V3 (done, commit in V3 batch):** greedy reachability sanity — good play reaches
+  level 2 (earns `target_score(1)`) before the deadline across seeds, guarding the
+  tuned curve. (Lighter than a clear-board pack — endless survival has no terminal
+  win.)
+- **V4 (done, commit `54bb087`):** levels wasm session + exports
+  (`new_level_game`, `level_board_json`, `level_shoot`, `level_trajectory_json`,
+  `level_last_shot_json`, `level_current_hash`, `level_outcome_json`, hint/assist)
+  + typed wrapper + `cellCenterOff`. Compiles for wasm32; C-ABI test extended.
+- **V5 (done, commit `d8995f0`):** leveled UI — mode toggle (Levels default /
+  Classic), level HUD (level, score→target bar, "stack drops in"), parity-aware
+  render, insert slide + deadline band, **optional presentational timer**, levels
+  result (level + score + stars) + `?r=` re-verify (`verifyLevelRecord`).
+  `tests/bubble-levels.spec.ts` (8) + classic `bubble.spec.ts` repointed at
+  `?variant=classic`. Chromium e2e green (11 classic + 8 levels).
+- **V6 (done):** how-to + guide-shots rewritten for levels/descending-rows/timer;
+  BUILDING-GAMES §4 "pressure is move-derived, never wall-clock"; README + TODO +
+  rebuild-plan pointer. Full gate below.
 
 ## Problem Statement
 
