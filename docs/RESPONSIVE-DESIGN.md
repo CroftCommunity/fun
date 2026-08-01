@@ -138,6 +138,24 @@ rule it produced.
 - **Rule:** wrap the whole game in a centred flex column (Principle 1); assert
   the board/d-pad centreline in an E2E (Principle 2).
 
+### 2026-07-31 — match-3 board left-aligned on desktop (the inline-flex trap, again)
+
+- **Symptom:** the match-3 board, HUD, and controls hugged the left edge on
+  desktop, leaving the whole right half of the play area empty (board centre-x
+  ~217px vs a 512px play-area centre — a ~295px offset). Mobile was incidentally
+  fine because the board nearly fills a narrow viewport.
+- **Cause:** match-3 mounted its three children (controls, board, status) **directly**
+  into `.play-area` with no centred column wrapper, and `.m3-board` is
+  `display: inline-flex` — an inline-level element, so it sits left and auto margins
+  do nothing (Principle 3). Every other game already had a wrapper (`.t48-game`);
+  match-3 was the one that never got one.
+- **Rule:** wrap the whole game in a centred flex column (Principle 1) — added
+  `.m3-game` (mirrors `.t48-game`: `flex-direction: column; align-items: center;
+  max-width: 32rem; margin: 0 auto`) and render into it, with
+  `.m3-game .sol-controls { justify-content: center }`. Locked with an E2E asserting
+  `|boardCenterX − playAreaCenterX| < 24` in both projects. Reinforces the standing
+  rule: a new board **starts** inside its centred column, never bare in `.play-area`.
+
 ### 2026-07-31 — drawer would not recollapse
 
 - **Symptom:** the games drawer had no close button and did not close when

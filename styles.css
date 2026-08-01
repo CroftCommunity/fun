@@ -483,6 +483,23 @@ body.fullscreen .play-area {
   color: var(--accent);
   letter-spacing: 0.1em;
 }
+/* One centred play column (RESPONSIVE-DESIGN Principle 1): controls, HUD, board,
+   and status share one vertical axis, centred in the play area — the board is
+   `inline-flex`, so it only centres inside a column wrapper, never via auto margins
+   (Principle 3, the inline-flex centring trap). Mirrors `.t48-game`. */
+.m3-game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: 32rem;
+  margin: 0 auto;
+  padding-inline: 0.75rem;
+}
+.m3-game .sol-controls {
+  justify-content: center;
+  margin-bottom: 0;
+}
 .m3-board {
   --m3-gem: 2.6rem;
   display: inline-flex;
