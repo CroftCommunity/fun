@@ -30,6 +30,7 @@ members = [
     "crates/adversary-core",
     "crates/drop4-core",
     "crates/drop4-solver",
+    "crates/drop4-harness",
     "crates/xbuild",
 ]
 

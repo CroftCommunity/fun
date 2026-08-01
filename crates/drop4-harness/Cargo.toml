@@ -1,0 +1,17 @@
+[package]
+name = "drop4-harness"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "The AI-player trial harness for Drop 4: pluggable players (Random, a cheap tactical Greedy, and the Classic solver at a difficulty Level), a match-runner that plays two players to a verifiable-by-replay record, and an oracle-based scorer that grades each move against the exact solver (optimal / result-preserving / blunder). Runs test games and reports how well a player plays. Deterministic; the LLM player + WebGPU runtime layer lives in the TS harness. No network."
+
+[dependencies]
+adversary-core = { path = "../adversary-core" }
+drop4-core = { path = "../drop4-core" }
+drop4-solver = { path = "../drop4-solver" }
+rand.workspace = true
+rand_chacha.workspace = true
+
+[dev-dependencies]
+pond-outcome.workspace = true

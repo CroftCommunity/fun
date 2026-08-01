@@ -99,6 +99,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "drop4-harness"
+version = "0.0.0"
+dependencies = [
+ "adversary-core",
+ "drop4-core",
+ "drop4-solver",
+ "pond-outcome",
+ "rand",
+ "rand_chacha",
+]
+
+[[package]]
 name = "drop4-solver"
 version = "0.0.0"
 dependencies = [
