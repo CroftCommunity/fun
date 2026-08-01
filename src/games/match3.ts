@@ -100,11 +100,14 @@ const isClear = (env: M3Envelope): boolean =>
   env.kind === "match3-checklist" ||
   env.kind === "match3-obstacles";
 
+/** "1 swap" / "N swaps" — the clear objectives are graded on swaps-to-clear. */
+const swaps = (n: number): string => `${n} swap${n === 1 ? "" : "s"}`;
+
 function headline(env: M3Envelope, v: VerifyResult): string {
   if (!v.ok) return "Verification FAILED — this result does not check out";
   if (env.kind === "match3-checklist") {
     return env.payload.result === "Won"
-      ? `Checklist complete in ${env.payload.move_count} swaps — verifiable`
+      ? `Checklist complete in ${swaps(env.payload.move_count)} — verifiable`
       : "Ran out of swaps — the checklist is incomplete";
   }
   if (isClear(env)) {
@@ -117,7 +120,7 @@ function headline(env: M3Envelope, v: VerifyResult): string {
             ? "obstacles"
             : "blockers";
     return env.payload.result === "Won"
-      ? `All ${what} cleared in ${env.payload.move_count} swaps — verifiable`
+      ? `All ${what} cleared in ${swaps(env.payload.move_count)} — verifiable`
       : `Ran out of swaps — ${what} remain`;
   }
   const stars = env.payload.stars ?? 0;

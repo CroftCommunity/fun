@@ -238,4 +238,26 @@ describe("result screen", () => {
     expect(el.textContent).toMatch(/fail/i);
     expect(el.textContent).toContain("aaa");
   });
+
+  it("pluralises swaps in the clear headline (one swap, not '1 swaps')", () => {
+    const clear = (moveCount: number): M3Envelope => ({
+      kind: "match3-blockers",
+      version: 1,
+      payload: {
+        kind: "match3-blockers",
+        seed: 7,
+        moves: [],
+        move_count: moveCount,
+        final_hash: "h",
+        result: "Won",
+        assistance: false,
+      },
+    });
+    const headline = (env: M3Envelope): string | null | undefined =>
+      renderResultScreen(env, { ok: true, expected: "h", actual: "h" })
+        .querySelector(".sol-headline")
+        ?.textContent;
+    expect(headline(clear(1))).toBe("All blockers cleared in 1 swap — verifiable");
+    expect(headline(clear(2))).toBe("All blockers cleared in 2 swaps — verifiable");
+  });
 });
