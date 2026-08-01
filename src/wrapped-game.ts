@@ -52,6 +52,17 @@ export function mountWrappedGame(
   iframe.setAttribute("src", src);
   container.append(iframe);
 
+  // An opaque-origin sandboxed iframe never takes keyboard focus on its own:
+  // clicks land on the game canvas, but key events go to the parent document and
+  // never reach the wrapped game (so keyboard-driven games look "dead" to the
+  // keyboard until something focuses the frame). Focus it once it loads so the
+  // keyboard works without a click first. Containment is unchanged — focus does
+  // not grant the frame any access to our DOM, storage, or cookies. A keyboard
+  // game that also wants focus restored *after* the user clicks away must grab it
+  // from inside its own bundle (the parent can't observe in-frame pointer events
+  // across the opaque origin) — see docs/BUILDING-GAMES.md §9.
+  iframe.addEventListener("load", () => iframe.focus());
+
   let torn = false;
   return {
     iframe,

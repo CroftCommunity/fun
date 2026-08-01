@@ -10,6 +10,7 @@ import { TWENTY48_GUIDE } from "./games/2048/2048-howto.js";
 import { ASTRAY_GUIDE } from "./games/astray/astray-howto.js";
 import { HEXGL_GUIDE } from "./games/hexgl/hexgl-howto.js";
 import { CLUMSYBIRD_GUIDE } from "./games/clumsybird/clumsybird-howto.js";
+import { PUZZLES_GUIDE } from "./games/puzzles/puzzles-howto.js";
 
 export const GUIDES: Readonly<Record<string, Guide>> = {
   solitaire: SOLITAIRE_GUIDE,
@@ -20,6 +21,7 @@ export const GUIDES: Readonly<Record<string, Guide>> = {
   astray: ASTRAY_GUIDE,
   hexgl: HEXGL_GUIDE,
   clumsybird: CLUMSYBIRD_GUIDE,
+  puzzles: PUZZLES_GUIDE,
 };
 
 /** The guide for a game id, or undefined if none is written yet. */

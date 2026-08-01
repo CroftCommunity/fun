@@ -1,0 +1,40 @@
+{
+  "id": "puzzles",
+  "tier": 2,
+  "provenance": {
+    "upstreamUrl": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/",
+    "upstreamRef": "js build 20260720.3c36322 (net)",
+    "retrieved": "2026-07-31",
+    "author": "Simon Tatham",
+    "license": "MIT",
+    "licenseFile": "vendor/LICENCE"
+  },
+  "posture": {
+    "verifiable": false,
+    "containment": "iframe-sandbox",
+    "sandbox": "allow-scripts",
+    "egress": "same-origin",
+    "input": ["pointer", "keyboard"],
+    "approxSizeKb": 520,
+    "patches": [
+      {
+        "file": "vendor/net.html",
+        "change": "inject a non-deferred <script src=\"wasm-inline.js\"> immediately before the deferred net.js script",
+        "reason": "runs the inlined-wasm shim during parse, before net.js, so the byte global exists before net.js initialises"
+      },
+      {
+        "file": "vendor/wasm-inline.js",
+        "change": "generated: base64-inlines net.wasm (sha256 3195eba328b17eab5d71de3c0c9783139b1083ea67c6e7c88e08f1a8c0e04892) into the plain global window.__NET_WASM_BYTES__; net.wasm itself is not shipped",
+        "reason": "a plain global (not Module.wasmBinary, which net.js reassigns at startup) carries the bytes so no runtime wasm fetch happens; the sha256 ties the inlined bytes back to upstream net.wasm"
+      },
+      {
+        "file": "vendor/net.js",
+        "change": "one line after the Module['wasmBinary'] read: seed the local wasmBinary from window.__NET_WASM_BYTES__ when present",
+        "reason": "makes the emscripten loader use the inlined bytes so it never fetches net.wasm — required under the opaque-origin sandbox (allow-scripts, no allow-same-origin), where a null-origin fetch of net.wasm is CORS-blocked on static hosting"
+      }
+    ]
+  },
+  "representation": {
+    "claim": "Wrapped games — no verifiable record."
+  }
+}

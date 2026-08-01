@@ -297,7 +297,9 @@ meta's `approxSizeKb`).
 - **Contained mount.** The `GameModule` mounts through the shared
   `mountWrappedGame` primitive: an `iframe[sandbox="allow-scripts"]` (opaque
   origin; `allow-same-origin` is refused because, with scripts, it lets the frame
-  remove its own sandbox). Clean teardown on `unmount`.
+  remove its own sandbox). Clean teardown on `unmount`. The primitive also
+  **focuses the frame on load** — see "Keyboard focus" below for why this is
+  mandatory for any keyboard-driven wrap.
 - **Honest representation.** The chrome renders a persistent "Wrapped game — no
   verifiable record" banner + attribution (author · license · source link) above
   the game, driven by `GameEntry.tier === 2`.
@@ -305,7 +307,8 @@ meta's `approxSizeKb`).
   parameterized over every `tier2.meta.json`. It asserts the game's real behavior
   matches its declared posture: sandbox flags, **zero off-origin egress**, no
   breakout, our-origin storage untouched, legible in our chrome at 360px +
-  desktop, axe-clean chrome, input reaches the game with no focus trap.
+  desktop, axe-clean chrome, the frame **auto-focuses so the keyboard reaches the
+  game without a click**, and focus still returns to our chrome (no focus trap).
 
 ### Porting a game — the step-by-step recipe
 
@@ -360,6 +363,25 @@ governs the chrome + frame, not the vendored game's internals:
 - **Focus + full-screen.** Input reaches the frame, but focus must return to our
   chrome (Esc / the drawer toggle) — no focus trap. Full-screen must keep the
   game mounted and legible. The gate asserts both.
+- **Keyboard focus — the sandboxed-iframe gotcha.** An **opaque-origin sandboxed
+  iframe never takes keyboard focus on its own.** Pointer events land on the game
+  canvas regardless of focus (so mouse/touch "just work"), but *key* events go to
+  the parent document and never reach the wrapped game — a keyboard game looks
+  dead to the keyboard while clicks flap fine. This bit Clumsy Bird: the space bar
+  did nothing until the frame was focused. Two layers fix it, and a keyboard wrap
+  needs both:
+  1. **Initial focus (shared, automatic).** `mountWrappedGame` focuses the frame
+     on its `load` event, so the keyboard works from the first key with no click.
+     Every wrap gets this for free; the containment gate asserts it
+     (`await expect(frame).toBeFocused()` after load, with no manual `focus()`).
+  2. **Re-grab on interaction (per-vendor).** If the player clicks our surrounding
+     chrome and then clicks back onto the game, only the frame can observe that
+     pointer event (the parent can't reach across the opaque origin), so the
+     vendored bundle must restore its own focus. Add a tiny script to the wrap's
+     `index.html`: `window.addEventListener("pointerdown", () => window.focus(),
+     true)` (also on `load` as a belt-and-braces). Record it as a `patches` entry.
+  Any remapped or added keys likewise belong in a recorded `index.html` patch —
+  Clumsy Bird wraps `me.input.bindKey` so the Up arrow mirrors the space bar.
 - **Size disclosure.** A heavy bundle (HexGL, ~17 MB) is allowed but its size
   goes in `approxSizeKb` **and** in the how-to lede, up front, before the player
   commits to the download.

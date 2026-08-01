@@ -38,6 +38,37 @@
 
         <!-- melonJS Library -->
         <script type="text/javascript" src="js/melonJS-min.js" ></script>
+        <!--
+            Croft patch (recorded in ../tier2.meta.json): input adaptations for our
+            sandboxed-iframe chrome. Runs after melonJS defines `me` and before the
+            game binds any keys, so the alias below is in place from the first screen.
+              1. Up arrow mirrors the space bar. We wrap me.input.bindKey/unbindKey so
+                 whenever the game binds SPACE to an action (menu "enter", play "fly"),
+                 the Up arrow is bound to the same action — no gameplay change, just a
+                 second key for the same one-button action.
+              2. Re-grab keyboard focus on pointer interaction. The shared mount focuses
+                 the frame on load, but if the player clicks our surrounding chrome and
+                 then clicks back onto the bird, only the frame can see that pointer
+                 event (opaque origin), so it restores its own keyboard focus here.
+        -->
+        <script type="text/javascript">
+            (function croftInputPatch() {
+                var KEY = me.input.KEY;
+                var origBind = me.input.bindKey.bind(me.input);
+                me.input.bindKey = function (key, action, lock, preventDefault) {
+                    origBind(key, action, lock, preventDefault);
+                    if (key === KEY.SPACE) origBind(KEY.UP, action, lock, preventDefault);
+                };
+                var origUnbind = me.input.unbindKey.bind(me.input);
+                me.input.unbindKey = function (key) {
+                    origUnbind(key);
+                    if (key === KEY.SPACE) origUnbind(KEY.UP);
+                };
+                function grabFocus() { try { window.focus(); } catch (e) { /* focus best-effort */ } }
+                window.addEventListener("load", grabFocus);
+                window.addEventListener("pointerdown", grabFocus, true);
+            })();
+        </script>
         <script type="text/javascript" src="build/clumsy-min.js" ></script>
         <script type="text/javascript">
             window.onReady(function onReady() {
