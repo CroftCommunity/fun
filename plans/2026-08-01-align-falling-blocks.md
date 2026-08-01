@@ -1,6 +1,18 @@
 # Align — Tier-1 build-fresh falling-block stacker (phase plan)
 
-**Status:** 📋 **PLAN — not started.** This doc reconciles the supplied generic
+**Status:** ✅ **SHIPPED (v1) 2026-08-01 — playable at `/align/`.** Executed
+TDD-first + committed: the deterministic tick-engine core (A1–A5,
+`crates/align-core`), the wasm binding + daily pack (A6, `crates/align-wasm`), the
+playable Canvas front end with verifiable result + `?r=` share (A7,
+`src/games/align/`), and the how-to guide + executable IP gate + docs (A10).
+Marathon + Sprint ship (state-terminal, fully verifiable); **Rush/Zen** (need the
+stop-tick plumbed), **local records** (A8), and **audio/touch-gestures/a11y-palette/
+PWA** (A9) are the tracked follow-ups in `TODO/align.md`. Gate green: cargo
+test/fmt/clippy(-D warnings) for the align crates; typecheck · lint · 165 unit
+(incl. the IP gate + how-to sync) · build; align e2e 8/8 (chromium). Deploy-ready
+(pushed to the branch; not merged). — The original plan follows unchanged.
+
+**Status (original):** 📋 **PLAN — not started.** This doc reconciles the supplied generic
 8-phase "Align build plan" (a standalone Vite + Canvas project) with the shelf's
 actual Tier-1 Croft-native standards (`docs/BUILDING-GAMES.md`): a determinism-first
 Rust core → wasm, a verifiable `pond-outcome`, tap/keyboard-first input with the
