@@ -12,7 +12,7 @@
 //! to a status code or an empty/`"null"` buffer.
 
 use bubble_core::clear_board_mode::SHOT_BUDGET;
-use bubble_core::{resolve_shot, Angle, Board, Bubble, Cell, Game};
+use bubble_core::{resolve_shot, Angle, Board, Bubble, BubbleLevels, Cell, Game, LevelGame};
 use pond_outcome::{attest, Outcome};
 use serde::{Deserialize, Serialize};
 
@@ -392,6 +392,263 @@ pub extern "C" fn outcome_json(declare: u32) -> *const u8 {
     }
 }
 
+// --- levels mode (escalating, point-gated, descending-stack survival) --------
+//
+// A second, independent held session (its own `static mut`), so the host can run
+// levels mode without disturbing the clear-board session above. Geometry
+// (`geom_json`) is shared — the constants are mode-independent — but the board
+// dimensions, level state, trajectory, and outcome are levels-specific.
+
+struct LevelSession {
+    seed: u64,
+    game: LevelGame,
+    assistance_used: bool,
+    last_shot: Option<bubble_core::engine::ShotReport>,
+    /// Whether the most recent shot pushed in a new top row (UI slide animation).
+    last_inserted: bool,
+}
+
+static mut LEVEL_STATE: Option<LevelSession> = None;
+
+fn level_session_mut() -> Option<&'static mut LevelSession> {
+    // SAFETY: single-threaded wasm; host calls are sequential.
+    unsafe { (*core::ptr::addr_of_mut!(LEVEL_STATE)).as_mut() }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LevelBoardView {
+    width: usize,
+    height: usize,
+    /// Row-parity offset (0/1): row `r` is full when `(r + parityOffset)` is even.
+    /// The host staggers/renders each row's half-cell indent from this.
+    parity_offset: usize,
+    /// Row-major, one inner list per row with that row's length; `-1` = empty.
+    cells: Vec<Vec<i16>>,
+    current_color: u8,
+    next_color: u8,
+    level: u32,
+    level_score: u64,
+    total_score: u64,
+    target_score: u64,
+    colors: usize,
+    shots_to_insert: usize,
+    deadline_rows: usize,
+    /// Presentational per-level clock, seconds — a UI-only countdown, never a
+    /// verified loss.
+    time_limit_secs: u32,
+    lost: bool,
+    /// Whether the most recent shot pushed in a new top row (for the animation).
+    last_inserted: bool,
+}
+
+fn level_board_view(s: &LevelSession) -> LevelBoardView {
+    let b: &Board = s.game.board();
+    let cells = (0..b.height)
+        .map(|r| {
+            (0..b.row_len_at(r))
+                .map(|c| match b.get(r, c) {
+                    Some(Cell::Bubble(col)) => i16::from(col),
+                    _ => -1,
+                })
+                .collect()
+        })
+        .collect();
+    LevelBoardView {
+        width: b.width,
+        height: b.height,
+        parity_offset: b.parity_offset(),
+        cells,
+        current_color: s.game.current_color(),
+        next_color: s.game.next_color(),
+        level: s.game.level(),
+        level_score: s.game.level_score(),
+        total_score: s.game.total_score(),
+        target_score: s.game.target_score(),
+        colors: s.game.colors(),
+        shots_to_insert: s.game.shots_to_insert(),
+        deadline_rows: s.game.deadline_rows(),
+        time_limit_secs: s.game.time_limit_secs(),
+        lost: s.game.is_lost(),
+        last_inserted: s.last_inserted,
+    }
+}
+
+/// Start a fresh levels-mode run from `seed`.
+#[no_mangle]
+pub extern "C" fn new_level_game(seed_lo: u32, seed_hi: u32) {
+    let seed = (u64::from(seed_hi) << 32) | u64::from(seed_lo);
+    // SAFETY: single-threaded; replaces the held levels session.
+    unsafe {
+        *core::ptr::addr_of_mut!(LEVEL_STATE) = Some(LevelSession {
+            seed,
+            game: LevelGame::new(seed),
+            assistance_used: false,
+            last_shot: None,
+            last_inserted: false,
+        });
+    }
+}
+
+/// The levels board + level/score/pressure/timer state as JSON. `"null"` if no
+/// levels game.
+#[no_mangle]
+pub extern "C" fn level_board_json() -> *const u8 {
+    match level_session_mut() {
+        Some(s) => match serde_json::to_vec(&level_board_view(s)) {
+            Ok(bytes) => set_out(bytes),
+            Err(_) => set_out_str("null"),
+        },
+        None => set_out_str("null"),
+    }
+}
+
+/// The resolved trajectory for aiming `angle` on the levels board (fixed-point
+/// flight path + landing cell), as JSON. `"null"` if no levels game.
+#[no_mangle]
+pub extern "C" fn level_trajectory_json(angle: u32) -> *const u8 {
+    let Some(s) = level_session_mut() else {
+        return set_out_str("null");
+    };
+    let deg = u16::try_from(angle).unwrap_or(u16::MAX);
+    let landing = resolve_shot(s.game.board(), Angle(deg));
+    let view = TrajectoryView {
+        points: landing.path.iter().map(|&(x, y)| [x, y]).collect(),
+        landing: [landing.pos.0, landing.pos.1],
+    };
+    match serde_json::to_vec(&view) {
+        Ok(bytes) => set_out(bytes),
+        Err(_) => set_out_str("null"),
+    }
+}
+
+/// The most recent levels shot's removed cells + whether a row was inserted, as
+/// JSON (`{popped, dropped, inserted}`). `{"popped":[],"dropped":[],"inserted":false}`
+/// before any shot. Presentational.
+#[no_mangle]
+pub extern "C" fn level_last_shot_json() -> *const u8 {
+    let cells = |v: &[(bubble_core::Pos, u8)]| -> Vec<CellView> {
+        v.iter()
+            .map(|&((r, c), color)| {
+                [
+                    i32::try_from(r).unwrap_or(-1),
+                    i32::try_from(c).unwrap_or(-1),
+                    i32::from(color),
+                ]
+            })
+            .collect()
+    };
+    #[derive(Serialize)]
+    #[serde(rename_all = "camelCase")]
+    struct LevelLastShotView {
+        popped: Vec<CellView>,
+        dropped: Vec<CellView>,
+        inserted: bool,
+    }
+    let view = match level_session_mut() {
+        Some(s) => match s.last_shot.as_ref() {
+            Some(rep) => LevelLastShotView {
+                popped: cells(&rep.popped),
+                dropped: cells(&rep.dropped),
+                inserted: s.last_inserted,
+            },
+            None => LevelLastShotView {
+                popped: Vec::new(),
+                dropped: Vec::new(),
+                inserted: false,
+            },
+        },
+        None => LevelLastShotView {
+            popped: Vec::new(),
+            dropped: Vec::new(),
+            inserted: false,
+        },
+    };
+    match serde_json::to_vec(&view) {
+        Ok(bytes) => set_out(bytes),
+        Err(_) => set_out_str("{\"popped\":[],\"dropped\":[],\"inserted\":false}"),
+    }
+}
+
+/// Fire the current launcher colour along `angle` in levels mode. Returns `2` if
+/// there is no levels game or the run is already lost (no shot taken), else `0`.
+#[no_mangle]
+pub extern "C" fn level_shoot(angle: u32) -> u32 {
+    let Some(s) = level_session_mut() else {
+        return 2;
+    };
+    if s.game.is_lost() {
+        return 2;
+    }
+    let deg = u16::try_from(angle).unwrap_or(u16::MAX);
+    s.last_shot = Some(s.game.play(Angle(deg)));
+    s.last_inserted = s.game.last_inserted();
+    0
+}
+
+/// A suggested aim angle for the levels board: the reachable shot that pops/drops
+/// the most (lowest angle on a tie), else the fan midpoint. `0` if no game. A hint
+/// is assistance — the host declares it via [`level_mark_assistance`].
+#[no_mangle]
+pub extern "C" fn level_hint_angle() -> u32 {
+    let Some(s) = level_session_mut() else {
+        return 0;
+    };
+    let (lo, hi) = bubble_core::fan();
+    let mut best_gain = 0usize;
+    let mut best = lo + (hi - lo) / 2;
+    for deg in lo..=hi {
+        let mut probe = s.game.clone();
+        let rep = probe.play(Angle(deg));
+        let gain = rep.popped.len() + rep.dropped.len();
+        if gain > best_gain {
+            best_gain = gain;
+            best = deg;
+        }
+    }
+    u32::from(best)
+}
+
+/// Mark the levels run assisted (a hint was shown).
+#[no_mangle]
+pub extern "C" fn level_mark_assistance() {
+    if let Some(s) = level_session_mut() {
+        s.assistance_used = true;
+    }
+}
+
+/// `1` if the levels run has ended (a bubble crossed the deadline).
+#[no_mangle]
+pub extern "C" fn level_is_lost() -> u32 {
+    u32::from(level_session_mut().is_some_and(|s| s.game.is_lost()))
+}
+
+/// The levels outcome record as a `pond-docformat` envelope JSON
+/// (`kind = "bubble-levels"`). `declare`: 1 = include the assistance flag, 0 =
+/// omit. The run is `Lost` (deadline) or `Abandoned`; never `Won` (endless
+/// survival). Verifiable by replaying `(seed, shots)` through `BubbleLevels`.
+#[no_mangle]
+pub extern "C" fn level_outcome_json(declare: u32) -> *const u8 {
+    let Some(s) = level_session_mut() else {
+        return set_out_str("null");
+    };
+    let assistance = if declare == 1 {
+        Some(s.assistance_used)
+    } else {
+        None
+    };
+    let if_unfinished = if s.game.is_lost() {
+        Outcome::Lost
+    } else {
+        Outcome::Abandoned
+    };
+    let record = attest::<BubbleLevels>(s.seed, s.game.shots().to_vec(), if_unfinished, assistance);
+    match pond_outcome::to_doc::<BubbleLevels>(&record) {
+        Ok(bytes) => set_out(bytes),
+        Err(_) => set_out_str("null"),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -476,5 +733,60 @@ mod tests {
 
         // The daily seed comes from the embedded pack.
         assert_ne!(bubble_daily_seed(0), 0, "pack seeds are embedded");
+
+        // --- levels mode (same single test — OUT is shared) ---
+        new_level_game(7, 0);
+        let lb = out_json(level_board_json());
+        assert_eq!(lb["level"], serde_json::json!(1), "starts at level 1");
+        assert_eq!(lb["totalScore"], serde_json::json!(0));
+        assert!(
+            lb["targetScore"].as_u64().unwrap() > 0,
+            "a level target is surfaced"
+        );
+        assert!(
+            lb["shotsToInsert"].as_u64().unwrap() > 0,
+            "shots-until-insert surfaced"
+        );
+        assert!(
+            lb["timeLimitSecs"].as_u64().unwrap() > 0,
+            "presentational clock surfaced"
+        );
+        assert_eq!(
+            lb["parityOffset"],
+            serde_json::json!(0),
+            "fresh board is offset 0"
+        );
+        assert_eq!(lb["lost"], serde_json::json!(false));
+
+        // A levels trajectory resolves like the clear-board one.
+        let ltraj = out_json(level_trajectory_json(90));
+        assert!(ltraj["points"].as_array().unwrap().len() >= 2);
+        assert!(ltraj["landing"].is_array());
+
+        // A hint is in-fan; firing applies and advances the levels state.
+        let lhint = u64::from(level_hint_angle());
+        assert!(
+            (lo..=hi).contains(&lhint),
+            "levels hint {lhint} within the fan"
+        );
+        assert_eq!(level_shoot(90), 0, "a levels shot applies");
+        let lb2 = out_json(level_board_json());
+        assert!(
+            lb2["totalScore"].as_u64().unwrap() >= lb["totalScore"].as_u64().unwrap(),
+            "score is monotone non-decreasing"
+        );
+        // last-shot detail is well-formed {popped, dropped, inserted}.
+        let lls = out_json(level_last_shot_json());
+        assert!(lls["inserted"].is_boolean());
+        for key in ["popped", "dropped"] {
+            for cell in lls[key].as_array().expect("array") {
+                assert_eq!(cell.as_array().unwrap().len(), 3, "[r,c,colour] triple");
+            }
+        }
+        // Outcome is a bubble-levels v1 envelope, not Won (endless survival).
+        let lrec = out_json(level_outcome_json(1));
+        assert_eq!(lrec["kind"], serde_json::json!("bubble-levels"));
+        assert_eq!(lrec["version"], serde_json::json!(1));
+        assert_ne!(lrec["payload"]["result"], serde_json::json!("Won"));
     }
 }

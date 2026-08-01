@@ -13,12 +13,24 @@ export interface Pt {
   y: number;
 }
 
-/** Sub-pixel centre of hex cell `(r, c)` — mirrors `bubble_core::aim::cell_center`
- *  (odd rows shifted half a bubble; x is column-relative). */
-export function cellCenter(r: number, c: number, geom: Geom): Pt {
-  const x = r % 2 === 0 ? geom.radius + c * geom.diam : geom.radius + geom.diam / 2 + c * geom.diam;
+/** Sub-pixel centre of hex cell `(r, c)` at `parityOffset` — mirrors
+ *  `bubble_core::aim::cell_center_off`. A row is short/indented when
+ *  `(r + parityOffset)` is odd; the offset flips when levels mode pushes a new
+ *  row in at the top. */
+export function cellCenterOff(r: number, c: number, geom: Geom, parityOffset = 0): Pt {
+  const x =
+    (r + parityOffset) % 2 === 0
+      ? geom.radius + c * geom.diam
+      : geom.radius + geom.diam / 2 + c * geom.diam;
   const y = geom.radius + r * geom.rowH;
   return { x, y };
+}
+
+/** Sub-pixel centre of hex cell `(r, c)` in the base (offset-0) layout — mirrors
+ *  `bubble_core::aim::cell_center`. Parity-carrying render code passes the board's
+ *  offset via {@link cellCenterOff}. */
+export function cellCenter(r: number, c: number, geom: Geom): Pt {
+  return cellCenterOff(r, c, geom, 0);
 }
 
 /** The launcher origin (board-centre, just below the last row) — mirrors
