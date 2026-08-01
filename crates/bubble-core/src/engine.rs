@@ -89,7 +89,7 @@ pub fn is_legal_target(board: &Board, target: Pos) -> bool {
 pub fn legal_targets(board: &Board) -> Vec<Pos> {
     let mut out = Vec::new();
     for r in 0..board.height {
-        for c in 0..Board::row_len(board.width, r) {
+        for c in 0..board.row_len_at(r) {
             if is_legal_target(board, (r, c)) {
                 out.push((r, c));
             }
@@ -132,7 +132,7 @@ fn connected_same_color(board: &Board, start: Pos, color: u8) -> Vec<Pos> {
 /// result (board + the dropped list) is order-independent and deterministic.
 fn drop_floating(board: &mut Board) -> Vec<(Pos, u8)> {
     let mut connected: HashSet<Pos> = HashSet::new();
-    let mut stack: Vec<Pos> = (0..Board::row_len(board.width, 0))
+    let mut stack: Vec<Pos> = (0..board.row_len_at(0))
         .filter(|&c| matches!(board.get(0, c), Some(Cell::Bubble(_))))
         .map(|c| (0, c))
         .collect();
@@ -148,7 +148,7 @@ fn drop_floating(board: &mut Board) -> Vec<(Pos, u8)> {
     }
     let mut dropped = Vec::new();
     for r in 0..board.height {
-        for c in 0..Board::row_len(board.width, r) {
+        for c in 0..board.row_len_at(r) {
             if let Some(Cell::Bubble(color)) = board.get(r, c) {
                 if !connected.contains(&(r, c)) {
                     board.set(r, c, Cell::Empty);

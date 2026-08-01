@@ -157,6 +157,17 @@ Tier-1. Everything in §§2–8 is Tier-1 unless noted.
   becomes a keyboard-operable control (an angle slider + Fire, ←/→ + Space)
   rather than tap-a-cell. Reference: `crates/bubble-core/src/aim.rs` +
   `src/games/bubble/`.
+- **Pressure and progression must be move-derived, never wall-clock.** Difficulty
+  ramps — descending stacks, level tiers, spawn cadences — have to be pure
+  functions of the seed and the recorded move list, so replay reproduces every
+  transition and the outcome stays verifiable. The bubble shooter's levels mode
+  pushes a new row in on a **shot count** (not a timer) and fills it from the
+  seeded RNG, so `(seed, angles)` replays the whole escalation. A **clock may
+  inform the player** (an optional countdown for felt pressure) but must **never
+  decide the verified outcome** — real elapsed time can't be reproduced by
+  replay, and a client-asserted time is forgeable, so a time-out loss can't be a
+  verifiable result (§9 "no faked verifiable outcome"). Reference:
+  `crates/bubble-core/src/levels.rs`.
 
 ### Centre the play surface — the default layout
 

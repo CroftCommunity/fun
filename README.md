@@ -23,8 +23,9 @@ crates/
   pond-outcome/      P8 verifiable-outcome record (replay → state hash)         — built
   match3-wasm/       browser binding over match3-core (raw C-ABI + serde-JSON)   — built
   solitaire-wasm/    browser binding over solitaire-core (raw C-ABI + serde-JSON) — built
-  bubble-core/       deterministic bubble-shooter engine (hex board, quantized-angle aim →
-                     fixed-point ray-cast/bounce landing, pop/drop) — green
+  bubble-core/       deterministic bubble-shooter engine (hex board w/ parity-offset top-row
+                     insert, quantized-angle aim → fixed-point landing, pop/drop; clear-board
+                     + levels mode) — green
   bubble-solver/     build-time clear-the-board solver + winnable-daily pack generator — green
   bubble-wasm/       browser binding over bubble-core (raw C-ABI + serde-JSON)     — built
   wyrdle-core/       deterministic word-guessing engine (two-pass scoring, embedded license-clean
@@ -61,7 +62,7 @@ glow), a 20-swap budget graded into 0–3 stars at score thresholds. Moves out �
 record with re-verify + a `?r=` share. Daily board (date seed) + free-play (`?seed=`). v1 uses flat star
 thresholds (no per-deal par yet — see `TODO/match3.md`). Plan: `plans/2026-07-30-match3-playable.md`.
 
-## Bubble (playable — aim-and-shoot)
+## Bubble (playable — aim-and-shoot, leveled)
 
 `/bubble/` is a real Bubble-Shooter: a launcher at the bottom, **aim an angle**
 (point/drag on the board, the ←/→ keys, or the slider), and fire — the bubble
@@ -70,11 +71,22 @@ flies up, **bounces off the walls**, and sticks where it first touches; groups o
 **quantized integer angle**, resolved in the core by a **fixed-point** ray-cast
 (a committed integer direction table — `wasm32` has no runtime trig), so there
 are no floats on the hashed path and `native == wasm`. The smooth flight is
-cosmetic; the core owns every landing. Clear the board within the shot budget for
-a verifiable win (replay the angle line → re-derive the hash), with re-verify + a
-`?r=` share. A dotted **aim guide** previews the path (optional, on by default);
-daily board (winnable pack) + free-play (`?seed=`). Plan:
-`plans/2026-07-31-bubble-shooter-rebuild.md`.
+cosmetic; the core owns every landing.
+
+The default mode is **Levels** — escalating, point-gated survival: earn each
+level's points target (arcade scoring — 10 per pop, big drops score the most) to
+climb, while every few **shots** a new row is pushed in at the top and the stack
+marches toward the bottom deadline (a `parity_offset` on the hex board makes a
+single-row top insert a shift-down + parity flip). Each level adds colours,
+raises the target, and tightens the insert cadence; you lose when the stack
+crosses the line. Pressure is **shot-driven** (seeded rows folded into the hash)
+so `(seed, angles)` replays the whole run; an **optional timer** is a
+presentational practice clock only — never a verified loss. The result (highest
+level + score + star grade) is verifiable with a re-checking `?r=` share.
+**Classic** mode (the toggle, or `?variant=classic`) keeps the original
+clear-the-board game (winnable daily pack, its own verifiable win). Plans:
+`plans/2026-07-31-bubble-shooter-rebuild.md`,
+`plans/2026-08-01-bubble-shooter-levels-difficulty.md`.
 
 ## Wyrdle (playable — daily word game)
 

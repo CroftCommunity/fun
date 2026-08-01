@@ -24,7 +24,7 @@ const LAUNCHER_SEED_XOR: u64 = 0x9E37_79B9_7F4A_7C15;
 
 /// The distinct bubble colours currently on the board, in ascending order
 /// (deterministic).
-fn present_colors(board: &Board) -> Vec<u8> {
+pub(crate) fn present_colors(board: &Board) -> Vec<u8> {
     let mut set = BTreeSet::new();
     for cell in board.cells() {
         if let Cell::Bubble(c) = cell {
@@ -39,7 +39,7 @@ fn present_colors(board: &Board) -> Vec<u8> {
 /// — better gameplay than a purely random colour, and it keeps the board
 /// clearable, which is what makes the B4 winnable pack tractable. Returns `0`
 /// when the board is empty (the game is already won; the colour is unused).
-fn pick_color(board: &Board, rng: &mut DetRng) -> u8 {
+pub(crate) fn pick_color(board: &Board, rng: &mut DetRng) -> u8 {
     let present = present_colors(board);
     if present.is_empty() {
         return 0;
