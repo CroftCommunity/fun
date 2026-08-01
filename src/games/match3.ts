@@ -730,7 +730,10 @@ export function match3Module(): GameModule {
     const board = game.board();
     scoreBumped = board.score > lastScore;
     lastScore = board.score;
-    container.replaceChildren(renderControls(board), renderBoard(board), statusEl);
+    // A single centred play column (RESPONSIVE-DESIGN Principle 1): controls, board,
+    // and status share one vertical axis, centred in the play area (never left-hugging).
+    const gameEl = el("div", { class: "m3-game" }, renderControls(board), renderBoard(board), statusEl);
+    container.replaceChildren(gameEl);
     applyGlow();
   }
 

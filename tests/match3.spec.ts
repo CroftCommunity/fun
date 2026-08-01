@@ -333,6 +333,19 @@ test("every objective fits a narrow phone with no horizontal overflow", async ({
   }
 });
 
+test("the play area (board) is centred in the play surface", async ({ page }) => {
+  // RESPONSIVE-DESIGN Principle 1/2 + BUILDING-GAMES §4b: the board sits on the
+  // play area's centreline, not hugging the left edge (the inline-flex centring trap).
+  await page.goto("/match3/?mode=obstacles&seed=72");
+  await ready(page);
+  const pa = await page.locator(".play-area").boundingBox();
+  const bd = await page.locator(".m3-board").boundingBox();
+  expect(pa && bd, "play area + board are laid out").toBeTruthy();
+  const paCenter = pa!.x + pa!.width / 2;
+  const boardCenter = bd!.x + bd!.width / 2;
+  expect(Math.abs(paCenter - boardCenter), "board centred in the play area").toBeLessThan(24);
+});
+
 test("switching objective via the toggle re-deals and updates the HUD", async ({ page }) => {
   await page.goto("/match3/?seed=7"); // target-score
   await ready(page);
