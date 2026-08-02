@@ -56,6 +56,23 @@ pub enum GameResult {
     MoveLimit,
 }
 
+/// Max undo depth retained.
+pub const UNDO_DEPTH: usize = 20;
+
+/// A restorable pre-move snapshot (for undo).
+#[derive(Clone)]
+struct Snapshot {
+    board: Board,
+    tray: [Option<&'static str>; TRAY_SIZE],
+    score: u64,
+    streak_count: u32,
+    combo: u32,
+    rng: DetRng,
+    deal_state: DealState,
+    moves_len: usize,
+    result: Option<GameResult>,
+}
+
 /// The full game state.
 #[derive(Clone)]
 pub struct GameState {
@@ -74,6 +91,7 @@ pub struct GameState {
     moves: Vec<Move>,
     result: Option<GameResult>,
     assistance_used: bool,
+    undo_stack: Vec<Snapshot>,
 }
 
 impl GameState {
@@ -97,9 +115,24 @@ impl GameState {
             moves: Vec::new(),
             result: None,
             assistance_used: false,
+            undo_stack: Vec::new(),
         };
         game.check_over();
         game
+    }
+
+    fn snapshot(&self) -> Snapshot {
+        Snapshot {
+            board: self.board.clone(),
+            tray: self.tray,
+            score: self.score,
+            streak_count: self.streak_count,
+            combo: self.combo,
+            rng: self.rng.clone(),
+            deal_state: self.deal_state,
+            moves_len: self.moves.len(),
+            result: self.result,
+        }
     }
 
     fn deal_tray(
@@ -225,6 +258,12 @@ impl GameState {
             return Err(MoveError::Illegal);
         }
 
+        // Snapshot for undo before mutating (bounded depth).
+        self.undo_stack.push(self.snapshot());
+        if self.undo_stack.len() > UNDO_DEPTH {
+            self.undo_stack.remove(0);
+        }
+
         // Place, then read completed regions before clearing.
         self.board.place(shape, mv.row, mv.col);
         let report = self.board.completed_regions();
@@ -285,6 +324,60 @@ impl GameState {
         if !self.board.has_any_placement(&remaining) {
             self.result = Some(GameResult::Stuck);
         }
+    }
+
+    /// Undo the last placement, restoring the exact pre-move state (board, tray,
+    /// score, streak, RNG position, and any refill). Counts as assistance.
+    /// Returns `true` if a move was undone, `false` if there was nothing to undo.
+    pub fn undo(&mut self) -> bool {
+        let Some(s) = self.undo_stack.pop() else {
+            return false;
+        };
+        self.board = s.board;
+        self.tray = s.tray;
+        self.score = s.score;
+        self.streak_count = s.streak_count;
+        self.combo = s.combo;
+        self.rng = s.rng;
+        self.deal_state = s.deal_state;
+        self.moves.truncate(s.moves_len);
+        self.result = s.result;
+        self.assistance_used = true;
+        true
+    }
+
+    /// Whether an undo is available.
+    #[must_use]
+    pub fn can_undo(&self) -> bool {
+        !self.undo_stack.is_empty()
+    }
+
+    /// A hint: the legal move clearing the **most** regions, tie-broken
+    /// deterministically by row, then column, then slot. `None` when the game is
+    /// over or no move exists. Using a hint counts as assistance (the caller marks
+    /// it).
+    #[must_use]
+    pub fn best_hint(&self) -> Option<Move> {
+        let mut best: Option<(usize, Move)> = None;
+        for mv in self.legal_moves() {
+            let Some(shape) = self.tray[mv.slot].and_then(by_key) else {
+                continue;
+            };
+            let mut probe = self.board.clone();
+            probe.place(shape, mv.row, mv.col);
+            let cleared = probe.completed_regions().total();
+            let better = match best {
+                None => true,
+                // legal_moves is already slot-then-row-major, so the first move
+                // seen at a given clear-count is the row/col/slot-minimal one;
+                // only strictly-more clears should replace it.
+                Some((best_cleared, _)) => cleared > best_cleared,
+            };
+            if better {
+                best = Some((cleared, mv));
+            }
+        }
+        best.map(|(_, mv)| mv)
     }
 
     /// The canonical state hash: board + RNG draw position + score.

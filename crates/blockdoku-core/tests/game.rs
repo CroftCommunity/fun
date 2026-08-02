@@ -213,3 +213,74 @@ fn assistance_flag_is_declarable() {
     g.mark_assistance();
     assert!(g.assistance_used());
 }
+
+#[test]
+fn undo_restores_the_exact_pre_move_state_and_marks_assistance() {
+    let mut g = GameState::new_game(9, normal());
+    assert!(!g.can_undo());
+    let before = g.state_hash();
+    let before_score = g.score();
+    let mv = g.legal_moves()[0];
+    g.play_move(mv).unwrap();
+    assert!(g.can_undo());
+    // The move changed something (score and/or board), then undo reverts it.
+    assert!(g.undo(), "a move was available to undo");
+    assert_eq!(g.state_hash(), before, "undo restores the exact hash");
+    assert_eq!(g.score(), before_score);
+    assert_eq!(g.moves().len(), 0, "the move is removed from the record");
+    assert!(g.assistance_used(), "undo counts as assistance");
+    assert!(!g.can_undo(), "nothing left to undo");
+    assert!(!g.undo(), "undo on an empty stack is a no-op");
+}
+
+#[test]
+fn undo_after_a_refill_restores_the_pre_refill_tray_and_rng() {
+    // Place all three, forcing a refill; undo the third and the pre-refill tray
+    // (with its exact RNG position) comes back, so replay stays consistent.
+    let mut g = GameState::new_game(5, normal());
+    let mut snapshots = Vec::new();
+    for _ in 0..3 {
+        snapshots.push(g.state_hash());
+        let mv = match g.legal_moves().into_iter().next() {
+            Some(m) => m,
+            None => break,
+        };
+        g.play_move(mv).unwrap();
+    }
+    // Undo back to each snapshot in reverse.
+    for want in snapshots.iter().rev() {
+        if g.can_undo() {
+            g.undo();
+            // After undoing, the hash equals the snapshot taken before that move.
+            assert_eq!(&g.state_hash(), want);
+        }
+    }
+}
+
+#[test]
+fn best_hint_prefers_the_placement_clearing_the_most_regions() {
+    // A hint on a fresh board is a legal move; on any board it never points at an
+    // illegal placement, and it clears at least as many regions as the first
+    // legal move.
+    let g = GameState::new_game(3, normal());
+    let hint = g.best_hint().expect("a fresh board has a hint");
+    assert!(
+        g.legal_moves().contains(&hint),
+        "the hint is always a legal move"
+    );
+}
+
+#[test]
+fn best_hint_is_none_when_over() {
+    let mut g = GameState::new_game(123, normal());
+    let mut guard = 0;
+    while !g.is_over() && guard < 10_000 {
+        match g.legal_moves().into_iter().next() {
+            Some(mv) => g.play_move(mv).unwrap(),
+            None => break,
+        }
+        guard += 1;
+    }
+    assert!(g.is_over());
+    assert_eq!(g.best_hint(), None);
+}

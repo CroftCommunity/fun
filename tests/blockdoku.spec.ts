@@ -89,6 +89,36 @@ test("plays to a verifiable result", async ({ page }) => {
   await expect(page.locator("[data-share]")).toBeVisible();
 });
 
+test("undo reverts the last placement", async ({ page }) => {
+  await page.goto("/blockdoku/?seed=7");
+  await ready(page);
+  const before = await page.evaluate(() => window.__blockdoku!.game.currentHash());
+  await page.evaluate(() => window.__blockdoku!.select(0));
+  await page.locator(".bdk-cell.bdk-legal").first().click();
+  const after = await page.evaluate(() => window.__blockdoku!.game.currentHash());
+  expect(after).not.toBe(before);
+  await page.locator(".bdk-undo").click();
+  expect(await page.evaluate(() => window.__blockdoku!.game.currentHash())).toBe(before);
+});
+
+test("a hint selects a placeable piece and marks assistance", async ({ page }) => {
+  await page.goto("/blockdoku/?seed=7");
+  await ready(page);
+  await page.locator(".sol-hint").click(); // hints default on
+  await expect(page.locator(".sol-status")).toContainText(/hint/i);
+  // The hint marked assistance; drive to the end and the outcome declares it.
+  const assisted = await page.evaluate(() => {
+    const g = window.__blockdoku!.game;
+    for (let i = 0; i < 400 && !g.isOver(); i++) {
+      const legal = g.legalMoves();
+      if (!legal.length) break;
+      g.playPlace(legal[0]!.slot, legal[0]!.row, legal[0]!.col);
+    }
+    return (g.outcome(true) as { payload: { assistance: boolean | null } }).payload.assistance;
+  });
+  expect(assisted).toBe(true);
+});
+
 test("no horizontal overflow at 360px", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 780 });
   await page.goto("/blockdoku/?seed=7");

@@ -266,6 +266,23 @@ pub extern "C" fn mark_assistance() {
     }
 }
 
+/// Undo the last placement. Returns `1` if a move was undone, `0` otherwise.
+/// Counts as assistance.
+#[no_mangle]
+pub extern "C" fn undo() -> u32 {
+    u32::from(session_mut().is_some_and(|s| s.game.undo()))
+}
+
+/// A hint move (`{slot,row,col}`) clearing the most regions, or `null` if none.
+/// Using a hint counts as assistance (the host also calls [`mark_assistance`]).
+#[no_mangle]
+pub extern "C" fn hint_json() -> *const u8 {
+    match session_mut().and_then(|s| s.game.best_hint()) {
+        Some(mv) => set_out_json(&mv),
+        None => set_out_str("null"),
+    }
+}
+
 // --- outcome ----------
 
 /// The outcome record for the current game as a `pond-docformat` envelope JSON

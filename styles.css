@@ -1456,6 +1456,7 @@ body.fullscreen .play-area {
   color: var(--ink);
   font-family: var(--font-display);
 }
+.bdk-best { color: var(--ink); font-weight: 700; }
 .bdk-diff { text-transform: capitalize; color: var(--ink-muted); }
 .bdk-banner { color: var(--ink-muted); text-align: center; max-width: 30rem; margin: 0; }
 

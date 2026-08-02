@@ -22,7 +22,32 @@ import {
   type VerifyResult,
 } from "./blockdoku-outcome.js";
 import { dayIndexUTC } from "../share.js";
-import { declareAssistanceEnabled, setDeclareAssistance } from "../../settings.js";
+import {
+  declareAssistanceEnabled,
+  hintsEnabled,
+  setDeclareAssistance,
+  setHintsEnabled,
+} from "../../settings.js";
+
+/** Best-score-per-difficulty persistence (session-degrading, like settings). */
+const bestKey = (d: Difficulty): string => `fun-blockdoku-best-${d}`;
+function bestScore(d: Difficulty): number {
+  try {
+    return Number(localStorage.getItem(bestKey(d)) ?? "0") || 0;
+  } catch {
+    return 0;
+  }
+}
+function recordBest(d: Difficulty, score: number): number {
+  const prev = bestScore(d);
+  if (score <= prev) return prev;
+  try {
+    localStorage.setItem(bestKey(d), String(score));
+  } catch {
+    // storage denied: the best still shows for the session via the return value
+  }
+  return score;
+}
 
 declare global {
   interface Window {
@@ -33,6 +58,8 @@ declare global {
       seed: bigint;
       select: (slot: number) => void;
       place: (slot: number, row: number, col: number) => void;
+      hint: () => void;
+      undo: () => void;
     };
   }
 }
@@ -133,6 +160,11 @@ export function blockdokuModule(): GameModule {
   let selected: number | null = null;
   let cursor = { r: 0, c: 0 };
 
+  const statusEl = el("p", { class: "sol-status", role: "status", "aria-live": "polite" });
+  const setStatus = (msg: string): void => {
+    statusEl.textContent = msg;
+  };
+
   const shareUrlFor = async (env: BlockdokuEnvelope): Promise<string> =>
     `${location.origin}${location.pathname}?r=${await encodeRecord(env)}`;
   const verify = (env: BlockdokuEnvelope): VerifyResult => verifyRecord(verifier!, env);
@@ -153,7 +185,38 @@ export function blockdokuModule(): GameModule {
     if (!game || game.isOver()) return;
     if (game.playPlace(slot, row, col) !== "applied") return; // core decides
     selected = null;
+    setStatus("");
     render();
+  };
+
+  const undo = (): void => {
+    if (!game || !game.undo()) return; // core marks assistance
+    selected = null;
+    setStatus("Undid the last move (counts as assistance).");
+    render();
+  };
+
+  const showHint = (): void => {
+    if (!game || game.isOver()) return;
+    const hint = game.hint();
+    if (!hint) {
+      setStatus("No legal move remains.");
+      return;
+    }
+    game.markAssistance();
+    selected = hint.slot;
+    cursor = { r: hint.row, c: hint.col };
+    setStatus(`Hint: piece ${hint.slot + 1} fits here (a hint counts as assistance).`);
+    render();
+  };
+
+  const imStuck = (): void => {
+    if (!game || game.isOver()) return;
+    const hadMove = game.legalMoves().length > 0;
+    setStatus(
+      hadMove ? "Ended early — you still had a legal move." : "Ended — no legal move remained.",
+    );
+    render(true);
   };
 
   // ---- rendering ----
@@ -163,6 +226,7 @@ export function blockdokuModule(): GameModule {
       "div",
       { class: "bdk-hud" },
       el("span", { class: "bdk-score" }, `Score ${b.score}`),
+      el("span", { class: "bdk-best" }, `Best ${Math.max(bestScore(config.difficulty), b.score)}`),
       el("span", { class: "bdk-streak" }, `Streak ${b.streak}`),
       el("span", { class: "bdk-diff" }, config.difficulty),
     );
@@ -184,6 +248,18 @@ export function blockdokuModule(): GameModule {
     fresh.addEventListener("click", () => void startGame("free"));
     modes.append(daily, fresh);
 
+    // Hints on → "Hint"; hints off → "I'm stuck" (ends + reports honestly).
+    const hints = hintsEnabled();
+    const actionBtn = el(
+      "button",
+      { type: "button", class: hints ? "sol-hint" : "sol-stuck" },
+      hints ? "Hint" : "I’m stuck",
+    );
+    actionBtn.addEventListener("click", hints ? showHint : imStuck);
+
+    const undoBtn = el("button", { type: "button", class: "bdk-undo" }, "Undo");
+    undoBtn.addEventListener("click", undo);
+
     const settings = el("details", { class: "sol-settings" });
     const diffSel = el("select", { class: "bdk-diff-select", "aria-label": "Difficulty" });
     for (const d of DIFFICULTIES) {
@@ -202,12 +278,22 @@ export function blockdokuModule(): GameModule {
       setDeclareAssistance((assistBox as HTMLInputElement).checked),
     );
     assist.append(assistBox, document.createTextNode(" Declare assistance used"));
+    const hintsToggle = el("label", { class: "sol-setting" });
+    const hintsBox = el("input", { type: "checkbox", class: "sol-set-hints" });
+    (hintsBox as HTMLInputElement).checked = hints;
+    hintsBox.addEventListener("change", () => {
+      setHintsEnabled((hintsBox as HTMLInputElement).checked);
+      render();
+    });
+    hintsToggle.append(hintsBox, document.createTextNode(" Enable hints"));
+
     settings.append(
       el("summary", {}, "Settings"),
       el("label", { class: "sol-setting" }, "Difficulty ", diffSel),
+      hintsToggle,
       assist,
     );
-    bar.append(modes, settings);
+    bar.append(modes, actionBtn, undoBtn, settings);
     return bar;
   };
 
@@ -307,13 +393,23 @@ export function blockdokuModule(): GameModule {
       "Tap a piece, then tap a glowing cell to drop it. Fill a row, column, or 3×3 box to clear it.",
     );
     container.replaceChildren(
-      el("div", { class: "bdk-game" }, renderControls(), renderHud(b), banner, renderBoard(b), renderTray()),
+      el(
+        "div",
+        { class: "bdk-game" },
+        renderControls(),
+        renderHud(b),
+        banner,
+        renderBoard(b),
+        renderTray(),
+        statusEl,
+      ),
     );
   }
 
   const presentResult = async (): Promise<void> => {
     if (!container || !game) return;
     const env = game.outcome(declareAssistanceEnabled()) as BlockdokuEnvelope;
+    recordBest(config.difficulty, env.payload.score ?? 0);
     container.replaceChildren(el("div", { class: "sol-loading" }, "Preparing your verifiable result…"));
     const shareUrl = await shareUrlFor(env);
     if (disposed || !container) return;
@@ -330,6 +426,11 @@ export function blockdokuModule(): GameModule {
     if (!game || game.isOver() || e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key >= "1" && e.key <= "3") {
       selectSlot(Number(e.key) - 1);
+      e.preventDefault();
+      return;
+    }
+    if (e.key === "u" || e.key === "U") {
+      undo();
       e.preventDefault();
       return;
     }
@@ -359,6 +460,7 @@ export function blockdokuModule(): GameModule {
     seed = base;
     selected = null;
     cursor = { r: 0, c: 0 };
+    setStatus("");
     game.newGame(base, config);
     exposeHook();
     render();
@@ -399,6 +501,8 @@ export function blockdokuModule(): GameModule {
       seed,
       select: (slot: number) => selectSlot(slot),
       place: (slot: number, row: number, col: number) => place(slot, row, col),
+      hint: () => showHint(),
+      undo: () => undo(),
     };
   };
 

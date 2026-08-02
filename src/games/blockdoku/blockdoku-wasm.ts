@@ -98,6 +98,8 @@ interface Exports {
   is_over(): number;
   play_place(slot: number, row: number, col: number): number;
   mark_assistance(): void;
+  undo(): number;
+  hint_json(): number;
   outcome_json(declare: number): number;
 }
 
@@ -158,6 +160,14 @@ export class Blockdoku {
   }
   markAssistance(): void {
     this.x.mark_assistance();
+  }
+  /** Undo the last placement. Returns true if a move was undone. Assistance. */
+  undo(): boolean {
+    return this.x.undo() === 1;
+  }
+  /** The best hint move, or null if none. Using it counts as assistance. */
+  hint(): MoveView | null {
+    return JSON.parse(this.read(this.x.hint_json())) as MoveView | null;
   }
   outcome(declareAssistance: boolean): unknown {
     return JSON.parse(this.read(this.x.outcome_json(declareAssistance ? 1 : 0)));
