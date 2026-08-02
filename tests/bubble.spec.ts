@@ -88,6 +88,75 @@ test("the aim slider drives the angle and stays within the legal fan", async ({ 
   expect(await page.evaluate(() => window.__bubble!.aim())).toBe(hi);
 });
 
+test("the Fire button spans the full aim-bar width, below the slider", async ({ page }) => {
+  await page.goto("/bubble/?variant=classic&seed=7");
+  await ready(page);
+  const bar = await page.locator(".bub-aimbar").boundingBox();
+  const slider = await page.locator(".bub-aim").boundingBox();
+  const fire = await page.locator(".bub-fire").boundingBox();
+  expect(bar && slider && fire).toBeTruthy();
+  // Full width: the Fire button is (near) as wide as the aim-bar itself.
+  expect(fire!.width).toBeGreaterThanOrEqual(bar!.width * 0.95);
+  // Below the slider: the button's top sits under the slider row.
+  expect(fire!.y).toBeGreaterThan(slider!.y + slider!.height / 2);
+});
+
+test("the live aim readout shows the current angle in degrees", async ({ page }) => {
+  await page.goto("/bubble/?variant=classic&seed=7");
+  await ready(page);
+  await page.evaluate(() => window.__bubble!.setAim(115));
+  await expect(page.locator(".bub-aim-readout")).toHaveText(/115/);
+});
+
+test("fire-on-release is off by default: releasing the slider does not fire", async ({ page }) => {
+  await page.goto("/bubble/?variant=classic&seed=7");
+  await ready(page);
+  const before = await shotsLeft(page);
+  await page.locator(".bub-aim").dispatchEvent("pointerdown");
+  await page.locator(".bub-aim").dispatchEvent("pointerup");
+  // Give any (absent) settle timer time to elapse, then assert no shot spent.
+  await page.waitForTimeout(400);
+  expect(await shotsLeft(page)).toBe(before);
+});
+
+test("fire-on-release, when enabled, fires when the slider is released", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("fun-bubble-fire-on-release", "on");
+    localStorage.setItem("fun-bubble-aim-settle", "0");
+  });
+  await page.goto("/bubble/?variant=classic&seed=7");
+  await ready(page);
+  const before = await shotsLeft(page);
+  await page.locator(".bub-aim").dispatchEvent("pointerdown");
+  await page.locator(".bub-aim").dispatchEvent("pointerup");
+  await expect.poll(() => shotsLeft(page)).toBe(before - 1);
+});
+
+test("re-grabbing the slider cancels a pending fire-on-release", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("fun-bubble-fire-on-release", "on");
+    localStorage.setItem("fun-bubble-aim-settle", "300");
+  });
+  await page.goto("/bubble/?variant=classic&seed=7");
+  await ready(page);
+  const before = await shotsLeft(page);
+  await page.locator(".bub-aim").dispatchEvent("pointerup"); // starts the 300ms settle
+  await page.locator(".bub-aim").dispatchEvent("pointerdown"); // re-grab cancels it
+  await page.waitForTimeout(450);
+  expect(await shotsLeft(page)).toBe(before);
+});
+
+test("the snap step rounds the aim to the chosen increment", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("fun-bubble-aim-snap", "3"));
+  await page.goto("/bubble/?variant=classic&seed=7");
+  await ready(page);
+  // 94 snaps to 93 (a multiple of 3 anchored on 90); 91 snaps back to 90.
+  await page.evaluate(() => window.__bubble!.setAim(94));
+  expect(await page.evaluate(() => window.__bubble!.aim())).toBe(93);
+  await page.evaluate(() => window.__bubble!.setAim(91));
+  expect(await page.evaluate(() => window.__bubble!.aim())).toBe(90);
+});
+
 test("keyboard: arrows re-aim and Space fires a shot", async ({ page }) => {
   await page.goto("/bubble/?variant=classic&seed=7");
   await ready(page);

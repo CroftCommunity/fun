@@ -895,28 +895,97 @@ body.fullscreen .play-area {
 .bub-color-3 { color: var(--gem-3); }
 .bub-color-4 { color: var(--gem-4); }
 .bub-color-5 { color: var(--gem-5); }
+/* The always-visible aim controls: a label + slider + live degree readout on
+   one row, then a full-width Fire button directly beneath (thumb slides, Fire is
+   right there), then the "Aim & controls" settings disclosure. */
 .bub-aimbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: min(100%, 24rem);
+  margin: 0.4rem auto;
+}
+.bub-aim-row {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  max-width: min(100%, 22rem);
-  margin: 0.3rem auto;
 }
 .bub-aim-label {
+  flex: 0 0 auto;
   color: var(--ink-muted);
   font-size: 0.9rem;
 }
+.bub-aim-readout {
+  flex: 0 0 auto;
+  min-width: 2.75rem;
+  text-align: right;
+  color: var(--ink);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Themed range with a big, grabbable thumb (≈30px) over a slim brass track. */
 .bub-aim {
   flex: 1;
   min-width: 6rem;
+  height: 2.4rem; /* a comfortable touch target around the track */
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+.bub-aim::-webkit-slider-runnable-track {
+  height: 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink-muted) 32%, transparent);
+}
+.bub-aim::-moz-range-track {
+  height: 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink-muted) 32%, transparent);
+}
+.bub-aim::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 1.9rem;
+  height: 1.9rem;
+  margin-top: -0.675rem; /* centre the thumb on the 0.55rem track */
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--surface);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 35%);
+}
+.bub-aim::-moz-range-thumb {
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--surface);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 35%);
 }
 .bub-aim:focus-visible {
   outline: 3px solid var(--focus);
-  outline-offset: 2px;
+  outline-offset: 4px;
+  border-radius: 999px;
 }
 .bub-fire {
-  padding: 0.4rem 1.1rem;
-  font-weight: 600;
+  width: 100%;
+  padding: 0.7rem 1rem;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--accent-ink);
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 25%);
+  cursor: pointer;
+}
+.bub-fire:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+.bub-fire:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 .bub-loaded {
   display: inline-flex;
