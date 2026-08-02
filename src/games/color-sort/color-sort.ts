@@ -214,6 +214,9 @@ export function colorSortModule(): GameModule {
   let seed = 0n;
   let skin: ColorSortSkin = colorSortSkin();
   let selected: number | null = null;
+  // The most recent pour, so the target tube's newly-arrived units animate in
+  // once. Cleared after the render that consumes it.
+  let pourAnim: { tube: number; count: number } | null = null;
 
   const statusEl = el("p", { class: "sol-status", role: "status", "aria-live": "polite" });
   const setStatus = (msg: string): void => {
@@ -286,18 +289,29 @@ export function colorSortModule(): GameModule {
       "aria-label": label,
       "aria-pressed": String(isSource),
     });
-    // Units stack from the bottom (flex column-reverse in CSS).
+    // Units stack from the bottom (flex column-reverse in CSS). Each slot is a
+    // full-width centring box; a filled slot holds a nested unit (the fill / ball
+    // / nut) so every skin centres its unit and its icon. The top `pourAnim.count`
+    // units of the just-poured target animate in.
+    const pourCount = pourAnim && pourAnim.tube === t ? pourAnim.count : 0;
     const stack = el("div", { class: "cs-stack" });
     for (let i = 0; i < b.cap; i++) {
-      const unit = el("div", { class: "cs-slot" });
+      const slot = el("div", { class: "cs-slot" });
       if (i < tube.length) {
         const c = tube[i]!;
-        unit.classList.add("cs-unit");
+        const unit = el("div", { class: "cs-unit" });
         unit.style.setProperty("--cs-fill", colors[c] ?? "#888");
         unit.setAttribute("data-color", String(c));
+        // Newly-poured units sit in the top `pourCount` positions of the target.
+        const fromTop = tube.length - 1 - i;
+        if (pourCount > 0 && fromTop < pourCount) {
+          unit.classList.add("cs-pour-in");
+          unit.style.setProperty("--pour-i", String(pourCount - 1 - fromTop));
+        }
         if (iconsOn()) unit.append(el("span", { class: "cs-icon", "aria-hidden": "true" }, ICONS[c] ?? ""));
+        slot.append(unit);
       }
-      stack.append(unit);
+      stack.append(slot);
     }
     if (locked) btn.append(el("div", { class: "cs-cap", "aria-hidden": "true" }));
     btn.append(stack);
@@ -438,6 +452,7 @@ export function colorSortModule(): GameModule {
     if (disposed || !container || !game) return;
     const b = game.board();
     if (b.won) {
+      pourAnim = null;
       void presentResult();
       return;
     }
@@ -452,6 +467,7 @@ export function colorSortModule(): GameModule {
       statusEl,
     );
     container.replaceChildren(wrap);
+    pourAnim = null; // the pour animation plays once, on the render that follows it
   }
 
   const rebuild = (): void => {
@@ -492,11 +508,14 @@ export function colorSortModule(): GameModule {
     }
     const from = selected;
     selected = null;
+    const toLenBefore = b.tubes[t]!.length;
     const status = game.pour(from, t);
     if (status !== "applied") {
       render();
       return;
     }
+    // How many units actually landed — those top slots animate the pour in.
+    pourAnim = { tube: t, count: Math.max(1, game.board().tubes[t]!.length - toLenBefore) };
     setStatus("");
     persist();
     afterMove(t);
