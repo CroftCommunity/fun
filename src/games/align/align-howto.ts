@@ -23,7 +23,7 @@ export const ALIGN_GUIDE: Guide = {
             "Up (or X) — rotate clockwise; Z — rotate counter-clockwise.",
             "Down — soft drop (fall faster); Space — hard drop (slam it down and lock).",
             "C or Shift — hold a piece for later; P or Esc — pause.",
-            "On a phone, the buttons under the board do all of the above.",
+            "On a phone, use the pad under the board: a wide left and right to move, the two arrows below them to rotate each way, then soft-drop, hard-drop, and hold.",
           ],
         },
         {
