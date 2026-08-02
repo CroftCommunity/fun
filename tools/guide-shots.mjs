@@ -252,6 +252,78 @@ const SHOTS = [
     },
   },
   {
+    name: "blockdoku-board",
+    clip: ".bdk-game",
+    async run(page) {
+      await page.goto(`${origin}/blockdoku/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".bdk-board");
+      await page.waitForFunction(() => Boolean(window.__blockdoku));
+      // Play a handful of first-legal moves so the shot shows a lived-in board.
+      await page.evaluate(() => {
+        const g = window.__blockdoku.game;
+        for (let i = 0; i < 8 && !g.isOver(); i += 1) {
+          const legal = g.legalMoves();
+          if (!legal.length) break;
+          g.playPlace(legal[0].slot, legal[0].row, legal[0].col);
+        }
+        window.__blockdoku.refresh();
+      });
+      await page.waitForSelector(".bdk-cell.bdk-filled");
+    },
+  },
+  {
+    name: "blockdoku-select",
+    clip: ".bdk-game",
+    async run(page) {
+      await page.goto(`${origin}/blockdoku/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".bdk-board");
+      await page.waitForFunction(() => Boolean(window.__blockdoku));
+      // Fill the board in a bit first, so the glowing legal cells read as a
+      // subset (on an empty board a small piece fits nearly everywhere).
+      await page.evaluate(() => {
+        const g = window.__blockdoku.game;
+        for (let i = 0; i < 7 && !g.isOver(); i += 1) {
+          const legal = g.legalMoves();
+          if (!legal.length) break;
+          g.playPlace(legal[0].slot, legal[0].row, legal[0].col);
+        }
+        window.__blockdoku.refresh();
+        // Select the piece with the fewest legal spots, so the glow is legible.
+        const counts = [0, 1, 2].map((s) => g.legalMoves().filter((m) => m.slot === s).length);
+        let best = -1;
+        let bestN = Infinity;
+        counts.forEach((n, s) => {
+          if (n > 0 && n < bestN) {
+            bestN = n;
+            best = s;
+          }
+        });
+        if (best >= 0) window.__blockdoku.select(best);
+      });
+      await page.waitForSelector(".bdk-cell.bdk-legal");
+    },
+  },
+  {
+    name: "blockdoku-result",
+    clip: ".sol-result",
+    async run(page) {
+      await page.goto(`${origin}/blockdoku/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".bdk-board");
+      await page.waitForFunction(() => Boolean(window.__blockdoku));
+      // Play to the natural game-over to reach the verifiable result screen.
+      await page.evaluate(() => {
+        const g = window.__blockdoku.game;
+        for (let i = 0; i < 500 && !g.isOver(); i += 1) {
+          const legal = g.legalMoves();
+          if (!legal.length) break;
+          g.playPlace(legal[0].slot, legal[0].row, legal[0].col);
+        }
+        window.__blockdoku.refresh();
+      });
+      await page.waitForSelector(".sol-result");
+    },
+  },
+  {
     name: "astray-maze",
     clip: ".wrapped-game-frame",
     async run(page) {

@@ -9,7 +9,7 @@ a portable artifact addressable at its own URL.
 `fun.croft.ing` presents games in a **slide-out drawer** over a persistent play area; each game can
 also go **full-screen** or **open in its own tab** (so every game has its own URL). A game is a module
 that implements one contract and renders chrome-agnostically into a mount point — the drawer is built
-once and every game reuses it. Shelf order: **solitaire → match-3 → bubble → wyrdle → 2048 → align → cribbage**.
+once and every game reuses it. Shelf order: **solitaire → match-3 → bubble → wyrdle → 2048 → align → blockdoku → cribbage**.
 
 ## Layout
 
@@ -36,10 +36,15 @@ crates/
   align-core/        deterministic falling-block engine (fixed-timestep tick sim, 7-bag,
                      SRS kicks, integer gravity, guideline scoring) — green
   align-wasm/        browser binding over align-core (raw C-ABI + serde-JSON)          — built
+  blockdoku-core/    deterministic 9x9 block-sudoku engine (53-shape catalog from the
+                     original AGPL game, seeded deal, row/col/box union clearing,
+                     ported scoring, endless score-attack) — green (no solver: every deal is playable)
+  blockdoku-wasm/    browser binding over blockdoku-core (raw C-ABI + serde-JSON)      — built
   twenty48-wasm/     browser binding over twenty48-core (raw C-ABI + serde-JSON)   — built
 games/solitaire/     daily-pack.json — a year of winnable daily seeds + a fixture win line (v2, seeds-lean)
 games/bubble/        daily-pack.json — a year of winnable clear-the-board seeds + a fixture clear line
 games/2048/          daily-pack.json — a year of shuffled daily seeds + a fixture replay line
+games/blockdoku/     daily-pack.json — a year of daily seeds (no solver: every deal is playable)
 games/wyrdle/        daily-pack.json — a year of shuffled answer seeds + a fixture win line;
                      PROVENANCE.md — the word-list sources + licences (all license-clean)
 src/                 the games drawer UI (vanilla TS + esbuild); each game owns src/games/<game>/

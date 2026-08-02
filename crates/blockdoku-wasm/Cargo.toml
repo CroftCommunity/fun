@@ -1,0 +1,16 @@
+[package]
+name = "blockdoku-wasm"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Browser binding over blockdoku-core for the shelf: raw C-ABI + serde-JSON (no wasm-bindgen). Holds one Blockdoku game, integer place move, board/tray/legal-moves/hash/outcome JSON via an output buffer, embedded daily seed-pack. Never panics."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+blockdoku-core = { workspace = true }
+pond-outcome = { workspace = true }
+serde = { workspace = true }
+serde_json.workspace = true
