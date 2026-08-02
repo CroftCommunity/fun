@@ -16,10 +16,15 @@
 pub mod board;
 pub mod hash;
 pub mod rng;
+pub mod scoring;
 pub mod shapes;
 mod shapes_gen;
 
 pub use board::{Board, ClearReport, Pos, BOX, SIZE};
 pub use hash::state_hash;
 pub use rng::DetRng;
+pub use scoring::{
+    combo_bonus, score_placement, streak_bonus, Multiplier, PlacementScore, LINE_POINTS,
+    SQUARE_POINTS,
+};
 pub use shapes::{by_key, catalog, keys_in_tier, ShapeDef, Tier};
