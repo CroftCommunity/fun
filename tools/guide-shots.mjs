@@ -278,8 +278,7 @@ const SHOTS = [
       await page.goto(`${origin}/blockdoku/?seed=7`, { waitUntil: "networkidle" });
       await page.waitForSelector(".bdk-board");
       await page.waitForFunction(() => Boolean(window.__blockdoku));
-      // Fill the board in a bit first, so the glowing legal cells read as a
-      // subset (on an empty board a small piece fits nearly everywhere).
+      // Fill the board in a bit first, so the preview reads against real blocks.
       await page.evaluate(() => {
         const g = window.__blockdoku.game;
         for (let i = 0; i < 7 && !g.isOver(); i += 1) {
@@ -288,19 +287,11 @@ const SHOTS = [
           g.playPlace(legal[0].slot, legal[0].row, legal[0].col);
         }
         window.__blockdoku.refresh();
-        // Select the piece with the fewest legal spots, so the glow is legible.
-        const counts = [0, 1, 2].map((s) => g.legalMoves().filter((m) => m.slot === s).length);
-        let best = -1;
-        let bestN = Infinity;
-        counts.forEach((n, s) => {
-          if (n > 0 && n < bestN) {
-            bestN = n;
-            best = s;
-          }
-        });
-        if (best >= 0) window.__blockdoku.select(best);
+        // Hold a piece over a genuinely legal spot so the green preview shows
+        // (hint() selects a placeable piece and anchors the preview there).
+        window.__blockdoku.hint();
       });
-      // The selected piece shows a snapped placement preview (not a full glow).
+      // The held piece previews its footprint in green where the shape fits.
       await page.waitForSelector(".bdk-cell.bdk-ghost");
     },
   },

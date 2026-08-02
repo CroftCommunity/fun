@@ -71,6 +71,12 @@
   --t48-max: #8f1230;         /* 1024, 2048                            */
   --t48-max-ink: #ffffff;     /* numeral on --t48-max  (9.14:1)        */
 
+  /* Blockdoku board lines (graphical, not text): a thin cell grid and a heavier
+     3×3-box divider that also frames the board, so the nine sub-squares read at a
+     glance on the tan cells. */
+  --bdk-grid: #b8ad92;        /* thin line between cells               */
+  --bdk-box: #37503f;         /* heavy 3×3-box divider + board frame   */
+
   /* Align — original falling-block palette (graphical: piece cells on the
      always-dark play surface, theme-independent; not text, so not in PAIRS).
      Deliberately NOT the guideline shape-to-colour mapping (IP guardrail). */
@@ -147,6 +153,11 @@
   --t48-hi-ink: #f2efe8;      /* numeral on --t48-hi   (4.66:1)        */
   --t48-max: #7a0f2a;         /* 1024, 2048                            */
   --t48-max-ink: #f2efe8;     /* numeral on --t48-max  (9.48:1)        */
+
+  /* Blockdoku board lines, re-tuned for dark: a subtle grid and a light-moss
+     box divider that pops on the near-black cells. */
+  --bdk-grid: #47412f;        /* thin line between cells               */
+  --bdk-box: #6f9079;         /* heavy 3×3-box divider + board frame   */
 
   --theme-color: #123f2b;
 }

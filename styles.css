@@ -2137,33 +2137,65 @@ body.fullscreen .play-area {
   display: grid;
   grid-template-columns: repeat(9, var(--bdk-cell));
   grid-template-rows: repeat(9, var(--bdk-cell));
-  gap: 2px;
-  padding: 0.5rem;
-  background: var(--felt);
+  gap: 0;
+  /* The board frame IS the heavy box line, so the outer edge matches the inner
+     3×3 dividers. Cells sit flush; interior lines are drawn by cell borders. */
+  background: var(--bdk-box);
+  border: 3px solid var(--bdk-box);
   border-radius: var(--radius);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%), 0 2px 8px rgb(0 0 0 / 18%);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 18%);
+  overflow: hidden; /* clip the flush cells to the rounded frame */
   touch-action: manipulation;
   outline: none;
 }
 .bdk-board:focus-visible { box-shadow: 0 0 0 3px var(--focus); }
 .bdk-cell {
+  box-sizing: border-box;
   width: var(--bdk-cell);
   height: var(--bdk-cell);
-  border-radius: 4px;
   background: var(--t48-empty);
+  /* Each interior seam is drawn once, by the cell to its right/below. */
+  border-left: 1px solid var(--bdk-grid);
+  border-top: 1px solid var(--bdk-grid);
 }
-.bdk-cell.bdk-filled { background: var(--gem-1); }
-/* Box separators — a heavier felt line on every third row/column start. */
-.bdk-cell.bdk-box-top:not(:nth-child(-n + 9)) { margin-top: 2px; }
-.bdk-cell.bdk-box-left:not(:nth-child(9n + 1)) { margin-left: 2px; }
-/* Placement preview: only the cells THIS tap would fill are shown (snapped to
-   the nearest fit) — no full-board legal glow. A translucent block + brass ring
-   reads clearly as "the piece lands here". */
+/* The first row/column edges are the board frame, not a cell line. */
+.bdk-cell:nth-child(-n + 9) { border-top: 0; }
+.bdk-cell:nth-child(9n + 1) { border-left: 0; }
+/* The nine 3×3 boxes: a heavier divider on the interior thirds (cols/rows 3 & 6). */
+.bdk-cell.bdk-box-left:not(:nth-child(9n + 1)) { border-left: 2px solid var(--bdk-box); }
+.bdk-cell.bdk-box-top:not(:nth-child(-n + 9)) { border-top: 2px solid var(--bdk-box); }
+.bdk-cell.bdk-filled {
+  background: var(--gem-1);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gem-1) 55%, black);
+}
+/* Placement preview: the selected piece's footprint at the current anchor —
+   green where the core accepts the drop, red where it doesn't. No full-board
+   glow, and nothing at all when no piece is held. */
 .bdk-cell.bdk-ghost {
-  background: color-mix(in srgb, var(--gem-1) 60%, transparent);
+  background: color-mix(in srgb, var(--gem-1) 55%, transparent);
   box-shadow: inset 0 0 0 2px var(--accent);
 }
-.bdk-cell.bdk-cursor { outline: 2px solid var(--focus); outline-offset: -1px; }
+.bdk-cell.bdk-ghost-bad {
+  background: color-mix(in srgb, var(--danger) 42%, transparent);
+  box-shadow: inset 0 0 0 2px var(--danger);
+}
+/* The floating piece that follows the finger during a drag (lives on <body>). */
+.bdk-drag {
+  position: fixed;
+  z-index: 60;
+  display: grid;
+  pointer-events: none;
+  opacity: 0.95;
+  filter: drop-shadow(0 4px 6px rgb(0 0 0 / 35%));
+}
+.bdk-drag-on {
+  background: var(--gem-1);
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gem-1) 55%, black);
+}
+.bdk-drag-off { background: transparent; }
+.bdk-tier-wild .bdk-drag-on { background: var(--gem-3); }
+.bdk-tier-magic .bdk-drag-on { background: var(--gem-0); }
 
 .bdk-tray {
   display: flex;
@@ -2182,8 +2214,8 @@ body.fullscreen .play-area {
   border-radius: 8px;
   background: var(--surface);
   box-shadow: 0 1px 0 rgb(0 0 0 / 18%);
-  cursor: pointer;
-  touch-action: manipulation;
+  cursor: grab;
+  touch-action: none; /* the piece is a drag handle — don't scroll the page from it */
 }
 .bdk-piece.bdk-selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
 .bdk-piece.bdk-piece-dead { opacity: 0.4; cursor: not-allowed; }
