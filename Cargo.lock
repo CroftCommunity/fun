@@ -130,6 +130,10 @@ name = "color-sort-wasm"
 version = "0.0.0"
 dependencies = [
  "color-sort-core",
+ "color-sort-solver",
+ "pond-outcome",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

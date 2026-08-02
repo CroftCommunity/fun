@@ -15,6 +15,9 @@ const AIM_GAIN_KEY = "fun-bubble-aim-gain";
 const AIM_SETTLE_KEY = "fun-bubble-aim-settle";
 const ALIGN_HAPTICS_KEY = "fun-align-haptics";
 const ALIGN_MOVE_SPEED_KEY = "fun-align-move-speed";
+const CS_SKIN_KEY = "fun-color-sort-skin";
+const CS_ICONS_KEY = "fun-color-sort-icons";
+const CS_STRICT_KEY = "fun-color-sort-strict";
 
 /** Pure resolver: an explicit stored "on"/"off" wins; otherwise the default. */
 export function resolveBool(stored: string | null, fallback: boolean): boolean {
@@ -185,4 +188,67 @@ export function setAlignMoveSpeed(speed: number): void {
 export function moveSpeedToMs(speed: number): number {
   const s = Math.max(1, Math.min(10, Math.round(speed)));
   return Math.round(250 - (s - 1) * (200 / 9));
+}
+
+// ---------- Color Sort (skin, colourblind icons, Free/Strict) ----------
+
+/** The three render skins — all render the identical engine state. */
+export type ColorSortSkin = "water" | "ball" | "bolt";
+
+/** Pure resolver for the skin setting: a stored valid skin wins, else `water`. */
+export function resolveSkin(stored: string | null): ColorSortSkin {
+  return stored === "ball" || stored === "bolt" || stored === "water" ? stored : "water";
+}
+
+/** The chosen render skin — **water by default**. */
+export function colorSortSkin(): ColorSortSkin {
+  try {
+    return resolveSkin(localStorage.getItem(CS_SKIN_KEY));
+  } catch {
+    return "water";
+  }
+}
+export function setColorSortSkin(skin: ColorSortSkin): void {
+  try {
+    localStorage.setItem(CS_SKIN_KEY, skin);
+  } catch {
+    // Storage denied (private mode): the setting still applies for the session.
+  }
+}
+
+/** The per-skin default for the colourblind fruit icons: **off** in water,
+ *  **on** in ball and bolt (discrete-unit skins carry icons naturally; liquid
+ *  reads cleaner without them — brief §6). */
+export function iconsDefaultFor(skin: ColorSortSkin): boolean {
+  return skin !== "water";
+}
+
+/** Whether the fruit icons are shown, for `skin`. An explicit user choice (once
+ *  made) overrides the per-skin default thereafter; otherwise the per-skin
+ *  default applies. Returns the resolved boolean. */
+export function colorSortIconsFor(skin: ColorSortSkin): boolean {
+  try {
+    const stored = localStorage.getItem(CS_ICONS_KEY);
+    if (stored === "on") return true;
+    if (stored === "off") return false;
+  } catch {
+    // fall through to the per-skin default
+  }
+  return iconsDefaultFor(skin);
+}
+export function setColorSortIcons(on: boolean): void {
+  try {
+    localStorage.setItem(CS_ICONS_KEY, on ? "on" : "off");
+  } catch {
+    // Storage denied (private mode): the setting still applies for the session.
+  }
+}
+
+/** Strict mode — no undo, restart only — **off by default** (Free: unlimited
+ *  undo). Non-monetized, so undo is never rationed; Strict is opt-in commitment. */
+export function colorSortStrict(): boolean {
+  return read(CS_STRICT_KEY, false);
+}
+export function setColorSortStrict(on: boolean): void {
+  write(CS_STRICT_KEY, on);
 }

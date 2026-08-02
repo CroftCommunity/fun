@@ -359,6 +359,50 @@ const SHOTS = [
       await page.waitForTimeout(2000); // let the title screen paint
     },
   },
+  {
+    name: "color-sort-board",
+    clip: ".cs-board",
+    async run(page) {
+      await page.goto(`${origin}/color-sort/?seed=0`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".cs-board");
+      await page.waitForFunction(() => Boolean(window.__colorSort));
+    },
+  },
+  {
+    name: "color-sort-select",
+    clip: ".cs-board",
+    async run(page) {
+      await page.goto(`${origin}/color-sort/?seed=0`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".cs-board");
+      await page.waitForFunction(() => Boolean(window.__colorSort));
+      // Select a real source so its legal target tubes glow.
+      await page.evaluate(() => {
+        const from = window.__colorSort.game.board().moves[0].from;
+        window.__colorSort.tapTube(from);
+      });
+      await page.waitForSelector(".cs-tube.legal");
+    },
+  },
+  {
+    name: "color-sort-win",
+    clip: ".sol-result",
+    async run(page) {
+      // Endless level 1 (4 colours) solves quickly via the solver hint.
+      await page.goto(`${origin}/color-sort/?level=1`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".cs-board");
+      await page.waitForFunction(() => Boolean(window.__colorSort));
+      await page.evaluate(() => {
+        const h = window.__colorSort;
+        for (let i = 0; i < 200 && !h.game.isWon(); i += 1) {
+          const mv = h.game.hint();
+          if (!mv) break;
+          h.game.pour(mv.from, mv.to);
+        }
+        h.refresh();
+      });
+      await page.waitForSelector(".sol-result");
+    },
+  },
 ];
 
 const server = spawn("node", [join(root, "tools", "serve.mjs")], { stdio: "ignore" });
