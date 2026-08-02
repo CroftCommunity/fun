@@ -5,7 +5,9 @@ test("home page lists the games and the drawer opens", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /open games drawer/i }).click();
   await expect(page.locator("#games-drawer")).toBeVisible();
-  await expect(page.locator(".drawer-item")).toHaveCount(15);
+  // One item per REGISTRY entry (src/registry.ts). Bump this when a game is
+  // added or removed from the catalog.
+  await expect(page.locator(".drawer-item")).toHaveCount(16);
 });
 
 test("the drawer recollapses via its close button and via clicking off", async ({
