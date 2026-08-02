@@ -5,9 +5,10 @@ the original AGPL game (`github.com/chasemp/blockdoku`, mirrored read-only at
 `reference/original/`); every rule below is verified against that source. This doc
 is the spec the crate implements and the golden vectors lock.
 
-> Status: **B1 shipped** (board, shape catalog, placement, clearing, hash).
-> Scoring (B2), difficulty + deal (B3), the game state machine + outcome (B4) fill
-> in the marked sections as their phases land.
+> Status: **B1–B4 shipped** — board + catalog + clearing + hash (B1), frozen
+> scoring (B2), difficulty + seeded deal (B3), the game state machine with
+> `(seed, moves)` replay (B4). The wasm binding + `pond-outcome` envelope land in
+> B5; magic-block mechanics are a fast-follow (plan §"Wild/magic mechanics").
 
 ## Board
 
