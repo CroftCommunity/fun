@@ -34,7 +34,7 @@ describe("attachStory", () => {
   beforeEach(() => (bus = createBus()));
 
   it("shows a beat once, then never again (seen-set persists)", () => {
-    const show = vi.fn((_beat: Beat) => true);
+    const show = vi.fn((beat: Beat) => beat !== undefined);
     attachStory(bus, show);
     bus.emit({ type: "special", kind: "wrapped" });
     bus.emit({ type: "special", kind: "wrapped" });
@@ -42,14 +42,14 @@ describe("attachStory", () => {
     expect(show.mock.calls[0]![0]).toMatchObject({ key: "first-special" });
 
     // A fresh engine (e.g. next page load) still won't re-fire a seen beat.
-    const show2 = vi.fn((_beat: Beat) => true);
+    const show2 = vi.fn((beat: Beat) => beat !== undefined);
     attachStory(bus, show2);
     bus.emit({ type: "special", kind: "striped-v" });
     expect(show2).not.toHaveBeenCalled();
   });
 
   it("fires at most one beat per board (resetForNewBoard re-arms)", () => {
-    const show = vi.fn((_beat: Beat) => true);
+    const show = vi.fn((beat: Beat) => beat !== undefined);
     const engine = attachStory(bus, show);
     // A big opening move emits both `move` (first-clear) and `cascade` (first-cascade-3);
     // only the first beat of the board shows.
@@ -62,7 +62,7 @@ describe("attachStory", () => {
   });
 
   it("stops delivering after stop()", () => {
-    const show = vi.fn((_beat: Beat) => true);
+    const show = vi.fn((beat: Beat) => beat !== undefined);
     const engine = attachStory(bus, show);
     engine.stop();
     bus.emit({ type: "special", kind: "fish" });

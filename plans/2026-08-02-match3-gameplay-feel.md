@@ -65,7 +65,30 @@ obstacles) but **doesn't feel good to play**:
 
 ## Execution log
 
-_(appended as phases land — each a green, committed checkpoint.)_
+- **Docs (`855e378`):** this plan + `docs/MATCH3-STORY.md` (Biscuit + event taxonomy).
+- **P1.1 swipe (`57f462d`):** pointer-swipe replaces HTML5 drag; delegated on the
+  board, direction from the pointer delta, `suppressClick` guard, `touch-action`;
+  tap/keyboard stay the floor. `dragTo` e2e → an engine-agnostic swipe test.
+- **P1.2 glossy gems (`df7da8e`):** candy shape on an inner `.m3-shape` (glows stay
+  on the button, unclipped); distinct silhouette per type; receding board;
+  `renderFrame` updated in lockstep.
+- **P1.4 FX + bus (`4da55ed`):** `analyzeCascade` frame-diff drives per-phase timing
+  (clear held ~260ms), particle bursts, and an escalating Nice/Sweet/Divine, all
+  off a game-scoped `match3-events` bus. Softened the per-frame drop-in.
+- **P2 campaign (`12d4176`):** `match3-campaign` + `campaign-pack.json` (build.mjs
+  copy); real seeds → verifiable, front-end star reinterpretation; landing +
+  `?level=N` + level nav + Next-level + progress. Levels 1–2 curated easy openers
+  (seed 341 → depth-6 cascade).
+- **P2 autosave (`2c2311f`):** move-list resume (replayed into a fresh core), Restart.
+- **P2 tutorial glow (`3afde56`):** Level 1 first-load opening-move nudge, once,
+  non-penalising.
+- **P2 narrative scaffold (`656b6b3`):** `match3-story` (event→beat, once-ever +
+  once-per-board) → skippable `match3-overlay` beat card, gated to campaign.
+- **Gate:** how-to copy (swipe + campaign) + match3 guide shots regenerated;
+  README. `npm run test` green (195 unit); match3 e2e green (desktop + mobile).
+  Known: the pre-existing `how-to.spec` solitaire shot-load test flakes in this
+  sandbox's newer Chromium (lazy-loaded below-fold images the non-scrolling poll
+  misses) — unrelated to this change (solitaire/how-to renderer untouched).
 
 ## Phase 1 — feel
 

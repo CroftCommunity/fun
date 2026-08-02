@@ -8,7 +8,7 @@ import type { Guide } from "../how-to.js";
 
 export const MATCH3_GUIDE: Guide = {
   title: "How to play match-3",
-  lede: "Swap two neighbouring gems to line up three or more of the same kind. Play toward one of six objectives, and earn a result anyone can re-verify — no account, no server.",
+  lede: "Swipe a candy toward its neighbour to line up three or more of the same kind. Play through the level campaign, or pick one of six objectives — and earn a result anyone can re-verify, no account, no server.",
   entries: [
     {
       testid: "howto-goal",
@@ -28,27 +28,38 @@ export const MATCH3_GUIDE: Guide = {
       ],
     },
     {
+      testid: "howto-campaign",
+      title: "Levels and progress",
+      toc: "Levels",
+      blocks: [
+        {
+          kind: "prose",
+          text: "You start in the campaign at Level 1. Each level is a fresh board with its own star targets; reach one star to clear it and unlock the next. The first couple of levels are deliberately gentle — Level 1 even glows an obvious opening swap to get you going — so you can learn the feel before the targets climb. Your best stars per level are remembered, and an in-progress board is saved as you play: come back later and it resumes right where you left off. The buttons above the board also let you jump to Today’s board, a New board, or any of the six objectives.",
+        },
+      ],
+    },
+    {
       testid: "howto-moves",
-      title: "Making a move: tap two gems to swap",
+      title: "Making a move: swipe (or tap) to swap",
       toc: "Making moves",
       blocks: [
         {
           kind: "prose",
-          text: "You play by swapping two neighbouring gems. As with every game on the shelf you tap — you don't need to drag (dragging also works on a desktop, but tapping is the accessible floor).",
+          text: "You play by swapping two neighbouring candies. Swipe a candy toward the neighbour you want to swap it with — a quick flick up, down, left, or right. Prefer tapping? Tap a candy, then tap a neighbour. Tapping (and the keyboard) is always the accessible floor, so you can play whichever way feels best.",
         },
         {
           kind: "steps",
           items: [
-            "Tap a gem. Its neighbours that would make a match light up gold.",
-            "Tap a lit-up neighbour to swap the two and score. If nothing lights up around a gem, swapping it there would not line anything up.",
+            "Tap or press a candy. Its neighbours that would make a match light up gold.",
+            "Swipe toward a neighbour — or tap a lit-up one — to swap the two and score. If nothing lights up around a candy, swapping it there would not line anything up.",
             "A swap that makes no match does not happen and does not cost you a swap — only matching swaps count against your budget.",
           ],
         },
         {
           kind: "shot",
           name: "match3-select",
-          alt: "A selected gem outlined in gold with an adjacent gem ringed in gold as the legal swap that would make a match.",
-          caption: "Tap a gem and the swaps that make a match glow gold. Tap one to make it.",
+          alt: "A selected candy outlined in gold with an adjacent candy ringed in gold as the legal swap that would make a match.",
+          caption: "Tap a candy and the swaps that make a match glow gold — tap one, or swipe toward it.",
         },
       ],
     },
