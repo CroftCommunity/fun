@@ -11,11 +11,13 @@
 import type { GameModule } from "../../contract.js";
 import { Bubble, type BoardView, type Geom, type LevelBoardView } from "./bubble-wasm.js";
 import {
+  aimBand,
   boardSubpixelSize,
   cellCenterOff,
   clampAngle,
   launcherOrigin,
   pointerToAngle,
+  snapAngle,
 } from "./bubble-aim.js";
 import {
   decodeRecord,
@@ -25,10 +27,15 @@ import {
   type BubbleEnvelope,
   type VerifyResult,
 } from "./bubble-outcome.js";
+import { renderAimSettings } from "./bubble-aim-settings.js";
 import { dayIndexUTC } from "../share.js";
 import {
   aimGuideEnabled,
+  aimSettleMs,
+  aimSnapStep,
+  aimSwipeGain,
   declareAssistanceEnabled,
+  fireOnReleaseEnabled,
   hintsEnabled,
   setAimGuide,
   setDeclareAssistance,
@@ -269,6 +276,10 @@ export function bubbleModule(): GameModule {
   let raf = 0;
   let canvas: HTMLCanvasElement | null = null;
   let aimInput: HTMLInputElement | null = null;
+  let aimReadout: HTMLElement | null = null;
+  // Pending fire-on-release settle timer (0 = none). A re-grab of the slider
+  // cancels it; it clears on unmount/animation.
+  let settleTimer = 0;
   let cascadeEl: HTMLElement | null = null;
   // Presentational per-level countdown (levels only; never a verified loss).
   let timerEnabled = false;
@@ -580,6 +591,7 @@ export function bubbleModule(): GameModule {
 
   const fire = async (): Promise<void> => {
     if (!game || gameOver() || animating) return;
+    cancelReleaseFire();
     const angle = aim;
     const traj = activeTrajectory(angle);
     setStatus(`Fired at ${angle} degrees`);
@@ -616,15 +628,45 @@ export function bubbleModule(): GameModule {
 
   // ---------- controls + interaction ----------
 
+  // Point the aim slider's window at the current aim for the active swipe gain
+  // (min/max = the band). At full gain this is always the whole fan, so the
+  // slider is an absolute aim (the default feel); a lower gain narrows it around
+  // the current aim for finer control, recentred here between grabs.
+  const applyBand = (): void => {
+    if (!aimInput) return;
+    const { lo, hi } = aimBand(aim, aimSwipeGain(), geom);
+    aimInput.min = String(lo);
+    aimInput.max = String(hi);
+  };
+
   const syncAim = (): void => {
     if (aimInput) aimInput.value = String(aim);
+    if (aimReadout) aimReadout.textContent = `${aim}°`;
     if (canvas) canvas.setAttribute("aria-label", boardLabel());
   };
 
   const setAim = (deg: number): void => {
-    aim = clampAngle(deg, geom);
+    aim = snapAngle(deg, aimSnapStep(), geom);
     syncAim();
     if (!animating) drawScene();
+  };
+
+  const cancelReleaseFire = (): void => {
+    if (settleTimer) {
+      clearTimeout(settleTimer);
+      settleTimer = 0;
+    }
+  };
+
+  // Fire-on-release: after the slider is let go, wait the settle window, then
+  // fire — unless the slider is re-grabbed (which cancels), or the round is over.
+  const scheduleReleaseFire = (): void => {
+    cancelReleaseFire();
+    if (!fireOnReleaseEnabled() || animating || gameOver()) return;
+    settleTimer = window.setTimeout(() => {
+      settleTimer = 0;
+      void fire();
+    }, aimSettleMs());
   };
 
   const syncControlsDisabled = (): void => {
@@ -830,19 +872,54 @@ export function bubbleModule(): GameModule {
 
   const renderAimBar = (): HTMLElement => {
     const bar = el("div", { class: "bub-aimbar" });
+
+    const band = aimBand(aim, aimSwipeGain(), geom);
     const range = el("input", {
       type: "range",
       class: "bub-aim",
-      min: String(geom.fanLo),
-      max: String(geom.fanHi),
+      min: String(band.lo),
+      max: String(band.hi),
+      step: "1",
       value: String(aim),
       "aria-label": "Aim angle in degrees",
     }) as HTMLInputElement;
-    range.addEventListener("input", () => setAim(Number(range.value)));
     aimInput = range;
+    const readout = el("span", { class: "bub-aim-readout", "aria-hidden": "true" }, `${aim}°`);
+    aimReadout = readout;
+
+    range.addEventListener("input", () => setAim(Number(range.value)));
+    // Grabbing recentres the band on the current aim (fine-gain mode) and cancels
+    // any pending release-fire; letting go schedules a fire when fire-on-release
+    // is on. At full gain the band is the whole fan, so this is a plain slider.
+    range.addEventListener("pointerdown", () => {
+      cancelReleaseFire();
+      applyBand();
+    });
+    range.addEventListener("pointerup", () => {
+      applyBand();
+      scheduleReleaseFire();
+    });
+
+    const row = el(
+      "div",
+      { class: "bub-aim-row" },
+      el("span", { class: "bub-aim-label" }, "Aim"),
+      range,
+      readout,
+    );
+
     const fireBtn = el("button", { type: "button", class: "bub-fire" }, "Fire");
     fireBtn.addEventListener("click", () => void fire());
-    bar.append(el("span", { class: "bub-aim-label" }, "Aim"), range, fireBtn);
+
+    const settings = renderAimSettings({
+      geom,
+      // A coarser/finer snap re-snaps the current aim immediately.
+      onSnapChange: () => setAim(aim),
+      // A changed gain re-centres the slider band on the current aim.
+      onGainChange: () => applyBand(),
+    });
+
+    bar.append(row, fireBtn, settings);
     return bar;
   };
 
@@ -874,11 +951,14 @@ export function bubbleModule(): GameModule {
     });
     c.addEventListener("keydown", (e) => {
       if (animating || gameOver()) return;
+      // One key press moves at least the snap step, so arrows always advance to
+      // the next reachable angle even at a coarse snap.
+      const kb = Math.max(2, aimSnapStep());
       if (e.key === "ArrowLeft") {
-        setAim(aim + 2); // left = larger angle (toward 170°)
+        setAim(aim + kb); // left = larger angle (toward 170°)
         e.preventDefault();
       } else if (e.key === "ArrowRight") {
-        setAim(aim - 2);
+        setAim(aim - kb);
         e.preventDefault();
       } else if (e.key === " " || e.key === "Enter" || e.key === "ArrowUp") {
         void fire();
@@ -944,9 +1024,11 @@ export function bubbleModule(): GameModule {
   function render(force = false): void {
     if (disposed || !container || !game) return;
     if (raf) cancelAnimationFrame(raf);
+    cancelReleaseFire();
     if (force || gameOver()) {
       canvas = null;
       aimInput = null;
+      aimReadout = null;
       void presentResult();
       return;
     }
@@ -1100,6 +1182,7 @@ export function bubbleModule(): GameModule {
       disposed = true;
       if (raf) cancelAnimationFrame(raf);
       if (timerRaf) cancelAnimationFrame(timerRaf);
+      cancelReleaseFire();
       raf = 0;
       timerRaf = 0;
       delete window.__bubble;
@@ -1109,6 +1192,7 @@ export function bubbleModule(): GameModule {
       container = null;
       canvas = null;
       aimInput = null;
+      aimReadout = null;
       game = null;
       verifier = null;
     },

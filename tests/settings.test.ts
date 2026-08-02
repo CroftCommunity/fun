@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { resolveBool } from "../src/settings.js";
+import { resolveBool, resolveNumber } from "../src/settings.js";
 
 describe("resolveBool", () => {
   it("honours an explicit stored on/off", () => {
@@ -24,5 +24,27 @@ describe("resolveBool", () => {
   // are tested in a real browser, not here).
   it("defaults an aim-guide-style setting to on when unset", () => {
     expect(resolveBool(null, true)).toBe(true);
+  });
+});
+
+describe("resolveNumber", () => {
+  const opts = { min: 1, max: 5, fallback: 1 };
+
+  it("parses a stored numeric string and clamps it into range", () => {
+    expect(resolveNumber("3", opts)).toBe(3);
+    expect(resolveNumber("9", opts)).toBe(5); // above max clamps down
+    expect(resolveNumber("0", opts)).toBe(1); // below min clamps up
+  });
+
+  it("falls back for null or a non-numeric value", () => {
+    expect(resolveNumber(null, opts)).toBe(1);
+    expect(resolveNumber("", opts)).toBe(1);
+    expect(resolveNumber("abc", opts)).toBe(1);
+    expect(resolveNumber("NaN", opts)).toBe(1);
+  });
+
+  it("rounds to a whole number by default and honours a fractional fallback", () => {
+    expect(resolveNumber("2.7", opts)).toBe(3);
+    expect(resolveNumber(null, { min: 0, max: 400, fallback: 150 })).toBe(150);
   });
 });

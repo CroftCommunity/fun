@@ -88,6 +88,75 @@ test("the aim slider drives the angle and stays within the legal fan", async ({ 
   expect(await page.evaluate(() => window.__bubble!.aim())).toBe(hi);
 });
 
+test("the Fire button spans the full aim-bar width, below the slider", async ({ page }) => {
+  await page.goto("/bubble/?variant=classic&seed=7");
+  await ready(page);
+  const bar = await page.locator(".bub-aimbar").boundingBox();
+  const slider = await page.locator(".bub-aim").boundingBox();
+  const fire = await page.locator(".bub-fire").boundingBox();
+  expect(bar && slider && fire).toBeTruthy();
+  // Full width: the Fire button is (near) as wide as the aim-bar itself.
+  expect(fire!.width).toBeGreaterThanOrEqual(bar!.width * 0.95);
+  // Below the slider: the button's top sits under the slider row.
+  expect(fire!.y).toBeGreaterThan(slider!.y + slider!.height / 2);
+});
+
+test("the live aim readout shows the current angle in degrees", async ({ page }) => {
+  await page.goto("/bubble/?variant=classic&seed=7");
+  await ready(page);
+  await page.evaluate(() => window.__bubble!.setAim(115));
+  await expect(page.locator(".bub-aim-readout")).toHaveText(/115/);
+});
+
+test("fire-on-release is off by default: releasing the slider does not fire", async ({ page }) => {
+  await page.goto("/bubble/?variant=classic&seed=7");
+  await ready(page);
+  const before = await shotsLeft(page);
+  await page.locator(".bub-aim").dispatchEvent("pointerdown");
+  await page.locator(".bub-aim").dispatchEvent("pointerup");
+  // Give any (absent) settle timer time to elapse, then assert no shot spent.
+  await page.waitForTimeout(400);
+  expect(await shotsLeft(page)).toBe(before);
+});
+
+test("fire-on-release, when enabled, fires when the slider is released", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("fun-bubble-fire-on-release", "on");
+    localStorage.setItem("fun-bubble-aim-settle", "0");
+  });
+  await page.goto("/bubble/?variant=classic&seed=7");
+  await ready(page);
+  const before = await shotsLeft(page);
+  await page.locator(".bub-aim").dispatchEvent("pointerdown");
+  await page.locator(".bub-aim").dispatchEvent("pointerup");
+  await expect.poll(() => shotsLeft(page)).toBe(before - 1);
+});
+
+test("re-grabbing the slider cancels a pending fire-on-release", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("fun-bubble-fire-on-release", "on");
+    localStorage.setItem("fun-bubble-aim-settle", "300");
+  });
+  await page.goto("/bubble/?variant=classic&seed=7");
+  await ready(page);
+  const before = await shotsLeft(page);
+  await page.locator(".bub-aim").dispatchEvent("pointerup"); // starts the 300ms settle
+  await page.locator(".bub-aim").dispatchEvent("pointerdown"); // re-grab cancels it
+  await page.waitForTimeout(450);
+  expect(await shotsLeft(page)).toBe(before);
+});
+
+test("the snap step rounds the aim to the chosen increment", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("fun-bubble-aim-snap", "3"));
+  await page.goto("/bubble/?variant=classic&seed=7");
+  await ready(page);
+  // 94 snaps to 93 (a multiple of 3 anchored on 90); 91 snaps back to 90.
+  await page.evaluate(() => window.__bubble!.setAim(94));
+  expect(await page.evaluate(() => window.__bubble!.aim())).toBe(93);
+  await page.evaluate(() => window.__bubble!.setAim(91));
+  expect(await page.evaluate(() => window.__bubble!.aim())).toBe(90);
+});
+
 test("keyboard: arrows re-aim and Space fires a shot", async ({ page }) => {
   await page.goto("/bubble/?variant=classic&seed=7");
   await ready(page);
@@ -158,6 +227,53 @@ test("the aim guide is on by default and can be turned off (persists)", async ({
   await ready(page);
   await page.locator(".sol-settings summary").click();
   await expect(page.locator(".bub-set-aimguide")).not.toBeChecked();
+});
+
+test("the Aim & controls menu lists the four tunables, each with a live demo", async ({ page }) => {
+  await page.goto("/bubble/?variant=classic&seed=7");
+  await ready(page);
+  await page.locator(".bub-aim-settings summary").click();
+  const sheet = page.locator(".bub-aim-settings .sheet");
+  await expect(sheet).toBeVisible();
+  await expect(sheet.locator(".sheet-row")).toHaveCount(4);
+  await expect(sheet.locator(".sheet-demo")).toHaveCount(4);
+  for (const id of ["fire-on-release", "snap", "gain", "settle"]) {
+    await expect(sheet.locator(`[data-setting="${id}"]`)).toBeVisible();
+  }
+});
+
+test("toggling fire-on-release in the menu persists across a reload", async ({ page }) => {
+  await page.goto("/bubble/?variant=classic&seed=7");
+  await ready(page);
+  await page.locator(".bub-aim-settings summary").click();
+  const toggle = page.locator('[data-setting="fire-on-release"] input[type="checkbox"]');
+  await expect(toggle).not.toBeChecked();
+  // The checkbox is a visually-hidden switch; click its label to flip it.
+  await page.locator('[data-setting="fire-on-release"] .sheet-toggle').click();
+  await expect(toggle).toBeChecked();
+  await page.reload();
+  await ready(page);
+  await page.locator(".bub-aim-settings summary").click();
+  await expect(page.locator('[data-setting="fire-on-release"] input[type="checkbox"]')).toBeChecked();
+});
+
+test("changing the snap step in the menu re-snaps the live aim immediately", async ({ page }) => {
+  await page.goto("/bubble/?variant=classic&seed=7");
+  await ready(page);
+  await page.evaluate(() => window.__bubble!.setAim(97)); // step 1 → stays 97
+  expect(await page.evaluate(() => window.__bubble!.aim())).toBe(97);
+  await page.locator(".bub-aim-settings summary").click();
+  // Set the snap range to 5; the live aim re-snaps to 95 (a mult of 5 from 90).
+  await page.locator('[data-setting="snap"] .sheet-range').fill("5");
+  expect(await page.evaluate(() => window.__bubble!.aim())).toBe(95);
+});
+
+test("the Aim & controls menu has no axe violations when open", async ({ page }) => {
+  await page.goto("/bubble/?variant=classic&seed=7");
+  await ready(page);
+  await page.locator(".bub-aim-settings summary").click();
+  await expect(page.locator(".bub-aim-settings .sheet")).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
 
 test("with hints off, 'I'm done' ends the round", async ({ page }) => {
