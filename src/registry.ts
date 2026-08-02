@@ -11,6 +11,7 @@ import { wyrdleModule } from "./games/wyrdle/wyrdle.js";
 import { twenty48Module } from "./games/2048/2048.js";
 import { alignModule } from "./games/align/align.js";
 import { blockdokuModule } from "./games/blockdoku/blockdoku.js";
+import { looseendsModule } from "./games/looseends/looseends.js";
 import { colorSortModule } from "./games/color-sort/color-sort.js";
 import { astrayModule } from "./games/astray/astray.js";
 import { hexglModule } from "./games/hexgl/hexgl.js";
@@ -33,6 +34,7 @@ export const REGISTRY: readonly GameEntry[] = [
   { id: "2048", title: "2048", icon: "🔢", status: "playable", load: twenty48Module },
   { id: "align", title: "Align", icon: "🟪", status: "playable", load: alignModule },
   { id: "blockdoku", title: "Blockdoku", icon: "🟦", status: "playable", load: blockdokuModule },
+  { id: "looseends", title: "Loose Ends", icon: "🎯", status: "playable", load: looseendsModule },
   { id: "color-sort", title: "Color Sort", icon: "🧪", status: "playable", load: colorSortModule },
   {
     id: "astray",

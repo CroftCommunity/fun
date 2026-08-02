@@ -9,7 +9,7 @@ a portable artifact addressable at its own URL.
 `fun.croft.ing` presents games in a **slide-out drawer** over a persistent play area; each game can
 also go **full-screen** or **open in its own tab** (so every game has its own URL). A game is a module
 that implements one contract and renders chrome-agnostically into a mount point — the drawer is built
-once and every game reuses it. Shelf order: **solitaire → match-3 → bubble → wyrdle → 2048 → align → blockdoku → cribbage**.
+once and every game reuses it. Shelf order: **solitaire → match-3 → bubble → wyrdle → 2048 → align → blockdoku → loose ends → cribbage**.
 
 ## Layout
 
@@ -40,6 +40,10 @@ crates/
                      original AGPL game, seeded deal, row/col/box union clearing,
                      ported scoring, endless score-attack) — green (no solver: every deal is playable)
   blockdoku-wasm/    browser binding over blockdoku-core (raw C-ABI + serde-JSON)      — built
+  looseends-core/    deterministic arrow-release (tap-away) engine — integer-exact
+                     FNV/mulberry32 RNG, FREE test + release, solvable-by-construction
+                     generator, state hash — green (no solver: solvable by construction)
+  looseends-wasm/    browser binding over looseends-core (raw C-ABI + serde-JSON)   — built
   twenty48-wasm/     browser binding over twenty48-core (raw C-ABI + serde-JSON)   — built
 games/solitaire/     daily-pack.json — a year of winnable daily seeds + a fixture win line (v2, seeds-lean)
 games/bubble/        daily-pack.json — a year of winnable clear-the-board seeds + a fixture clear line

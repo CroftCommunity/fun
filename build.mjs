@@ -13,7 +13,7 @@ const dist = join(root, "dist");
 
 // Game entry pages: "" is the home/drawer page (no game mounted); the rest carry
 // <body data-game> so the chrome knows what to mount.
-const GAME_PAGES = ["", "placeholder", "solitaire", "match3", "bubble", "wyrdle", "2048", "align", "blockdoku", "color-sort", "astray", "hexgl", "clumsybird", "puzzles", "orchard-drop", "cribbage"];
+const GAME_PAGES = ["", "placeholder", "solitaire", "match3", "bubble", "wyrdle", "2048", "align", "blockdoku", "looseends", "color-sort", "astray", "hexgl", "clumsybird", "puzzles", "orchard-drop", "cribbage"];
 
 // Tier-2 wrapped games: their vendored bundle ships under src/games/<id>/vendor/
 // and is served at /<id>/vendor/ for the sandboxed iframe to load same-origin.
@@ -103,6 +103,10 @@ else console.warn("note: align.wasm not built yet — run `npm run build:wasm` (
 const bdwasm = join(root, "target/wasm32-unknown-unknown/release/blockdoku_wasm.wasm");
 if (await exists(bdwasm)) await cp(bdwasm, join(dist, "blockdoku.wasm"));
 else console.warn("note: blockdoku.wasm not built yet — run `npm run build:wasm` (blockdoku needs it)");
+
+const lewasm = join(root, "target/wasm32-unknown-unknown/release/looseends_wasm.wasm");
+if (await exists(lewasm)) await cp(lewasm, join(dist, "looseends.wasm"));
+else console.warn("note: looseends.wasm not built yet — run `npm run build:wasm` (loose ends needs it)");
 
 const cswasm = join(root, "target/wasm32-unknown-unknown/release/color_sort_wasm.wasm");
 if (await exists(cswasm)) await cp(cswasm, join(dist, "color-sort.wasm"));
