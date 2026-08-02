@@ -300,7 +300,8 @@ const SHOTS = [
         });
         if (best >= 0) window.__blockdoku.select(best);
       });
-      await page.waitForSelector(".bdk-cell.bdk-legal");
+      // The selected piece shows a snapped placement preview (not a full glow).
+      await page.waitForSelector(".bdk-cell.bdk-ghost");
     },
   },
   {

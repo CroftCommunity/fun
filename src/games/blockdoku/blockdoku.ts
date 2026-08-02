@@ -58,6 +58,7 @@ declare global {
       seed: bigint;
       select: (slot: number) => void;
       place: (slot: number, row: number, col: number) => void;
+      tapAt: (row: number, col: number) => void;
       hint: () => void;
       undo: () => void;
     };
@@ -158,7 +159,8 @@ export function blockdokuModule(): GameModule {
   let seed = 0n;
   let config: DealConfig = { ...DEFAULT_CONFIG };
   let selected: number | null = null;
-  let cursor = { r: 0, c: 0 };
+  let cursor = { r: 4, c: 4 }; // the target the piece centres on (hover / keyboard)
+  let boardEl: HTMLElement | null = null;
 
   const statusEl = el("p", { class: "sol-status", role: "status", "aria-live": "polite" });
   const setStatus = (msg: string): void => {
@@ -172,21 +174,51 @@ export function blockdokuModule(): GameModule {
   const legalFor = (slot: number | null): MoveView[] =>
     slot === null ? [] : game!.legalMoves().filter((m) => m.slot === slot);
 
+  // "Tap the middle of the piece; it snaps to the nearest spot it fits." Among the
+  // core's legal placements for the slot, pick the one whose piece-centre is
+  // closest to the target cell (tie-break row then col). The UI never invents a
+  // placement — it only ever chooses among core-legal moves.
+  const snapAnchor = (slot: number | null, tr: number, tc: number): MoveView | null => {
+    if (slot === null || !game) return null;
+    const piece = game.tray()[slot];
+    const legal = legalFor(slot);
+    if (!piece || legal.length === 0) return null;
+    const cr = piece.rows / 2;
+    const cc = piece.cols / 2;
+    let best = legal[0]!;
+    let bestD = Infinity;
+    for (const m of legal) {
+      const dr = m.row + cr - (tr + 0.5);
+      const dc = m.col + cc - (tc + 0.5);
+      const d = dr * dr + dc * dc;
+      if (d < bestD) {
+        bestD = d;
+        best = m;
+      }
+    }
+    return best;
+  };
+
   const selectSlot = (slot: number): void => {
     if (!game || game.isOver()) return;
-    const legal = legalFor(slot);
-    if (legal.length === 0) return; // an unplaceable piece cannot be selected
+    if (legalFor(slot).length === 0) return; // an unplaceable piece cannot be selected
     selected = slot;
-    cursor = { r: legal[0]!.row, c: legal[0]!.col };
     render();
   };
 
-  const place = (slot: number, row: number, col: number): void => {
+  const placeAt = (slot: number, row: number, col: number): void => {
     if (!game || game.isOver()) return;
     if (game.playPlace(slot, row, col) !== "applied") return; // core decides
     selected = null;
     setStatus("");
     render();
+  };
+
+  // Place the selected piece near a target cell, snapped to its nearest fit.
+  const placeSnapped = (tr: number, tc: number): void => {
+    if (selected === null) return;
+    const a = snapAnchor(selected, tr, tc);
+    if (a) placeAt(a.slot, a.row, a.col);
   };
 
   const undo = (): void => {
@@ -297,17 +329,31 @@ export function blockdokuModule(): GameModule {
     return bar;
   };
 
-  const renderBoard = (b: BoardView): HTMLElement => {
-    const legal = legalFor(selected);
-    const legalSet = new Set(legal.map((m) => `${m.row},${m.col}`));
-    // The ghost footprint = the selected piece placed at the cursor, if legal.
-    const ghost = new Set<string>();
-    if (selected !== null && legalSet.has(`${cursor.r},${cursor.c}`)) {
-      const piece = game!.tray()[selected];
-      if (piece) footprint(piece, cursor.r, cursor.c).forEach((k) => ghost.add(k));
+  // Repaint only the transient overlay (cursor ring + the single snapped ghost)
+  // via targeted class toggles, so a hover/keyboard move doesn't re-render 81
+  // cells. There is NO full-board legal glow — just a preview of where THIS tap
+  // would land, snapped to the nearest fit.
+  const paintGhost = (): void => {
+    if (!boardEl) return;
+    boardEl
+      .querySelectorAll(".bdk-ghost, .bdk-cursor")
+      .forEach((c) => c.classList.remove("bdk-ghost", "bdk-cursor"));
+    boardEl
+      .querySelector(`.bdk-cell[data-r="${cursor.r}"][data-c="${cursor.c}"]`)
+      ?.classList.add("bdk-cursor");
+    if (selected === null) return;
+    const a = snapAnchor(selected, cursor.r, cursor.c);
+    const piece = game!.tray()[selected];
+    if (!a || !piece) return;
+    for (const key of footprint(piece, a.row, a.col)) {
+      boardEl
+        .querySelector(`.bdk-cell[data-r="${key.split(",")[0]}"][data-c="${key.split(",")[1]}"]`)
+        ?.classList.add("bdk-ghost");
     }
+  };
 
-    const boardEl = el("div", {
+  const renderBoard = (b: BoardView): HTMLElement => {
+    const board = el("div", {
       class: "bdk-board",
       role: "group",
       "aria-label": "Blockdoku board",
@@ -315,34 +361,38 @@ export function blockdokuModule(): GameModule {
     });
     for (let r = 0; r < b.size; r++) {
       for (let c = 0; c < b.size; c++) {
-        const key = `${r},${c}`;
         const classes = ["bdk-cell"];
         if (b.cells[r]![c] === 1) classes.push("bdk-filled");
-        if (ghost.has(key)) classes.push("bdk-ghost");
-        if (legalSet.has(key)) classes.push("bdk-legal");
-        if (r === cursor.r && c === cursor.c) classes.push("bdk-cursor");
         if (r % 3 === 0) classes.push("bdk-box-top");
         if (c % 3 === 0) classes.push("bdk-box-left");
         // Cells are presentational: the labelled tray buttons + keyboard
         // (1/2/3 select, arrows move the cursor, Enter places) are the
         // accessible floor, so the 81-cell grid needs no per-cell ARIA.
-        const cell = el("div", {
-          class: classes.join(" "),
-          "data-r": String(r),
-          "data-c": String(c),
-          "aria-hidden": "true",
-        });
-        boardEl.append(cell);
+        board.append(
+          el("div", {
+            class: classes.join(" "),
+            "data-r": String(r),
+            "data-c": String(c),
+            "aria-hidden": "true",
+          }),
+        );
       }
     }
-    boardEl.addEventListener("click", (e) => {
+    // Hover moves the preview (desktop); a tap drops the piece, snapped.
+    board.addEventListener("pointermove", (e) => {
+      if (selected === null) return;
+      const cell = (e.target as HTMLElement).closest<HTMLElement>(".bdk-cell");
+      if (!cell) return;
+      cursor = { r: Number(cell.dataset.r), c: Number(cell.dataset.c) };
+      paintGhost();
+    });
+    board.addEventListener("click", (e) => {
       const cell = (e.target as HTMLElement).closest<HTMLElement>(".bdk-cell");
       if (!cell || selected === null) return;
-      const r = Number(cell.dataset.r);
-      const c = Number(cell.dataset.c);
-      if (legalSet.has(`${r},${c}`)) place(selected, r, c);
+      placeSnapped(Number(cell.dataset.r), Number(cell.dataset.c));
     });
-    return boardEl;
+    boardEl = board;
+    return board;
   };
 
   const renderTray = (): HTMLElement => {
@@ -390,7 +440,9 @@ export function blockdokuModule(): GameModule {
     const banner = el(
       "p",
       { class: "bdk-banner" },
-      "Tap a piece, then tap a glowing cell to drop it. Fill a row, column, or 3×3 box to clear it.",
+      selected === null
+        ? "Tap a piece to pick it up. Fill a row, column, or 3×3 box to clear it."
+        : "Now tap the board where you want it — the piece centres on your tap and snaps to the nearest fit.",
     );
     container.replaceChildren(
       el(
@@ -404,6 +456,7 @@ export function blockdokuModule(): GameModule {
         statusEl,
       ),
     );
+    paintGhost(); // show the cursor ring + snapped preview for the current target
   }
 
   const presentResult = async (): Promise<void> => {
@@ -443,10 +496,10 @@ export function blockdokuModule(): GameModule {
     if (e.key in step) {
       const [dr, dc] = step[e.key]!;
       cursor = { r: Math.max(0, Math.min(8, cursor.r + dr)), c: Math.max(0, Math.min(8, cursor.c + dc)) };
-      render();
+      paintGhost(); // move the preview without re-rendering the whole board
       e.preventDefault();
     } else if (e.key === "Enter" && selected !== null) {
-      place(selected, cursor.r, cursor.c);
+      placeSnapped(cursor.r, cursor.c);
       e.preventDefault();
     }
   };
@@ -459,7 +512,7 @@ export function blockdokuModule(): GameModule {
       (nextMode === "daily" ? BigInt(game.dailySeed(dayIndexUTC(new Date()))) : randomSeed());
     seed = base;
     selected = null;
-    cursor = { r: 0, c: 0 };
+    cursor = { r: 4, c: 4 };
     setStatus("");
     game.newGame(base, config);
     exposeHook();
@@ -500,7 +553,8 @@ export function blockdokuModule(): GameModule {
       refresh: () => render(),
       seed,
       select: (slot: number) => selectSlot(slot),
-      place: (slot: number, row: number, col: number) => place(slot, row, col),
+      place: (slot: number, row: number, col: number) => placeAt(slot, row, col),
+      tapAt: (row: number, col: number) => placeSnapped(row, col),
       hint: () => showHint(),
       undo: () => undo(),
     };

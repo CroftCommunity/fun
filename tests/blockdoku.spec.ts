@@ -23,51 +23,35 @@ test("the board, tray, and HUD render", async ({ page }) => {
   await expect(page.locator(".bdk-banner")).toContainText(/piece/i);
 });
 
-test("selecting a piece glows exactly the core's legal anchors", async ({ page }) => {
+test("selecting a piece previews one snapped placement, not a full-grid glow", async ({ page }) => {
   await page.goto("/blockdoku/?seed=7");
   await ready(page);
-  // Select slot 0 through the live hook, then compare the glowed cells to the
-  // core's legalMoves for that slot. The UI must never invent or drop legality.
+  // No legal-glow class exists any more (that lit up nearly the whole board).
+  expect(await page.locator(".bdk-cell.bdk-legal").count()).toBe(0);
   await page.evaluate(() => window.__blockdoku!.select(0));
-  const expected = await page.evaluate(() =>
-    window
-      .__blockdoku!.game.legalMoves()
-      .filter((m) => m.slot === 0)
-      .map((m) => `${m.row},${m.col}`)
-      .sort(),
-  );
-  const glowed = await page.evaluate(() =>
-    [...document.querySelectorAll<HTMLElement>(".bdk-cell.bdk-legal")]
-      .map((c) => `${c.dataset.r},${c.dataset.c}`)
-      .sort(),
-  );
-  expect(glowed).toEqual(expected);
-  expect(glowed.length).toBeGreaterThan(0);
+  // The preview shows exactly the selected piece's footprint (its filled-cell
+  // count) — a single placement, not every legal anchor.
+  const cellCount = await page.evaluate(() => {
+    const p = window.__blockdoku!.game.tray()[0]!;
+    return p.cells.flat().filter((v) => v === 1).length;
+  });
+  expect(await page.locator(".bdk-cell.bdk-ghost").count()).toBe(cellCount);
 });
 
-test("tapping a glowing cell places; an illegal tap is a no-op", async ({ page }) => {
+test("tapping the board drops the piece, snapped to the nearest legal placement", async ({ page }) => {
   await page.goto("/blockdoku/?seed=7");
   await ready(page);
   await page.evaluate(() => window.__blockdoku!.select(0));
-
   const before = await page.evaluate(() => window.__blockdoku!.game.currentHash());
-  // Tap a non-legal cell (find one not in the legal set) — nothing changes.
-  const illegal = await page.evaluate(() => {
-    const legal = new Set(
-      window.__blockdoku!.game.legalMoves().filter((m) => m.slot === 0).map((m) => `${m.row},${m.col}`),
-    );
-    for (let r = 0; r < 9; r++)
-      for (let c = 0; c < 9; c++) if (!legal.has(`${r},${c}`)) return { r, c };
-    return null;
-  });
-  if (illegal) {
-    await page.locator(`.bdk-cell[data-r="${illegal.r}"][data-c="${illegal.c}"]`).click();
-    expect(await page.evaluate(() => window.__blockdoku!.game.currentHash())).toBe(before);
-  }
-
-  // Now tap a glowing legal cell — the board changes.
-  await page.locator(".bdk-cell.bdk-legal").first().click();
-  expect(await page.evaluate(() => window.__blockdoku!.game.currentHash())).not.toBe(before);
+  // Tap an arbitrary board cell — even an occupied/awkward one — and the piece
+  // still lands (snapped), so the board changes and a legal move was recorded.
+  await page.evaluate(() => window.__blockdoku!.tapAt(4, 4));
+  const after = await page.evaluate(() => ({
+    hash: window.__blockdoku!.game.currentHash(),
+    moves: window.__blockdoku!.game.legalMoves(), // (re-read; just proving it advanced)
+  }));
+  expect(after.hash).not.toBe(before);
+  expect(await page.evaluate(() => window.__blockdoku!.game.currentHash())).toBe(after.hash);
 });
 
 test("plays to a verifiable result", async ({ page }) => {
@@ -94,7 +78,7 @@ test("undo reverts the last placement", async ({ page }) => {
   await ready(page);
   const before = await page.evaluate(() => window.__blockdoku!.game.currentHash());
   await page.evaluate(() => window.__blockdoku!.select(0));
-  await page.locator(".bdk-cell.bdk-legal").first().click();
+  await page.evaluate(() => window.__blockdoku!.tapAt(4, 4));
   const after = await page.evaluate(() => window.__blockdoku!.game.currentHash());
   expect(after).not.toBe(before);
   await page.locator(".bdk-undo").click();
