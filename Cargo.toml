@@ -14,6 +14,7 @@ resolver = "2"
 members = [
     "crates/align-core",
     "crates/align-wasm",
+    "crates/blockdoku-core",
     "crates/bubble-core",
     "crates/wyrdle-core",
     "crates/twenty48-core",
@@ -54,6 +55,7 @@ thiserror = "=2.0.18"
 
 # internal crates
 align-core = { path = "crates/align-core" }
+blockdoku-core = { path = "crates/blockdoku-core" }
 bubble-core = { path = "crates/bubble-core" }
 wyrdle-core = { path = "crates/wyrdle-core" }
 match3-core = { path = "crates/match3-core" }

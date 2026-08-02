@@ -37,6 +37,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "blockdoku-core"
+version = "0.0.0"
+dependencies = [
+ "hex",
+ "rand",
+ "rand_chacha",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+]
+
+[[package]]
 name = "bubble-core"
 version = "0.0.0"
 dependencies = [
