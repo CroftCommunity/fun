@@ -215,6 +215,23 @@ test("clearing a campaign level shows stars + Next level and persists progress (
   expect(stars).toBeGreaterThanOrEqual(1);
 });
 
+test("a campaign success surfaces a skippable Biscuit beat; Skip dismisses it", async ({ page }) => {
+  await page.goto("/match3/?level=1");
+  await ready(page);
+  // A clearing swap in the campaign fires the first-clear beat overlay.
+  const swap = await page.evaluate(() => window.__match3!.game.legalMoves()[0]!);
+  await page.locator(`.m3-gem[data-r="${swap[0]}"][data-c="${swap[1]}"]`).click();
+  await page.locator(`.m3-gem[data-r="${swap[2]}"][data-c="${swap[3]}"]`).click();
+  const beat = page.locator(".m3-beat");
+  await expect(beat).toBeVisible();
+  await expect(beat).toHaveAttribute("aria-live", "polite");
+  // The card is accessible while shown.
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  // Skip is one tap and dismisses it.
+  await beat.locator(".m3-beat-skip").click();
+  await expect(beat).toHaveCount(0);
+});
+
 test("Level 1 first load glows the tutorial opening move, once", async ({ page }) => {
   await page.goto("/match3/?level=1");
   await ready(page);

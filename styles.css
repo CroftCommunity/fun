@@ -939,6 +939,88 @@ body.fullscreen .play-area {
   }
 }
 
+/* --- narrative scaffold: Biscuit's beat overlay (a skippable corner card) --- */
+/* A small card that surfaces a story beat without blocking play — it sits in the
+   corner, and only the card takes pointer events. Placeholder now (Phase 2);
+   Phase 3 drops a real clip into .m3-beat-media. */
+.m3-beat {
+  position: fixed;
+  left: 0.9rem;
+  bottom: 0.9rem;
+  z-index: 60;
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+  max-width: min(22rem, calc(100vw - 1.8rem));
+  padding: 0.7rem 0.85rem;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 28%);
+  animation: m3-beat-in 0.32s ease-out;
+}
+.m3-beat-media {
+  flex: 0 0 auto;
+  width: 2.6rem;
+  height: 2.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.7rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 32%, color-mix(in srgb, var(--accent) 30%, var(--surface)), var(--surface));
+  border: 1px solid var(--border);
+}
+.m3-beat-body {
+  min-width: 0;
+}
+.m3-beat-title {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.m3-beat-caption {
+  margin: 0.15rem 0 0.4rem;
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+}
+.m3-beat-controls {
+  display: flex;
+  gap: 0.4rem;
+}
+.m3-beat-controls button {
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: 0.2rem 0.55rem;
+}
+.m3-beat-controls .m3-beat-play {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+@keyframes m3-beat-in {
+  from {
+    transform: translateY(20%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .m3-beat {
+    animation: none;
+  }
+}
+
 /* Gem-coloured glyphs in the win cascade (beats the generic `.sol-cascade span`). */
 .sol-cascade .gem-0 {
   color: var(--gem-0);

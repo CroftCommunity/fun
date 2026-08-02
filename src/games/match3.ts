@@ -16,6 +16,8 @@ import {
 import { dayIndexUTC } from "./share.js";
 import { analyzeCascade, celebrationTier, showCelebration, spawnBurst, type CascadeInfo } from "./match3-fx.js";
 import { createBus, type Bus } from "./match3-events.js";
+import { attachStory, type StoryEngine } from "./match3-story.js";
+import { createOverlay, type Overlay } from "./match3-overlay.js";
 import {
   campaignStars,
   clearResume,
@@ -278,9 +280,11 @@ export function match3Module(): GameModule {
   const FALL_MS = 90;
   const delay = (ms: number): Promise<void> => new Promise((res) => setTimeout(res, ms));
 
-  // Gameplay success bus: bursts + celebration (below) and — Phase 2 — the
-  // narrative overlay subscribe to the same stream, so FX and story never disagree.
+  // Gameplay success bus: bursts + celebration (below) and the narrative overlay
+  // subscribe to the same stream, so FX and story never disagree.
   const bus = createBus();
+  let overlay: Overlay | null = null;
+  let story: StoryEngine | null = null;
 
   const reducedMotion = (): boolean => {
     try {
@@ -1003,6 +1007,7 @@ export function match3Module(): GameModule {
     hint = null;
     lastScore = 0;
     scoreBumped = false;
+    story?.resetForNewBoard();
     setStatus("");
     exposeHook();
     render();
@@ -1054,6 +1059,7 @@ export function match3Module(): GameModule {
     const nudge = lvl.id === 1 && lvl.hint && !replay?.length && !tutorialSeen();
     hint = nudge ? (lvl.hint ?? null) : null;
     if (nudge) markTutorialSeen();
+    story?.resetForNewBoard();
     setStatus(replay?.length ? `Resumed Level ${lvl.id}.` : (lvl.intro ?? ""));
     exposeHook();
     render();
@@ -1121,6 +1127,14 @@ export function match3Module(): GameModule {
           return;
         }
         if (disposed) return;
+        // The narrative overlay (Biscuit's beats) — gated to campaign play: outside
+        // the campaign, decline the beat so it stays unconsumed for later.
+        overlay = createOverlay(document.body);
+        story = attachStory(bus, (beat) => {
+          if (level === null || disposed) return false;
+          overlay?.show(beat);
+          return true;
+        });
         const url = new URL(location.href);
         const shared = url.searchParams.get("r");
         if (shared) {
@@ -1174,6 +1188,10 @@ export function match3Module(): GameModule {
     unmount(): void {
       disposed = true;
       delete window.__match3;
+      story?.stop();
+      story = null;
+      overlay?.destroy();
+      overlay = null;
       cascadeEl?.remove();
       cascadeEl = null;
       container?.replaceChildren();
