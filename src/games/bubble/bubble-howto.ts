@@ -48,10 +48,14 @@ export const BUBBLE_GUIDE: Guide = {
         {
           kind: "steps",
           items: [
-            "Aim: move the pointer over the board (or drag on a touchscreen), use the ←/→ keys, or drag the Aim slider.",
+            "Aim: drag the Aim slider under the board (its live readout shows the angle), move the pointer over the board, or use the ←/→ keys.",
             "Read the dotted guide — it shows the flight path, including wall bounces, and rings the cell the bubble will stick to.",
-            "Fire: click/tap the board, press the Fire button, or press Space. The bubble flies to exactly where the guide showed.",
+            "Fire: press the full-width Fire button right below the slider, tap the board, or press Space. The bubble flies to exactly where the guide showed.",
           ],
+        },
+        {
+          kind: "prose",
+          text: "Aiming feel depends on your device, so \"⚙ Aim & controls\" under the slider lets you tune it — each setting has a live demo. Turn on Fire on release to shoot by just letting go of the slider (no button); set a Snap step so the aim clicks to steady angles; lower the Swipe gain for finer control; and, with fire-on-release on, a Release settle delay guards against accidental shots. All off/neutral by default.",
         },
         {
           kind: "prose",
