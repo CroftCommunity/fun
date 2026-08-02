@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>sinker · fun.croft.ing</title>
+<style>
+  :root{
+    /* backyard-party palette — every color named */
+    --sky:#a9e4f5;            /* afternoon sky + carved tunnels */
+    --grass:#6fbf4a;          /* grass fringe on the surface only */
+    --grass-dk:#5aa83c;
+    --sand:#e8d3a0;           /* sand base */
+    --sand-b1:#dcc389;        /* strata band 1 */
+    --sand-b2:#d1b578;        /* strata band 2 */
+    --cup-red:#d63a2f;        /* iconic red party cup */
+    --cup-red-dk:#b12d24;
+    --cup-rim:#f4f1ea;        /* white lip */
+    --glass:rgba(200,225,235,.55); /* shot glass body */
+    --board:#b98a4e;          /* plywood face */
+    --board-edge:#8a6234;     /* plywood edge / under-stroke */
+    --board-screw:#6e4a24;    /* screw heads */
+    --ball:#fdfdfd;           /* ping pong white */
+    --ball-sh:#c9ced4;        /* ping pong grey shading */
+    --ink:#3c3325; --chip:#fff8e8;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:#2c4a55;
+    font-family:"Trebuchet MS","Comic Sans MS",system-ui,sans-serif;
+    -webkit-user-select:none;user-select:none}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  canvas{display:block;touch-action:none;border-radius:14px}
+  .hud{position:absolute;display:flex;gap:10px;align-items:center}
+  #hudTL{top:12px;left:12px}
+  #hudTR{top:12px;right:12px}
+  .chip{background:var(--chip);color:var(--ink);font-weight:700;letter-spacing:.06em;
+    padding:8px 14px;border-radius:999px;font-size:14px;box-shadow:0 3px 0 rgba(0,0,0,.18)}
+  button.rnd{width:52px;height:52px;border:none;border-radius:50%;cursor:pointer;
+    font-size:24px;color:#fff;box-shadow:0 4px 0 rgba(0,0,0,.22);
+    display:flex;align-items:center;justify-content:center}
+  button.rnd:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(0,0,0,.22)}
+  button.rnd:focus-visible,button.big:focus-visible{outline:3px solid #fff;outline-offset:2px}
+  #restart{background:#f2a63a}
+  #overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+    background:rgba(20,30,35,.28);border-radius:14px}
+  #overlay.show{display:flex}
+  .card{background:var(--cup-red);border:5px solid var(--cup-rim);border-radius:22px;
+    padding:26px 30px;text-align:center;color:#fff;max-width:82%;box-shadow:0 10px 24px rgba(0,0,0,.3)}
+  .card h1{font-size:34px;letter-spacing:.05em;text-shadow:0 3px 0 rgba(0,0,0,.22);margin-bottom:8px}
+  .card p{color:#ffe7e3;font-size:15px;margin-bottom:18px}
+  button.big{border:none;cursor:pointer;background:#57c94f;color:#fff;font-weight:800;
+    font-size:20px;letter-spacing:.08em;padding:14px 34px;border-radius:999px;
+    box-shadow:0 5px 0 #3d9a37}
+  button.big:active{transform:translateY(3px);box-shadow:0 2px 0 #3d9a37}
+  #toast{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);
+    background:rgba(40,30,20,.85);color:#ffe9bd;padding:10px 18px;border-radius:999px;
+    font-size:14px;font-weight:700;opacity:0;transition:opacity .3s;pointer-events:none;
+    max-width:80%;text-align:center}
+  #toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game"></canvas>
+  <div class="hud" id="hudTL"><span class="chip" id="lvlChip">SINKER · 1/8</span></div>
+  <div class="hud" id="hudTR">
+    <button class="rnd" id="restart" aria-label="Restart level" title="Restart">↺</button>
+  </div>
+  <div id="overlay">
+    <div class="card">
+      <h1 id="ovTitle">SUNK!</h1>
+      <p id="ovText">The ball found its cup.</p>
+      <button class="big" id="ovBtn">NEXT LEVEL</button>
+    </div>
+  </div>
+  <div id="toast"></div>
+</div>
+<script>
+"use strict";
+/* ============================================================
+   SINKER — dig-a-path physics puzzle for fun.croft.ing
+   Carve tunnels through sand; a ping pong ball falls under
+   gravity; land it IN a red party cup or balance it ON a shot
+   glass. Self-contained; no dependencies; no build step.
+
+   Architecture inherited from the reference build: terrain
+   bitmap + collision grid, 20-point sampled-circle physics,
+   closest-point segment colliders. Theme, feel, and the
+   shot-glass win mechanic are original to this project.
+   ============================================================ */
+
+/* ---------- setup ---------- */
+const W = 480, H = 960;                 // logical playfield
+const cvs = document.getElementById("game");
+const ctx = cvs.getContext("2d");
+const terrain = document.createElement("canvas"); terrain.width = W; terrain.height = H;
+const tctx = terrain.getContext("2d");
+let solid = new Uint8Array(W * H);      // 1 = sand present
+let scale = 1;
+
+function fit(){
+  const vw = innerWidth, vh = innerHeight;
+  scale = Math.min(vw / W, vh / H) * 0.985;
+  cvs.width  = Math.round(W * scale * devicePixelRatio);
+  cvs.height = Math.round(H * scale * devicePixelRatio);
+  cvs.style.width  = (W * scale) + "px";
+  cvs.style.height = (H * scale) + "px";
+  ctx.setTransform(scale * devicePixelRatio, 0, 0, scale * devicePixelRatio, 0, 0);
+}
+addEventListener("resize", fit); fit();
+
+const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ---------- levels ---------- */
+/* barriers: undiggable plywood boards [x1,y1,x2,y2]
+   pockets:  pre-carved air bubbles [x,y,r]
+   rocks:    heavy grey balls that obey physics (can plug a party cup)
+   cup:      { type:"party"|"shot", x, y }  (exactly one goal per level) */
+const LEVELS = [
+  { name:"First dig", skyY:300,
+    ball:[240,282], cup:{type:"party",x:240,y:800}, barriers:[], pockets:[], rocks:[],
+    tip:"Drag through the sand to carve a path down to the cup." },
+  { name:"The funnel", skyY:260,
+    ball:[110,242], cup:{type:"party",x:240,y:842},
+    barriers:[[0,660,200,760],[480,660,280,760]],   // gap widened for the bouncier ball
+    pockets:[], rocks:[],
+    tip:"The plywood boards can't be dug. Use the gap." },
+  { name:"Sidestep", skyY:0,
+    ball:[340,290], cup:{type:"party",x:140,y:810},
+    barriers:[[0,560,296,560],[368,560,480,560]],
+    pockets:[[340,290,42]], rocks:[],
+    tip:"Buried start. Find the opening, then double back." },
+  { name:"Switchback", skyY:0,
+    ball:[110,250], cup:{type:"party",x:60,y:860},
+    barriers:[[0,430,320,540],[480,600,160,700]],   // two angled boards funnel a long S
+    pockets:[[110,250,42]], rocks:[],
+    tip:"Two ramps, one long S. Let it bank down into the corner." },
+  { name:"Rock plug", skyY:0,
+    ball:[95,250], cup:{type:"party",x:240,y:860},
+    barriers:[[0,700,182,700],[298,700,480,700]],
+    pockets:[[95,250,42],[240,560,34]], rocks:[[240,556,20]],
+    tip:"That rock would love to plug your cup. Dig around it." },
+  { name:"On the rocks", skyY:300,
+    ball:[240,282], cup:{type:"shot",x:240,y:792},
+    barriers:[[40,808,440,808]],                     // full-width board the glass stands on
+    pockets:[], rocks:[],
+    tip:"This one doesn't open. Land ON it, gently." },
+  { name:"Bank shot", skyY:0,
+    ball:[370,250], cup:{type:"party",x:420,y:860},
+    barriers:[[480,430,160,540],[0,600,320,700]],   // bank off the angled boards into the far corner
+    pockets:[[370,250,42]], rocks:[],
+    tip:"Straight down won't do it. Bank it off the boards." },
+  { name:"Last call", skyY:0,
+    ball:[110,250], cup:{type:"shot",x:240,y:812},
+    barriers:[[170,440,480,440],[40,828,440,828]],   // gap on the left; glass centered on the floor board
+    pockets:[[110,250,42],[340,690,34]], rocks:[[340,690,20]],
+    tip:"Slip the gap, angle to the rim — and mind the rock. Last call." },
+];
+
+/* ---------- state ---------- */
+let levelIdx = 0, state = "play";       // play | won | done
+let ball, rocks, cup, goalWalls, goalPosts, confetti = [], toastTimer = 0;
+let settleTimer = 0, missedToasted = false;
+const R = 16, ROCK_R = 20;
+
+function save(k,v){ try{ localStorage.setItem(k,v); }catch(e){ mem[k]=v; } }
+function load(k){ try{ const v=localStorage.getItem(k); return v==null?(k in mem?mem[k]:null):v; }catch(e){ return (k in mem)?mem[k]:null; } }
+const mem = {};                         // in-memory fallback when storage is blocked
+levelIdx = Math.min(parseInt(load("sinker.level")||"0",10)||0, LEVELS.length-1);
+
+/* ---------- terrain painting ---------- */
+function paintTerrain(skyY){
+  tctx.setTransform(1,0,0,1,0,0);
+  tctx.globalCompositeOperation = "source-over";
+  tctx.clearRect(0,0,W,H);
+  tctx.fillStyle = "#e8d3a0";
+  tctx.fillRect(0, skyY, W, H - skyY);
+  // wavy surface lip
+  if (skyY > 0){
+    tctx.beginPath(); tctx.moveTo(0, skyY);
+    for(let x=0;x<=W;x+=24) tctx.lineTo(x, skyY - 5*Math.sin(x/53));
+    tctx.lineTo(W, skyY+14); tctx.lineTo(0, skyY+14); tctx.closePath();
+    tctx.fill();
+  }
+  // strata + speckles, clipped to existing sand
+  tctx.globalCompositeOperation = "source-atop";
+  const bands = ["#dcc389","#d1b578","#e2c78d"];
+  for(let i=0;i<9;i++){
+    const y0 = skyY + 70 + i*105, amp = 12 + (i%3)*5;
+    tctx.fillStyle = bands[i % bands.length];
+    tctx.beginPath(); tctx.moveTo(0, y0);
+    for(let x=0;x<=W;x+=20) tctx.lineTo(x, y0 + amp*Math.sin(x/70 + i*1.7));
+    tctx.lineTo(W, y0+34);
+    for(let x=W;x>=0;x-=20) tctx.lineTo(x, y0+34 + amp*Math.sin(x/70 + i*1.7));
+    tctx.closePath(); tctx.fill();
+  }
+  tctx.fillStyle = "rgba(110,85,40,.18)";
+  for(let i=0;i<90;i++){
+    const x = (i*97.3)%W, y = skyY + ((i*211.7)%(H-skyY));
+    tctx.beginPath(); tctx.arc(x,y, 2+(i%3), 0, 7); tctx.fill();
+  }
+  // grass fringe: a wavy green band hugging the surface line only
+  if (skyY > 0){
+    tctx.globalCompositeOperation = "source-over";
+    tctx.fillStyle = "#6fbf4a";
+    tctx.beginPath(); tctx.moveTo(0, skyY+8);
+    for(let x=W;x>=0;x-=14) tctx.lineTo(x, skyY - 4 - 4*Math.abs(Math.sin(x/38)));
+    tctx.lineTo(0, skyY+8); tctx.closePath(); tctx.fill();
+    tctx.strokeStyle = "#5aa83c"; tctx.lineWidth = 2; tctx.lineCap = "round";
+    tctx.beginPath();
+    for(let x=8;x<W;x+=22){ tctx.moveTo(x, skyY+6); tctx.lineTo(x-3, skyY - 6 - 3*Math.sin(x)); }
+    tctx.stroke();
+  }
+  tctx.globalCompositeOperation = "source-over";
+  // collision grid
+  solid.fill(0);
+  const startRow = Math.max(0, skyY|0);
+  for(let y=startRow; y<H; y++) solid.fill(1, y*W, y*W+W);
+}
+
+function carve(x, y, r){
+  tctx.globalCompositeOperation = "destination-out";
+  tctx.beginPath(); tctx.arc(x, y, r, 0, 7); tctx.fill();
+  tctx.globalCompositeOperation = "source-over";
+  const x0=Math.max(0,(x-r)|0), x1=Math.min(W-1,(x+r)|0);
+  const y0=Math.max(0,(y-r)|0), y1=Math.min(H-1,(y+r)|0);
+  const r2=r*r;
+  for(let yy=y0; yy<=y1; yy++){
+    const dy=yy-y, row=yy*W;
+    for(let xx=x0; xx<=x1; xx++){
+      const dx=xx-x;
+      if(dx*dx+dy*dy<=r2) solid[row+xx]=0;
+    }
+  }
+}
+const isSolid = (x,y)=> x<0||x>=W||y<0||y>=H ? true : solid[(y|0)*W + (x|0)]===1;
+
+/* ---------- level lifecycle ---------- */
+function loadLevel(i){
+  const L = LEVELS[i]; state = "play"; confetti = [];
+  settleTimer = 0; missedToasted = false;
+  paintTerrain(L.skyY);
+  for(const p of L.pockets) carve(p[0], p[1], p[2]);
+  ball  = { x:L.ball[0], y:L.ball[1], vx:0, vy:0, r:R, m:1, rest:0.42 };
+  rocks = L.rocks.map(rk => ({ x:rk[0], y:rk[1], vx:0, vy:0, r:rk[2], m:6, rest:0.1 }));
+  cup = L.cup; const cx = cup.x, cy = cup.y;
+  goalWalls = null; goalPosts = null;
+  if(cup.type === "party"){
+    // two inward-slanting side walls + a base (ball falls IN)
+    goalWalls = [
+      [cx-30, cy+10, cx-20, cy-12],
+      [cx+30, cy+10, cx+20, cy-12],
+      [cx-26, cy+12, cx+26, cy+12],
+    ];
+  } else {
+    // two short vertical rim posts; the ball seats in the V they form (settles ON).
+    // Tops sit a few px above the visual rim so a 16 px ball nestles with its
+    // bottom right at rim height (cy) rather than perched above it.
+    goalPosts = [
+      [cx-15, cy-4, cx-15, cy+10],
+      [cx+15, cy-4, cx+15, cy+10],
+    ];
+  }
+  document.getElementById("lvlChip").textContent = `SINKER · ${i+1}/${LEVELS.length}`;
+  document.getElementById("overlay").classList.remove("show");
+  toast(L.tip, 3200);
+}
+function toast(msg, ms){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove("show"), ms);
+}
+
+/* ---------- input ---------- */
+let digging = false, lastP = null;
+function toGame(e){
+  const r = cvs.getBoundingClientRect();
+  return { x:(e.clientX - r.left)/scale, y:(e.clientY - r.top)/scale };
+}
+cvs.addEventListener("pointerdown", e=>{
+  if(state!=="play") return;
+  digging = true; lastP = toGame(e); digAt(lastP.x, lastP.y);
+  cvs.setPointerCapture(e.pointerId);
+});
+cvs.addEventListener("pointermove", e=>{
+  if(!digging || state!=="play") return;
+  const p = toGame(e), dx=p.x-lastP.x, dy=p.y-lastP.y;
+  const d = Math.hypot(dx,dy), steps = Math.max(1, Math.ceil(d/6));
+  for(let s=1;s<=steps;s++) digAt(lastP.x+dx*s/steps, lastP.y+dy*s/steps);
+  lastP = p;
+});
+addEventListener("pointerup", ()=>{ digging=false; lastP=null; });
+function digAt(x,y){ carve(x, y, 24); }   // dig radius 24; boards/glass aren't sand so carving is safe
+
+/* ---------- physics ---------- */
+const G = 2300, MAXV = 1500, DRAG = 0.35;
+function stepBody(b, dt){
+  b.vy += G*dt;
+  const drag = 1 - DRAG*dt;              // ping pong air drag; also tames runaway speeds
+  b.vx *= drag; b.vy *= drag;
+  const sp = Math.hypot(b.vx,b.vy);
+  if(sp > MAXV){ b.vx *= MAXV/sp; b.vy *= MAXV/sp; }
+  b.x += b.vx*dt; b.y += b.vy*dt;
+  // playfield walls (side + top + bottom all solid)
+  if(b.x < b.r+6){ b.x=b.r+6; b.vx = Math.abs(b.vx)*b.rest; }
+  if(b.x > W-b.r-6){ b.x=W-b.r-6; b.vx = -Math.abs(b.vx)*b.rest; }
+  if(b.y < b.r){ b.y=b.r; b.vy = Math.abs(b.vy)*b.rest; }
+  if(b.y > H-b.r-4){ b.y=H-b.r-4; b.vy = -Math.abs(b.vy)*b.rest; b.vx*=0.96; }
+  collideTerrain(b);
+  for(const s of LEVELS[levelIdx].barriers) collideSeg(b, s, 7, 0.55);   // plywood boards bounce
+  if(goalWalls) for(const s of goalWalls) collideSeg(b, s, 5, 0.15);
+  if(goalPosts) for(const s of goalPosts) collideSeg(b, s, 4, 0.05); // rim barely bounces
+}
+function collideTerrain(b){
+  for(let iter=0; iter<6; iter++){
+    let nx=0, ny=0, hits=0;
+    for(let k=0;k<20;k++){
+      const a = k/20*Math.PI*2;
+      const px = b.x + Math.cos(a)*b.r, py = b.y + Math.sin(a)*b.r;
+      if(isSolid(px,py)){ nx += b.x-px; ny += b.y-py; hits++; }
+    }
+    if(!hits) return;
+    let nl = Math.hypot(nx,ny);
+    if(nl < 0.001){ nx=0; ny=-1; nl=1; }   // fully buried: push up
+    nx/=nl; ny/=nl;
+    const push = 0.9 + hits*0.22;
+    b.x += nx*push; b.y += ny*push;
+    const vn = b.vx*nx + b.vy*ny;
+    if(vn < 0){
+      b.vx -= nx*vn*(1+b.rest);
+      b.vy -= ny*vn*(1+b.rest);
+      b.vx *= 0.992; b.vy *= 0.992;        // light rolling friction
+    }
+  }
+}
+function collideSeg(b, s, thick, rest){
+  const [x1,y1,x2,y2]=s, dx=x2-x1, dy=y2-y1;
+  const len2 = dx*dx+dy*dy || 1;
+  let t = ((b.x-x1)*dx + (b.y-y1)*dy)/len2;
+  t = Math.max(0, Math.min(1, t));
+  const qx = x1+dx*t, qy = y1+dy*t;
+  let nx = b.x-qx, ny = b.y-qy;
+  const d = Math.hypot(nx,ny), min = b.r + thick;
+  if(d >= min || d===0) return;
+  nx/=d; ny/=d;
+  b.x = qx + nx*min; b.y = qy + ny*min;
+  const vn = b.vx*nx + b.vy*ny;
+  if(vn < 0){
+    b.vx -= nx*vn*(1+rest); b.vy -= ny*vn*(1+rest);
+    b.vx *= 0.99; b.vy *= 0.99;
+  }
+}
+function collideBalls(a, c){
+  let nx=c.x-a.x, ny=c.y-a.y;
+  const d = Math.hypot(nx,ny), min = a.r + c.r;
+  if(d >= min || d===0) return;
+  nx/=d; ny/=d;
+  const overlap = min-d, tm = a.m+c.m;
+  a.x -= nx*overlap*(c.m/tm); a.y -= ny*overlap*(c.m/tm);
+  c.x += nx*overlap*(a.m/tm); c.y += ny*overlap*(a.m/tm);
+  const rvn = (c.vx-a.vx)*nx + (c.vy-a.vy)*ny;
+  if(rvn < 0){
+    const j = -(1+0.2)*rvn/(1/a.m + 1/c.m);
+    a.vx -= j*nx/a.m; a.vy -= j*ny/a.m;
+    c.vx += j*nx/c.m; c.vy += j*ny/c.m;
+  }
+}
+
+/* ---------- win / confetti ---------- */
+function cupBlocked(){    // rocks can plug a party cup's basin
+  return rocks.some(rk => Math.abs(rk.x-cup.x)<24 && Math.abs(rk.y-cup.y)<26);
+}
+function popConfetti(){
+  if(reducedMotion) return;
+  for(let i=0;i<90;i++) confetti.push({
+    x:cup.x, y:cup.y, vx:(Math.random()-0.5)*700, vy:-Math.random()*820-140,
+    c:["#57c94f","#f2d43a","#5ec8e8","#d63a2f"][i%4],
+    w:5+Math.random()*5, a:Math.random()*7, va:(Math.random()-0.5)*10, life:1
+  });
+}
+function finishWin(sunk){
+  state = "won";
+  save("sinker.level", String(Math.min(levelIdx+1, LEVELS.length-1)));
+  popConfetti();
+  const last = levelIdx === LEVELS.length-1;
+  document.getElementById("ovTitle").textContent = last
+    ? "NICE HANDS"
+    : (sunk ? "SUNK!" : "BALANCED!");
+  document.getElementById("ovText").textContent  = last
+    ? "Eight for eight. The table's yours."
+    : LEVELS[levelIdx].name + " — solved.";
+  document.getElementById("ovBtn").textContent   = last ? "PLAY AGAIN" : "NEXT LEVEL";
+  setTimeout(()=>document.getElementById("overlay").classList.add("show"), 650);
+}
+function checkWin(dt){
+  if(state!=="play") return;
+  const sp = Math.hypot(ball.vx, ball.vy);
+  if(cup.type === "party"){
+    const inCup = Math.abs(ball.x-cup.x)<20 && ball.y>cup.y-22 && ball.y<cup.y+14;
+    if(inCup && sp<300 && !cupBlocked()) finishWin(true);
+  } else {
+    // shot glass: seated in the rim V, ball bottom near rim, held slow for 600 ms
+    const seated = Math.abs(ball.x-cup.x)<10 && Math.abs((ball.y+ball.r)-cup.y)<8;
+    if(seated && sp<40){
+      settleTimer += dt*1000;
+      if(settleTimer>=600) finishWin(false);
+    } else {
+      settleTimer = 0;
+    }
+    // near miss: at rest below the rim with no way back up — nudge, don't auto-restart
+    if(!missedToasted && !seated && sp<15 && ball.y > cup.y+22){
+      missedToasted = true;
+      toast("Missed the rim — tap ↺", 3600);
+    }
+  }
+}
+
+/* ---------- render ---------- */
+function drawPartyCup(){
+  const x = cup.x, y = cup.y;
+  ctx.save(); ctx.translate(x, y);
+  // tapered red body
+  ctx.fillStyle = "#b12d24";
+  ctx.beginPath();
+  ctx.moveTo(-28,-12); ctx.lineTo(28,-12); ctx.lineTo(20,20); ctx.lineTo(-20,20);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#d63a2f";
+  ctx.beginPath();
+  ctx.moveTo(-25,-12); ctx.lineTo(24,-12); ctx.lineTo(17,20); ctx.lineTo(-18,20);
+  ctx.closePath(); ctx.fill();
+  // dark interior ellipse so the mouth reads open
+  ctx.fillStyle = "#7d1f19";
+  ctx.beginPath(); ctx.ellipse(0,-12, 25, 7, 0, 0, 7); ctx.fill();
+  // white rim band
+  ctx.strokeStyle = "#f4f1ea"; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.ellipse(0,-12, 27, 8, 0, 0, 7); ctx.stroke();
+  ctx.restore();
+}
+function drawShotGlass(){
+  const x = cup.x, y = cup.y;   // y is the rim/seat top
+  ctx.save(); ctx.translate(x, y);
+  // small tapered glass body standing below the rim
+  ctx.fillStyle = "rgba(200,225,235,.55)";
+  ctx.beginPath();
+  ctx.moveTo(-15,0); ctx.lineTo(15,0); ctx.lineTo(11,26); ctx.lineTo(-11,26);
+  ctx.closePath(); ctx.fill();
+  // glassy highlight streak
+  ctx.fillStyle = "rgba(255,255,255,.6)";
+  ctx.beginPath(); ctx.moveTo(-9,2); ctx.lineTo(-4,2); ctx.lineTo(-7,22); ctx.lineTo(-11,22); ctx.closePath(); ctx.fill();
+  // rim
+  ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(-15,0); ctx.lineTo(15,0); ctx.stroke();
+  ctx.restore();
+}
+function drawBoard(s){
+  ctx.lineCap = "round";
+  ctx.strokeStyle = "#8a6234"; ctx.lineWidth = 16;   // darker under-stroke / edge
+  ctx.beginPath(); ctx.moveTo(s[0],s[1]); ctx.lineTo(s[2],s[3]); ctx.stroke();
+  ctx.strokeStyle = "#b98a4e"; ctx.lineWidth = 11;   // lighter plywood face
+  ctx.beginPath(); ctx.moveTo(s[0],s[1]-1); ctx.lineTo(s[2],s[3]-1); ctx.stroke();
+  // 2-3 screw heads along the board
+  const dx=s[2]-s[0], dy=s[3]-s[1];
+  ctx.fillStyle = "#6e4a24";
+  for(const t of [0.15,0.5,0.85]){
+    ctx.beginPath(); ctx.arc(s[0]+dx*t, s[1]+dy*t-1, 2.2, 0, 7); ctx.fill();
+  }
+}
+function drawRock(b){
+  const g = ctx.createRadialGradient(b.x-b.r*0.35, b.y-b.r*0.4, b.r*0.15, b.x, b.y, b.r);
+  g.addColorStop(0, "#c9c4b2"); g.addColorStop(1, "#8d8878");
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 7); ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,.5)";
+  ctx.beginPath(); ctx.arc(b.x-b.r*0.35, b.y-b.r*0.42, b.r*0.18, 0, 7); ctx.fill();
+}
+function drawBall(b){
+  // ping pong ball: white with grey shading, faint seam, small specular
+  const g = ctx.createRadialGradient(b.x-b.r*0.35, b.y-b.r*0.4, b.r*0.15, b.x, b.y, b.r);
+  g.addColorStop(0, "#fdfdfd"); g.addColorStop(1, "#c9ced4");
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 7); ctx.fill();
+  // seam line
+  ctx.strokeStyle = "rgba(0,0,0,.08)"; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(b.x, b.y, b.r*0.55, -0.5, 3.6); ctx.stroke();
+  // specular highlight
+  ctx.fillStyle = "rgba(255,255,255,.9)";
+  ctx.beginPath(); ctx.arc(b.x-b.r*0.34, b.y-b.r*0.4, b.r*0.22, 0, 7); ctx.fill();
+}
+function render(){
+  ctx.fillStyle = "#a9e4f5"; ctx.fillRect(0,0,W,H);   // sky / tunnel color
+  // dug-edge depth via soft drop shadow under the terrain
+  ctx.save();
+  ctx.shadowColor = "rgba(90,60,20,.4)"; ctx.shadowOffsetX = 5; ctx.shadowOffsetY = 7; ctx.shadowBlur = 4;
+  ctx.drawImage(terrain, 0, 0);
+  ctx.restore();
+  for(const s of LEVELS[levelIdx].barriers) drawBoard(s);
+  if(cup.type === "party") drawPartyCup(); else drawShotGlass();
+  for(const rk of rocks) drawRock(rk);
+  drawBall(ball);
+  for(const c of confetti){
+    ctx.save(); ctx.translate(c.x,c.y); ctx.rotate(c.a);
+    ctx.globalAlpha = Math.max(0, c.life);
+    ctx.fillStyle = c.c; ctx.fillRect(-c.w/2, -c.w/4, c.w, c.w/2);
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* ---------- loop ---------- */
+let prev = performance.now();
+function frame(now){
+  let dt = Math.min((now - prev)/1000, 1/30); prev = now;
+  if(state !== "done"){
+    const sub = 3, h = dt/sub;
+    for(let s=0; s<sub; s++){
+      stepBody(ball, h);
+      for(const rk of rocks) stepBody(rk, h);
+      for(const rk of rocks) collideBalls(ball, rk);
+      for(let i=0;i<rocks.length;i++) for(let j=i+1;j<rocks.length;j++) collideBalls(rocks[i], rocks[j]);
+    }
+    checkWin(dt);
+  }
+  for(const c of confetti){
+    c.vy += 1400*dt; c.x += c.vx*dt; c.y += c.vy*dt; c.a += c.va*dt; c.life -= dt*0.45;
+  }
+  confetti = confetti.filter(c => c.life > 0 && c.y < H+40);
+  render();
+  requestAnimationFrame(frame);
+}
+
+/* ---------- buttons ---------- */
+document.getElementById("restart").addEventListener("click", ()=>loadLevel(levelIdx));
+document.getElementById("ovBtn").addEventListener("click", ()=>{
+  if(levelIdx === LEVELS.length-1 && state==="won"){ levelIdx = 0; save("sinker.level","0"); }
+  else levelIdx++;
+  loadLevel(levelIdx);
+});
+addEventListener("keydown", e=>{ if(e.key==="r"||e.key==="R") loadLevel(levelIdx); });
+
+loadLevel(levelIdx);
+requestAnimationFrame(frame);
+
+/* ---------- deferred (do not build now) ----------
+   TODO: falling wooden planks as free rigid bodies (needs rotation;
+         consider planck.js and accept the dependency trade-off then).
+   TODO: sound effects (dig scrape, boing, sink plunk).
+   TODO: bounce-count par scoring per level; a simple level editor that
+         exports the level JSON.
+   ------------------------------------------------- */
+</script>
+</body>
+</html>
