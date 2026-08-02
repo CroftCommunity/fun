@@ -119,6 +119,10 @@ name = "color-sort-solver"
 version = "0.0.0"
 dependencies = [
  "color-sort-core",
+ "pond-docformat",
+ "pond-outcome",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
