@@ -132,6 +132,12 @@ const m3opack = join(root, "games/match3/obstacles-pack.json");
 if (await exists(m3opack)) await cp(m3opack, join(dist, "match3-obstacles-pack.json"));
 else console.warn("note: match3-obstacles-pack.json missing — match-3's clear-the-obstacles daily needs it");
 
+// The match-3 campaign ladder (curated levels over verifiable seeds) — served
+// static so the campaign mode and its E2E can fetch it.
+const m3campaign = join(root, "games/match3/campaign-pack.json");
+if (await exists(m3campaign)) await cp(m3campaign, join(dist, "match3-campaign-pack.json"));
+else console.warn("note: match3-campaign-pack.json missing — match-3's campaign needs it");
+
 // The bubble-shooter clear-the-board winnable-daily pack (served static so the
 // daily mode and its E2E win-path fixture can fetch it).
 const bpack = join(root, "games/bubble/daily-pack.json");

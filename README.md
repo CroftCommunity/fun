@@ -64,11 +64,17 @@ re-verifies the shared result before display (deflated, so even a long win stays
 
 ## Match-3 (playable — Candy-Crush-style)
 
-`/match3/` is a target-score-in-moves game: an 8×8 board of coloured, shaped gems (colour-blind safe),
-tap a gem then an adjacent one to swap (only match-making swaps are legal; the core decides and they
-glow), a 20-swap budget graded into 0–3 stars at score thresholds. Moves out → a verifiable score+stars
-record with re-verify + a `?r=` share. Daily board (date seed) + free-play (`?seed=`). v1 uses flat star
-thresholds (no per-deal par yet — see `TODO/match3.md`). Plan: `plans/2026-07-30-match3-playable.md`.
+`/match3/` is a target-score-in-moves game: an 8×8 board of big, glossy, distinctly-shaped candies
+(colour-blind safe), **swipe** a candy toward a neighbour to swap — or tap gem-then-neighbour, the
+accessible floor; only match-making swaps are legal (the core decides and they glow). A 20-swap budget
+graded into 0–3 stars. Clears hold long enough to read, spray a particle **burst**, and a multi-cascade
+flashes an escalating **Nice/Sweet/Divine**. Moves out → a verifiable score+stars record with re-verify +
+a `?r=` share. New players land in a **level campaign** (curated levels over verifiable seeds; the first
+are gentle and Level 1 glows an opening move); best-stars progress and the in-progress board (as a move
+list) persist, so a reload resumes. A **skippable narrative overlay** (Biscuit's beats) rides a small
+game-event bus — placeholder now, real clips later (`docs/MATCH3-STORY.md`). Also: Today's board (date
+seed), free-play (`?seed=`), six objectives. Plans: `plans/2026-08-02-match3-gameplay-feel.md`,
+`plans/2026-07-30-match3-playable.md`.
 
 ## Bubble (playable — aim-and-shoot, leveled)
 

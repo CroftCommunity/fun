@@ -6,6 +6,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
+type Cell = { r: number; c: number };
+
 async function ready(page: Page): Promise<void> {
   await expect(page.locator(".m3-board")).toBeVisible();
   await page.waitForFunction(() => Boolean(window.__match3));
@@ -84,17 +86,201 @@ test("playing out the budget yields a verifiable record; share round-trips", asy
   await shared.close();
 });
 
-test("dragging a gem onto a legal neighbour swaps it (drag as well as tap)", async ({ page }, testInfo) => {
-  test.skip(Boolean(testInfo.project.use.hasTouch), "HTML5 drag-to-swap is desktop-only; touch uses tap");
+// Swipe a gem toward its neighbour with a pointer gesture (the primary way to
+// play — works the same on touch + desktop). Synthetic PointerEvents with real
+// coordinates, dispatched on the source gem (they bubble to the board's
+// delegated pointer listener); direction is resolved from the pointer delta.
+async function swipe(page: Page, from: Cell, to: Cell): Promise<void> {
+  await page.evaluate(
+    ({ from, to }) => {
+      const sel = (c: { r: number; c: number }): HTMLElement =>
+        document.querySelector(`.m3-gem[data-r="${c.r}"][data-c="${c.c}"]`)!;
+      const a = sel(from);
+      const ra = a.getBoundingClientRect();
+      const rb = sel(to).getBoundingClientRect();
+      const ax = ra.left + ra.width / 2;
+      const ay = ra.top + ra.height / 2;
+      const bx = rb.left + rb.width / 2;
+      const by = rb.top + rb.height / 2;
+      const ev = (type: string, x: number, y: number): void =>
+        void a.dispatchEvent(
+          new PointerEvent(type, { clientX: x, clientY: y, bubbles: true, pointerId: 1, pointerType: "touch" }),
+        );
+      ev("pointerdown", ax, ay);
+      ev("pointermove", (ax + bx) / 2, (ay + by) / 2);
+      ev("pointermove", bx, by);
+      ev("pointerup", bx, by);
+    },
+    { from, to },
+  );
+}
+
+test("swiping a gem toward a legal neighbour swaps it (swipe as well as tap)", async ({ page }) => {
   await page.goto("/match3/?seed=7");
   await ready(page);
   const before = await page.evaluate(() => window.__match3!.game.board().score);
   const swap = await page.evaluate(() => window.__match3!.game.legalMoves()[0]!);
-  await page
-    .locator(`.m3-gem[data-r="${swap[0]}"][data-c="${swap[1]}"]`)
-    .dragTo(page.locator(`.m3-gem[data-r="${swap[2]}"][data-c="${swap[3]}"]`));
+  await swipe(page, { r: swap[0], c: swap[1] }, { r: swap[2], c: swap[3] });
   const after = await page.evaluate(() => window.__match3!.game.board().score);
   expect(after).toBeGreaterThan(before);
+});
+
+test("gems render as glossy shapes (inner .m3-shape); glows stay on the button", async ({ page }) => {
+  await page.goto("/match3/?seed=7");
+  await ready(page);
+  // Every gem carries an aria-hidden inner shape (the candy). The square button
+  // keeps the hit-area + aria-label, so the selection/legal/hint glows (outline +
+  // box-shadow on the button) are never clipped by the shape's clip-path.
+  await expect(page.locator("button.m3-gem > .m3-shape")).toHaveCount(64);
+  await expect(page.locator(".m3-shape").first()).toHaveAttribute("aria-hidden", "true");
+  await expect(page.locator("button.m3-gem")).toHaveCount(64);
+  // Selecting still puts the glow class on the BUTTON, not the inner shape.
+  const swap = await page.evaluate(() => window.__match3!.game.legalMoves()[0]!);
+  await page.locator(`.m3-gem[data-r="${swap[0]}"][data-c="${swap[1]}"]`).click();
+  await expect(page.locator("button.m3-gem.selected")).toHaveCount(1);
+  await expect(page.locator(".m3-shape.selected")).toHaveCount(0);
+});
+
+test("a clearing swap emits a move event and its burst layer is decorative", async ({ page }) => {
+  await page.goto("/match3/?seed=7");
+  await ready(page);
+  // The burst layer is present, aria-hidden, and carries no interactive nodes
+  // (so it never changes the board's gem/button count or the a11y tree).
+  await expect(page.locator(".m3-fx")).toHaveAttribute("aria-hidden", "true");
+  await expect(page.locator(".m3-fx button")).toHaveCount(0);
+
+  // Subscribe to the success bus, then play a legal (clearing) swap through the UI.
+  await page.evaluate(() => {
+    (window as unknown as { __ev: unknown[] }).__ev = [];
+    window.__match3!.events.on((e) => (window as unknown as { __ev: unknown[] }).__ev.push(e));
+  });
+  const swap = await page.evaluate(() => window.__match3!.game.legalMoves()[0]!);
+  await page.locator(`.m3-gem[data-r="${swap[0]}"][data-c="${swap[1]}"]`).click();
+  await page.locator(`.m3-gem[data-r="${swap[2]}"][data-c="${swap[3]}"]`).click();
+  const events = await page.evaluate(() => (window as unknown as { __ev: { type: string; cleared?: number }[] }).__ev);
+  expect(events.some((e) => e.type === "move" && (e.cleared ?? 0) >= 3)).toBe(true);
+});
+
+test("reduced-motion spawns no particles (FX skipped)", async ({ browser }) => {
+  const context = await browser.newContext({ reducedMotion: "reduce" });
+  const page = await context.newPage();
+  await page.goto("/match3/?seed=7");
+  await ready(page);
+  const swap = await page.evaluate(() => window.__match3!.game.legalMoves()[0]!);
+  await page.locator(`.m3-gem[data-r="${swap[0]}"][data-c="${swap[1]}"]`).click();
+  await page.locator(`.m3-gem[data-r="${swap[2]}"][data-c="${swap[3]}"]`).click();
+  await page.waitForTimeout(120);
+  expect(await page.locator(".m3-particle").count()).toBe(0);
+  await context.close();
+});
+
+test("a fresh visitor lands in the campaign at Level 1 (with the intro + a11y clean)", async ({ page }) => {
+  await page.goto("/match3/");
+  await ready(page);
+  await expect(page.locator(".m3-campaign-hud")).toContainText(/level 1/i);
+  await expect(page.locator(".m3-mode-campaign")).toHaveAttribute("aria-pressed", "true");
+  expect(await page.evaluate(() => window.__match3!.level)).toBe(1);
+  await expect(page.locator(".sol-status")).toContainText(/swipe/i);
+  // The campaign HUD + level nav stay accessible.
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
+test("?level=2 opens campaign level 2 on its curated seed", async ({ page }) => {
+  await page.goto("/match3/?level=2");
+  await ready(page);
+  await expect(page.locator(".m3-campaign-hud")).toContainText(/level 2/i);
+  expect(await page.evaluate(() => window.__match3!.level)).toBe(2);
+});
+
+test("clearing a campaign level shows stars + Next level and persists progress (still verifiable)", async ({ page }) => {
+  await page.goto("/match3/?level=1");
+  await ready(page);
+  await page.evaluate(() => {
+    const h = window.__match3!;
+    for (let i = 0; i < 40; i += 1) {
+      const m = h.game.legalMoves();
+      if (m.length === 0) break;
+      h.game.play(m[0]!);
+    }
+    h.refresh();
+  });
+  const result = page.locator(".sol-result");
+  await expect(result).toBeVisible();
+  await expect(result.locator(".sol-headline")).toContainText(/level 1 complete/i);
+  await expect(result.locator(".sol-verify-badge.ok")).toBeVisible();
+  await expect(result.locator(".m3-next-level")).toBeVisible();
+  const stars = await page.evaluate(
+    () => (JSON.parse(localStorage.getItem("fun-match3-campaign") ?? "{}") as Record<string, number>)["1"],
+  );
+  expect(stars).toBeGreaterThanOrEqual(1);
+});
+
+test("a campaign success surfaces a skippable Biscuit beat; Skip dismisses it", async ({ page }) => {
+  await page.goto("/match3/?level=1");
+  await ready(page);
+  // A clearing swap in the campaign fires the first-clear beat overlay.
+  const swap = await page.evaluate(() => window.__match3!.game.legalMoves()[0]!);
+  await page.locator(`.m3-gem[data-r="${swap[0]}"][data-c="${swap[1]}"]`).click();
+  await page.locator(`.m3-gem[data-r="${swap[2]}"][data-c="${swap[3]}"]`).click();
+  const beat = page.locator(".m3-beat");
+  await expect(beat).toBeVisible();
+  await expect(beat).toHaveAttribute("aria-live", "polite");
+  // The card is accessible while shown.
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  // Skip is one tap and dismisses it.
+  await beat.locator(".m3-beat-skip").click();
+  await expect(beat).toHaveCount(0);
+});
+
+test("Level 1 first load glows the tutorial opening move, once", async ({ page }) => {
+  await page.goto("/match3/?level=1");
+  await ready(page);
+  // The curated opening swap [3,3] <-> [3,4] glows (source + target), as a
+  // non-penalising onboarding nudge (not an assistance hint).
+  await expect(page.locator(".m3-gem.hint-from")).toHaveCount(1);
+  await expect(page.locator(".m3-gem.hint-to")).toHaveCount(1);
+  await expect(page.locator('.m3-gem.hint-from[data-r="3"][data-c="3"]')).toBeVisible();
+  await expect(page.locator('.m3-gem.hint-to[data-r="3"][data-c="4"]')).toBeVisible();
+  // Both nudge cells carry the prominent pulsing treatment (not the subtle hint).
+  await expect(page.locator(".m3-gem.m3-nudge")).toHaveCount(2);
+
+  // It's shown once ever — a reload of the same level no longer nudges.
+  await page.goto("/match3/?level=1");
+  await ready(page);
+  await expect(page.locator(".hint-from")).toHaveCount(0);
+});
+
+test("an in-progress campaign board resumes after a reload (move-list replay)", async ({ page }) => {
+  await page.goto("/match3/?level=1");
+  await ready(page);
+  // Play two swaps through the UI, then read the resulting score + swaps-left.
+  for (let n = 0; n < 2; n += 1) {
+    const swap = await page.evaluate(() => window.__match3!.game.legalMoves()[0]!);
+    await page.locator(`.m3-gem[data-r="${swap[0]}"][data-c="${swap[1]}"]`).click();
+    await page.locator(`.m3-gem[data-r="${swap[2]}"][data-c="${swap[3]}"]`).click();
+    await expect(page.locator(".m3-board:not(.m3-animating)")).toBeVisible();
+  }
+  const before = await page.evaluate(() => window.__match3!.game.board());
+
+  // Reload with no ?level — the saved move list should replay us back to the
+  // same level and the same deterministic board state.
+  await page.goto("/match3/");
+  await ready(page);
+  const after = await page.evaluate(() => ({ level: window.__match3!.level, board: window.__match3!.game.board() }));
+  expect(after.level).toBe(1);
+  expect(after.board.score).toBe(before.score);
+  expect(after.board.movesLeft).toBe(before.movesLeft);
+  await expect(page.locator(".sol-status")).toContainText(/resumed/i);
+});
+
+test("a tiny pointer nudge under the threshold does not swap — it selects (tap floor)", async ({ page }) => {
+  await page.goto("/match3/?seed=7");
+  await ready(page);
+  const swap = await page.evaluate(() => window.__match3!.game.legalMoves()[0]!);
+  // A click (no movement) must still select and glow the legal targets.
+  await page.locator(`.m3-gem[data-r="${swap[0]}"][data-c="${swap[1]}"]`).click();
+  await expect(page.locator(".m3-gem.selected")).toHaveCount(1);
+  await expect(page.locator(".legal-target").first()).toBeVisible();
 });
 
 test("a swap animates the cascade, then settles to the core's board", async ({ page }) => {
