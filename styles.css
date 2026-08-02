@@ -84,6 +84,11 @@ body {
   border-right: 1px solid var(--border);
   padding: 1rem;
   z-index: 10;
+  /* The list can outgrow a short viewport (a phone in landscape, a small
+     window). Let the drawer scroll its own content, and contain the scroll so
+     the gesture doesn't chain out and move the page behind it. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .drawer-head {
   display: flex;
