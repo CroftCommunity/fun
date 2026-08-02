@@ -215,6 +215,22 @@ test("clearing a campaign level shows stars + Next level and persists progress (
   expect(stars).toBeGreaterThanOrEqual(1);
 });
 
+test("Level 1 first load glows the tutorial opening move, once", async ({ page }) => {
+  await page.goto("/match3/?level=1");
+  await ready(page);
+  // The curated opening swap [3,3] <-> [3,4] glows (source + target), as a
+  // non-penalising onboarding nudge (not an assistance hint).
+  await expect(page.locator(".m3-gem.hint-from")).toHaveCount(1);
+  await expect(page.locator(".m3-gem.hint-to")).toHaveCount(1);
+  await expect(page.locator('.m3-gem.hint-from[data-r="3"][data-c="3"]')).toBeVisible();
+  await expect(page.locator('.m3-gem.hint-to[data-r="3"][data-c="4"]')).toBeVisible();
+
+  // It's shown once ever — a reload of the same level no longer nudges.
+  await page.goto("/match3/?level=1");
+  await ready(page);
+  await expect(page.locator(".hint-from")).toHaveCount(0);
+});
+
 test("an in-progress campaign board resumes after a reload (move-list replay)", async ({ page }) => {
   await page.goto("/match3/?level=1");
   await ready(page);

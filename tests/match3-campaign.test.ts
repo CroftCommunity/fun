@@ -11,9 +11,11 @@ import {
   levelById,
   loadProgress,
   loadResume,
+  markTutorialSeen,
   nextLevelId,
   recordStars,
   saveResume,
+  tutorialSeen,
   unlockedLevel,
   type Campaign,
 } from "../src/games/match3-campaign.js";
@@ -67,6 +69,14 @@ describe("progress persistence", () => {
     expect(unlockedLevel(CAMPAIGN)).toBe(3);
     recordStars(3, 1);
     expect(unlockedLevel(CAMPAIGN)).toBe(3); // caps at the last level
+  });
+});
+
+describe("tutorial-seen flag", () => {
+  it("is false until marked, then sticks (nudge shows once ever)", () => {
+    expect(tutorialSeen()).toBe(false);
+    markTutorialSeen();
+    expect(tutorialSeen()).toBe(true);
   });
 });
 

@@ -131,3 +131,24 @@ export function clearResume(): void {
     /* nothing to do */
   }
 }
+
+const TUTORIAL_KEY = "fun-match3-tutorial-seen";
+
+/** Whether the Level 1 first-move nudge has been shown. Defaults to `true` when
+ *  storage is denied — we'd rather skip the nudge than nag every load. */
+export function tutorialSeen(): boolean {
+  try {
+    return localStorage.getItem(TUTORIAL_KEY) === "1";
+  } catch {
+    return true;
+  }
+}
+
+/** Remember that the Level 1 first-move nudge has been shown (once ever). */
+export function markTutorialSeen(): void {
+  try {
+    localStorage.setItem(TUTORIAL_KEY, "1");
+  } catch {
+    /* session-only */
+  }
+}

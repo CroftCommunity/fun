@@ -22,9 +22,11 @@ import {
   fetchCampaign,
   levelById,
   loadResume,
+  markTutorialSeen,
   nextLevelId,
   recordStars,
   saveResume,
+  tutorialSeen,
   unlockedLevel,
   type Campaign,
   type Level,
@@ -1043,9 +1045,15 @@ export function match3Module(): GameModule {
       clearResume();
     }
     selected = null;
-    hint = null;
     lastScore = 0;
     scoreBumped = false;
+    // First-move nudge: on the very first visit to Level 1, glow the curated
+    // opening swap so a new player sees an obvious, mechanic-demoing move. It's
+    // onboarding, not a hint — it does NOT mark assistance. Shown once ever, and
+    // cleared by the first interaction.
+    const nudge = lvl.id === 1 && lvl.hint && !replay?.length && !tutorialSeen();
+    hint = nudge ? (lvl.hint ?? null) : null;
+    if (nudge) markTutorialSeen();
     setStatus(replay?.length ? `Resumed Level ${lvl.id}.` : (lvl.intro ?? ""));
     exposeHook();
     render();
