@@ -9,6 +9,7 @@ import { WYRDLE_GUIDE } from "./games/wyrdle/wyrdle-howto.js";
 import { TWENTY48_GUIDE } from "./games/2048/2048-howto.js";
 import { ALIGN_GUIDE } from "./games/align/align-howto.js";
 import { BLOCKDOKU_GUIDE } from "./games/blockdoku/blockdoku-howto.js";
+import { COLOR_SORT_GUIDE } from "./games/color-sort/color-sort-howto.js";
 import { ASTRAY_GUIDE } from "./games/astray/astray-howto.js";
 import { HEXGL_GUIDE } from "./games/hexgl/hexgl-howto.js";
 import { CLUMSYBIRD_GUIDE } from "./games/clumsybird/clumsybird-howto.js";
@@ -23,6 +24,7 @@ export const GUIDES: Readonly<Record<string, Guide>> = {
   "2048": TWENTY48_GUIDE,
   align: ALIGN_GUIDE,
   blockdoku: BLOCKDOKU_GUIDE,
+  "color-sort": COLOR_SORT_GUIDE,
   astray: ASTRAY_GUIDE,
   hexgl: HEXGL_GUIDE,
   clumsybird: CLUMSYBIRD_GUIDE,
