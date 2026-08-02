@@ -1,0 +1,19 @@
+[package]
+name = "looseends-core"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Deterministic, headless engine for Loose Ends — an arrow-release (tap-away) puzzle. Snake-shaped arrows on a grid; an arrow is FREE when its exit ray to the board edge is clear, and releasing it clears its cells. Boards are procedurally generated from a seed, solvable by construction (placed in reverse solution order). Integer-exact FNV-1a + mulberry32 RNG so native==wasm; state hash + move-list replay make an outcome verifiable. No network."
+
+[dependencies]
+serde = { workspace = true }
+serde_json.workspace = true
+sha2.workspace = true
+hex.workspace = true
+thiserror.workspace = true
+pond-outcome.workspace = true
+pond-docformat.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

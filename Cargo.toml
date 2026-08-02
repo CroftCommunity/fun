@@ -17,6 +17,8 @@ members = [
     "crates/blockdoku-core",
     "crates/blockdoku-wasm",
     "crates/bubble-core",
+    "crates/looseends-core",
+    "crates/looseends-wasm",
     "crates/wyrdle-core",
     "crates/twenty48-core",
     "crates/twenty48-wasm",
@@ -58,6 +60,7 @@ thiserror = "=2.0.18"
 align-core = { path = "crates/align-core" }
 blockdoku-core = { path = "crates/blockdoku-core" }
 bubble-core = { path = "crates/bubble-core" }
+looseends-core = { path = "crates/looseends-core" }
 wyrdle-core = { path = "crates/wyrdle-core" }
 match3-core = { path = "crates/match3-core" }
 solitaire-core = { path = "crates/solitaire-core" }

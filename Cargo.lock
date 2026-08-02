@@ -157,6 +157,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2"
 
 [[package]]
+name = "looseends-core"
+version = "0.0.0"
+dependencies = [
+ "hex",
+ "pond-docformat",
+ "pond-outcome",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+]
+
+[[package]]
+name = "looseends-wasm"
+version = "0.0.0"
+dependencies = [
+ "looseends-core",
+ "pond-outcome",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "match3-core"
 version = "0.0.0"
 dependencies = [
