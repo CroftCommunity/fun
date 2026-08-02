@@ -215,6 +215,29 @@ test("clearing a campaign level shows stars + Next level and persists progress (
   expect(stars).toBeGreaterThanOrEqual(1);
 });
 
+test("an in-progress campaign board resumes after a reload (move-list replay)", async ({ page }) => {
+  await page.goto("/match3/?level=1");
+  await ready(page);
+  // Play two swaps through the UI, then read the resulting score + swaps-left.
+  for (let n = 0; n < 2; n += 1) {
+    const swap = await page.evaluate(() => window.__match3!.game.legalMoves()[0]!);
+    await page.locator(`.m3-gem[data-r="${swap[0]}"][data-c="${swap[1]}"]`).click();
+    await page.locator(`.m3-gem[data-r="${swap[2]}"][data-c="${swap[3]}"]`).click();
+    await expect(page.locator(".m3-board:not(.m3-animating)")).toBeVisible();
+  }
+  const before = await page.evaluate(() => window.__match3!.game.board());
+
+  // Reload with no ?level — the saved move list should replay us back to the
+  // same level and the same deterministic board state.
+  await page.goto("/match3/");
+  await ready(page);
+  const after = await page.evaluate(() => ({ level: window.__match3!.level, board: window.__match3!.game.board() }));
+  expect(after.level).toBe(1);
+  expect(after.board.score).toBe(before.score);
+  expect(after.board.movesLeft).toBe(before.movesLeft);
+  await expect(page.locator(".sol-status")).toContainText(/resumed/i);
+});
+
 test("a tiny pointer nudge under the threshold does not swap — it selects (tap floor)", async ({ page }) => {
   await page.goto("/match3/?seed=7");
   await ready(page);

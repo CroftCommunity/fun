@@ -18,10 +18,13 @@ import { analyzeCascade, celebrationTier, showCelebration, spawnBurst, type Casc
 import { createBus, type Bus } from "./match3-events.js";
 import {
   campaignStars,
+  clearResume,
   fetchCampaign,
   levelById,
+  loadResume,
   nextLevelId,
   recordStars,
+  saveResume,
   unlockedLevel,
   type Campaign,
   type Level,
@@ -248,6 +251,9 @@ export function match3Module(): GameModule {
   // current campaign level id, or null when playing daily / free / an objective.
   let campaign: Campaign | null = null;
   let level: number | null = null;
+  // The current campaign board's committed move list — autosaved after each move
+  // (the moves, never the board) and replayed into a fresh core to resume.
+  let moveLog: Swap[] = [];
   let seed = 0n;
   let selected: { r: number; c: number } | null = null;
   let hint: Swap | null = null;
@@ -389,6 +395,11 @@ export function match3Module(): GameModule {
     selected = null;
     hint = null;
     setStatus("");
+    // Autosave the in-progress campaign board as its move list (replayed to resume).
+    if (level !== null && frames.length > 0) {
+      moveLog.push(s);
+      saveResume({ objective, seed: seed.toString(), level, moves: moveLog });
+    }
     const cascade = analyzeCascade(frames);
     // Announce the move so FX + (Phase 2) narrative react to the same signal.
     bus.emit({
@@ -647,11 +658,14 @@ export function match3Module(): GameModule {
         else b.setAttribute("disabled", "");
         return b;
       };
+      const restart = el("button", { type: "button", class: "m3-level-nav m3-level-restart" }, "↺ Restart");
+      restart.addEventListener("click", () => void startLevel(level!));
       const nav = el("div", { class: "m3-campaign-nav", role: "group", "aria-label": "Level" });
       nav.append(
         navBtn("◀ Prev", prevId, prevId !== null),
         el("span", { class: "m3-level-of" }, `Level ${level} of ${ids.length}`),
         navBtn("Next ▶", nextId, nextId !== null && nextId <= unlocked),
+        restart,
       );
       return nav;
     };
@@ -862,6 +876,8 @@ export function match3Module(): GameModule {
       const cStars = campaignStars(score, activeLevel.stars);
       const cleared = cStars >= 1;
       recordStars(activeLevel.id, cStars);
+      clearResume(); // the board is finished — nothing left to resume
+
       const nextId = nextLevelId(campaign!, activeLevel.id);
       if (cleared) bus.emit({ type: "level-win", level: activeLevel.id, stars: cStars, score, clutch: false });
       else bus.emit({ type: "level-lose", level: activeLevel.id });
@@ -1002,7 +1018,9 @@ export function match3Module(): GameModule {
 
   // Enter a campaign level: a curated seed played in target-score mode, so the
   // outcome stays verifiable; the campaign only reinterprets its score into stars.
-  async function startLevel(id: number): Promise<void> {
+  // `replay` resumes an in-progress board by re-applying its saved move list into
+  // the fresh core (deterministic → identical state, still verifiable).
+  async function startLevel(id: number, replay?: Swap[]): Promise<void> {
     if (!game || disposed) return;
     const camp = await ensureCampaign();
     if (!camp || disposed || !game) {
@@ -1015,11 +1033,20 @@ export function match3Module(): GameModule {
     level = lvl.id;
     seed = BigInt(lvl.seed);
     game.newGame(seed);
+    moveLog = [];
+    if (replay && replay.length) {
+      for (const m of replay) {
+        if (game.play(m) === "applied") moveLog.push(m);
+      }
+      saveResume({ objective, seed: seed.toString(), level, moves: moveLog });
+    } else {
+      clearResume();
+    }
     selected = null;
     hint = null;
     lastScore = 0;
     scoreBumped = false;
-    setStatus(lvl.intro ?? "");
+    setStatus(replay?.length ? `Resumed Level ${lvl.id}.` : (lvl.intro ?? ""));
     exposeHook();
     render();
   }
@@ -1123,7 +1150,14 @@ export function match3Module(): GameModule {
         // level; if the campaign pack can't load, fall back to the daily board.
         const camp = await ensureCampaign();
         if (camp && !disposed) {
-          await startLevel(unlockedLevel(camp));
+          // Resume an in-progress campaign board (replaying its saved moves) if one
+          // was left mid-play; otherwise open the furthest unlocked level fresh.
+          const saved = loadResume();
+          if (saved && saved.level != null && levelById(camp, saved.level) && saved.moves.length) {
+            await startLevel(saved.level, saved.moves);
+          } else {
+            await startLevel(unlockedLevel(camp));
+          }
           return;
         }
         await startGame("daily");
