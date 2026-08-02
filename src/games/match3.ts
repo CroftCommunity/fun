@@ -17,6 +17,16 @@ import { dayIndexUTC } from "./share.js";
 import { analyzeCascade, celebrationTier, showCelebration, spawnBurst, type CascadeInfo } from "./match3-fx.js";
 import { createBus, type Bus } from "./match3-events.js";
 import {
+  campaignStars,
+  fetchCampaign,
+  levelById,
+  nextLevelId,
+  recordStars,
+  unlockedLevel,
+  type Campaign,
+  type Level,
+} from "./match3-campaign.js";
+import {
   declareAssistanceEnabled,
   hintsEnabled,
   setDeclareAssistance,
@@ -34,6 +44,8 @@ declare global {
       objective: Mode;
       /** The live success bus — tests subscribe to assert emitted gameplay events. */
       events: Bus;
+      /** The current campaign level id, or null when playing daily / free / an objective. */
+      level: number | null;
     };
   }
 }
@@ -137,6 +149,15 @@ export interface ResultScreenOpts {
   onReverify?: () => void;
   onPlayAgain?: () => void;
   shared?: boolean;
+  /** Campaign context: reinterprets the (still-verifiable) score into level stars
+   *  and offers a "Next level" step when the level was cleared. */
+  campaign?: {
+    level: number;
+    stars: number;
+    cleared: boolean;
+    hasNext: boolean;
+    onNext?: () => void;
+  };
 }
 
 /** Build the match-3 result screen: outcome headline, verification badge, the
@@ -148,7 +169,15 @@ export function renderResultScreen(
 ): HTMLElement {
   const rec = env.payload;
   const section = el("section", { class: "sol-result", role: "region", "aria-label": "Result" });
-  section.append(el("h2", { class: "sol-headline" }, headline(env, verification)));
+  // In the campaign the headline leads with the level + its stars (a front-end
+  // reading of the verified score); a failed verification always wins the headline.
+  const campaignHeadline =
+    opts.campaign && verification.ok
+      ? opts.campaign.cleared
+        ? `Level ${opts.campaign.level} complete — ${starString(opts.campaign.stars)}`
+        : `Level ${opts.campaign.level} — not cleared (reach 1★ to advance)`
+      : null;
+  section.append(el("h2", { class: "sol-headline" }, campaignHeadline ?? headline(env, verification)));
 
   const badge = el("p", {
     class: `sol-verify-badge ${verification.ok ? "ok" : "fail"}`,
@@ -185,11 +214,16 @@ export function renderResultScreen(
       el("a", { class: "sol-share", href: opts.shareUrl, "data-share": opts.shareUrl }, "Share this result"),
     );
   }
+  if (opts.campaign?.cleared && opts.campaign.hasNext && opts.campaign.onNext) {
+    const b = el("button", { type: "button", class: "m3-next-level" }, "Next level ▶");
+    b.addEventListener("click", opts.campaign.onNext);
+    controls.append(b);
+  }
   if (opts.onPlayAgain) {
     const b = el(
       "button",
       { type: "button", class: "sol-again" },
-      opts.shared ? "Play today’s board" : "Play again",
+      opts.shared ? "Play today’s board" : opts.campaign ? "Retry level" : "Play again",
     );
     b.addEventListener("click", opts.onPlayAgain);
     controls.append(b);
@@ -210,6 +244,10 @@ export function match3Module(): GameModule {
   let mode: "daily" | "free" = "daily";
   let objective: Mode = "target-score";
   const packCache: Partial<Record<Mode, Pack>> = {};
+  // The campaign ladder (curated levels over verifiable seeds). `level` is the
+  // current campaign level id, or null when playing daily / free / an objective.
+  let campaign: Campaign | null = null;
+  let level: number | null = null;
   let seed = 0n;
   let selected: { r: number; c: number } | null = null;
   let hint: Swap | null = null;
@@ -451,9 +489,15 @@ export function match3Module(): GameModule {
       { type: "button", class: "sol-new", "aria-pressed": String(mode === "free") },
       "New board",
     );
+    const campBtn = el(
+      "button",
+      { type: "button", class: "m3-mode-campaign", "aria-pressed": String(level !== null) },
+      "Campaign",
+    );
+    campBtn.addEventListener("click", () => void startLevel(campaign ? unlockedLevel(campaign) : 1));
     daily.addEventListener("click", () => void startGame("daily"));
     fresh.addEventListener("click", () => void startGame("free"));
-    modes.append(daily, fresh);
+    modes.append(campBtn, daily, fresh);
 
     // Objective toggle: score-in-moves vs the clear objectives. Switching
     // restarts the current board mode under the chosen objective.
@@ -551,8 +595,25 @@ export function match3Module(): GameModule {
         goalSpan("wrapped", b.checklistWrappedMade, b.checklistWrappedTarget, "make wrapped candies"),
         el("span", { class: "m3-moves" }, `Swaps left ${b.movesLeft}`),
       );
-    const hud =
-      board.mode === "blockers"
+    // In the campaign, the HUD leads with the level and grades the running score
+    // against the level's own star thresholds (a front-end reading of the same
+    // verifiable score — the core targets are hidden).
+    const activeLevel = campaign && level !== null ? levelById(campaign, level) : undefined;
+    const campaignHud = (lvl: Level): HTMLElement => {
+      const cStars = campaignStars(board.score, lvl.stars);
+      return el(
+        "div",
+        { class: "m3-hud m3-campaign-hud" },
+        el("span", { class: "m3-level" }, `Level ${lvl.id}`),
+        el("span", { class: `m3-score${scoreBumped ? " bump" : ""}` }, `Score ${board.score}`),
+        el("span", { class: "m3-moves" }, `Swaps left ${board.movesLeft}`),
+        el("span", { class: "m3-stars", "aria-label": `${cStars} of 3 stars` }, starString(cStars)),
+        el("span", { class: "m3-target" }, `Stars at ${lvl.stars.join(" / ")}`),
+      );
+    };
+    const hud = activeLevel
+      ? campaignHud(activeLevel)
+      : board.mode === "blockers"
         ? clearHud("blockers", board.blockersRemaining, board.blockersTotal)
         : board.mode === "jelly"
           ? clearHud("jelly", board.jellyRemaining, board.jellyTotal)
@@ -571,9 +632,34 @@ export function match3Module(): GameModule {
               el("span", { class: "m3-target" }, `Targets ${board.targets.join(" / ")}`),
             );
 
+    // Campaign level nav: step among UNLOCKED levels (can't skip ahead of the
+    // furthest cleared+1). Shown only while playing a campaign level.
+    const campaignNav = (): HTMLElement | null => {
+      if (!campaign || level === null) return null;
+      const ids = campaign.levels.map((l) => l.id);
+      const unlocked = unlockedLevel(campaign);
+      const i = ids.indexOf(level);
+      const prevId = i > 0 ? ids[i - 1]! : null;
+      const nextId = i >= 0 && i + 1 < ids.length ? ids[i + 1]! : null;
+      const navBtn = (label: string, id: number | null, enabled: boolean): HTMLElement => {
+        const b = el("button", { type: "button", class: "m3-level-nav" }, label);
+        if (enabled && id !== null) b.addEventListener("click", () => void startLevel(id));
+        else b.setAttribute("disabled", "");
+        return b;
+      };
+      const nav = el("div", { class: "m3-campaign-nav", role: "group", "aria-label": "Level" });
+      nav.append(
+        navBtn("◀ Prev", prevId, prevId !== null),
+        el("span", { class: "m3-level-of" }, `Level ${level} of ${ids.length}`),
+        navBtn("Next ▶", nextId, nextId !== null && nextId <= unlocked),
+      );
+      return nav;
+    };
+
     bar.append(modes, objectives, actionBtn, settings);
     const wrap = el("div");
-    wrap.append(bar, hud);
+    const nav = campaignNav();
+    wrap.append(bar, ...(nav ? [nav] : []), hud);
     return wrap;
   };
 
@@ -767,7 +853,31 @@ export function match3Module(): GameModule {
   const presentResult = async (): Promise<void> => {
     if (!container || !game) return;
     const env = game.outcome(declareAssistanceEnabled()) as M3Envelope;
-    const passed = isClear(env) ? env.payload.result === "Won" : (env.payload.stars ?? 0) >= 1;
+    // Campaign context: reinterpret the verified score into level stars, record
+    // progress, and offer the next level. The record/hash/share are unchanged.
+    const activeLevel = campaign && level !== null ? levelById(campaign, level) : undefined;
+    let campaignOpts: ResultScreenOpts["campaign"];
+    if (activeLevel) {
+      const score = env.payload.score ?? 0;
+      const cStars = campaignStars(score, activeLevel.stars);
+      const cleared = cStars >= 1;
+      recordStars(activeLevel.id, cStars);
+      const nextId = nextLevelId(campaign!, activeLevel.id);
+      if (cleared) bus.emit({ type: "level-win", level: activeLevel.id, stars: cStars, score, clutch: false });
+      else bus.emit({ type: "level-lose", level: activeLevel.id });
+      campaignOpts = {
+        level: activeLevel.id,
+        stars: cStars,
+        cleared,
+        hasNext: nextId !== null,
+        onNext: nextId !== null ? () => void startLevel(nextId) : undefined,
+      };
+    }
+    const passed = campaignOpts
+      ? campaignOpts.cleared
+      : isClear(env)
+        ? env.payload.result === "Won"
+        : (env.payload.stars ?? 0) >= 1;
     if (passed) playCascade();
     container.replaceChildren(el("div", { class: "sol-loading" }, "Preparing your verifiable result…"));
     const shareUrl = await shareUrlFor(env);
@@ -776,7 +886,8 @@ export function match3Module(): GameModule {
       renderResultScreen(env, verify(env), {
         shareUrl,
         onReverify: () => container!.replaceChildren(build()),
-        onPlayAgain: () => void startGame(mode),
+        onPlayAgain: () => (level !== null ? void startLevel(level) : void startGame(mode)),
+        campaign: campaignOpts,
       });
     container.replaceChildren(build());
   };
@@ -869,11 +980,46 @@ export function match3Module(): GameModule {
           : randomSeed());
       game.newGame(seed);
     }
+    level = null; // daily / free / an objective is not a campaign level
     selected = null;
     hint = null;
     lastScore = 0;
     scoreBumped = false;
     setStatus("");
+    exposeHook();
+    render();
+  }
+
+  const ensureCampaign = async (): Promise<Campaign | null> => {
+    if (campaign) return campaign;
+    try {
+      campaign = await fetchCampaign();
+    } catch {
+      return null;
+    }
+    return campaign;
+  };
+
+  // Enter a campaign level: a curated seed played in target-score mode, so the
+  // outcome stays verifiable; the campaign only reinterprets its score into stars.
+  async function startLevel(id: number): Promise<void> {
+    if (!game || disposed) return;
+    const camp = await ensureCampaign();
+    if (!camp || disposed || !game) {
+      showLoadError("Today’s campaign could not be loaded.");
+      return;
+    }
+    const lvl = levelById(camp, id) ?? camp.levels[0]!;
+    objective = "target-score";
+    mode = "free";
+    level = lvl.id;
+    seed = BigInt(lvl.seed);
+    game.newGame(seed);
+    selected = null;
+    hint = null;
+    lastScore = 0;
+    scoreBumped = false;
+    setStatus(lvl.intro ?? "");
     exposeHook();
     render();
   }
@@ -920,6 +1066,7 @@ export function match3Module(): GameModule {
       seed,
       objective,
       events: bus,
+      level,
     };
   };
 
@@ -948,18 +1095,35 @@ export function match3Module(): GameModule {
         // `?mode=blockers` / `?mode=jelly` / `?mode=ingredients` / `?mode=checklist`
         // open a non-target-score objective directly.
         const modeParam = url.searchParams.get("mode");
-        if (
+        const isObjectiveMode =
           modeParam === "blockers" ||
           modeParam === "jelly" ||
           modeParam === "ingredients" ||
           modeParam === "checklist" ||
-          modeParam === "obstacles"
-        ) {
+          modeParam === "obstacles";
+        if (isObjectiveMode) {
           objective = modeParam;
         }
+        // Precedence: ?r= (shared) > ?seed= > ?mode= > ?level=N > campaign(unlocked).
         const seedParam = url.searchParams.get("seed");
         if (seedParam !== null) {
           await startGame("free", BigInt(seedParam));
+          return;
+        }
+        if (isObjectiveMode) {
+          await startGame("daily");
+          return;
+        }
+        const levelParam = url.searchParams.get("level");
+        if (levelParam !== null) {
+          await startLevel(Number(levelParam));
+          return;
+        }
+        // A first-time visitor lands in the campaign at their furthest unlocked
+        // level; if the campaign pack can't load, fall back to the daily board.
+        const camp = await ensureCampaign();
+        if (camp && !disposed) {
+          await startLevel(unlockedLevel(camp));
           return;
         }
         await startGame("daily");

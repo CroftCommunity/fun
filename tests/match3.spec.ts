@@ -174,6 +174,47 @@ test("reduced-motion spawns no particles (FX skipped)", async ({ browser }) => {
   await context.close();
 });
 
+test("a fresh visitor lands in the campaign at Level 1 (with the intro + a11y clean)", async ({ page }) => {
+  await page.goto("/match3/");
+  await ready(page);
+  await expect(page.locator(".m3-campaign-hud")).toContainText(/level 1/i);
+  await expect(page.locator(".m3-mode-campaign")).toHaveAttribute("aria-pressed", "true");
+  expect(await page.evaluate(() => window.__match3!.level)).toBe(1);
+  await expect(page.locator(".sol-status")).toContainText(/swipe/i);
+  // The campaign HUD + level nav stay accessible.
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
+test("?level=2 opens campaign level 2 on its curated seed", async ({ page }) => {
+  await page.goto("/match3/?level=2");
+  await ready(page);
+  await expect(page.locator(".m3-campaign-hud")).toContainText(/level 2/i);
+  expect(await page.evaluate(() => window.__match3!.level)).toBe(2);
+});
+
+test("clearing a campaign level shows stars + Next level and persists progress (still verifiable)", async ({ page }) => {
+  await page.goto("/match3/?level=1");
+  await ready(page);
+  await page.evaluate(() => {
+    const h = window.__match3!;
+    for (let i = 0; i < 40; i += 1) {
+      const m = h.game.legalMoves();
+      if (m.length === 0) break;
+      h.game.play(m[0]!);
+    }
+    h.refresh();
+  });
+  const result = page.locator(".sol-result");
+  await expect(result).toBeVisible();
+  await expect(result.locator(".sol-headline")).toContainText(/level 1 complete/i);
+  await expect(result.locator(".sol-verify-badge.ok")).toBeVisible();
+  await expect(result.locator(".m3-next-level")).toBeVisible();
+  const stars = await page.evaluate(
+    () => (JSON.parse(localStorage.getItem("fun-match3-campaign") ?? "{}") as Record<string, number>)["1"],
+  );
+  expect(stars).toBeGreaterThanOrEqual(1);
+});
+
 test("a tiny pointer nudge under the threshold does not swap — it selects (tap floor)", async ({ page }) => {
   await page.goto("/match3/?seed=7");
   await ready(page);

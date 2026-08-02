@@ -483,6 +483,43 @@ body.fullscreen .play-area {
   color: var(--accent);
   letter-spacing: 0.1em;
 }
+/* Campaign: a numbered level ladder over verifiable seeds. The level nav sits
+   between the controls and the board; the "Next level" result button is accented
+   like a primary action. */
+.m3-campaign-hud .m3-level {
+  color: var(--ink);
+  font-weight: 700;
+}
+.m3-campaign-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 0.1rem 0 0.2rem;
+}
+.m3-campaign-nav .m3-level-of {
+  font-weight: 700;
+  color: var(--ink);
+}
+.m3-level-nav {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: 0.25rem 0.6rem;
+}
+.m3-level-nav[disabled] {
+  opacity: 0.45;
+  cursor: default;
+}
+.sol-result-controls .m3-next-level {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
 /* One centred play column (RESPONSIVE-DESIGN Principle 1): controls, HUD, board,
    and status share one vertical axis, centred in the play area — the board is
    `inline-flex`, so it only centres inside a column wrapper, never via auto margins
