@@ -1,8 +1,11 @@
-//! The Blockdoku board over the `blockdoku-wasm` binding. Tap a tray piece to
-//! select it, then tap a glowing cell to drop it; complete a row, column, or 3×3
-//! box to clear it. The **core decides legality** — the UI glows exactly the
-//! core's legal anchors and an illegal tap is a no-op. Endless score-attack; a
-//! verifiable `pond-outcome` record (final score) is shown, shareable via `?r=`.
+//! The Blockdoku board over the `blockdoku-wasm` binding. **Drag** a tray piece
+//! onto the board — a live preview glows green where the whole shape fits, red
+//! where it doesn't — and release to drop it; complete a row, column, or 3×3 box
+//! to clear it. Tap-to-select then tap-the-board (and full keyboard control) is
+//! the accessible fallback. The **core decides legality** — the UI only ever
+//! places where the core says the shape fits, and an illegal drop is a no-op.
+//! Endless score-attack; a verifiable `pond-outcome` record (final score) is
+//! shown, shareable via `?r=`.
 
 import type { GameModule } from "../../contract.js";
 import {
@@ -76,6 +79,39 @@ function el<K extends keyof HTMLElementTagNameMap>(
   for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
   for (const c of children) node.append(c);
   return node;
+}
+
+// ---------- drag geometry (pure, exported for unit tests) ----------
+
+/** Board pixel geometry for mapping a floating piece to a grid anchor. */
+export interface BoardGeom {
+  /** Viewport x of the top-left corner of cell (0,0). */
+  left: number;
+  /** Viewport y of the top-left corner of cell (0,0). */
+  top: number;
+  /** Cell pitch in px (cells are contiguous, so pitch == cell size). */
+  cell: number;
+}
+
+/**
+ * The board anchor (top-left cell) a piece points at, given the floating clone's
+ * top-left in viewport pixels — clamped so the whole shape stays on the board.
+ * This decides only *which cell* the dragged piece targets; the core still
+ * decides *legality* (a drop is placed only if the core reports it legal).
+ */
+export function anchorFromClone(
+  cloneLeft: number,
+  cloneTop: number,
+  geom: BoardGeom,
+  piece: { rows: number; cols: number },
+  size = 9,
+): { r: number; c: number } {
+  const rawC = Math.round((cloneLeft - geom.left) / geom.cell);
+  const rawR = Math.round((cloneTop - geom.top) / geom.cell);
+  return {
+    r: Math.max(0, Math.min(size - piece.rows, rawR)),
+    c: Math.max(0, Math.min(size - piece.cols, rawC)),
+  };
 }
 
 // ---------- the result screen (pure DOM, exported for unit tests) ----------
@@ -159,8 +195,30 @@ export function blockdokuModule(): GameModule {
   let seed = 0n;
   let config: DealConfig = { ...DEFAULT_CONFIG };
   let selected: number | null = null;
-  let cursor = { r: 4, c: 4 }; // the target the piece centres on (hover / keyboard)
+  // The keyboard/tap anchor: the board cell the selected piece's TOP-LEFT sits on.
+  let cursor = { r: 3, c: 3 };
   let boardEl: HTMLElement | null = null;
+  // The active pointer drag, if any (a floating clone tracks the finger; the board
+  // previews where it would land). Null when not dragging.
+  let drag: DragState | null = null;
+  // A pointer drag/tap raises a synthetic `click` right after `pointerup`. This
+  // flag swallows exactly that click so it doesn't double-fire selection or a
+  // stray placement. A keyboard/AT activation raises `click` with no preceding
+  // pointer sequence, so that path still selects/places.
+  let dragJustEnded = false;
+
+  interface DragState {
+    slot: number;
+    pointerId: number;
+    clone: HTMLElement;
+    grabDX: number;
+    grabDY: number;
+    legal: Set<string>;
+    anchor: { r: number; c: number } | null;
+    moved: boolean;
+    startX: number;
+    startY: number;
+  }
 
   const statusEl = el("p", { class: "sol-status", role: "status", "aria-live": "polite" });
   const setStatus = (msg: string): void => {
@@ -172,37 +230,36 @@ export function blockdokuModule(): GameModule {
   const verify = (env: BlockdokuEnvelope): VerifyResult => verifyRecord(verifier!, env);
 
   const legalFor = (slot: number | null): MoveView[] =>
-    slot === null ? [] : game!.legalMoves().filter((m) => m.slot === slot);
+    slot === null || !game ? [] : game.legalMoves().filter((m) => m.slot === slot);
 
-  // "Tap the middle of the piece; it snaps to the nearest spot it fits." Among the
-  // core's legal placements for the slot, pick the one whose piece-centre is
-  // closest to the target cell (tie-break row then col). The UI never invents a
-  // placement — it only ever chooses among core-legal moves.
-  const snapAnchor = (slot: number | null, tr: number, tc: number): MoveView | null => {
-    if (slot === null || !game) return null;
-    const piece = game.tray()[slot];
-    const legal = legalFor(slot);
-    if (!piece || legal.length === 0) return null;
-    const cr = piece.rows / 2;
-    const cc = piece.cols / 2;
-    let best = legal[0]!;
-    let bestD = Infinity;
-    for (const m of legal) {
-      const dr = m.row + cr - (tr + 0.5);
-      const dc = m.col + cc - (tc + 0.5);
-      const d = dr * dr + dc * dc;
-      if (d < bestD) {
-        bestD = d;
-        best = m;
-      }
-    }
-    return best;
+  /** The set of legal top-left anchors ("r,c") for a slot — cheap membership. */
+  const legalSet = (slot: number | null): Set<string> =>
+    new Set(legalFor(slot).map((m) => `${m.row},${m.col}`));
+
+  /** Clamp an anchor so the whole `rows×cols` shape stays on the 9×9 board. */
+  const clampAnchor = (
+    piece: { rows: number; cols: number },
+    r: number,
+    c: number,
+  ): { r: number; c: number } => ({
+    r: Math.max(0, Math.min(9 - piece.rows, r)),
+    c: Math.max(0, Math.min(9 - piece.cols, c)),
+  });
+
+  /** Live board geometry (top-left of cell 0,0 + cell pitch), or null pre-render. */
+  const boardGeom = (): BoardGeom | null => {
+    const c0 = boardEl?.querySelector<HTMLElement>('.bdk-cell[data-r="0"][data-c="0"]');
+    if (!c0) return null;
+    const rect = c0.getBoundingClientRect();
+    return { left: rect.left, top: rect.top, cell: rect.width };
   };
 
   const selectSlot = (slot: number): void => {
     if (!game || game.isOver()) return;
-    if (legalFor(slot).length === 0) return; // an unplaceable piece cannot be selected
+    const piece = game.tray()[slot];
+    if (!piece || legalFor(slot).length === 0) return; // an unplaceable piece can't be picked
     selected = slot;
+    cursor = clampAnchor(piece, cursor.r, cursor.c); // keep the anchor valid for this shape
     render();
   };
 
@@ -214,11 +271,118 @@ export function blockdokuModule(): GameModule {
     render();
   };
 
-  // Place the selected piece near a target cell, snapped to its nearest fit.
-  const placeSnapped = (tr: number, tc: number): void => {
-    if (selected === null) return;
-    const a = snapAnchor(selected, tr, tc);
-    if (a) placeAt(a.slot, a.row, a.col);
+  // Exact placement for the keyboard/tap fallback: anchor the selected piece's
+  // TOP-LEFT at (r,c), clamped in-bounds. If the core doesn't accept it, say so —
+  // no silent "nearest fit" snapping (that was the confusing part).
+  const tapPlace = (r: number, c: number): void => {
+    if (selected === null || !game) return;
+    const piece = game.tray()[selected];
+    if (!piece) return;
+    const a = clampAnchor(piece, r, c);
+    if (!legalSet(selected).has(`${a.r},${a.c}`)) {
+      setStatus("That piece won’t fit there — try another spot.");
+      return;
+    }
+    placeAt(selected, a.r, a.c);
+  };
+
+  // ---- pointer drag: grab a tray piece, drag it over the board, drop to place ----
+
+  /** A floating clone of a piece at board-cell scale (follows the finger). */
+  const buildDragClone = (piece: PieceView, cell: number): HTMLElement => {
+    const clone = el("div", {
+      class: `bdk-drag bdk-tier-${piece.tier}`,
+      "aria-hidden": "true",
+      style: `grid-template-columns: repeat(${piece.cols}, ${cell}px); grid-template-rows: repeat(${piece.rows}, ${cell}px);`,
+    });
+    for (let r = 0; r < piece.rows; r++) {
+      for (let c = 0; c < piece.cols; c++) {
+        clone.append(el("span", { class: piece.cells[r]![c] === 1 ? "bdk-drag-on" : "bdk-drag-off" }));
+      }
+    }
+    return clone;
+  };
+
+  const updateDrag = (x: number, y: number): void => {
+    if (!drag || !game) return;
+    const left = x - drag.grabDX;
+    const top = y - drag.grabDY;
+    drag.clone.style.left = `${left}px`;
+    drag.clone.style.top = `${top}px`;
+    const geom = boardGeom();
+    const piece = game.tray()[drag.slot];
+    if (!geom || !piece) {
+      drag.anchor = null;
+      paintGhost(null);
+      return;
+    }
+    drag.anchor = anchorFromClone(left, top, geom, piece);
+    paintGhost(drag.anchor);
+  };
+
+  const endDrag = (): void => {
+    if (!drag) return;
+    window.removeEventListener("pointermove", onDragMove);
+    window.removeEventListener("pointerup", onDragEnd);
+    window.removeEventListener("pointercancel", onDragEnd);
+    drag.clone.remove();
+    drag = null;
+  };
+
+  const onDragMove = (ev: PointerEvent): void => {
+    if (!drag || ev.pointerId !== drag.pointerId) return;
+    if (Math.abs(ev.clientX - drag.startX) > 6 || Math.abs(ev.clientY - drag.startY) > 6) {
+      drag.moved = true;
+    }
+    updateDrag(ev.clientX, ev.clientY);
+    ev.preventDefault();
+  };
+
+  const onDragEnd = (ev: PointerEvent): void => {
+    if (!drag || ev.pointerId !== drag.pointerId) return;
+    const { slot, anchor, moved, legal } = drag;
+    endDrag();
+    dragJustEnded = true; // swallow the synthetic click that follows this pointerup
+    setTimeout(() => {
+      dragJustEnded = false;
+    }, 0);
+    // A real drag onto a legal cell places; a tap (no movement) or an illegal drop
+    // just leaves the piece selected so the tap/keyboard fallback can finish it.
+    if (moved && anchor && legal.has(`${anchor.r},${anchor.c}`)) {
+      placeAt(slot, anchor.r, anchor.c);
+    } else {
+      render();
+    }
+  };
+
+  const startDrag = (slot: number, ev: PointerEvent): void => {
+    if (!game || game.isOver()) return;
+    const piece = game.tray()[slot];
+    if (!piece || legalFor(slot).length === 0) return; // a dead piece can't be dragged
+    selected = slot;
+    cursor = clampAnchor(piece, cursor.r, cursor.c);
+    const cell = boardGeom()?.cell ?? 30;
+    const clone = buildDragClone(piece, cell);
+    document.body.append(clone);
+    drag = {
+      slot,
+      pointerId: ev.pointerId,
+      clone,
+      // Float the piece centred over — and lifted above — the finger, so it stays
+      // visible while dragging.
+      grabDX: (piece.cols * cell) / 2,
+      grabDY: piece.rows * cell + cell * 0.6,
+      legal: legalSet(slot),
+      anchor: null,
+      moved: false,
+      startX: ev.clientX,
+      startY: ev.clientY,
+    };
+    window.addEventListener("pointermove", onDragMove);
+    window.addEventListener("pointerup", onDragEnd);
+    window.addEventListener("pointercancel", onDragEnd);
+    render(); // reflect the selection (tray highlight); the clone lives on <body>
+    updateDrag(ev.clientX, ev.clientY);
   };
 
   const undo = (): void => {
@@ -329,26 +493,26 @@ export function blockdokuModule(): GameModule {
     return bar;
   };
 
-  // Repaint only the transient overlay (cursor ring + the single snapped ghost)
-  // via targeted class toggles, so a hover/keyboard move doesn't re-render 81
-  // cells. There is NO full-board legal glow — just a preview of where THIS tap
-  // would land, snapped to the nearest fit.
-  const paintGhost = (): void => {
+  // Repaint the transient placement preview via targeted class toggles, so a
+  // drag/keyboard move doesn't re-render all 81 cells. When NOTHING is selected
+  // the board is left clean — there is no resting cursor and no full-board glow.
+  // The preview shows exactly the selected piece's footprint at the current
+  // anchor: green (`bdk-ghost`) where the core accepts it, red (`bdk-ghost-bad`)
+  // where it doesn't.
+  const paintGhost = (override?: { r: number; c: number } | null): void => {
     if (!boardEl) return;
     boardEl
-      .querySelectorAll(".bdk-ghost, .bdk-cursor")
-      .forEach((c) => c.classList.remove("bdk-ghost", "bdk-cursor"));
-    boardEl
-      .querySelector(`.bdk-cell[data-r="${cursor.r}"][data-c="${cursor.c}"]`)
-      ?.classList.add("bdk-cursor");
-    if (selected === null) return;
-    const a = snapAnchor(selected, cursor.r, cursor.c);
-    const piece = game!.tray()[selected];
-    if (!a || !piece) return;
-    for (const key of footprint(piece, a.row, a.col)) {
-      boardEl
-        .querySelector(`.bdk-cell[data-r="${key.split(",")[0]}"][data-c="${key.split(",")[1]}"]`)
-        ?.classList.add("bdk-ghost");
+      .querySelectorAll(".bdk-ghost, .bdk-ghost-bad")
+      .forEach((c) => c.classList.remove("bdk-ghost", "bdk-ghost-bad"));
+    if (selected === null || !game) return;
+    const piece = game.tray()[selected];
+    if (!piece) return;
+    const a = override ?? clampAnchor(piece, cursor.r, cursor.c);
+    const legal = drag ? drag.legal : legalSet(selected);
+    const cls = legal.has(`${a.r},${a.c}`) ? "bdk-ghost" : "bdk-ghost-bad";
+    for (const key of footprint(piece, a.r, a.c)) {
+      const [r, c] = key.split(",");
+      boardEl.querySelector(`.bdk-cell[data-r="${r}"][data-c="${c}"]`)?.classList.add(cls);
     }
   };
 
@@ -378,18 +542,26 @@ export function blockdokuModule(): GameModule {
         );
       }
     }
-    // Hover moves the preview (desktop); a tap drops the piece, snapped.
+    // Desktop hover moves the anchor so the mouse gets a live preview and can
+    // click-to-place. During a pointer drag the window listener owns the preview,
+    // so the board's own hover stands down.
     board.addEventListener("pointermove", (e) => {
-      if (selected === null) return;
+      if (selected === null || drag) return;
       const cell = (e.target as HTMLElement).closest<HTMLElement>(".bdk-cell");
-      if (!cell) return;
-      cursor = { r: Number(cell.dataset.r), c: Number(cell.dataset.c) };
+      if (!cell || !game) return;
+      const piece = game.tray()[selected];
+      if (!piece) return;
+      cursor = clampAnchor(piece, Number(cell.dataset.r), Number(cell.dataset.c));
       paintGhost();
     });
+    // A plain tap/click on the board places the selected piece exactly (top-left
+    // at the tapped cell, clamped). The click synthesised right after a drag is
+    // swallowed so it can't double-place.
     board.addEventListener("click", (e) => {
+      if (dragJustEnded) return;
       const cell = (e.target as HTMLElement).closest<HTMLElement>(".bdk-cell");
       if (!cell || selected === null) return;
-      placeSnapped(Number(cell.dataset.r), Number(cell.dataset.c));
+      tapPlace(Number(cell.dataset.r), Number(cell.dataset.c));
     });
     boardEl = board;
     return board;
@@ -409,7 +581,18 @@ export function blockdokuModule(): GameModule {
         ...(piece && placeable ? {} : { disabled: "disabled" }),
       });
       if (piece) slotEl.append(renderMini(piece));
-      slotEl.addEventListener("click", () => selectSlot(slot));
+      if (piece && placeable) {
+        // Press-and-drag starts a drag; a plain tap/keyboard activation selects.
+        slotEl.addEventListener("pointerdown", (e) => {
+          slotEl.releasePointerCapture?.(e.pointerId); // let window own the move stream
+          startDrag(slot, e);
+          e.preventDefault();
+        });
+      }
+      slotEl.addEventListener("click", () => {
+        if (dragJustEnded) return; // the synthetic click after a drag/tap
+        selectSlot(slot);
+      });
       wrap.append(slotEl);
     });
     return wrap;
@@ -441,8 +624,8 @@ export function blockdokuModule(): GameModule {
       "p",
       { class: "bdk-banner" },
       selected === null
-        ? "Tap a piece to pick it up. Fill a row, column, or 3×3 box to clear it."
-        : "Now tap the board where you want it — the piece centres on your tap and snaps to the nearest fit.",
+        ? "Drag a piece onto the board — or tap a piece, then tap where it goes. Fill a row, column, or 3×3 box to clear it."
+        : "Drop it where the piece lights up (it turns red where it won’t fit). Tap the board or press Enter to place; arrow keys nudge it.",
     );
     container.replaceChildren(
       el(
@@ -456,7 +639,7 @@ export function blockdokuModule(): GameModule {
         statusEl,
       ),
     );
-    paintGhost(); // show the cursor ring + snapped preview for the current target
+    paintGhost(); // preview the selected piece at the current anchor (nothing if unselected)
   }
 
   const presentResult = async (): Promise<void> => {
@@ -493,13 +676,16 @@ export function blockdokuModule(): GameModule {
       ArrowLeft: [0, -1],
       ArrowRight: [0, 1],
     };
-    if (e.key in step) {
-      const [dr, dc] = step[e.key]!;
-      cursor = { r: Math.max(0, Math.min(8, cursor.r + dr)), c: Math.max(0, Math.min(8, cursor.c + dc)) };
-      paintGhost(); // move the preview without re-rendering the whole board
+    if (e.key in step && selected !== null) {
+      const piece = game.tray()[selected];
+      if (piece) {
+        const [dr, dc] = step[e.key]!;
+        cursor = clampAnchor(piece, cursor.r + dr, cursor.c + dc);
+        paintGhost(); // move the preview without re-rendering the whole board
+      }
       e.preventDefault();
     } else if (e.key === "Enter" && selected !== null) {
-      placeSnapped(cursor.r, cursor.c);
+      tapPlace(cursor.r, cursor.c);
       e.preventDefault();
     }
   };
@@ -554,7 +740,7 @@ export function blockdokuModule(): GameModule {
       seed,
       select: (slot: number) => selectSlot(slot),
       place: (slot: number, row: number, col: number) => placeAt(slot, row, col),
-      tapAt: (row: number, col: number) => placeSnapped(row, col),
+      tapAt: (row: number, col: number) => tapPlace(row, col),
       hint: () => showHint(),
       undo: () => undo(),
     };
@@ -593,6 +779,7 @@ export function blockdokuModule(): GameModule {
     },
     unmount(): void {
       disposed = true;
+      endDrag(); // drop any floating clone + window drag listeners
       document.removeEventListener("keydown", onKeydown);
       delete window.__blockdoku;
       container?.replaceChildren();

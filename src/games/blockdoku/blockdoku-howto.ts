@@ -1,6 +1,6 @@
 //! Blockdoku's "How to play" guide (pure data — see src/how-to.ts). Leads with
-//! the tap-to-select / tap-to-place interaction, then the clearing rule, then
-//! difficulty and the verifiable result.
+//! the drag-to-place interaction (tap-to-place and keyboard are the fallback),
+//! then the clearing rule, then difficulty and the verifiable result.
 
 import type { Guide } from "../../how-to.js";
 
@@ -10,30 +10,31 @@ export const BLOCKDOKU_GUIDE: Guide = {
   entries: [
     {
       testid: "howto-place",
-      title: "Placing a piece: tap, then tap",
+      title: "Placing a piece: drag it onto the board",
       toc: "Placing",
       blocks: [
         {
           kind: "prose",
-          text: "You are dealt three pieces at a time. Placing them is the whole game, and it works the same with a mouse, a finger, or the keyboard.",
+          text: "You are dealt three pieces at a time, and placing them is the whole game. Drag with a finger or mouse, or drive it entirely from the keyboard.",
         },
         {
           kind: "steps",
           items: [
-            "Tap a piece in the tray to pick it up.",
-            "Tap the board roughly where you want it — the piece centres on your tap and a preview shows exactly where it will land.",
-            "On a keyboard: press 1, 2, or 3 to pick a piece, move the preview with the arrow keys, and press Enter to drop.",
+            "Press a piece in the tray and drag it onto the board — it lifts up and follows your finger.",
+            "A preview shows where it will land: it lights up where the whole shape fits and turns red where it doesn't. Release over a lit spot to drop it.",
+            "Prefer tapping? Tap a piece to pick it up, then tap the board where its top-left should go.",
+            "On a keyboard: press 1, 2, or 3 to pick a piece, nudge the preview with the arrow keys, and press Enter to drop.",
           ],
         },
         {
           kind: "note",
-          text: "The piece snaps to the nearest place it actually fits, so you don't have to be pixel-perfect. The game decides legality — it only ever lands where the whole shape fits on empty cells.",
+          text: "The game decides legality — a piece only ever lands where the whole shape fits on empty cells, and an off-target drop simply doesn't place.",
         },
         {
           kind: "shot",
           name: "blockdoku-select",
-          alt: "A 9×9 board with a piece selected in the tray and a translucent preview showing where it will drop.",
-          caption: "Pick a piece, then tap the board — a preview shows where it snaps.",
+          alt: "A 9×9 board with visible 3×3 boxes, a piece held from the tray, and a highlighted preview showing where it will drop.",
+          caption: "Drag a piece over the board — a preview lights up where it fits.",
         },
       ],
     },

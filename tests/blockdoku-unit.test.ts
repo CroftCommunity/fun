@@ -13,7 +13,7 @@ import {
   verifyRecord,
   type BlockdokuEnvelope,
 } from "../src/games/blockdoku/blockdoku-outcome.js";
-import { renderResultScreen } from "../src/games/blockdoku/blockdoku.js";
+import { anchorFromClone, renderResultScreen } from "../src/games/blockdoku/blockdoku.js";
 import { Blockdoku, DEFAULT_CONFIG } from "../src/games/blockdoku/blockdoku-wasm.js";
 
 const WASM = "target/wasm32-unknown-unknown/release/blockdoku_wasm.wasm";
@@ -90,6 +90,25 @@ describe("verify against the real core", () => {
     // TS packSeed must match Rust unpack_seed, or replay would diverge.
     const env = playRun(game, 555n, { ...DEFAULT_CONFIG, difficulty: "hard" });
     expect(verifyRecord(verifier, env).ok).toBe(true);
+  });
+});
+
+describe("drag geometry: anchorFromClone", () => {
+  // A 30px cell grid whose top-left cell (0,0) starts at viewport (100, 200).
+  const geom = { left: 100, top: 200, cell: 30 };
+
+  it("maps the clone's top-left to the nearest board cell", () => {
+    // Clone top-left near cell (2,3): x = 100 + 3*30 = 190, y = 200 + 2*30 = 260.
+    expect(anchorFromClone(190, 260, geom, { rows: 1, cols: 1 })).toEqual({ r: 2, c: 3 });
+    // A little off still rounds to the same cell.
+    expect(anchorFromClone(196, 254, geom, { rows: 1, cols: 1 })).toEqual({ r: 2, c: 3 });
+  });
+
+  it("clamps so the whole shape stays on the 9×9 board", () => {
+    // A 2×3 piece dragged far past the bottom-right clamps to the last fit.
+    expect(anchorFromClone(9999, 9999, geom, { rows: 2, cols: 3 })).toEqual({ r: 7, c: 6 });
+    // ...and past the top-left clamps to (0,0).
+    expect(anchorFromClone(-9999, -9999, geom, { rows: 2, cols: 3 })).toEqual({ r: 0, c: 0 });
   });
 });
 

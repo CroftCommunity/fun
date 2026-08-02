@@ -1,8 +1,9 @@
 //! Blockdoku wiring test: the board + tray + HUD render and play over the
-//! binding; selecting a piece glows EXACTLY the core's legal anchors; tapping a
-//! glowing cell places (score/board change) and an illegal tap is a core-decided
-//! no-op; the game reaches a verifiable result. Axe + narrow-phone fit guard the
-//! identity. Reachability is proven through the real `/blockdoku/` URL.
+//! binding; the nine 3×3 boxes are drawn; nothing glows until a piece is held;
+//! a piece can be DRAGGED from the tray onto the board to place it, and the
+//! tap/keyboard fallback places at an exact legal anchor; the game reaches a
+//! verifiable result. Axe + narrow-phone fit guard the identity. Reachability is
+//! proven through the real `/blockdoku/` URL.
 
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
@@ -12,7 +13,7 @@ async function ready(page: Page): Promise<void> {
   await page.waitForFunction(() => Boolean(window.__blockdoku));
 }
 
-test("the board, tray, and HUD render", async ({ page }) => {
+test("the board, tray, and HUD render with visible 3×3 boxes", async ({ page }) => {
   await page.goto("/blockdoku/?seed=7");
   await ready(page);
   await expect(page.locator(".bdk-board")).toBeVisible();
@@ -21,37 +22,80 @@ test("the board, tray, and HUD render", async ({ page }) => {
   await expect(page.locator(".bdk-tray .bdk-piece")).toHaveCount(3);
   await expect(page.locator(".bdk-hud")).toContainText(/score/i);
   await expect(page.locator(".bdk-banner")).toContainText(/piece/i);
+  // The nine 3×3 boxes are drawn via heavy dividers on every third row/column
+  // start (cols/rows 0,3,6): 3 columns × 9 = 27 each. Their presence is what
+  // makes the sub-squares legible.
+  await expect(page.locator(".bdk-cell.bdk-box-left")).toHaveCount(27);
+  await expect(page.locator(".bdk-cell.bdk-box-top")).toHaveCount(27);
 });
 
-test("selecting a piece previews one snapped placement, not a full-grid glow", async ({ page }) => {
+test("nothing glows until a piece is held", async ({ page }) => {
   await page.goto("/blockdoku/?seed=7");
   await ready(page);
-  // No legal-glow class exists any more (that lit up nearly the whole board).
-  expect(await page.locator(".bdk-cell.bdk-legal").count()).toBe(0);
+  // At rest: no stray cursor ring, no preview. (The old build left a permanent
+  // ring glowing in the centre.)
+  expect(await page.locator(".bdk-cell.bdk-cursor").count()).toBe(0);
+  expect(await page.locator(".bdk-cell.bdk-ghost, .bdk-cell.bdk-ghost-bad").count()).toBe(0);
+  // Pick up a piece and the preview appears — exactly its footprint of cells.
   await page.evaluate(() => window.__blockdoku!.select(0));
-  // The preview shows exactly the selected piece's footprint (its filled-cell
-  // count) — a single placement, not every legal anchor.
   const cellCount = await page.evaluate(() => {
     const p = window.__blockdoku!.game.tray()[0]!;
     return p.cells.flat().filter((v) => v === 1).length;
   });
-  expect(await page.locator(".bdk-cell.bdk-ghost").count()).toBe(cellCount);
+  expect(await page.locator(".bdk-cell.bdk-ghost, .bdk-cell.bdk-ghost-bad").count()).toBe(cellCount);
 });
 
-test("tapping the board drops the piece, snapped to the nearest legal placement", async ({ page }) => {
+test("dragging a piece from the tray onto the board places it", async ({ page }) => {
   await page.goto("/blockdoku/?seed=7");
   await ready(page);
-  await page.evaluate(() => window.__blockdoku!.select(0));
+  // Ask the core for a legal anchor for piece 0, then compute the exact pointer
+  // position that lands the dragged clone's top-left on that anchor.
+  const plan = await page.evaluate(() => {
+    const g = window.__blockdoku!.game;
+    const m = g.legalMoves().find((x) => x.slot === 0)!;
+    const piece = g.tray()[0]!;
+    const c0 = document
+      .querySelector('.bdk-cell[data-r="0"][data-c="0"]')!
+      .getBoundingClientRect();
+    const cell = c0.width;
+    const cloneLeft = c0.left + m.col * cell;
+    const cloneTop = c0.top + m.row * cell;
+    return {
+      slot: 0,
+      // Mirror the module's grab offsets (centre-x, lifted above the finger).
+      px: cloneLeft + (piece.cols * cell) / 2,
+      py: cloneTop + piece.rows * cell + cell * 0.6,
+    };
+  });
   const before = await page.evaluate(() => window.__blockdoku!.game.currentHash());
-  // Tap an arbitrary board cell — even an occupied/awkward one — and the piece
-  // still lands (snapped), so the board changes and a legal move was recorded.
-  await page.evaluate(() => window.__blockdoku!.tapAt(4, 4));
-  const after = await page.evaluate(() => ({
-    hash: window.__blockdoku!.game.currentHash(),
-    moves: window.__blockdoku!.game.legalMoves(), // (re-read; just proving it advanced)
-  }));
-  expect(after.hash).not.toBe(before);
-  expect(await page.evaluate(() => window.__blockdoku!.game.currentHash())).toBe(after.hash);
+  // A real pointer drag: press the tray piece, drag over the board, release.
+  const pieceBox = (await page.locator('.bdk-piece[data-slot="0"]').boundingBox())!;
+  await page.mouse.move(pieceBox.x + pieceBox.width / 2, pieceBox.y + pieceBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(plan.px, plan.py, { steps: 8 });
+  // While hovering a legal cell, the preview shows the valid (`bdk-ghost`) class.
+  await expect(page.locator(".bdk-cell.bdk-ghost")).not.toHaveCount(0);
+  await page.mouse.up();
+  // The drop placed the piece, so the board advanced and no clone lingers.
+  const after = await page.evaluate(() => window.__blockdoku!.game.currentHash());
+  expect(after).not.toBe(before);
+  await expect(page.locator(".bdk-drag")).toHaveCount(0);
+});
+
+test("tap-to-place drops the piece at an exact legal anchor", async ({ page }) => {
+  await page.goto("/blockdoku/?seed=7");
+  await ready(page);
+  const before = await page.evaluate(() => window.__blockdoku!.game.currentHash());
+  // Select piece 0 and place it at a core-legal anchor (no "nearest fit" magic).
+  const moved = await page.evaluate(() => {
+    window.__blockdoku!.select(0);
+    const m = window.__blockdoku!.game.legalMoves().find((x) => x.slot === 0)!;
+    window.__blockdoku!.tapAt(m.row, m.col);
+    return true;
+  });
+  expect(moved).toBe(true);
+  const after = await page.evaluate(() => window.__blockdoku!.game.currentHash());
+  expect(after).not.toBe(before);
 });
 
 test("plays to a verifiable result", async ({ page }) => {
@@ -77,8 +121,11 @@ test("undo reverts the last placement", async ({ page }) => {
   await page.goto("/blockdoku/?seed=7");
   await ready(page);
   const before = await page.evaluate(() => window.__blockdoku!.game.currentHash());
-  await page.evaluate(() => window.__blockdoku!.select(0));
-  await page.evaluate(() => window.__blockdoku!.tapAt(4, 4));
+  await page.evaluate(() => {
+    window.__blockdoku!.select(0);
+    const m = window.__blockdoku!.game.legalMoves().find((x) => x.slot === 0)!;
+    window.__blockdoku!.tapAt(m.row, m.col);
+  });
   const after = await page.evaluate(() => window.__blockdoku!.game.currentHash());
   expect(after).not.toBe(before);
   await page.locator(".bdk-undo").click();
