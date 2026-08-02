@@ -141,6 +141,39 @@ test("gems render as glossy shapes (inner .m3-shape); glows stay on the button",
   await expect(page.locator(".m3-shape.selected")).toHaveCount(0);
 });
 
+test("a clearing swap emits a move event and its burst layer is decorative", async ({ page }) => {
+  await page.goto("/match3/?seed=7");
+  await ready(page);
+  // The burst layer is present, aria-hidden, and carries no interactive nodes
+  // (so it never changes the board's gem/button count or the a11y tree).
+  await expect(page.locator(".m3-fx")).toHaveAttribute("aria-hidden", "true");
+  await expect(page.locator(".m3-fx button")).toHaveCount(0);
+
+  // Subscribe to the success bus, then play a legal (clearing) swap through the UI.
+  await page.evaluate(() => {
+    (window as unknown as { __ev: unknown[] }).__ev = [];
+    window.__match3!.events.on((e) => (window as unknown as { __ev: unknown[] }).__ev.push(e));
+  });
+  const swap = await page.evaluate(() => window.__match3!.game.legalMoves()[0]!);
+  await page.locator(`.m3-gem[data-r="${swap[0]}"][data-c="${swap[1]}"]`).click();
+  await page.locator(`.m3-gem[data-r="${swap[2]}"][data-c="${swap[3]}"]`).click();
+  const events = await page.evaluate(() => (window as unknown as { __ev: { type: string; cleared?: number }[] }).__ev);
+  expect(events.some((e) => e.type === "move" && (e.cleared ?? 0) >= 3)).toBe(true);
+});
+
+test("reduced-motion spawns no particles (FX skipped)", async ({ browser }) => {
+  const context = await browser.newContext({ reducedMotion: "reduce" });
+  const page = await context.newPage();
+  await page.goto("/match3/?seed=7");
+  await ready(page);
+  const swap = await page.evaluate(() => window.__match3!.game.legalMoves()[0]!);
+  await page.locator(`.m3-gem[data-r="${swap[0]}"][data-c="${swap[1]}"]`).click();
+  await page.locator(`.m3-gem[data-r="${swap[2]}"][data-c="${swap[3]}"]`).click();
+  await page.waitForTimeout(120);
+  expect(await page.locator(".m3-particle").count()).toBe(0);
+  await context.close();
+});
+
 test("a tiny pointer nudge under the threshold does not swap — it selects (tap floor)", async ({ page }) => {
   await page.goto("/match3/?seed=7");
   await ready(page);

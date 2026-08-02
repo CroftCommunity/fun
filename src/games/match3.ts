@@ -14,6 +14,8 @@ import {
   type VerifyResult,
 } from "./match3-outcome.js";
 import { dayIndexUTC } from "./share.js";
+import { analyzeCascade, celebrationTier, showCelebration, spawnBurst, type CascadeInfo } from "./match3-fx.js";
+import { createBus, type Bus } from "./match3-events.js";
 import {
   declareAssistanceEnabled,
   hintsEnabled,
@@ -30,6 +32,8 @@ declare global {
       legalMoves: () => Swap[];
       seed: bigint;
       objective: Mode;
+      /** The live success bus — tests subscribe to assert emitted gameplay events. */
+      events: Bus;
     };
   }
 }
@@ -220,8 +224,17 @@ export function match3Module(): GameModule {
 
   // Per-phase cascade animation cadence. A move emits swap + 3 frames per cascade
   // step (clear/fall/refill), so a 1–3-step move runs ~0.3–0.8s.
-  const FRAME_MS = 80;
+  // Per-phase cascade cadence. A clear frame is held long enough to *register*
+  // (the gap + burst read); the after-swap and fall/refill frames stay snappy so
+  // the move still feels quick. A 1-clear move ≈ 0.45s, a big cascade lingers.
+  const SWAP_MS = 110;
+  const CLEAR_MS = 260;
+  const FALL_MS = 90;
   const delay = (ms: number): Promise<void> => new Promise((res) => setTimeout(res, ms));
+
+  // Gameplay success bus: bursts + celebration (below) and — Phase 2 — the
+  // narrative overlay subscribe to the same stream, so FX and story never disagree.
+  const bus = createBus();
 
   const reducedMotion = (): boolean => {
     try {
@@ -299,17 +312,31 @@ export function match3Module(): GameModule {
   };
 
   // Step through the per-phase snapshots, swapping just the board element so the
-  // HUD/controls stay put. Input is gated (`animating`) until the settled render.
-  const animateSnapshots = async (frames: Frame[]): Promise<void> => {
+  // HUD/controls stay put. Clear frames are held longer (CLEAR_MS) and fire a
+  // particle burst at the cells that emptied; the deepest cascade flashes an
+  // escalating celebration. Input is gated (`animating`) until the settled render.
+  const animateSnapshots = async (frames: Frame[], cascade: CascadeInfo): Promise<void> => {
     if (!container) return;
     animating = true;
+    const clearAt = new Map(cascade.clears.map((p) => [p.frameIndex, p]));
+    const tier = celebrationTier(cascade.depth);
+    const lastClearIndex = cascade.clears.at(-1)?.frameIndex ?? -1;
     try {
-      for (const frame of frames) {
+      for (let i = 0; i < frames.length; i += 1) {
         if (disposed || !container) return;
         const current = container.querySelector<HTMLElement>(".m3-board");
         if (!current) return;
-        current.replaceWith(renderFrame(frame));
-        await delay(FRAME_MS);
+        current.replaceWith(renderFrame(frames[i]!));
+        const phase = clearAt.get(i);
+        if (phase) {
+          const boardEl = container.querySelector<HTMLElement>(".m3-board");
+          const layer = container.querySelector<HTMLElement>(".m3-fx");
+          if (boardEl && layer) {
+            spawnBurst(layer, boardEl, phase.cells, tier ? tier.level : 1);
+            if (tier && i === lastClearIndex) showCelebration(layer, tier.label, tier.level);
+          }
+        }
+        await delay(phase ? CLEAR_MS : i === 0 ? SWAP_MS : FALL_MS);
       }
     } finally {
       animating = false;
@@ -319,15 +346,27 @@ export function match3Module(): GameModule {
   const applySwap = (s: Swap): void => {
     // The core applies the whole move now (wasm state is settled immediately);
     // the frames are only the intermediate boards the UI animates over.
+    const scoreBefore = game!.score();
     const frames = game!.playTraced(s);
     selected = null;
     hint = null;
     setStatus("");
+    const cascade = analyzeCascade(frames);
+    // Announce the move so FX + (Phase 2) narrative react to the same signal.
+    bus.emit({
+      type: "move",
+      scoreDelta: game!.score() - scoreBefore,
+      cascadeDepth: cascade.depth,
+      cleared: cascade.totalCleared,
+    });
+    if (cascade.depth >= 1) {
+      bus.emit({ type: "cascade", depth: cascade.depth, clearedCells: cascade.clears.flatMap((p) => p.cells) });
+    }
     if (reducedMotion() || frames.length === 0) {
       render();
       return;
     }
-    void animateSnapshots(frames).then(() => {
+    void animateSnapshots(frames, cascade).then(() => {
       if (!disposed) render();
     });
   };
@@ -753,7 +792,15 @@ export function match3Module(): GameModule {
     lastScore = board.score;
     // A single centred play column (RESPONSIVE-DESIGN Principle 1): controls, board,
     // and status share one vertical axis, centred in the play area (never left-hugging).
-    const gameEl = el("div", { class: "m3-game" }, renderControls(board), renderBoard(board), statusEl);
+    // The board sits in a positioned wrap next to a decorative burst layer; the
+    // layer persists while the board element is swapped frame-to-frame mid-cascade.
+    const boardWrap = el(
+      "div",
+      { class: "m3-board-wrap" },
+      renderBoard(board),
+      el("div", { class: "m3-fx", "aria-hidden": "true" }),
+    );
+    const gameEl = el("div", { class: "m3-game" }, renderControls(board), boardWrap, statusEl);
     container.replaceChildren(gameEl);
     applyGlow();
   }
@@ -872,6 +919,7 @@ export function match3Module(): GameModule {
       legalMoves: () => game!.legalMoves(),
       seed,
       objective,
+      events: bus,
     };
   };
 
