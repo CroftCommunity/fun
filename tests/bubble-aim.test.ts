@@ -4,11 +4,13 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  aimBand,
   boardSubpixelSize,
   cellCenter,
   clampAngle,
   launcherOrigin,
   pointerToAngle,
+  snapAngle,
 } from "../src/games/bubble/bubble-aim.js";
 import type { Geom } from "../src/games/bubble/bubble-wasm.js";
 
@@ -41,6 +43,50 @@ describe("clampAngle", () => {
     expect(clampAngle(90.4, GEOM)).toBe(90);
     expect(clampAngle(5, GEOM)).toBe(10);
     expect(clampAngle(200, GEOM)).toBe(170);
+  });
+});
+
+describe("snapAngle", () => {
+  it("is the plain clamped whole degree at step 1 (no snapping)", () => {
+    expect(snapAngle(93.4, 1, GEOM)).toBe(93);
+    expect(snapAngle(5, 1, GEOM)).toBe(10);
+    expect(snapAngle(200, 1, GEOM)).toBe(170);
+  });
+
+  it("snaps to multiples of the step anchored on 90° (straight up)", () => {
+    expect(snapAngle(90, 3, GEOM)).toBe(90); // the anchor is always reachable
+    expect(snapAngle(91, 3, GEOM)).toBe(90);
+    expect(snapAngle(94, 3, GEOM)).toBe(93);
+    expect(snapAngle(89, 3, GEOM)).toBe(90);
+    expect(snapAngle(86, 3, GEOM)).toBe(87);
+  });
+
+  it("keeps every snapped angle inside the legal fan", () => {
+    for (let step = 1; step <= 5; step += 1) {
+      for (let deg = GEOM.fanLo; deg <= GEOM.fanHi; deg += 1) {
+        const a = snapAngle(deg, step, GEOM);
+        expect(a).toBeGreaterThanOrEqual(GEOM.fanLo);
+        expect(a).toBeLessThanOrEqual(GEOM.fanHi);
+      }
+    }
+  });
+});
+
+describe("aimBand", () => {
+  it("covers the whole fan at full gain, wherever it is centred", () => {
+    const span = GEOM.fanHi - GEOM.fanLo;
+    expect(aimBand(90, span, GEOM)).toEqual({ lo: 10, hi: 170 });
+    expect(aimBand(170, span, GEOM)).toEqual({ lo: 10, hi: 170 });
+    expect(aimBand(10, span, GEOM)).toEqual({ lo: 10, hi: 170 });
+  });
+
+  it("makes a narrow window around the centre at low gain", () => {
+    expect(aimBand(90, 40, GEOM)).toEqual({ lo: 70, hi: 110 });
+  });
+
+  it("shifts the window fully inside the fan at the edges (width preserved)", () => {
+    expect(aimBand(10, 40, GEOM)).toEqual({ lo: 10, hi: 50 });
+    expect(aimBand(170, 40, GEOM)).toEqual({ lo: 130, hi: 170 });
   });
 });
 

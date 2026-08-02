@@ -50,6 +50,40 @@ export function clampAngle(deg: number, geom: Geom): number {
   return Math.max(geom.fanLo, Math.min(geom.fanHi, Math.round(deg)));
 }
 
+/** Snap a (possibly fractional) degree to the legal fan, then to the nearest
+ *  multiple of `step` anchored on 90° (straight up — so the anchor is always
+ *  reachable), re-clamping into the fan. `step <= 1` is the plain clamp (no
+ *  snapping). A larger step makes it easier to land on a stable angle on a
+ *  jittery touchscreen. */
+export function snapAngle(deg: number, step: number, geom: Geom): number {
+  const clamped = clampAngle(deg, geom);
+  if (step <= 1) return clamped;
+  const snapped = 90 + Math.round((clamped - 90) / step) * step;
+  return clampAngle(snapped, geom);
+}
+
+/** The slider band for a swipe gain: a window of width `min(gain, fanSpan)`
+ *  placed to contain `center` and shifted fully inside the fan (so the width is
+ *  preserved even at the edges). At full gain the window is the whole fan
+ *  regardless of centre, which makes the slider an absolute aim (today's
+ *  behaviour); a smaller gain narrows it around the current aim for finer
+ *  control, recentred between grabs. */
+export function aimBand(center: number, gain: number, geom: Geom): { lo: number; hi: number } {
+  const fanSpan = geom.fanHi - geom.fanLo;
+  const width = Math.max(0, Math.min(gain, fanSpan));
+  let lo = center - width / 2;
+  let hi = center + width / 2;
+  if (lo < geom.fanLo) {
+    lo = geom.fanLo;
+    hi = geom.fanLo + width;
+  }
+  if (hi > geom.fanHi) {
+    hi = geom.fanHi;
+    lo = geom.fanHi - width;
+  }
+  return { lo, hi };
+}
+
 /** The aim angle (whole degrees, clamped to the fan) from the launcher `origin`
  *  toward sub-pixel point `(px, py)`. Straight up = 90°, right ≈ fan low,
  *  left ≈ fan high. A point at or below the launcher clamps into the fan. */
