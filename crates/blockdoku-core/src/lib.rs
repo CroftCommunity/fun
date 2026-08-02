@@ -14,6 +14,7 @@
 #![warn(missing_docs)]
 
 pub mod board;
+pub mod config;
 pub mod deal;
 pub mod difficulty;
 pub mod game;
@@ -24,9 +25,10 @@ pub mod shapes;
 mod shapes_gen;
 
 pub use board::{Board, ClearReport, Pos, BOX, SIZE};
+pub use config::{pack_seed, unpack_seed};
 pub use deal::{deal, DealOptions, DealState};
 pub use difficulty::{Allowed, Difficulty};
-pub use game::{GameResult, GameState, Move, MoveError, TRAY_SIZE};
+pub use game::{Blockdoku, GameResult, GameState, Move, MoveError, TRAY_SIZE};
 pub use hash::state_hash;
 pub use rng::DetRng;
 pub use scoring::{

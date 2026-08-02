@@ -307,3 +307,28 @@ impl GameState {
         game
     }
 }
+
+/// The verifiable-outcome binding for Blockdoku.
+///
+/// Blockdoku is endless score-attack, so a record proves "on this config-packed
+/// seed, this move sequence reached score S and ended Stuck/limit". The seed is a
+/// [`crate::config`]-packed value so the deal options travel with it — replay
+/// unpacks them, so `(seed, moves)` fully determines the run.
+pub struct Blockdoku;
+
+impl pond_outcome::Game for Blockdoku {
+    type Move = Move;
+    const KIND: &'static str = "blockdoku";
+    const VERSION: u32 = 1;
+
+    fn replay(seed: u64, moves: &[Move]) -> pond_outcome::Replayed {
+        let (base, options) = crate::config::unpack_seed(seed);
+        let game = GameState::replay(base, options, moves);
+        pond_outcome::Replayed {
+            final_hash: game.state_hash(),
+            won: false, // endless score-attack: never "won"
+            score: Some(game.score()),
+            stars: None,
+        }
+    }
+}

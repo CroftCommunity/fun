@@ -15,6 +15,7 @@ members = [
     "crates/align-core",
     "crates/align-wasm",
     "crates/blockdoku-core",
+    "crates/blockdoku-wasm",
     "crates/bubble-core",
     "crates/wyrdle-core",
     "crates/twenty48-core",

@@ -41,12 +41,23 @@ name = "blockdoku-core"
 version = "0.0.0"
 dependencies = [
  "hex",
+ "pond-outcome",
  "rand",
  "rand_chacha",
  "serde",
  "serde_json",
  "sha2",
  "thiserror",
+]
+
+[[package]]
+name = "blockdoku-wasm"
+version = "0.0.0"
+dependencies = [
+ "blockdoku-core",
+ "pond-outcome",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
