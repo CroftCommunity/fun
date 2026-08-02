@@ -14,6 +14,8 @@
 #![warn(missing_docs)]
 
 pub mod board;
+pub mod deal;
+pub mod difficulty;
 pub mod hash;
 pub mod rng;
 pub mod scoring;
@@ -21,6 +23,8 @@ pub mod shapes;
 mod shapes_gen;
 
 pub use board::{Board, ClearReport, Pos, BOX, SIZE};
+pub use deal::{deal, DealOptions, DealState};
+pub use difficulty::{Allowed, Difficulty};
 pub use hash::state_hash;
 pub use rng::DetRng;
 pub use scoring::{
