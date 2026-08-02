@@ -385,6 +385,27 @@ body.fullscreen .play-area {
   box-shadow: 0 0 0 3px var(--active), 0 0 12px 3px var(--active);
   border-color: var(--active);
 }
+/* The Level 1 onboarding nudge: a brighter, pulsing ring on the suggested opening
+   move so it's unmistakable (distinct from the subtler assistance hint). */
+.m3-gem.m3-nudge {
+  z-index: 1;
+  animation: m3-nudge-pulse 1.1s ease-in-out infinite;
+}
+@keyframes m3-nudge-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px var(--accent), 0 0 8px 2px var(--accent);
+  }
+  50% {
+    box-shadow: 0 0 0 5px var(--accent), 0 0 18px 6px var(--accent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .m3-gem.m3-nudge {
+    animation: none;
+    box-shadow: 0 0 0 4px var(--accent), 0 0 14px 4px var(--accent);
+  }
+}
 
 /* Settings disclosure + contextual result note. */
 .sol-settings {

@@ -261,6 +261,9 @@ export function match3Module(): GameModule {
   let seed = 0n;
   let selected: { r: number; c: number } | null = null;
   let hint: Swap | null = null;
+  // When the current `hint` is the Level 1 first-move onboarding nudge (not an
+  // assistance hint), the glowed cells get a brighter, pulsing treatment.
+  let tutorialNudge = false;
   let cascadeEl: HTMLElement | null = null;
   let lastScore = 0;
   let scoreBumped = false;
@@ -400,6 +403,7 @@ export function match3Module(): GameModule {
     const frames = game!.playTraced(s);
     selected = null;
     hint = null;
+    tutorialNudge = false;
     setStatus("");
     // Autosave the in-progress campaign board as its move list (replayed to resume).
     if (level !== null && frames.length > 0) {
@@ -429,6 +433,7 @@ export function match3Module(): GameModule {
   const handleClick = (r: number, c: number): void => {
     if (!game || animating || gameOver()) return;
     hint = null;
+    tutorialNudge = false;
     if (!selected) {
       selected = { r, c };
       applyGlow();
@@ -462,6 +467,7 @@ export function match3Module(): GameModule {
     }
     game.markAssistance();
     hint = moves[0]!;
+    tutorialNudge = false; // a real assistance hint, not the onboarding nudge
     selected = null;
     setStatus(
       `Hint: swap row ${hint[0] + 1} col ${hint[1] + 1} with row ${hint[2] + 1} col ${hint[3] + 1} (a hint counts as assistance)`,
@@ -814,6 +820,7 @@ export function match3Module(): GameModule {
         // its legal targets glow (no state change), same as a tap on it.
         selected = from;
         hint = null;
+        tutorialNudge = false;
         applyGlow();
         setStatus("That swap makes no match.");
       }
@@ -832,11 +839,19 @@ export function match3Module(): GameModule {
   const applyGlow = (): void => {
     if (!container) return;
     container
-      .querySelectorAll(".legal-target, .selected, .hint-from, .hint-to")
-      .forEach((e) => e.classList.remove("legal-target", "selected", "hint-from", "hint-to"));
+      .querySelectorAll(".legal-target, .selected, .hint-from, .hint-to, .m3-nudge")
+      .forEach((e) => e.classList.remove("legal-target", "selected", "hint-from", "hint-to", "m3-nudge"));
     if (hint) {
-      gemAt(hint[0], hint[1])?.classList.add("hint-from");
-      gemAt(hint[2], hint[3])?.classList.add("hint-to");
+      const from = gemAt(hint[0], hint[1]);
+      const to = gemAt(hint[2], hint[3]);
+      from?.classList.add("hint-from");
+      to?.classList.add("hint-to");
+      // The onboarding nudge (Level 1 first move) gets a brighter, pulsing glow so
+      // the suggested opening is unmistakable — distinct from a subtle assistance hint.
+      if (tutorialNudge) {
+        from?.classList.add("m3-nudge");
+        to?.classList.add("m3-nudge");
+      }
       return;
     }
     if (!selected) return;
@@ -1058,6 +1073,7 @@ export function match3Module(): GameModule {
     // cleared by the first interaction.
     const nudge = lvl.id === 1 && lvl.hint && !replay?.length && !tutorialSeen();
     hint = nudge ? (lvl.hint ?? null) : null;
+    tutorialNudge = Boolean(nudge);
     if (nudge) markTutorialSeen();
     story?.resetForNewBoard();
     setStatus(replay?.length ? `Resumed Level ${lvl.id}.` : (lvl.intro ?? ""));

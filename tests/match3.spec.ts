@@ -241,6 +241,8 @@ test("Level 1 first load glows the tutorial opening move, once", async ({ page }
   await expect(page.locator(".m3-gem.hint-to")).toHaveCount(1);
   await expect(page.locator('.m3-gem.hint-from[data-r="3"][data-c="3"]')).toBeVisible();
   await expect(page.locator('.m3-gem.hint-to[data-r="3"][data-c="4"]')).toBeVisible();
+  // Both nudge cells carry the prominent pulsing treatment (not the subtle hint).
+  await expect(page.locator(".m3-gem.m3-nudge")).toHaveCount(2);
 
   // It's shown once ever — a reload of the same level no longer nudges.
   await page.goto("/match3/?level=1");
