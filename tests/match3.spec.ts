@@ -6,6 +6,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
+type Cell = { r: number; c: number };
+
 async function ready(page: Page): Promise<void> {
   await expect(page.locator(".m3-board")).toBeVisible();
   await page.waitForFunction(() => Boolean(window.__match3));
@@ -84,17 +86,53 @@ test("playing out the budget yields a verifiable record; share round-trips", asy
   await shared.close();
 });
 
-test("dragging a gem onto a legal neighbour swaps it (drag as well as tap)", async ({ page }, testInfo) => {
-  test.skip(Boolean(testInfo.project.use.hasTouch), "HTML5 drag-to-swap is desktop-only; touch uses tap");
+// Swipe a gem toward its neighbour with a pointer gesture (the primary way to
+// play — works the same on touch + desktop). Synthetic PointerEvents with real
+// coordinates, dispatched on the source gem (they bubble to the board's
+// delegated pointer listener); direction is resolved from the pointer delta.
+async function swipe(page: Page, from: Cell, to: Cell): Promise<void> {
+  await page.evaluate(
+    ({ from, to }) => {
+      const sel = (c: { r: number; c: number }): HTMLElement =>
+        document.querySelector(`.m3-gem[data-r="${c.r}"][data-c="${c.c}"]`)!;
+      const a = sel(from);
+      const ra = a.getBoundingClientRect();
+      const rb = sel(to).getBoundingClientRect();
+      const ax = ra.left + ra.width / 2;
+      const ay = ra.top + ra.height / 2;
+      const bx = rb.left + rb.width / 2;
+      const by = rb.top + rb.height / 2;
+      const ev = (type: string, x: number, y: number): void =>
+        void a.dispatchEvent(
+          new PointerEvent(type, { clientX: x, clientY: y, bubbles: true, pointerId: 1, pointerType: "touch" }),
+        );
+      ev("pointerdown", ax, ay);
+      ev("pointermove", (ax + bx) / 2, (ay + by) / 2);
+      ev("pointermove", bx, by);
+      ev("pointerup", bx, by);
+    },
+    { from, to },
+  );
+}
+
+test("swiping a gem toward a legal neighbour swaps it (swipe as well as tap)", async ({ page }) => {
   await page.goto("/match3/?seed=7");
   await ready(page);
   const before = await page.evaluate(() => window.__match3!.game.board().score);
   const swap = await page.evaluate(() => window.__match3!.game.legalMoves()[0]!);
-  await page
-    .locator(`.m3-gem[data-r="${swap[0]}"][data-c="${swap[1]}"]`)
-    .dragTo(page.locator(`.m3-gem[data-r="${swap[2]}"][data-c="${swap[3]}"]`));
+  await swipe(page, { r: swap[0], c: swap[1] }, { r: swap[2], c: swap[3] });
   const after = await page.evaluate(() => window.__match3!.game.board().score);
   expect(after).toBeGreaterThan(before);
+});
+
+test("a tiny pointer nudge under the threshold does not swap — it selects (tap floor)", async ({ page }) => {
+  await page.goto("/match3/?seed=7");
+  await ready(page);
+  const swap = await page.evaluate(() => window.__match3!.game.legalMoves()[0]!);
+  // A click (no movement) must still select and glow the legal targets.
+  await page.locator(`.m3-gem[data-r="${swap[0]}"][data-c="${swap[1]}"]`).click();
+  await expect(page.locator(".m3-gem.selected")).toHaveCount(1);
+  await expect(page.locator(".legal-target").first()).toBeVisible();
 });
 
 test("a swap animates the cascade, then settles to the core's board", async ({ page }) => {

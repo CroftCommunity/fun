@@ -213,6 +213,10 @@ export function match3Module(): GameModule {
   let lastScore = 0;
   let scoreBumped = false;
   let animating = false;
+  // A completed swipe sets this so the trailing synthetic `click` doesn't also
+  // tap-select. Reset at the start of every pointer gesture so it can never eat a
+  // later genuine tap. Module-scoped so it survives the board re-render a swap triggers.
+  let suppressClick = false;
 
   // Per-phase cascade animation cadence. A move emits swap + 3 frames per cascade
   // step (clear/fall/refill), so a 1–3-step move runs ~0.3–0.8s.
@@ -383,7 +387,6 @@ export function match3Module(): GameModule {
       class: `m3-gem gem-${color}`,
       "data-r": String(r),
       "data-c": String(c),
-      draggable: "true", // drag-to-swap fast-follow; tapping still works
       "aria-label": `${GEM_NAME[color]} gem, row ${r + 1} column ${c + 1}`,
     });
     b.textContent = GEM_GLYPH[color]!;
@@ -605,58 +608,71 @@ export function match3Module(): GameModule {
       boardEl.append(rowEl);
     });
     boardEl.addEventListener("click", (e) => {
+      // A completed swipe swallows its trailing click here so it doesn't also
+      // tap-select. Everything else is a genuine tap (mouse, touch, keyboard).
+      if (suppressClick) {
+        suppressClick = false;
+        return;
+      }
       const btn = (e.target as HTMLElement).closest<HTMLElement>(".m3-gem");
       if (!btn) return;
       handleClick(Number(btn.dataset.r), Number(btn.dataset.c));
     });
 
-    // Drag-to-swap: same source→target resolution as tapping, so the core still
-    // decides legality. Tapping remains the accessible floor.
-    let dragFrom: { r: number; c: number } | null = null;
-    boardEl.addEventListener("dragstart", (e: DragEvent) => {
+    // Swipe-to-swap (Pointer Events): press a gem and swipe toward a neighbour —
+    // the primary, flow-building gesture, working the same on touch and desktop.
+    // Direction is resolved from the pointer delta (robust to the board being
+    // rebuilt mid-cascade), and the core still decides legality. A swipe under
+    // the threshold falls through to tap-select, which — with keyboard — stays
+    // the accessible floor. Listeners are delegated on the board element, so each
+    // re-rendered board gets its own set (no leak, no stale capture).
+    let swipe: { r: number; c: number; x: number; y: number; threshold: number; fired: boolean } | null = null;
+    boardEl.addEventListener("pointerdown", (e: PointerEvent) => {
+      suppressClick = false; // start of a gesture — clear any stale suppression
+      if (animating || gameOver()) return;
       const btn = (e.target as HTMLElement).closest<HTMLElement>(".m3-gem");
-      if (!btn || animating || gameOver()) {
+      if (!btn) return;
+      const rect = btn.getBoundingClientRect();
+      swipe = {
+        r: Number(btn.dataset.r),
+        c: Number(btn.dataset.c),
+        x: e.clientX,
+        y: e.clientY,
+        threshold: Math.max(12, rect.width * 0.5), // ~half the gem pitch
+        fired: false,
+      };
+      // No `setPointerCapture` here: an adjacent-cell swipe stays over the board,
+      // and capturing retargets the trailing `click` to the board element — which
+      // would break tap-select (the delegated click could no longer find its gem).
+    });
+    boardEl.addEventListener("pointermove", (e: PointerEvent) => {
+      if (!swipe || swipe.fired || animating || gameOver()) return;
+      const dx = e.clientX - swipe.x;
+      const dy = e.clientY - swipe.y;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < swipe.threshold) return;
+      // Dominant-axis cardinal neighbour.
+      const [dr, dc] = Math.abs(dx) > Math.abs(dy) ? [0, Math.sign(dx)] : [Math.sign(dy), 0];
+      const from = { r: swipe.r, c: swipe.c };
+      const s = swapBetween(from, swipe.r + dr, swipe.c + dc);
+      swipe.fired = true;
+      suppressClick = true;
+      if (s) {
         e.preventDefault();
-        return;
-      }
-      dragFrom = { r: Number(btn.dataset.r), c: Number(btn.dataset.c) };
-      selected = dragFrom;
-      hint = null;
-      applyGlow();
-      e.dataTransfer?.setData("text/plain", "gem");
-      if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
-    });
-    boardEl.addEventListener("dragover", (e: DragEvent) => {
-      if (dragFrom) e.preventDefault();
-    });
-    boardEl.addEventListener("drop", (e: DragEvent) => {
-      if (!dragFrom) return;
-      e.preventDefault();
-      const btn = (e.target as HTMLElement).closest<HTMLElement>(".m3-gem");
-      const from = dragFrom;
-      dragFrom = null;
-      if (!btn) {
-        selected = null;
-        applyGlow();
-        return;
-      }
-      const r = Number(btn.dataset.r);
-      const c = Number(btn.dataset.c);
-      const swap = adjacent(from, r, c) ? swapBetween(from, r, c) : null;
-      if (swap) {
-        applySwap(swap);
+        applySwap(s);
       } else {
-        selected = null;
+        // Swiped toward a non-matching / off-board neighbour: select the origin so
+        // its legal targets glow (no state change), same as a tap on it.
+        selected = from;
+        hint = null;
         applyGlow();
         setStatus("That swap makes no match.");
       }
     });
-    boardEl.addEventListener("dragend", () => {
-      if (!dragFrom) return;
-      dragFrom = null;
-      selected = null;
-      applyGlow();
-    });
+    const endSwipe = (): void => {
+      swipe = null;
+    };
+    boardEl.addEventListener("pointerup", endSwipe);
+    boardEl.addEventListener("pointercancel", endSwipe);
     return boardEl;
   };
 

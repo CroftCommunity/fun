@@ -526,6 +526,12 @@ body.fullscreen .play-area {
   border: 1px solid var(--border);
   border-radius: var(--r-card);
   cursor: pointer;
+  /* Swipe-to-swap: a gesture starting on a gem shouldn't scroll the page or
+     select text. Kept on the gems (not the board) so a finger on the felt gap
+     between them can still scroll. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .m3-gem.gem-0 {
   color: var(--gem-0);
