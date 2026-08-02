@@ -229,6 +229,53 @@ test("the aim guide is on by default and can be turned off (persists)", async ({
   await expect(page.locator(".bub-set-aimguide")).not.toBeChecked();
 });
 
+test("the Aim & controls menu lists the four tunables, each with a live demo", async ({ page }) => {
+  await page.goto("/bubble/?variant=classic&seed=7");
+  await ready(page);
+  await page.locator(".bub-aim-settings summary").click();
+  const sheet = page.locator(".bub-aim-settings .sheet");
+  await expect(sheet).toBeVisible();
+  await expect(sheet.locator(".sheet-row")).toHaveCount(4);
+  await expect(sheet.locator(".sheet-demo")).toHaveCount(4);
+  for (const id of ["fire-on-release", "snap", "gain", "settle"]) {
+    await expect(sheet.locator(`[data-setting="${id}"]`)).toBeVisible();
+  }
+});
+
+test("toggling fire-on-release in the menu persists across a reload", async ({ page }) => {
+  await page.goto("/bubble/?variant=classic&seed=7");
+  await ready(page);
+  await page.locator(".bub-aim-settings summary").click();
+  const toggle = page.locator('[data-setting="fire-on-release"] input[type="checkbox"]');
+  await expect(toggle).not.toBeChecked();
+  // The checkbox is a visually-hidden switch; click its label to flip it.
+  await page.locator('[data-setting="fire-on-release"] .sheet-toggle').click();
+  await expect(toggle).toBeChecked();
+  await page.reload();
+  await ready(page);
+  await page.locator(".bub-aim-settings summary").click();
+  await expect(page.locator('[data-setting="fire-on-release"] input[type="checkbox"]')).toBeChecked();
+});
+
+test("changing the snap step in the menu re-snaps the live aim immediately", async ({ page }) => {
+  await page.goto("/bubble/?variant=classic&seed=7");
+  await ready(page);
+  await page.evaluate(() => window.__bubble!.setAim(97)); // step 1 → stays 97
+  expect(await page.evaluate(() => window.__bubble!.aim())).toBe(97);
+  await page.locator(".bub-aim-settings summary").click();
+  // Set the snap range to 5; the live aim re-snaps to 95 (a mult of 5 from 90).
+  await page.locator('[data-setting="snap"] .sheet-range').fill("5");
+  expect(await page.evaluate(() => window.__bubble!.aim())).toBe(95);
+});
+
+test("the Aim & controls menu has no axe violations when open", async ({ page }) => {
+  await page.goto("/bubble/?variant=classic&seed=7");
+  await ready(page);
+  await page.locator(".bub-aim-settings summary").click();
+  await expect(page.locator(".bub-aim-settings .sheet")).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
 test("with hints off, 'I'm done' ends the round", async ({ page }) => {
   await page.goto("/bubble/?variant=classic&seed=7");
   await ready(page);

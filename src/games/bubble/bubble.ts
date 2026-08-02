@@ -27,6 +27,7 @@ import {
   type BubbleEnvelope,
   type VerifyResult,
 } from "./bubble-outcome.js";
+import { renderAimSettings } from "./bubble-aim-settings.js";
 import { dayIndexUTC } from "../share.js";
 import {
   aimGuideEnabled,
@@ -910,14 +911,17 @@ export function bubbleModule(): GameModule {
     const fireBtn = el("button", { type: "button", class: "bub-fire" }, "Fire");
     fireBtn.addEventListener("click", () => void fire());
 
-    bar.append(row, fireBtn, renderAimSettings());
+    const settings = renderAimSettings({
+      geom,
+      // A coarser/finer snap re-snaps the current aim immediately.
+      onSnapChange: () => setAim(aim),
+      // A changed gain re-centres the slider band on the current aim.
+      onGainChange: () => applyBand(),
+    });
+
+    bar.append(row, fireBtn, settings);
     return bar;
   };
-
-  // Placeholder until P4 wires the demo-driven settings sheet; keeps the aim bar
-  // self-contained. Overwritten in the next phase.
-  const renderAimSettings = (): HTMLElement =>
-    el("div", { class: "bub-aim-settings-slot" });
 
   const renderCanvas = (u: Uni): HTMLCanvasElement => {
     const { w, h } = boardSubpixelSize(u.width, u.height, geom);
