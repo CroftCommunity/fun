@@ -77,49 +77,9 @@ pub fn daily_config(seed: u32) -> Config {
     }
 }
 
-impl Config {
-    /// Pack this config into a single `u64` so an outcome record is fully
-    /// self-contained — replay regenerates the exact board from the record's
-    /// seed alone, without knowing the level number. Layout (LSB→MSB): seed
-    /// (32b), `w` (5b), `h` (5b), `target` (7b), `min_len` (3b), `max_len` (4b).
-    #[must_use]
-    pub fn to_packed(&self) -> u64 {
-        u64::from(self.seed)
-            | (self.w as u64) << 32
-            | (self.h as u64) << 37
-            | (self.target as u64) << 42
-            | (self.min_len as u64) << 49
-            | (self.max_len as u64) << 52
-    }
-
-    /// Recover a config from [`Config::to_packed`].
-    #[must_use]
-    pub fn from_packed(packed: u64) -> Self {
-        let field = |shift: u32, bits: u32| ((packed >> shift) & ((1 << bits) - 1)) as i32;
-        Self {
-            seed: (packed & 0xFFFF_FFFF) as u32,
-            w: field(32, 5),
-            h: field(37, 5),
-            target: field(42, 7),
-            min_len: field(49, 3),
-            max_len: field(52, 4),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn packing_roundtrips_every_level_and_daily() {
-        for n in 1..=100u32 {
-            let c = level_config(n);
-            assert_eq!(Config::from_packed(c.to_packed()), c, "level {n}");
-        }
-        let c = daily_config(daily_seed("2026-08-02"));
-        assert_eq!(Config::from_packed(c.to_packed()), c);
-    }
 
     #[test]
     fn level_config_matches_reference() {

@@ -77,6 +77,22 @@ pub extern "C" fn new_daily(seed: u32) {
     }
 }
 
+/// Start a game from a packed origin (`lo`/`hi` halves of the record's `seed`).
+/// Used by the host's re-verification path: rebuild the board a shared record
+/// claims, replay its moves through [`tap`], then compare [`current_hash`] /
+/// [`is_won`] to the record — the same replay the native `LooseEnds::replay`
+/// does, so a tampered record fails to verify in the browser too.
+#[no_mangle]
+pub extern "C" fn new_from_packed(lo: u32, hi: u32) {
+    let packed = (u64::from(hi) << 32) | u64::from(lo);
+    // SAFETY: single-threaded; replaces the held session.
+    unsafe {
+        *core::ptr::addr_of_mut!(STATE) = Some(Session {
+            game: Game::from_packed(packed),
+        });
+    }
+}
+
 // --- reads ----------
 
 #[derive(Serialize)]
@@ -231,40 +247,12 @@ mod tests {
         serde_json::from_slice(bytes).expect("json")
     }
 
+    // One test: the C-ABI holds a single global session, so the checks run
+    // sequentially in one function (Rust would otherwise race parallel tests on
+    // the shared `STATE`). Same convention as `twenty48-wasm`.
     #[test]
-    fn cabi_level_tap_and_outcome() {
-        new_level(1);
-        let view = read(board_json());
-        assert_eq!(view["width"], serde_json::json!(5));
-        assert_eq!(view["total"], serde_json::json!(3));
-
-        // A hint is a free arrow; tapping it releases (status 0).
-        let h = hint();
-        assert!(h <= 2, "hint is a valid arrow id");
-        assert_eq!(tap(h), 0, "the hinted arrow releases");
-        // Re-tapping the gone arrow is status 2.
-        assert_eq!(tap(h), 2);
-
-        // Grading delegates to the core.
-        assert_eq!(stars_for(0, 0), 3);
-        assert_eq!(score_for(1, 0), 1200);
-
-        // Outcome parses to a looseends-kind envelope.
-        let rec = read(outcome_json(1, 0));
-        assert_eq!(rec["kind"], serde_json::json!("looseends"));
-    }
-
-    #[test]
-    fn daily_board_starts_from_seed() {
-        // The host passes the FNV daily seed; the board is non-empty.
-        new_daily(looseends_core::daily_seed("2026-08-02"));
-        assert!(remaining() > 0);
-        let view = read(board_json());
-        assert_eq!(view["width"], serde_json::json!(9));
-    }
-
-    #[test]
-    fn no_game_is_safe() {
+    fn cabi_surface_is_correct_and_never_panics() {
+        // --- no game: every read is safe, not a panic ---
         // SAFETY: single-threaded test; clear the session.
         unsafe {
             *core::ptr::addr_of_mut!(STATE) = None;
@@ -274,5 +262,55 @@ mod tests {
         assert_eq!(remaining(), 0);
         assert_eq!(hint(), 0xFFFF_FFFF);
         assert_eq!(read(board_json()), serde_json::json!(null));
+
+        // --- a campaign level: board, tap, grading, outcome ---
+        new_level(1);
+        let view = read(board_json());
+        assert_eq!(view["width"], serde_json::json!(5));
+        assert_eq!(view["total"], serde_json::json!(3));
+
+        let h = hint();
+        assert!(h <= 2, "hint is a valid arrow id");
+        assert_eq!(tap(h), 0, "the hinted arrow releases");
+        assert_eq!(tap(h), 2, "re-tapping the gone arrow does nothing");
+
+        assert_eq!(stars_for(0, 0), 3);
+        assert_eq!(score_for(1, 0), 1200);
+
+        let rec = read(outcome_json(1, 0));
+        assert_eq!(rec["kind"], serde_json::json!("looseends"));
+
+        // --- a daily board from a seed ---
+        new_daily(looseends_core::daily_seed("2026-08-02"));
+        assert!(remaining() > 0);
+        assert_eq!(read(board_json())["width"], serde_json::json!(9));
+
+        // --- verification path: rebuild from the record's packed seed and
+        // replay reaches the same hash the honest game would ---
+        let mut g = looseends_core::Game::level(1);
+        loop {
+            let free = g.board().free_arrows();
+            if free.is_empty() {
+                break;
+            }
+            for id in free {
+                g.tap(id as u32);
+            }
+        }
+        let packed = g.packed_seed();
+        new_from_packed((packed & 0xFFFF_FFFF) as u32, (packed >> 32) as u32);
+        for &id in g.moves() {
+            tap(id);
+        }
+        assert_eq!(is_won(), 1, "the replayed board clears");
+        let want = format!("\"{}\"", g.current_hash());
+        // SAFETY: single-threaded; current_hash just wrote OUT.
+        let got = {
+            let ptr = current_hash();
+            let n = out_len() as usize;
+            let bytes = unsafe { std::slice::from_raw_parts(ptr, n) };
+            std::str::from_utf8(bytes).unwrap().to_owned()
+        };
+        assert_eq!(got, want, "verification replay matches the honest hash");
     }
 }

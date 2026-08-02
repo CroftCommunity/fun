@@ -359,6 +359,27 @@ const SHOTS = [
       await page.waitForTimeout(2000); // let the title screen paint
     },
   },
+  {
+    name: "looseends-home",
+    clip: ".le-home",
+    async run(page) {
+      await page.goto(`${origin}/looseends/`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".le-home");
+    },
+  },
+  {
+    name: "looseends-board",
+    clip: ".le-stage",
+    async run(page) {
+      await page.goto(`${origin}/looseends/`, { waitUntil: "networkidle" });
+      await page.waitForFunction(() => Boolean(window.__looseends));
+      // Open a small early level so the arrows read clearly, then let the
+      // canvas fit-view + first paint settle.
+      await page.evaluate(() => window.__looseends.openLevel(6));
+      await page.waitForSelector(".le-canvas");
+      await page.waitForTimeout(400);
+    },
+  },
 ];
 
 const server = spawn("node", [join(root, "tools", "serve.mjs")], { stdio: "ignore" });

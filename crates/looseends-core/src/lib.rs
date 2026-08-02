@@ -23,7 +23,7 @@ pub mod score;
 
 pub use board::{Arrow, Board, ReleaseError};
 pub use config::{daily_config, daily_seed, level_config, level_seed, Config};
-pub use game::{Game, LooseEnds, Tap};
+pub use game::{Game, LooseEnds, Origin, Tap};
 pub use generate::generate;
 pub use hash::state_hash;
 pub use rng::{hash_str, Rng};
