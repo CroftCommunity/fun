@@ -20,20 +20,20 @@ export const BLOCKDOKU_GUIDE: Guide = {
         {
           kind: "steps",
           items: [
-            "Tap a piece in the tray to pick it up — the cells where it can legally go light up.",
-            "Tap any glowing cell to drop the piece there.",
-            "On a keyboard: press 1, 2, or 3 to pick a piece, move the cursor with the arrow keys, and press Enter to drop.",
+            "Tap a piece in the tray to pick it up.",
+            "Tap the board roughly where you want it — the piece centres on your tap and a preview shows exactly where it will land.",
+            "On a keyboard: press 1, 2, or 3 to pick a piece, move the preview with the arrow keys, and press Enter to drop.",
           ],
         },
         {
           kind: "note",
-          text: "Only legal spots glow, and the game decides — tapping anywhere else does nothing. A piece needs empty cells for its whole shape to fit.",
+          text: "The piece snaps to the nearest place it actually fits, so you don't have to be pixel-perfect. The game decides legality — it only ever lands where the whole shape fits on empty cells.",
         },
         {
           kind: "shot",
           name: "blockdoku-select",
-          alt: "A 9×9 board with a piece selected in the tray and several cells glowing gold to show where it can be dropped.",
-          caption: "Tap a piece and the legal drop cells glow — tap one to place it.",
+          alt: "A 9×9 board with a piece selected in the tray and a translucent preview showing where it will drop.",
+          caption: "Pick a piece, then tap the board — a preview shows where it snaps.",
         },
       ],
     },
