@@ -16,7 +16,7 @@
 // Tier classification (faithful to generateRandomBlocks):
 //   isMagic -> Magic ; isWild -> Wild ; otherwise -> Standard.
 
-import { readFile, writeFile } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 
