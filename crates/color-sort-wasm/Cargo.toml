@@ -1,0 +1,13 @@
+[package]
+name = "color-sort-wasm"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "stub"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+color-sort-core = { workspace = true }

@@ -1,0 +1,10 @@
+[package]
+name = "color-sort-solver"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "stub"
+
+[dependencies]
+color-sort-core = { workspace = true }
