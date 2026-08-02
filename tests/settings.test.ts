@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { resolveBool, resolveNumber } from "../src/settings.js";
+import { moveSpeedToMs, resolveBool, resolveNumber } from "../src/settings.js";
 
 describe("resolveBool", () => {
   it("honours an explicit stored on/off", () => {
@@ -46,5 +46,23 @@ describe("resolveNumber", () => {
   it("rounds to a whole number by default and honours a fractional fallback", () => {
     expect(resolveNumber("2.7", opts)).toBe(3);
     expect(resolveNumber(null, { min: 0, max: 400, fallback: 150 })).toBe(150);
+  });
+});
+
+describe("moveSpeedToMs (Align left/right sensitivity)", () => {
+  it("maps the slowest speed to the longest hold-repeat and the fastest to the shortest", () => {
+    expect(moveSpeedToMs(1)).toBe(250); // slow
+    expect(moveSpeedToMs(10)).toBe(50); // fast
+    expect(moveSpeedToMs(5)).toBe(161); // the default sits in the calm middle
+  });
+
+  it("is monotonic — higher speed is never a longer interval", () => {
+    for (let s = 2; s <= 10; s++) expect(moveSpeedToMs(s)).toBeLessThan(moveSpeedToMs(s - 1));
+  });
+
+  it("clamps and rounds out-of-range or fractional speeds", () => {
+    expect(moveSpeedToMs(0)).toBe(moveSpeedToMs(1));
+    expect(moveSpeedToMs(99)).toBe(moveSpeedToMs(10));
+    expect(moveSpeedToMs(5.4)).toBe(moveSpeedToMs(5));
   });
 });

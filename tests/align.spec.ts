@@ -67,6 +67,87 @@ test("tapping the on-screen hard-drop button locks the piece through the core", 
   expect(await locked()).toBeGreaterThan(before);
 });
 
+// Record vibration calls in every page (survives reloads) so haptics can be
+// asserted without a real motor.
+async function stubVibrate(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    (window as unknown as { __vibes: unknown[] }).__vibes = [];
+    try {
+      Object.defineProperty(navigator, "vibrate", {
+        configurable: true,
+        value: (arg: unknown) => {
+          (window as unknown as { __vibes: unknown[] }).__vibes.push(arg);
+          return true;
+        },
+      });
+    } catch {
+      /* leave the real API in place */
+    }
+  });
+}
+const vibeCount = (page: Page): Promise<number> =>
+  page.evaluate(() => (window as unknown as { __vibes: unknown[] }).__vibes.length);
+
+test("haptics are on by default — a move tap buzzes", async ({ page }) => {
+  await stubVibrate(page);
+  await page.goto("/align/?seed=7");
+  await ready(page);
+  await page.getByRole("button", { name: /move left/i }).click();
+  expect(await vibeCount(page)).toBeGreaterThan(0);
+});
+
+test("turning haptics off stops the buzz", async ({ page }) => {
+  await stubVibrate(page);
+  await page.goto("/align/?seed=7");
+  await ready(page);
+  await page.locator(".sol-settings summary").click();
+  await page.locator(".al-set-haptics").uncheck();
+  await page.evaluate(() => {
+    (window as unknown as { __vibes: unknown[] }).__vibes.length = 0;
+  });
+  await page.getByRole("button", { name: /move right/i }).click();
+  expect(await vibeCount(page)).toBe(0);
+});
+
+test("the left/right speed slider persists across a reload", async ({ page }) => {
+  await page.goto("/align/?seed=7");
+  await ready(page);
+  await page.locator(".sol-settings summary").click();
+  await page.locator(".al-set-speed").fill("1");
+  await page.goto("/align/?seed=7");
+  await ready(page);
+  await page.locator(".sol-settings summary").click();
+  await expect(page.locator(".al-set-speed")).toHaveValue("1");
+});
+
+test("the speed setting drives the hold-repeat interval (slow is a longer gap than fast)", async ({ page }) => {
+  await page.goto("/align/?seed=7");
+  await ready(page);
+  await page.locator(".sol-settings summary").click();
+  await page.locator(".al-set-speed").fill("1"); // slowest
+  const slow = await page.evaluate(() => window.__align!.moveRepeatMs());
+  await page.locator(".al-set-speed").fill("10"); // fastest
+  const fast = await page.evaluate(() => window.__align!.moveRepeatMs());
+  expect(slow).toBe(250);
+  expect(fast).toBe(50);
+});
+
+test("holding a move button auto-repeats after the initial delay", async ({ page }) => {
+  await page.goto("/align/?seed=7");
+  await ready(page);
+  // Shove to the right wall, then hold Left long enough for several repeats.
+  await page.evaluate(() => {
+    for (let i = 0; i < 12; i++) window.__align!.input("ShiftR");
+  });
+  const before = await activeMinX(page);
+  const left = page.getByRole("button", { name: /move left/i });
+  await left.dispatchEvent("pointerdown");
+  await page.waitForTimeout(650);
+  await left.dispatchEvent("pointerup");
+  // The initial press is one cell; the repeat must add at least one more.
+  expect(await activeMinX(page)).toBeLessThanOrEqual(before - 2);
+});
+
 test("a shift moves the active piece one cell (the core decides)", async ({ page }) => {
   await page.goto("/align/?seed=7");
   await ready(page);

@@ -13,8 +13,14 @@ import { Align, type Action, type BoardView, type Cell, type SharedVerify } from
 import { decodeRecord, encodeRecord, type AlignEnvelope } from "./align-outcome.js";
 import { dayIndexUTC } from "../share.js";
 import {
+  alignHapticsEnabled,
+  alignMoveSpeed,
+  ALIGN_MOVE_SPEED_SPEC,
   declareAssistanceEnabled,
   hintsEnabled,
+  moveSpeedToMs,
+  setAlignHaptics,
+  setAlignMoveSpeed,
   setDeclareAssistance,
   setHintsEnabled,
 } from "../../settings.js";
@@ -29,6 +35,8 @@ declare global {
       board: () => BoardView;
       seed: bigint;
       startFree: (seed: bigint, mode: number) => void;
+      /** The live left/right hold-repeat interval (ms) for the current speed. */
+      moveRepeatMs: () => number;
     };
   }
 }
@@ -43,6 +51,12 @@ const TICK_MS = 1000 / 60;
 const DAS_MS = 133;
 const ARR_MS = 12;
 const SOFT_PER_FRAME = 2;
+
+// On-screen pad: a tap is one clean cell; a hold waits TOUCH_DAS_MS before it
+// starts auto-repeating. Left/right repeat at the player's chosen speed
+// (`moveSpeedToMs`); soft drop keeps its own snappy fixed cadence.
+const TOUCH_DAS_MS = 170;
+const SOFT_REPEAT_MS = 45;
 
 // Preview/hold thumbnail shapes (spawn orientation, y-down 0..3). Cosmetic only —
 // the authoritative shapes live in the core; these just draw the little previews.
@@ -460,31 +474,55 @@ export function alignModule(): GameModule {
   };
 
   // ---- chrome ----
-  const touchButton = (
-    label: string,
-    aria: string,
-    a: Action,
-    repeat = false,
-    cls = "",
-  ): HTMLElement => {
+  // A short buzz on a touch press, when haptics are on and the device supports
+  // it. Silently a no-op on desktop / iOS Safari; never touches the outcome.
+  const haptic = (ms = 10): void => {
+    if (!alignHapticsEnabled()) return;
+    try {
+      navigator.vibrate?.(ms);
+    } catch {
+      /* vibration unsupported — ignore */
+    }
+  };
+
+  interface TouchOpts {
+    /** Auto-repeat while held (after the initial delay). */
+    repeat?: boolean;
+    /** Repeat interval in ms; read at hold-start so a settings change applies to
+     *  the next press. Defaults to the soft-drop cadence. */
+    repeatMs?: () => number;
+    /** Extra class for row-specific sizing. */
+    cls?: string;
+  }
+
+  const touchButton = (label: string, aria: string, a: Action, opts: TouchOpts = {}): HTMLElement => {
+    const { repeat = false, repeatMs, cls = "" } = opts;
     const b = el(
       "button",
       { type: "button", class: cls ? `al-tbtn ${cls}` : "al-tbtn", "aria-label": aria },
       label,
     );
+    let delay = 0;
     let timer = 0;
     const fire = (): void => act(a);
-    b.addEventListener("pointerdown", (e) => {
-      e.preventDefault();
-      fire();
-      if (repeat) {
-        timer = window.setInterval(fire, ARR_MS < 30 ? 40 : ARR_MS);
-      }
-    });
     const stop = (): void => {
+      if (delay) window.clearTimeout(delay);
       if (timer) window.clearInterval(timer);
+      delay = 0;
       timer = 0;
     };
+    b.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      haptic();
+      fire();
+      if (!repeat) return;
+      const gap = repeatMs ? repeatMs() : SOFT_REPEAT_MS;
+      // Wait a beat (DAS) so a tap is one cell, then auto-repeat at `gap`.
+      delay = window.setTimeout(() => {
+        fire();
+        timer = window.setInterval(fire, gap);
+      }, TOUCH_DAS_MS);
+    });
     b.addEventListener("pointerup", stop);
     b.addEventListener("pointerleave", stop);
     b.addEventListener("pointercancel", stop);
@@ -535,6 +573,33 @@ export function alignModule(): GameModule {
       wrap.append(input, document.createTextNode(` ${label}`));
       return wrap;
     };
+    // A 1–10 slider row (drag-right = faster) for the left/right hold speed.
+    const speedSetting = (): HTMLElement => {
+      const wrap = el("label", { class: "sol-setting al-range" });
+      const value = el("span", { class: "al-range-val" });
+      const input = el("input", {
+        type: "range",
+        class: "al-set-speed",
+        min: String(ALIGN_MOVE_SPEED_SPEC.min),
+        max: String(ALIGN_MOVE_SPEED_SPEC.max),
+        step: "1",
+      }) as HTMLInputElement;
+      input.value = String(alignMoveSpeed());
+      const sync = (): void => {
+        value.textContent = `${input.value}/10`;
+      };
+      sync();
+      input.addEventListener("input", () => {
+        setAlignMoveSpeed(Number(input.value));
+        sync();
+      });
+      wrap.append(
+        el("span", { class: "al-range-label" }, "Left/right speed"),
+        input,
+        value,
+      );
+      return wrap;
+    };
     const settings = el("details", { class: "sol-settings" });
     settings.append(
       el("summary", {}, "Settings"),
@@ -545,6 +610,10 @@ export function alignModule(): GameModule {
       setting(declareAssistanceEnabled(), "Declare assistance used", "sol-set-assist", (on) => {
         setDeclareAssistance(on);
       }),
+      setting(alignHapticsEnabled(), "Vibration (haptics)", "al-set-haptics", (on) => {
+        setAlignHaptics(on);
+      }),
+      speedSetting(),
     );
     bar.append(modes, actionBtn, settings);
     return bar;
@@ -578,24 +647,25 @@ export function alignModule(): GameModule {
     // Thumb-first layout, sized to the board width: a wide 50/50 move row, a
     // rotate row with each direction under its matching arrow, then a drop/hold
     // row (soft · hard · hold). Every action still routes through the core.
+    const moveRepeat = (): number => moveSpeedToMs(alignMoveSpeed());
     const moveRow = el(
       "div",
       { class: "al-touch-row al-touch-move" },
-      touchButton("◄", "Move left", "ShiftL", true, "al-tbtn-move"),
-      touchButton("►", "Move right", "ShiftR", true, "al-tbtn-move"),
+      touchButton("◄", "Move left", "ShiftL", { repeat: true, repeatMs: moveRepeat, cls: "al-tbtn-move" }),
+      touchButton("►", "Move right", "ShiftR", { repeat: true, repeatMs: moveRepeat, cls: "al-tbtn-move" }),
     );
     const rotRow = el(
       "div",
       { class: "al-touch-row al-touch-rot" },
-      touchButton("⟲", "Rotate counter-clockwise", "RotCCW", false, "al-tbtn-rot"),
-      touchButton("⟳", "Rotate clockwise", "RotCW", false, "al-tbtn-rot"),
+      touchButton("⟲", "Rotate counter-clockwise", "RotCCW", { cls: "al-tbtn-rot" }),
+      touchButton("⟳", "Rotate clockwise", "RotCW", { cls: "al-tbtn-rot" }),
     );
     const dropRow = el(
       "div",
       { class: "al-touch-row al-touch-drop" },
-      touchButton("▼", "Soft drop", "SoftStep", true, "al-tbtn-soft"),
-      touchButton("⤓", "Hard drop", "HardDrop", false, "al-tbtn-hard"),
-      touchButton("⇄", "Hold", "Hold", false, "al-tbtn-hold"),
+      touchButton("▼", "Soft drop", "SoftStep", { repeat: true, cls: "al-tbtn-soft" }),
+      touchButton("⤓", "Hard drop", "HardDrop", { cls: "al-tbtn-hard" }),
+      touchButton("⇄", "Hold", "Hold", { cls: "al-tbtn-hold" }),
     );
     const pad = el(
       "div",
@@ -698,6 +768,7 @@ export function alignModule(): GameModule {
       board: () => game!.board(),
       seed,
       startFree: (s: bigint, m: number) => void startGame("free", m, s),
+      moveRepeatMs: () => moveSpeedToMs(alignMoveSpeed()),
     };
   };
 

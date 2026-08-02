@@ -13,6 +13,8 @@ const FIRE_ON_RELEASE_KEY = "fun-bubble-fire-on-release";
 const AIM_SNAP_KEY = "fun-bubble-aim-snap";
 const AIM_GAIN_KEY = "fun-bubble-aim-gain";
 const AIM_SETTLE_KEY = "fun-bubble-aim-settle";
+const ALIGN_HAPTICS_KEY = "fun-align-haptics";
+const ALIGN_MOVE_SPEED_KEY = "fun-align-move-speed";
 
 /** Pure resolver: an explicit stored "on"/"off" wins; otherwise the default. */
 export function resolveBool(stored: string | null, fallback: boolean): boolean {
@@ -151,4 +153,36 @@ export function aimSettleMs(): number {
 }
 export function setAimSettleMs(ms: number): void {
   writeNum(AIM_SETTLE_KEY, ms);
+}
+
+// ---------- Align touch-control tuning (device-dependent; see the Align
+// settings sheet) ----------
+
+/** Haptic feedback — a short vibration on each touch-control press — **on by
+ *  default**. Degrades silently where `navigator.vibrate` is absent (desktop,
+ *  iOS Safari). A display/feel preference; it never touches the outcome. */
+export function alignHapticsEnabled(): boolean {
+  return read(ALIGN_HAPTICS_KEY, true);
+}
+export function setAlignHaptics(on: boolean): void {
+  write(ALIGN_HAPTICS_KEY, on);
+}
+
+/** Left/right hold sensitivity as a 1–10 speed (default 5). Higher slides
+ *  faster; see `moveSpeedToMs` for the ms mapping. Handling only — input timing,
+ *  not the hashed path — so every run stays verifiable. */
+export const ALIGN_MOVE_SPEED_SPEC: NumberSpec = { min: 1, max: 10, fallback: 5 };
+export function alignMoveSpeed(): number {
+  return readNum(ALIGN_MOVE_SPEED_KEY, ALIGN_MOVE_SPEED_SPEC);
+}
+export function setAlignMoveSpeed(speed: number): void {
+  writeNum(ALIGN_MOVE_SPEED_KEY, speed);
+}
+
+/** Pure map from a 1–10 move speed to the hold-repeat interval in ms: speed 1 →
+ *  250 ms (slow), 10 → 50 ms (fast), the default 5 → 161 ms. Clamps + rounds the
+ *  input so an out-of-range or fractional speed is well-defined. */
+export function moveSpeedToMs(speed: number): number {
+  const s = Math.max(1, Math.min(10, Math.round(speed)));
+  return Math.round(250 - (s - 1) * (200 / 9));
 }

@@ -2049,27 +2049,59 @@ body.fullscreen .play-area {
 }
 .al-tbtn {
   min-height: 3rem;
-  font-size: 1.2rem;
+  /* Bold, large glyphs on a stronger border so the icons read at a glance. */
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
   border-radius: var(--r-card);
-  border: 1px solid var(--border);
+  border: 2px solid var(--ink-muted);
   background: var(--surface);
   color: var(--ink);
   touch-action: manipulation;
   cursor: pointer;
+  transition: transform 0.04s ease, background 0.08s ease;
 }
 /* Every button in a row shares the row width evenly (50/50, or thirds). */
 .al-touch-row .al-tbtn {
   flex: 1 1 0;
   min-width: 0;
 }
-/* Move is the primary action: widest surface and the tallest targets. */
+/* Move is the primary action: widest surface, tallest targets, biggest glyph. */
 .al-tbtn-move {
   min-height: 3.6rem;
-  font-size: 1.5rem;
+  font-size: 1.8rem;
 }
+/* A clear pressed state (paired with the optional haptic buzz): fills with the
+   semantic active colour and depresses a touch. */
 .al-tbtn:active {
-  background: var(--accent);
-  color: var(--accent-ink);
+  background: var(--active);
+  color: var(--active-ink);
+  border-color: var(--active);
+  transform: translateY(1px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .al-tbtn { transition: none; }
+  .al-tbtn:active { transform: none; }
+}
+
+/* The left/right speed slider row inside the Align settings sheet. */
+.al-range {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.al-range-label {
+  flex: 0 0 auto;
+}
+.al-range .al-set-speed {
+  flex: 1 1 auto;
+  min-width: 6rem;
+  accent-color: var(--active);
+}
+.al-range-val {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
 }
 @media (min-width: 720px) {
   /* On a real keyboard the touch pad is optional — keep it but shrink it. */
