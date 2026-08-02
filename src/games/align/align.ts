@@ -460,8 +460,18 @@ export function alignModule(): GameModule {
   };
 
   // ---- chrome ----
-  const touchButton = (label: string, aria: string, a: Action, repeat = false): HTMLElement => {
-    const b = el("button", { type: "button", class: "al-tbtn", "aria-label": aria }, label);
+  const touchButton = (
+    label: string,
+    aria: string,
+    a: Action,
+    repeat = false,
+    cls = "",
+  ): HTMLElement => {
+    const b = el(
+      "button",
+      { type: "button", class: cls ? `al-tbtn ${cls}` : "al-tbtn", "aria-label": aria },
+      label,
+    );
     let timer = 0;
     const fire = (): void => act(a);
     b.addEventListener("pointerdown", (e) => {
@@ -565,16 +575,34 @@ export function alignModule(): GameModule {
     const sideR = el("div", { class: "al-side" }, el("div", { class: "al-label" }, "Next"), nextCanvas);
     const stage = el("div", { class: "al-stage" }, sideL, canvas, sideR);
 
+    // Thumb-first layout, sized to the board width: a wide 50/50 move row, a
+    // rotate row with each direction under its matching arrow, then a drop/hold
+    // row (soft · hard · hold). Every action still routes through the core.
+    const moveRow = el(
+      "div",
+      { class: "al-touch-row al-touch-move" },
+      touchButton("◄", "Move left", "ShiftL", true, "al-tbtn-move"),
+      touchButton("►", "Move right", "ShiftR", true, "al-tbtn-move"),
+    );
+    const rotRow = el(
+      "div",
+      { class: "al-touch-row al-touch-rot" },
+      touchButton("⟲", "Rotate counter-clockwise", "RotCCW", false, "al-tbtn-rot"),
+      touchButton("⟳", "Rotate clockwise", "RotCW", false, "al-tbtn-rot"),
+    );
+    const dropRow = el(
+      "div",
+      { class: "al-touch-row al-touch-drop" },
+      touchButton("▼", "Soft drop", "SoftStep", true, "al-tbtn-soft"),
+      touchButton("⤓", "Hard drop", "HardDrop", false, "al-tbtn-hard"),
+      touchButton("⇄", "Hold", "Hold", false, "al-tbtn-hold"),
+    );
     const pad = el(
       "div",
       { class: "al-touch", role: "group", "aria-label": "Controls" },
-      touchButton("⟲", "Rotate counter-clockwise", "RotCCW"),
-      touchButton("◄", "Move left", "ShiftL", true),
-      touchButton("▼", "Soft drop", "SoftStep", true),
-      touchButton("►", "Move right", "ShiftR", true),
-      touchButton("⟳", "Rotate clockwise", "RotCW"),
-      touchButton("⤓", "Hard drop", "HardDrop"),
-      touchButton("⇄", "Hold", "Hold"),
+      moveRow,
+      rotRow,
+      dropRow,
     );
 
     const wrap = el("div", { class: "al-game" }, renderControls(), callout, stage, pad, statusEl);

@@ -1412,14 +1412,21 @@ body.fullscreen .play-area {
   color: var(--accent);
   text-align: center;
 }
+/* Thumb-first stack, sized to the stage width: a wide 50/50 move row, a rotate
+   row (each direction under its arrow), and a soft · hard · hold drop row. */
 .al-touch {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: 100%;
+  max-width: 26rem;
+  margin-inline: auto;
+}
+.al-touch-row {
+  display: flex;
   gap: 0.4rem;
 }
 .al-tbtn {
-  min-width: 3rem;
   min-height: 3rem;
   font-size: 1.2rem;
   border-radius: var(--r-card);
@@ -1429,13 +1436,25 @@ body.fullscreen .play-area {
   touch-action: manipulation;
   cursor: pointer;
 }
+/* Every button in a row shares the row width evenly (50/50, or thirds). */
+.al-touch-row .al-tbtn {
+  flex: 1 1 0;
+  min-width: 0;
+}
+/* Move is the primary action: widest surface and the tallest targets. */
+.al-tbtn-move {
+  min-height: 3.6rem;
+  font-size: 1.5rem;
+}
 .al-tbtn:active {
   background: var(--accent);
   color: var(--accent-ink);
 }
 @media (min-width: 720px) {
   /* On a real keyboard the touch pad is optional — keep it but shrink it. */
-  .al-touch .al-tbtn { min-width: 2.6rem; min-height: 2.6rem; }
+  .al-touch { max-width: 22rem; }
+  .al-tbtn { min-height: 2.6rem; }
+  .al-tbtn-move { min-height: 3rem; }
 }
 
 /* ---------- Blockdoku (bdk-*) — a single centred column ---------- */

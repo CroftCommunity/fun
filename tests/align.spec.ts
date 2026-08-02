@@ -29,6 +29,44 @@ test("the board, touch pad, and HUD render with an active piece", async ({ page 
   expect(hasActive).toBe(true);
 });
 
+test("the touch pad is the three-row layout: move · rotate · drop+hold", async ({ page }) => {
+  await page.goto("/align/?seed=7");
+  await ready(page);
+  // Row 1: two wide movement buttons (left, right).
+  await expect(page.locator(".al-touch-move button")).toHaveCount(2);
+  await expect(page.getByRole("button", { name: /move left/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /move right/i })).toBeVisible();
+  // Row 2: both rotate directions, one under each arrow.
+  await expect(page.locator(".al-touch-rot button")).toHaveCount(2);
+  await expect(page.getByRole("button", { name: /rotate counter-clockwise/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /rotate clockwise/i })).toBeVisible();
+  // Row 3: soft drop, hard drop, hold.
+  await expect(page.locator(".al-touch-drop button")).toHaveCount(3);
+  await expect(page.getByRole("button", { name: /soft drop/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /hard drop/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^hold/i })).toBeVisible();
+});
+
+test("tapping the on-screen move buttons shifts the piece through the core", async ({ page }) => {
+  await page.goto("/align/?seed=7");
+  await ready(page);
+  const before = await activeMinX(page);
+  await page.getByRole("button", { name: /move right/i }).click();
+  expect(await activeMinX(page)).toBe(before + 1);
+  await page.getByRole("button", { name: /move left/i }).click();
+  expect(await activeMinX(page)).toBe(before);
+});
+
+test("tapping the on-screen hard-drop button locks the piece through the core", async ({ page }) => {
+  await page.goto("/align/?seed=7");
+  await ready(page);
+  const locked = (): Promise<number> =>
+    page.evaluate(() => window.__align!.board().rows.flat().filter((v) => v > 0).length);
+  const before = await locked();
+  await page.getByRole("button", { name: /hard drop/i }).click();
+  expect(await locked()).toBeGreaterThan(before);
+});
+
 test("a shift moves the active piece one cell (the core decides)", async ({ page }) => {
   await page.goto("/align/?seed=7");
   await ready(page);
