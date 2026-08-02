@@ -380,6 +380,74 @@ const SHOTS = [
       await page.waitForTimeout(400);
     },
   },
+  {
+    name: "color-sort-board",
+    clip: ".cs-board",
+    async run(page) {
+      await page.goto(`${origin}/color-sort/?seed=0`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".cs-board");
+      await page.waitForFunction(() => Boolean(window.__colorSort));
+    },
+  },
+  {
+    name: "color-sort-select",
+    clip: ".cs-board",
+    async run(page) {
+      await page.goto(`${origin}/color-sort/?seed=0`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".cs-board");
+      await page.waitForFunction(() => Boolean(window.__colorSort));
+      // Select a real source so its legal target tubes glow.
+      await page.evaluate(() => {
+        const from = window.__colorSort.game.board().moves[0].from;
+        window.__colorSort.tapTube(from);
+      });
+      await page.waitForSelector(".cs-tube.legal");
+    },
+  },
+  {
+    name: "color-sort-win",
+    clip: ".sol-result",
+    async run(page) {
+      // Endless level 1 (4 colours) solves quickly via the solver hint.
+      await page.goto(`${origin}/color-sort/?level=1`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".cs-board");
+      await page.waitForFunction(() => Boolean(window.__colorSort));
+      await page.evaluate(() => {
+        const h = window.__colorSort;
+        for (let i = 0; i < 200 && !h.game.isWon(); i += 1) {
+          const mv = h.game.hint();
+          if (!mv) break;
+          h.game.pour(mv.from, mv.to);
+        }
+        h.refresh();
+      });
+      await page.waitForSelector(".sol-result");
+    },
+  },
+  {
+    name: "orchard-crate",
+    clip: ".wrapped-game-frame",
+    async run(page) {
+      await page.goto(`${origin}/orchard-drop/`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".wrapped-game-frame");
+      const frame = page.frameLocator(".wrapped-game-frame");
+      await frame.locator("#gameCanvas").waitFor({ state: "attached", timeout: 15000 });
+      // Drop a run of fruit across the crate so the shot shows a lived-in pile
+      // with merges, not an empty box. Aim varies so the fruit spreads and stacks.
+      const box = await page.locator(".wrapped-game-frame").boundingBox();
+      if (box) {
+        for (let i = 0; i < 22; i += 1) {
+          const x = box.x + box.width * (0.2 + 0.6 * ((i * 7) % 10) / 10);
+          const y = box.y + box.height * 0.35;
+          await page.mouse.move(x, y);
+          await page.mouse.down();
+          await page.mouse.up();
+          await page.waitForTimeout(560); // just over the 520ms drop cooldown
+        }
+      }
+      await page.waitForTimeout(1200); // let the last fruit settle and merges resolve
+    },
+  },
 ];
 
 const server = spawn("node", [join(root, "tools", "serve.mjs")], { stdio: "ignore" });

@@ -12,10 +12,12 @@ import { twenty48Module } from "./games/2048/2048.js";
 import { alignModule } from "./games/align/align.js";
 import { blockdokuModule } from "./games/blockdoku/blockdoku.js";
 import { looseendsModule } from "./games/looseends/looseends.js";
+import { colorSortModule } from "./games/color-sort/color-sort.js";
 import { astrayModule } from "./games/astray/astray.js";
 import { hexglModule } from "./games/hexgl/hexgl.js";
 import { clumsybirdModule } from "./games/clumsybird/clumsybird.js";
 import { puzzlesModule } from "./games/puzzles/puzzles.js";
+import { orchardDropModule } from "./games/orchard-drop/orchard-drop.js";
 
 export const REGISTRY: readonly GameEntry[] = [
   {
@@ -33,6 +35,7 @@ export const REGISTRY: readonly GameEntry[] = [
   { id: "align", title: "Align", icon: "🟪", status: "playable", load: alignModule },
   { id: "blockdoku", title: "Blockdoku", icon: "🟦", status: "playable", load: blockdokuModule },
   { id: "looseends", title: "Loose Ends", icon: "🎯", status: "playable", load: looseendsModule },
+  { id: "color-sort", title: "Color Sort", icon: "🧪", status: "playable", load: colorSortModule },
   {
     id: "astray",
     title: "Astray",
@@ -85,6 +88,20 @@ export const REGISTRY: readonly GameEntry[] = [
       upstreamUrl: "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/",
     },
     load: puzzlesModule,
+  },
+  {
+    id: "orchard-drop",
+    title: "Orchard Drop",
+    icon: "🍉",
+    status: "playable",
+    tier: 2,
+    attribution: {
+      author: "the Croft shelf, with physics by @liabru's Matter.js",
+      license: "AGPL-3.0 (game) · MIT (Matter.js)",
+      upstreamUrl: "https://github.com/CroftCommunity/fun",
+      basedOn: "Suika Game (Watermelon Game)",
+    },
+    load: orchardDropModule,
   },
   { id: "cribbage", title: "Cribbage", icon: "🎴", status: "soon" },
 ];

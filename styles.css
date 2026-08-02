@@ -2237,6 +2237,155 @@ body.fullscreen .play-area {
   .bdk-board { --bdk-cell: 1.9rem; }
 }
 
+/* ============================================================================
+   Color Sort — water / ball / bolt sort puzzle. One engine, three skins; the
+   board is a centred, wrapping row of tubes. Semantic tokens only (the 12 unit
+   hues live in tokens.css as --cs-c0..c11).
+   ============================================================================ */
+.cs-game { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; width: 100%; }
+.cs-hud {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+  letter-spacing: 0.02em;
+}
+.cs-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; justify-content: center; }
+.cs-undo, .cs-restart {
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--r-card);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+}
+.cs-undo:hover, .cs-restart:hover { border-color: var(--accent); }
+
+.cs-banner {
+  display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; justify-content: center;
+  padding: 0.5rem 0.9rem;
+  border-radius: var(--r-card);
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
+  border: 1px solid var(--accent);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* The board: tubes wrap into rows and stay centred. */
+.cs-board {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 0.7rem;
+  justify-content: center;
+  align-items: flex-end;
+  max-width: 100%;
+  --cs-tw: 2.6rem;      /* tube width  */
+  --cs-uh: 1.5rem;      /* unit height */
+}
+
+/* A tube is a focusable button; four unit slots stack from the bottom. */
+.cs-tube {
+  position: relative;
+  width: var(--cs-tw);
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: transform 120ms ease;
+  touch-action: manipulation;
+}
+.cs-stack {
+  display: flex;
+  flex-direction: column-reverse;
+  height: calc(var(--cs-uh) * 4);
+  border: 2px solid var(--cs-tube-edge);
+  border-top: none;
+  border-radius: 0 0 0.9rem 0.9rem;
+  background: rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+.cs-slot { height: var(--cs-uh); }
+.cs-unit { height: var(--cs-uh); background: var(--cs-fill); display: grid; place-items: center; }
+.cs-icon { font-size: 0.95rem; line-height: 1; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35)); }
+
+/* Selection + legality feedback. */
+.cs-tube:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 0.4rem; }
+.cs-tube.selected { transform: translateY(-0.6rem); }
+.cs-tube.selected .cs-stack { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.cs-tube.legal .cs-stack { box-shadow: 0 0 0 3px var(--active); border-color: var(--active); }
+.cs-tube.legal::after {
+  content: "";
+  position: absolute; inset-inline: 0; bottom: -0.9rem;
+  height: 0.5rem; margin-inline: auto; width: 0.5rem;
+  border-radius: 50%; background: var(--active);
+}
+.cs-tube.cs-hint-to .cs-stack { box-shadow: 0 0 0 3px var(--accent); border-color: var(--accent); }
+
+/* A locked (solved) tube: a cap sits over the full monochrome column. */
+.cs-tube.locked { cursor: default; }
+.cs-cap {
+  position: absolute; top: -0.35rem; left: 50%; transform: translateX(-50%);
+  width: calc(var(--cs-tw) + 0.3rem); height: 0.5rem;
+  border-radius: 0.3rem; background: var(--cs-cap);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+/* --- Water skin: liquid segments; the bottom unit rounds into the tube. --- */
+.cs-skin-water .cs-stack > .cs-slot:first-child.cs-unit { border-radius: 0 0 0.7rem 0.7rem; }
+
+/* --- Ball skin: each unit is a ball. --- */
+.cs-skin-ball .cs-slot { display: grid; place-items: center; }
+.cs-skin-ball .cs-unit {
+  width: calc(var(--cs-uh) - 0.28rem);
+  height: calc(var(--cs-uh) - 0.28rem);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.55), var(--cs-fill) 62%);
+}
+.cs-skin-ball .cs-stack { background: rgba(255, 255, 255, 0.03); }
+
+/* --- Bolt skin: a threaded post; each unit is a hex nut on the thread. --- */
+.cs-skin-bolt .cs-stack {
+  border-radius: 0 0 0.2rem 0.2rem;
+  background:
+    linear-gradient(var(--cs-post), var(--cs-post)) center / 0.4rem 100% no-repeat,
+    var(--cs-plate);
+}
+.cs-skin-bolt .cs-unit {
+  width: calc(var(--cs-tw) - 0.35rem);
+  height: calc(var(--cs-uh) - 0.2rem);
+  margin-inline: auto;
+  background: var(--cs-fill);
+  clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+}
+.cs-skin-bolt .cs-cap { background: var(--cs-post); height: 0.7rem; border-radius: 0.15rem; }
+
+/* Pour + illegal feedback (reduced-motion safe below). */
+@keyframes cs-shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+@keyframes cs-poured { 0% { transform: translateY(-0.3rem); } 100% { transform: translateY(0); } }
+.cs-tube.cs-shake { animation: cs-shake 0.28s ease; }
+.cs-tube.cs-poured .cs-stack { animation: cs-poured 0.3s ease; }
+
+/* Settings: the skin segmented control. */
+.cs-skin-row { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+.cs-setting-label, .cs-skin-note { color: var(--ink-muted); }
+.cs-skin-btn {
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--r-card);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+}
+.cs-skin-btn[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 22%, var(--surface)); }
+.cs-share-line { font-family: var(--font-mono); font-size: 0.85rem; color: var(--ink-muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-tube, .cs-tube.cs-shake, .cs-tube.cs-poured .cs-stack { animation: none; transition: none; }
+}
+/* Mobile: shrink tubes so a 12-tube daily never overflows a narrow phone. */
+@media (max-width: 420px) {
+  .cs-board { --cs-tw: 2.1rem; --cs-uh: 1.25rem; gap: 0.4rem 0.5rem; }
+}
+
 /* ==========================================================================
    Loose Ends — the arrow-release puzzle.
    The canvas owns the play surface (colours from --le-* in tokens.css); the

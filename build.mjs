@@ -13,11 +13,11 @@ const dist = join(root, "dist");
 
 // Game entry pages: "" is the home/drawer page (no game mounted); the rest carry
 // <body data-game> so the chrome knows what to mount.
-const GAME_PAGES = ["", "placeholder", "solitaire", "match3", "bubble", "wyrdle", "2048", "align", "blockdoku", "looseends", "astray", "hexgl", "clumsybird", "puzzles", "cribbage"];
+const GAME_PAGES = ["", "placeholder", "solitaire", "match3", "bubble", "wyrdle", "2048", "align", "blockdoku", "looseends", "color-sort", "astray", "hexgl", "clumsybird", "puzzles", "orchard-drop", "cribbage"];
 
 // Tier-2 wrapped games: their vendored bundle ships under src/games/<id>/vendor/
 // and is served at /<id>/vendor/ for the sandboxed iframe to load same-origin.
-const TIER2_VENDORS = ["astray", "hexgl", "clumsybird", "puzzles"];
+const TIER2_VENDORS = ["astray", "hexgl", "clumsybird", "puzzles", "orchard-drop"];
 
 // Pre-paint theme resolution: set [data-theme] before first paint so the felt
 // table never flashes the wrong theme. Same rule as src/theme.ts resolveTheme.
@@ -107,6 +107,10 @@ else console.warn("note: blockdoku.wasm not built yet — run `npm run build:was
 const lewasm = join(root, "target/wasm32-unknown-unknown/release/looseends_wasm.wasm");
 if (await exists(lewasm)) await cp(lewasm, join(dist, "looseends.wasm"));
 else console.warn("note: looseends.wasm not built yet — run `npm run build:wasm` (loose ends needs it)");
+
+const cswasm = join(root, "target/wasm32-unknown-unknown/release/color_sort_wasm.wasm");
+if (await exists(cswasm)) await cp(cswasm, join(dist, "color-sort.wasm"));
+else console.warn("note: color-sort.wasm not built yet — run `npm run build:wasm` (color-sort needs it)");
 
 // The winnable-daily pack (Phase S) — served static so the daily mode and the
 // E2E win-path fixture can fetch it. `payload[0]` is the win-path fixture.

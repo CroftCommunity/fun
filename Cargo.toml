@@ -19,6 +19,9 @@ members = [
     "crates/bubble-core",
     "crates/looseends-core",
     "crates/looseends-wasm",
+    "crates/color-sort-core",
+    "crates/color-sort-solver",
+    "crates/color-sort-wasm",
     "crates/wyrdle-core",
     "crates/twenty48-core",
     "crates/twenty48-wasm",
@@ -61,6 +64,8 @@ align-core = { path = "crates/align-core" }
 blockdoku-core = { path = "crates/blockdoku-core" }
 bubble-core = { path = "crates/bubble-core" }
 looseends-core = { path = "crates/looseends-core" }
+color-sort-core = { path = "crates/color-sort-core" }
+color-sort-solver = { path = "crates/color-sort-solver" }
 wyrdle-core = { path = "crates/wyrdle-core" }
 match3-core = { path = "crates/match3-core" }
 solitaire-core = { path = "crates/solitaire-core" }

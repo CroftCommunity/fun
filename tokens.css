@@ -103,6 +103,28 @@
   --le-danger: #cf3b22;       /* the blocked-tap flash                 */
   --le-droplet: #3a63d0;      /* the droplet (lives) blue on paper     */
 
+  /* Color Sort — 12 maximally-distinct unit hues (graphical fills on the tube
+     glass; not text, so not in PAIRS — the fruit icons are the a11y guarantee).
+     Theme-independent so a solved tube reads the same in light and dark. */
+  --cs-c0: #e6423a;           /* red      🍎 */
+  --cs-c1: #f2c230;           /* lemon    🍋 */
+  --cs-c2: #8e44d0;           /* grape    🍇 */
+  --cs-c3: #74c53b;           /* kiwi     🥝 */
+  --cs-c4: #3a6fe6;           /* blueberry 🫐 */
+  --cs-c5: #ef8b25;           /* orange   🍊 */
+  --cs-c6: #ff7fbf;           /* strawberry 🍓 */
+  --cs-c7: #b98a4e;           /* coconut  🥥 */
+  --cs-c8: #6b3fa0;           /* eggplant 🍆 */
+  --cs-c9: #e8d44d;           /* corn     🌽 */
+  --cs-c10: #17a2a2;          /* carrot-teal 🥕 */
+  --cs-c11: #c9506a;          /* peach    🍑 */
+  /* Skin chrome: tube glass, bolt post/plate, and the solved cap. */
+  --cs-glass: #ffffff;        /* tube glass tint (low-opacity in styles) */
+  --cs-tube-edge: #cfc7b4;    /* tube outline on the felt              */
+  --cs-post: #9a917d;         /* bolt thread post                      */
+  --cs-plate: #6f6857;        /* bolt base plate                       */
+  --cs-cap: #37503f;          /* the locked-tube cap                   */
+
   /* Type roles (self-hostable display + system UI fallback). */
   --font-display: "Fredoka", "Baloo 2", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -178,6 +200,13 @@
   --le-hint: #3ddba9;         /* mint — a safe (free) arrow            */
   --le-danger: #e4573d;       /* the blocked-tap flash                 */
   --le-droplet: #4f7cff;      /* the droplet (lives) blue              */
+
+  /* Color Sort skin chrome, re-tuned for the night table (hues are shared). */
+  --cs-glass: #ffffff;
+  --cs-tube-edge: #4a4636;
+  --cs-post: #6b6455;
+  --cs-plate: #4a4636;
+  --cs-cap: #6f9079;
 
   --theme-color: #123f2b;
 }
