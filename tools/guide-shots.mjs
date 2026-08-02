@@ -403,6 +403,30 @@ const SHOTS = [
       await page.waitForSelector(".sol-result");
     },
   },
+  {
+    name: "orchard-crate",
+    clip: ".wrapped-game-frame",
+    async run(page) {
+      await page.goto(`${origin}/orchard-drop/`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".wrapped-game-frame");
+      const frame = page.frameLocator(".wrapped-game-frame");
+      await frame.locator("#gameCanvas").waitFor({ state: "attached", timeout: 15000 });
+      // Drop a run of fruit across the crate so the shot shows a lived-in pile
+      // with merges, not an empty box. Aim varies so the fruit spreads and stacks.
+      const box = await page.locator(".wrapped-game-frame").boundingBox();
+      if (box) {
+        for (let i = 0; i < 22; i += 1) {
+          const x = box.x + box.width * (0.2 + 0.6 * ((i * 7) % 10) / 10);
+          const y = box.y + box.height * 0.35;
+          await page.mouse.move(x, y);
+          await page.mouse.down();
+          await page.mouse.up();
+          await page.waitForTimeout(560); // just over the 520ms drop cooldown
+        }
+      }
+      await page.waitForTimeout(1200); // let the last fruit settle and merges resolve
+    },
+  },
 ];
 
 const server = spawn("node", [join(root, "tools", "serve.mjs")], { stdio: "ignore" });

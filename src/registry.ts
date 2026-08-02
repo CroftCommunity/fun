@@ -16,6 +16,7 @@ import { astrayModule } from "./games/astray/astray.js";
 import { hexglModule } from "./games/hexgl/hexgl.js";
 import { clumsybirdModule } from "./games/clumsybird/clumsybird.js";
 import { puzzlesModule } from "./games/puzzles/puzzles.js";
+import { orchardDropModule } from "./games/orchard-drop/orchard-drop.js";
 
 export const REGISTRY: readonly GameEntry[] = [
   {
@@ -85,6 +86,20 @@ export const REGISTRY: readonly GameEntry[] = [
       upstreamUrl: "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/",
     },
     load: puzzlesModule,
+  },
+  {
+    id: "orchard-drop",
+    title: "Orchard Drop",
+    icon: "🍉",
+    status: "playable",
+    tier: 2,
+    attribution: {
+      author: "the Croft shelf, with physics by @liabru's Matter.js",
+      license: "AGPL-3.0 (game) · MIT (Matter.js)",
+      upstreamUrl: "https://github.com/CroftCommunity/fun",
+      basedOn: "Suika Game (Watermelon Game)",
+    },
+    load: orchardDropModule,
   },
   { id: "cribbage", title: "Cribbage", icon: "🎴", status: "soon" },
 ];
