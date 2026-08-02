@@ -125,6 +125,22 @@ test("swiping a gem toward a legal neighbour swaps it (swipe as well as tap)", a
   expect(after).toBeGreaterThan(before);
 });
 
+test("gems render as glossy shapes (inner .m3-shape); glows stay on the button", async ({ page }) => {
+  await page.goto("/match3/?seed=7");
+  await ready(page);
+  // Every gem carries an aria-hidden inner shape (the candy). The square button
+  // keeps the hit-area + aria-label, so the selection/legal/hint glows (outline +
+  // box-shadow on the button) are never clipped by the shape's clip-path.
+  await expect(page.locator("button.m3-gem > .m3-shape")).toHaveCount(64);
+  await expect(page.locator(".m3-shape").first()).toHaveAttribute("aria-hidden", "true");
+  await expect(page.locator("button.m3-gem")).toHaveCount(64);
+  // Selecting still puts the glow class on the BUTTON, not the inner shape.
+  const swap = await page.evaluate(() => window.__match3!.game.legalMoves()[0]!);
+  await page.locator(`.m3-gem[data-r="${swap[0]}"][data-c="${swap[1]}"]`).click();
+  await expect(page.locator("button.m3-gem.selected")).toHaveCount(1);
+  await expect(page.locator(".m3-shape.selected")).toHaveCount(0);
+});
+
 test("a tiny pointer nudge under the threshold does not swap — it selects (tap floor)", async ({ page }) => {
   await page.goto("/match3/?seed=7");
   await ready(page);

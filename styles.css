@@ -501,30 +501,36 @@ body.fullscreen .play-area {
   margin-bottom: 0;
 }
 .m3-board {
-  --m3-gem: 2.6rem;
+  --m3-gem: 2.85rem;
   display: inline-flex;
   flex-direction: column;
-  gap: 0.3rem;
-  padding: 0.6rem;
-  background: var(--felt);
+  gap: 0.28rem;
+  padding: 0.5rem;
+  /* A receding board: a soft, low-contrast felt that darkens toward the middle so
+     the glossy candies read as the subject, not the grid. */
+  background: radial-gradient(120% 120% at 50% 0%, color-mix(in srgb, var(--felt) 86%, white) 0%, var(--felt) 62%);
   border-radius: var(--radius);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 12%), 0 2px 8px rgb(0 0 0 / 18%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%), 0 3px 14px rgb(0 0 0 / 26%);
 }
 .m3-row {
   display: flex;
-  gap: 0.3rem;
+  gap: 0.28rem;
 }
+/* The gem is a square hit-target sitting in a shallow "well" in the board. It
+   carries the selection / legal / hint glows and the a11y label; the glossy candy
+   is the inner .m3-shape (a clip-path there would otherwise clip the glows). */
 .m3-gem {
   width: var(--m3-gem);
   height: var(--m3-gem);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: calc(var(--m3-gem) * 0.55);
+  padding: 0;
   line-height: 1;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-card);
+  background: color-mix(in srgb, var(--felt) 76%, #000);
+  border: 0;
+  border-radius: 26%;
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 34%);
   cursor: pointer;
   /* Swipe-to-swap: a gesture starting on a gem shouldn't scroll the page or
      select text. Kept on the gems (not the board) so a finger on the felt gap
@@ -533,23 +539,85 @@ body.fullscreen .play-area {
   user-select: none;
   -webkit-user-select: none;
 }
+/* The glossy candy: a bright body fill (its --gem token) with a specular
+   highlight top-left and a silhouette drop-shadow so it sits above the board.
+   Per-type silhouettes (below) make identity shape + colour, never hue alone;
+   the glyph rides inside as a faint extra cue (a11y is carried by aria-label). */
+.m3-shape {
+  width: 86%;
+  height: 86%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--m3-gem) * 0.34);
+  color: rgb(255 255 255 / 60%);
+  text-shadow: 0 1px 1px rgb(0 0 0 / 35%);
+  border-radius: 30%;
+  background:
+    radial-gradient(circle at 32% 26%, rgb(255 255 255 / 85%) 0%, rgb(255 255 255 / 0%) 40%),
+    radial-gradient(circle at 50% 64%, var(--gem-body) 0%, color-mix(in srgb, var(--gem-body) 56%, #000) 100%);
+  filter: drop-shadow(0 2px 2px rgb(0 0 0 / 42%));
+}
 .m3-gem.gem-0 {
-  color: var(--gem-0);
+  --gem-body: var(--gem-0);
 }
 .m3-gem.gem-1 {
-  color: var(--gem-1);
+  --gem-body: var(--gem-1);
 }
 .m3-gem.gem-2 {
-  color: var(--gem-2);
+  --gem-body: var(--gem-2);
 }
 .m3-gem.gem-3 {
-  color: var(--gem-3);
+  --gem-body: var(--gem-3);
 }
 .m3-gem.gem-4 {
-  color: var(--gem-4);
+  --gem-body: var(--gem-4);
 }
 .m3-gem.gem-5 {
-  color: var(--gem-5);
+  --gem-body: var(--gem-5);
+}
+/* Distinct silhouette per type — identity is shape + colour, never colour only. */
+.m3-gem.gem-0 .m3-shape {
+  border-radius: 50%; /* circle */
+}
+.m3-gem.gem-1 .m3-shape {
+  clip-path: polygon(50% 7%, 93% 90%, 7% 90%); /* triangle */
+}
+.m3-gem.gem-2 .m3-shape {
+  border-radius: 26%; /* rounded square */
+}
+.m3-gem.gem-3 .m3-shape {
+  clip-path: polygon(50% 2%, 98% 50%, 50% 98%, 2% 50%); /* diamond */
+}
+.m3-gem.gem-4 .m3-shape {
+  clip-path: polygon(
+    50% 2%,
+    61% 35%,
+    96% 35%,
+    68% 57%,
+    79% 92%,
+    50% 71%,
+    21% 92%,
+    32% 57%,
+    4% 35%,
+    39% 35%
+  ); /* star */
+}
+.m3-gem.gem-5 .m3-shape {
+  clip-path: polygon(
+    34% 2%,
+    66% 2%,
+    66% 34%,
+    98% 34%,
+    98% 66%,
+    66% 66%,
+    66% 98%,
+    34% 98%,
+    34% 66%,
+    2% 66%,
+    2% 34%,
+    34% 34%
+  ); /* cross */
 }
 .m3-gem.selected {
   outline: 3px solid var(--focus);

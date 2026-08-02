@@ -280,8 +280,10 @@ export function match3Module(): GameModule {
       for (const ch of row) {
         if (ch >= "0" && ch <= "9") {
           const color = Number(ch);
+          // Same inner-shape structure as the live board (gemButton), so cascade
+          // frames don't flicker glossy→glyph mid-animation.
           const g = el("span", { class: `m3-gem gem-${color}` });
-          g.textContent = GEM_GLYPH[color]!;
+          g.append(el("span", { class: "m3-shape", "aria-hidden": "true" }, GEM_GLYPH[color]!));
           rowEl.append(g);
         } else if (ch === ".") {
           rowEl.append(el("span", { class: "m3-gem m3-hole" }));
@@ -389,7 +391,10 @@ export function match3Module(): GameModule {
       "data-c": String(c),
       "aria-label": `${GEM_NAME[color]} gem, row ${r + 1} column ${c + 1}`,
     });
-    b.textContent = GEM_GLYPH[color]!;
+    // The glossy candy shape lives on an inner element so the button keeps its
+    // hit-area + focus/selection/legal/hint glows (which a shape's clip-path would
+    // otherwise clip). The glyph rides inside as a faint non-colour redundancy cue.
+    b.append(el("span", { class: "m3-shape", "aria-hidden": "true" }, GEM_GLYPH[color]!));
     return b;
   };
 
