@@ -45,6 +45,10 @@ test("the board, columns, turn bar, and options render", async ({ page }) => {
   // Fresh board: empty, and every column glows as a legal target.
   expect(await filled(page)).toBe(0);
   await expect(page.locator(".drop4-col.legal")).toHaveCount(7);
+  // Columns are numbered 1–7 so the tutor/hint "column N" references are legible.
+  await expect(page.locator(".drop4-colnum")).toHaveCount(7);
+  await expect(page.locator('.drop4-col[data-col="0"] .drop4-colnum')).toHaveText("1");
+  await expect(page.locator('.drop4-col[data-col="6"] .drop4-colnum')).toHaveText("7");
 });
 
 test("tapping a column drops a disc and the engine replies with a visible last move", async ({ page }) => {
@@ -132,7 +136,24 @@ test("a full game plays to a terminal result; the final board + winning line sho
   await shared.close();
 });
 
+// The tutor panel is opt-in (off by default); enable it via its setting.
+async function enableTutor(page: Page): Promise<void> {
+  await page.addInitScript(() => localStorage.setItem("fun-drop4-tutor", "on"));
+}
+
+test("the tutor panel is off by default and appears when enabled in settings", async ({ page }) => {
+  await page.goto("/drop4/?seed=7");
+  await ready(page);
+  // Default: no tutor panel (the game plays clean without coaching).
+  await expect(page.locator(".drop4-tutor")).toHaveCount(0);
+  // Enable the "Show tutor" setting → the panel appears.
+  await page.locator(".sol-settings summary").click();
+  await page.locator(".sol-set-tutor").check();
+  await expect(page.locator(".drop4-tutor-explain")).toBeVisible();
+});
+
 test("the tutor flags a blunder end-to-end with an honest explanation", async ({ page }) => {
+  await enableTutor(page);
   await page.goto("/drop4/?seed=7");
   await ready(page);
   // Set up a position where the human (Side A) has an immediate win in col 0 but
@@ -157,6 +178,7 @@ test("the tutor flags a blunder end-to-end with an honest explanation", async ({
 });
 
 test("'Explain my options' lists at least two band moves with an idea each", async ({ page }) => {
+  await enableTutor(page);
   await page.goto("/drop4/?seed=7");
   await ready(page);
   await page.locator(".drop4-tutor-explain").click();

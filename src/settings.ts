@@ -11,6 +11,7 @@ const AUTOPLAY_KEY = "fun-autoplay";
 const AIM_GUIDE_KEY = "fun-bubble-aim-guide";
 const DROP4_LEVEL_KEY = "fun-drop4-level";
 const DROP4_MARK_KEY = "fun-drop4-mark";
+const DROP4_TUTOR_KEY = "fun-drop4-tutor";
 const FIRE_ON_RELEASE_KEY = "fun-bubble-fire-on-release";
 const AIM_SNAP_KEY = "fun-bubble-aim-snap";
 const AIM_GAIN_KEY = "fun-bubble-aim-gain";
@@ -155,6 +156,15 @@ export function drop4Mark(): Drop4Mark {
     return "x";
   }
 }
+/** Show the engine-grounded tutor panel in Drop 4 — **off by default** (opt-in
+ *  coaching; the game plays clean without it). */
+export function drop4TutorEnabled(): boolean {
+  return read(DROP4_TUTOR_KEY, false);
+}
+export function setDrop4Tutor(on: boolean): void {
+  write(DROP4_TUTOR_KEY, on);
+}
+
 export function setDrop4Mark(mark: Drop4Mark): void {
   try {
     localStorage.setItem(DROP4_MARK_KEY, mark);

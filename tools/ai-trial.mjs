@@ -21,7 +21,7 @@ const dist = join(root, "dist");
 const PORT = 4180;
 const origin = `http://localhost:${PORT}`;
 const MODE = process.env.AI_TRIAL_MODE ?? "generate";
-const MODEL = process.env.AI_TRIAL_MODEL ?? "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
+const MODEL = process.env.AI_TRIAL_MODEL ?? "Qwen2.5-0.5B-Instruct-q4f16_1-MLC";
 const cacheDir = join(root, ".webllm-cache"); // persists the model across runs (gitignored)
 
 if (!existsSync(join(dist, "vendor", "webllm.js"))) {

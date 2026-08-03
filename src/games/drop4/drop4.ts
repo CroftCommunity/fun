@@ -25,10 +25,12 @@ import {
   declareAssistanceEnabled,
   drop4Level,
   drop4Mark,
+  drop4TutorEnabled,
   hintsEnabled,
   setDeclareAssistance,
   setDrop4Level,
   setDrop4Mark,
+  setDrop4Tutor,
   setHintsEnabled,
   type Drop4Mark,
 } from "../../settings.js";
@@ -56,10 +58,28 @@ const FANFARE_MS = 1300;
 const LEVELS: readonly Level[] = ["Easy", "Medium", "Hard", "Perfect"];
 /** The picker value / opponent kind for the experimental local-AI hybrid. */
 const LOCAL_AI = "local-ai";
-/** The pinned local-AI model (embedded WebLLM; downloaded once, then cached). */
-const LOCAL_AI_MODEL = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
-const HYBRID_SYSTEM =
-  'You are a Connect Four opponent with a bit of personality. Pick ONE of the offered legal moves and give a short, characterful reason. Reply ONLY with JSON {"move": <one of the offered column indices>, "reason": "<one short sentence>"}.';
+/**
+ * The pinned local-AI model (embedded WebLLM; downloaded once, then cached).
+ * A **small** model on purpose: the LLM only writes a one-line quip within the
+ * engine's band — size barely helps short banter (the 1.5B was no better and
+ * much slower, painfully so on mobile), so we default to the fast 0.5B.
+ */
+const LOCAL_AI_MODEL = "Qwen2.5-0.5B-Instruct-q4f16_1-MLC";
+/** The local-AI opponent's persona (distinct from the classic "The Engine"). */
+const LOCAL_AI_PERSONA = { name: "Chip", avatar: "😎" } as const;
+/**
+ * Persona system prompt — the small model needs tight, concrete rules to sound
+ * like a character instead of narrating strategy in the third person.
+ */
+const HYBRID_SYSTEM = [
+  `You are ${LOCAL_AI_PERSONA.name}, a Connect Four opponent with a cocky but`,
+  "good-natured personality. You talk a little trash and give credit when it's due.",
+  "RULES: speak in FIRST person as yourself, TO your opponent (say \"you\", never",
+  "\"the opponent\" or \"the engine\"). ONE short sentence, under 12 words. React to",
+  "what JUST happened — never explain strategy or name the board in the third",
+  'person. Reply ONLY with JSON {"move": <one of the offered columns>, "reason":',
+  '"<your one-line quip>"}.',
+].join(" ");
 /** Display labels for the picker — the internal `Level`/persisted value stays
  *  `Perfect` (it is the exact/best-play level), but "Expert" reads better and
  *  doesn't overclaim (it is only provably perfect once the game is tractable). */
@@ -257,8 +277,12 @@ export function drop4Module(): GameModule {
   let opponentKind: "engine" | typeof LOCAL_AI = "engine";
   let runtime: WebLLMRuntime | null = null;
   let hybrid: HybridPlayer | null = null;
-  /** The opponent's spoken reason for its last move (local-AI only). */
+  /** The opponent's spoken line for its last move (local-AI only). */
   let aiSay: string | null = null;
+  /** Signals about the human's last move, for the local-AI opponent's reaction:
+   *  the move's quality, and whether it blocked the opponent's winning threat. */
+  let lastHumanQuality: "optimal" | "resultPreserving" | "blunder" | null = null;
+  let lastHumanBlocked = false;
 
   const statusEl = el("p", { class: "sol-status", role: "status", "aria-live": "polite" });
   const setStatus = (msg: string): void => {
@@ -269,6 +293,11 @@ export function drop4Module(): GameModule {
   // the engine (Side B, value 2) plays the other. Colour follows the mark.
   const markForValue = (v: number): Mark | null =>
     v === 1 ? playerMark : v === 2 ? other(playerMark) : null;
+
+  // The opponent's shown identity: the classic engine by default, the local-AI
+  // persona (Chip) when that opponent is toggled on.
+  const opponentIdentity = (): { name: string; avatar: string } =>
+    opponentKind === LOCAL_AI ? LOCAL_AI_PERSONA : OPPONENT;
 
   const randomSeed = (): bigint => {
     const buf = new Uint32Array(2);
@@ -302,13 +331,17 @@ export function drop4Module(): GameModule {
     coachMsg = null; // clear last turn's coaching
     // Assess the tapped move at the *current* position (human to move) before
     // it is applied — "was that a blunder" needs the position before the move.
+    // This drives the tutor coach (only when the opt-in tutor is on) AND the
+    // local-AI opponent's reaction (banter), so capture the quality either way.
     const report = game.tutor();
     const verdict = report.moves.find((m) => m.col === col) ?? null;
-    const pending = coachFor(verdict, report.bestCol, report.exact);
+    lastHumanQuality = verdict?.quality ?? null;
+    lastHumanBlocked = verdict?.blocksOpponentWin ?? false;
+    const pending = drop4TutorEnabled() ? coachFor(verdict, report.bestCol, report.exact) : null;
     if (!applyMove(col)) return; // the core decides; illegal = no-op
     setStatus("");
     if (gameOver()) {
-      coachMsg = pending; // a game-ending blunder is still explained
+      coachMsg = pending; // a game-ending blunder is still explained (tutor on)
       finish();
       return;
     }
@@ -323,7 +356,7 @@ export function drop4Module(): GameModule {
   const scheduleEngine = (pending: string | null): void => {
     if (!game) return;
     thinking = true;
-    setStatus(opponentKind === LOCAL_AI ? "Local AI is thinking…" : `${OPPONENT.name} is thinking…`);
+    setStatus(`${opponentIdentity().name} is thinking…`);
     render();
     window.setTimeout(() => void engineReply(pending), THINK_MS);
   };
@@ -344,31 +377,71 @@ export function drop4Module(): GameModule {
     render();
   };
 
-  // Build the local-AI prompt from the board render + the never-throw band, then
-  // ask the hybrid to pick within it. Any failure (model, network, bad output)
-  // degrades to the classic engine move — the game never breaks.
-  const hybridPrompt = (g: Drop4, band: readonly BandMove[]): string => {
+  // What just happened, in one word — drives both the persona prompt and the
+  // deterministic fallback line, so the banter is *reactive*, not generic.
+  type Situation = "blocked-me" | "blundered" | "solid" | "i-can-win" | "neutral";
+  const readSituation = (band: readonly BandMove[]): Situation => {
+    if (band.some((m) => m.idea === "wins now")) return "i-can-win";
+    if (lastHumanBlocked) return "blocked-me";
+    if (lastHumanQuality === "blunder") return "blundered";
+    if (lastHumanQuality === "optimal") return "solid";
+    return "neutral";
+  };
+  const SITUATION_HINT: Record<Situation, string> = {
+    "blocked-me": "You just blocked the line I was building — react to that.",
+    blundered: "You just played a weak move — tease me taking advantage.",
+    solid: "You just played a solid move — give a little credit, stay competitive.",
+    "i-can-win": "You can complete four this move — claim the win with a flourish.",
+    neutral: "Nothing decisive yet — a light competitive jab.",
+  };
+  // In-character canned lines, used when the small model returns nothing usable.
+  const FALLBACK_LINE: Record<Situation, string> = {
+    "blocked-me": "I thought I had you there.",
+    blundered: "Ooh, risky — I'll take it.",
+    solid: "Nice one. I'm just getting started.",
+    "i-can-win": "Gotcha. Good game.",
+    neutral: "Your move. I'm not worried yet.",
+  };
+
+  // Build the persona prompt from the board, the situation, and the never-throw
+  // band. The LLM picks within the band and writes Chip's one-line quip.
+  const hybridPrompt = (g: Drop4, band: readonly BandMove[], sit: Situation): string => {
     const legal = band.map((m) => m.col).join(", ");
-    const options = band.map((m) => `- ${m.col}: ${m.idea}`).join("\n");
-    return `${g.renderText()}\nReasonable moves (0-based column indices) and why each is fine:\n${options}\nPick ONE of these columns: ${legal}. Reply ONLY with JSON {"move", "reason"}.`;
+    return [
+      `Board (you are playing as your discs):\n${g.renderText()}`,
+      `${SITUATION_HINT[sit]}`,
+      `Drop into ONE of these columns: ${legal}.`,
+      `Your voice, e.g.: "Bold move — let's see." / "I thought I had you." / "Gotcha, good game."`,
+      `Reply ONLY with JSON {"move": <one of ${legal}>, "reason": "<your one-line quip, under 12 words>"}.`,
+    ].join("\n");
+  };
+
+  // Keep the model's quip only if it's usable (short, non-empty); else fall back
+  // to the in-character line for the situation — the small model whiffs often.
+  const cleanBanter = (reason: string, sit: Situation): string => {
+    const r = reason.trim();
+    return r.length > 0 && r.length <= 90 ? r : FALLBACK_LINE[sit];
   };
 
   const hybridMove = async (): Promise<number | null> => {
     if (!game) return null;
     try {
       if (!runtime || !hybrid) {
-        setStatus("Local AI: preparing the model (one-time download)…");
+        setStatus(`${LOCAL_AI_PERSONA.name}: warming up the model (one-time download)…`);
         render();
         runtime = new WebLLMRuntime({
           model: window.__DROP4_AI_MODEL ?? LOCAL_AI_MODEL,
-          onProgress: (t) => setStatus(`Local AI: ${t}`),
+          onProgress: (t) => setStatus(`${LOCAL_AI_PERSONA.name}: ${t}`),
         });
         hybrid = new HybridPlayer(runtime);
       }
       const band = buildBand(game.tutor().moves);
       if (band.length === 0) return game.liveMove(level); // no band → classic safety
-      const decision = await hybrid.pick(band, { prompt: hybridPrompt(game, band), system: HYBRID_SYSTEM });
-      aiSay = decision.reason;
+      const sit = readSituation(band);
+      const decision = await hybrid.pick(band, { prompt: hybridPrompt(game, band, sit), system: HYBRID_SYSTEM });
+      // The LLM's line if usable, else the in-character fallback (also used when
+      // the hybrid itself fell back to the engine move — source === "fallback").
+      aiSay = decision.source === "llm" ? cleanBanter(decision.reason, sit) : FALLBACK_LINE[sit];
       return decision.move;
     } catch {
       aiSay = null;
@@ -435,7 +508,11 @@ export function drop4Module(): GameModule {
         { class: `drop4-chip ${other(playerMark)}`, "aria-hidden": "true" },
         glyphFor(other(playerMark)),
       ),
-      el("span", { class: "drop4-name" }, `${OPPONENT.name} ${OPPONENT.avatar}`),
+      el(
+        "span",
+        { class: "drop4-name" },
+        `${opponentIdentity().name} ${opponentIdentity().avatar}`,
+      ),
       ...(thinking ? [el("span", { class: "drop4-thinking" }, "thinking…")] : []),
     );
     return el(
@@ -553,6 +630,10 @@ export function drop4Module(): GameModule {
       setting(declareAssistanceEnabled(), "Declare assistance used", "sol-set-assist", (on) => {
         setDeclareAssistance(on);
       }),
+      setting(drop4TutorEnabled(), "Show tutor", "sol-set-tutor", (on) => {
+        setDrop4Tutor(on);
+        render();
+      }),
     );
 
     bar.append(modes, actionBtn, settings);
@@ -589,7 +670,10 @@ export function drop4Module(): GameModule {
               "data-col": String(c),
               "aria-label": open ? `Drop in column ${c + 1}` : `Column ${c + 1} is full`,
             },
-            "▼",
+            // Visible 1-based column number (so "column N" from the tutor/hint is
+            // legible) + the drop-arrow affordance.
+            el("span", { class: "drop4-colnum", "aria-hidden": "true" }, String(c + 1)),
+            el("span", { class: "drop4-arrow", "aria-hidden": "true" }, "▼"),
           ),
         );
       }
@@ -694,12 +778,17 @@ export function drop4Module(): GameModule {
       renderControls(),
       banner,
       buildBoard(board, { interactive: true, winLine: winLineNow(board) }),
-      renderTutorPanel(),
+      // The tutor panel is opt-in (Settings → Show tutor); off by default.
+      ...(drop4TutorEnabled() ? [renderTutorPanel()] : []),
       statusEl,
     ];
     // The local-AI opponent's spoken reason for its last move (personality).
     if (aiSay && opponentKind === LOCAL_AI) {
-      parts.splice(1, 0, el("p", { class: "drop4-ai-say", role: "status" }, `${OPPONENT.avatar} ${aiSay}`));
+      parts.splice(
+        1,
+        0,
+        el("p", { class: "drop4-ai-say", role: "status" }, `${LOCAL_AI_PERSONA.name}: ${aiSay}`),
+      );
     }
     container.replaceChildren(el("div", { class: "drop4-game" }, ...parts));
   }

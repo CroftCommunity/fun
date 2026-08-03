@@ -2122,10 +2122,11 @@ body.fullscreen .play-area {
 /* The drop-arrow header — the distinct affordance that says "drop here". */
 .drop4-drop {
   width: var(--d4-cell);
-  height: 1.5rem;
+  height: 1.6rem;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 0.2rem;
   border: none;
   border-radius: 6px;
   font-size: 1rem;
@@ -2134,6 +2135,15 @@ body.fullscreen .play-area {
   color: rgb(255 255 255 / 45%);
   cursor: pointer;
   touch-action: manipulation;
+}
+/* The 1-based column number (prominent) + the drop-arrow affordance (muted). */
+.drop4-colnum {
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.drop4-arrow {
+  font-size: 0.8rem;
+  opacity: 0.75;
 }
 .drop4-drop:focus-visible {
   outline: 3px solid var(--focus);

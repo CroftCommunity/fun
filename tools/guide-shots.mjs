@@ -250,6 +250,8 @@ const SHOTS = [
     name: "drop4-tutor",
     clip: ".drop4-game",
     async run(page) {
+      // The tutor is opt-in (off by default) — enable its setting for the shot.
+      await page.addInitScript(() => localStorage.setItem("fun-drop4-tutor", "on"));
       await page.goto(`${origin}/drop4/?seed=7`, { waitUntil: "networkidle" });
       await page.waitForSelector(".drop4-board");
       await page.waitForFunction(() => Boolean(window.__drop4));
