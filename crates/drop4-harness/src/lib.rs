@@ -16,6 +16,8 @@
 
 #![warn(missing_docs)]
 
+pub mod hybrid;
+
 use adversary_core::{Adversary, MatchResult, Side};
 use drop4_core::{apply_move, legal_cols, winner, Board, Col, Drop4};
 use drop4_solver::{Level, Position, Solver};

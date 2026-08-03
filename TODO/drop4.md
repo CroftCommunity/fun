@@ -26,8 +26,20 @@ Authoritative plan: `plans/2026-07-31-drop4-ai-harness.md`. Standards:
   endgame-fast but slow from the opening — live play needs an opening book or
   depth cap (follow-up); until then, call the oracle from book/endgame positions.
 
+## Done (cont.)
+- [x] `docs/AI-PLAYERS.md` — the standing guide: engine = strength/difficulty,
+  LLM = legality/personality/explanation/tutoring; ports; players; prompt
+  architecture; structured output; difficulty (two knobs); the game-theory
+  rationale (LLM can't out-play a solved game; where LLMs do add value); all
+  measured findings.
+- [x] Hybrid engine-side (`drop4-harness::hybrid`) — `band(floor, Δ)` (difficulty
+  as class floor × within-class regret; `PreserveBestClass` never throws the
+  game), `assess(move)` + `is_immediate_win`/`blocks_opponent_win` (engine-
+  grounded tutoring facts the LLM narrates). Verified against the exact oracle.
+
 ## Next
-- [ ] Phase 5 — **TS harness**: `AIRuntime` port + WebLLM adapter (pinned model)
+- [ ] Phase 5 — **TS harness (browser select + narrate)**: `AIRuntime` port +
+  WebLLM adapter (pinned model)
   + `LLMPlayer` + `Scorer` mirroring the Rust one + Playwright trial driver.
   This is the on-device-LLM trial (needs a browser/WebGPU). Phase 0 D1/D2
   (model choice, headless WebGPU) run here.
