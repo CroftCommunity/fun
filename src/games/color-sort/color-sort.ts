@@ -49,7 +49,7 @@ declare global {
 }
 
 /** The fixed colour-id → fruit-icon map (brief §6), in colour-id order. */
-const ICONS = ["🍎", "🍋", "🍇", "🥝", "🫐", "🍊", "🍓", "🥥", "🍆", "🌽", "🥕", "🍑"];
+const ICONS = ["🍎", "🍋", "🍇", "🥝", "🫐", "🍊", "🍓", "🥥", "🟣", "🌽", "🥕", "🍑"];
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
