@@ -139,6 +139,35 @@ reuse that doesn't are both documented as the generality finding.
   `hybrid-player.ts` plugs in structurally unchanged. These are Phase 0 D-items, not
   assumptions.
 
+## Phase 0 — discovery findings (executed 2026-08-03)
+
+- **[D1 — BLOCKING rules, RESOLVED as fixtures]** Orientation fixed: `cells: [u8;
+  64]`, index `r*8 + c`, **row 0 = top** (Othello has no gravity, so reading
+  order is simplest); `0` empty, `1` = A (Black, opens), `2` = B (White).
+  Standard start: A at (3,4)=28 & (4,3)=35; B at (3,3)=27 & (4,4)=36; A to move.
+  **Hand-verified reference (textbook):** A's legal opening moves are exactly the
+  four squares d3/c4/f5/e6 = indices **{19, 26, 37, 44}**. Playing 19 (d3) flips
+  the single White disc (3,3)→A, giving A={19,27,28,35}, B={36} (4–1), B to move.
+  These are the Phase 1a fixtures (disposition `keep-as-fixture`). Flip rule: a
+  move is legal iff, in ≥1 of the 8 directions, it brackets a non-empty run of
+  the opponent's discs terminated by one of the mover's discs; `apply` flips every
+  such bracketed run in all 8 directions. **Pass:** when a side has no legal
+  Place, `legal_moves` returns `[Pass]`. **Terminal:** both sides stuck → result
+  by disc count (`WinA`/`WinB`/`Draw`).
+- **[D2 — PHASE-GATED, exact-endgame threshold]** Deferred to Phase 2 with the
+  Pass 3 gate binding: `TRACTABLE_EMPTIES` for Othello is chosen conservatively
+  and its exact-solve wall-clock is validated **in the wasm target** (or a margin
+  applied over native), because a natively-measured budget under-counts the
+  in-browser cost. Starting hypothesis to validate: exact full solve from ~≤10
+  empties fits a ~100 ms tap budget; Phase 2a measures and records the actual N
+  (native + wasm ratio) before fixing it.
+- **[D3 — ADVISORY, harness fit, RESOLVED]** Confirmed in Pass 2 by reading
+  `hybrid-player.ts`: `buildBand` filters by `quality` + sorts by `value`, so an
+  Othello tutor report (`{col→square, value, quality, immediateWin:false,
+  blocksOpponentWin:false}`) reuses the harness **unchanged**; `ideaFor` degrades
+  to quality-based ideas ("your strongest line"/"stays safe"). The "takes a
+  corner" enrichment stays the ADVISORY open question, not required for v1.
+
 ## Documentation Impact
 
 - `src/games/othello/othello-howto.ts` + `tools/guide-shots.mjs` +
