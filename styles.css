@@ -1193,3 +1193,100 @@ body.fullscreen .play-area {
   .t48-float { animation: none; opacity: 1; }
   .t48-tile:not(.t48-empty) { animation: none; }
 }
+
+/* Drop 4: a tap-a-column two-player board played against the classic engine.
+   A single centred column (controls · banner · board · status); the felt board
+   frame holds a row of drop buttons above a 7×6 grid of slots. Discs carry a
+   glyph (✕ you / ○ engine) and an a11y label, so colour is never the only cue. */
+.drop4-game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: 32rem;
+  margin: 0 auto;
+  padding-inline: 0.6rem;
+}
+.drop4-game .sol-controls {
+  justify-content: center;
+  margin-bottom: 0;
+}
+.drop4-banner {
+  max-width: 24rem;
+  margin: 0.2rem auto 0;
+  text-align: center;
+  color: var(--ink-muted);
+  font-size: 0.95rem;
+}
+.drop4-board {
+  --d4-cell: clamp(1.9rem, 11vw, 2.9rem);
+  --d4-gap: 0.4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--d4-gap);
+  padding: 0.5rem;
+  margin: 0;
+  background: var(--d4-board);
+  border-radius: var(--radius);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 12%), 0 2px 8px rgb(0 0 0 / 20%);
+}
+.drop4-cols,
+.drop4-row {
+  display: flex;
+  gap: var(--d4-gap);
+}
+.drop4-col {
+  width: var(--d4-cell);
+  height: 2.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  line-height: 1;
+  border: none;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 14%);
+  color: rgb(255 255 255 / 55%);
+  cursor: pointer;
+  touch-action: manipulation; /* no 300ms tap delay / double-tap zoom on mobile */
+}
+.drop4-col.legal:not(:disabled) {
+  background: var(--d4-slot);
+  color: var(--d4-board);
+}
+.drop4-col.legal:not(:disabled):hover {
+  filter: brightness(1.06);
+}
+.drop4-col:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.drop4-col:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+.drop4-cell {
+  width: var(--d4-cell);
+  height: var(--d4-cell);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--d4-slot);
+  font-size: calc(var(--d4-cell) * 0.5);
+  line-height: 1;
+  color: transparent;
+  box-shadow: inset 0 2px 4px rgb(0 0 0 / 22%);
+}
+.drop4-cell.a {
+  background: var(--d4-a);
+}
+.drop4-cell.b {
+  background: var(--d4-b);
+}
+.drop4-cell.a,
+.drop4-cell.b {
+  color: rgb(255 255 255 / 92%);
+  text-shadow: 0 1px 1px rgb(0 0 0 / 45%);
+}
