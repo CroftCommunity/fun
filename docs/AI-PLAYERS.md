@@ -147,6 +147,32 @@ The engine-side data for this is `assess(board, move)` → quality, regret,
 immediate-win, blocks-opponent-win (see `drop4-harness::hybrid`). The LLM narrates
 it.
 
+### Shipped: the deterministic tutor (no LLM, no GPU)
+
+The tutor ships **now**, everywhere, on the CI gate — because the facts are
+computable without any LLM. The value does not depend on the model:
+
+- **Wasm-side facts.** `drop4-solver::tutor::assess(board, solver) -> TutorReport`
+  computes, for every legal move, its quality (`Optimal` / `ResultPreserving` /
+  `Blunder`), value, regret, and the one-ply `immediate_win` / `blocks_opponent_win`
+  facts, plus the best column. Exposed over the wasm C-ABI as `assess_json(col)` /
+  `tutor_json()` and typed in the wrapper as `Drop4.assess(col)` / `Drop4.tutor()`.
+  `drop4-wasm` gains **no** `drop4-harness` dependency — the facts are computed
+  from `drop4-solver` primitives it already uses.
+- **Exact-or-capped, and honest about which.** The facts are the exact oracle's
+  in the endgame (≤ `TRACTABLE_EMPTIES` empties → provably right) and the fast
+  depth-capped search's earlier (horizon-approximate). `TutorReport.exact` says
+  which, and the UI is honest: a blunder is called a blunder ("that threw the
+  game") only when the facts are `exact`; when capped it softens to "looks risky".
+- **In `/drop4/`.** The on-by-default tutor panel: "Explain my options" lists the
+  class-preserving band with an idea each; a blunder flag assessed **before** the
+  tap and surfaced **after** the engine replies (so it does not spoil the reply);
+  and a why-hint that names a column and the reason.
+
+The LLM's later role here is purely to **narrate** these same facts in a warmer
+voice (Phase 3) — it changes the wording, never the facts, so it stays correct
+by construction.
+
 ## What we measured (Drop 4, WebLLM/WebGPU via system Chrome)
 
 | Finding | Result |

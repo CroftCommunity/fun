@@ -148,8 +148,13 @@ core owns legality (a full column is not a legal target); a match records **both
 sides' drops in one list, so the finished game replays to a verifiable
 `pond-outcome` record with a self-verifying `?r=` share, same as every Tier-1
 game. The opponent is the **live** depth-capped engine (fast from any position) —
-the exact solver stays the oracle for scoring/tutoring. An experimental local-AI
-opponent is a follow-up. How the shelf builds AI opponents: `docs/AI-PLAYERS.md`.
+the exact solver stays the oracle for scoring/tutoring. A built-in **tutor**
+(on by default, no download) coaches from the engine's own facts: "Explain my
+options" lists the reasonable moves with a reason each, and it flags a blunder
+after the engine replies — honestly, only calling a move a mistake when the
+endgame makes it certain, softening to "looks risky" earlier. An experimental
+local-AI opponent is a follow-up. How the shelf builds AI opponents:
+`docs/AI-PLAYERS.md`.
 Plans: `plans/2026-07-31-drop4-ai-harness.md`, `plans/2026-08-03-drop4-playable-and-hybrid-buildout.md`.
 
 ## Align (playable — falling-block stacker)

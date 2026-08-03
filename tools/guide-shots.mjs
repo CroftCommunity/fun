@@ -247,6 +247,24 @@ const SHOTS = [
     },
   },
   {
+    name: "drop4-tutor",
+    clip: ".drop4-game",
+    async run(page) {
+      await page.goto(`${origin}/drop4/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".drop4-board");
+      await page.waitForFunction(() => Boolean(window.__drop4));
+      // A lived-in mid-game board with the human to move, then reveal the tutor's
+      // engine-grounded "Explain my options" list so the coaching panel reads.
+      await page.evaluate(() => {
+        const h = window.__drop4;
+        for (const c of [3, 2, 4, 3]) h.game.play(c);
+        h.refresh();
+      });
+      await page.click(".drop4-tutor-explain");
+      await page.waitForSelector(".drop4-tutor-options li");
+    },
+  },
+  {
     name: "align-board",
     clip: ".al-game",
     async run(page) {

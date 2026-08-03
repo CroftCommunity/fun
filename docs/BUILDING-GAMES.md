@@ -462,9 +462,18 @@ What is the same, and what is new:
   carries the final board). Where the marks are symmetric, let the player choose
   which they are.
 
-The harness ports (`Player` / `AIRuntime` / `Oracle`), the scorer, the hybrid
-band, and the tutor are documented in `docs/AI-PLAYERS.md` and filled in as they
-land; this section is the shelf-standards anchor for them.
+- **The tutor is a Tier-1 feature, not an LLM feature.** Because a strong move is
+  a computable fact, engine-grounded coaching ships **without** any model: Drop 4's
+  on-by-default tutor (explain the options, flag a blunder, hint with a reason)
+  runs entirely on `drop4-solver::tutor::assess` over the wasm C-ABI
+  (`assess_json` / `tutor_json`), is fully on the CI gate, and is **honest about
+  certainty** — it only calls a move a blunder ("that threw the game") when the
+  facts are provably exact (endgame), softening to "looks risky" when they are the
+  horizon-approximate capped search's. An LLM later only *narrates* these facts.
+
+The remaining harness ports (`AIRuntime`, the experimental `HybridPlayer`) and the
+scorer are documented in `docs/AI-PLAYERS.md` and filled in as they land; this
+section is the shelf-standards anchor for them.
 
 ## New-game checklist (Tier-1 Croft-native)
 

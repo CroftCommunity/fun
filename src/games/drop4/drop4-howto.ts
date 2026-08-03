@@ -63,13 +63,34 @@ export const DROP4_GUIDE: Guide = {
       ],
     },
     {
+      testid: "howto-tutor",
+      title: "The tutor: coaching from the engine",
+      toc: "The tutor",
+      blocks: [
+        {
+          kind: "prose",
+          text: "A built-in tutor coaches you using the engine's own knowledge, so its facts are never wrong — and it needs no download. Tap \"Explain my options\" for the reasonable moves in the position, each with a one-line idea (wins now, blocks their threat, your strongest line, or stays safe).",
+        },
+        {
+          kind: "prose",
+          text: "If a move gives up the game, the tutor says so after The Engine replies — honestly. Near the end, when the outcome is certain, it will tell you a move threw the game; earlier, when it is only reading ahead, it softens to \"looks risky\" rather than overclaiming. The Hint button names a column and why it is good.",
+        },
+        {
+          kind: "shot",
+          name: "drop4-tutor",
+          alt: "A Drop 4 board mid-game with the tutor panel below it: an \"Explain my options\" button and a list of reasonable columns, each with a short reason such as \"stays safe\" or \"your strongest line\".",
+          caption: "The tutor lists the reasonable moves and the idea behind each — engine-grounded, no model download.",
+        },
+      ],
+    },
+    {
       testid: "howto-result",
       title: "Hints, settings, and the verifiable result",
       toc: "Hints & result",
       blocks: [
         {
           kind: "prose",
-          text: "Hints are on by default and point out a strong column to drop into; using one counts as assistance, which is noted honestly on your result. Turn hints off and the button becomes \"I'm done\", which ends the game whenever you like.",
+          text: "Hints are on by default; a hint names a strong column and why it is strong (see the tutor above). Using one counts as assistance, which is noted honestly on your result. Turn hints off and the button becomes \"I'm done\", which ends the game whenever you like.",
         },
         {
           kind: "prose",

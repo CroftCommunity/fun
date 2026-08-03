@@ -66,6 +66,19 @@ Authoritative plan: `plans/2026-07-31-drop4-ai-harness.md`. Standards:
   else depth-capped (never throws a horizon-visible loss). Retired the old
   ε-random-over-all-legal. Follow-up: opening book for provably-perfect-from-open.
 
+## Done (cont.) — deterministic tutor (2026-08-03, `plans/2026-08-03-drop4-ai-tutor-layer.md`)
+- [x] **Tutor P5 (deterministic, no LLM/GPU) — shipped, CI-gated.**
+  - 1a: `drop4-solver::tutor::assess` → per-move quality/regret/one-ply facts +
+    `exact|capped` flag (switch at `TRACTABLE_EMPTIES`); wasm `assess_json`/
+    `tutor_json`; typed `Drop4.assess()`/`tutor()`. No `drop4-harness` dep added.
+  - 1b: on-by-default `/drop4/` tutor panel — "Explain my options" (the
+    class-preserving band with an idea each), blunder flag (assessed before the
+    tap, surfaced after the engine replies), why-hint; honest `exact|capped`
+    wording ("threw the game" only when exact, "looks risky" when capped).
+  - 1c: how-to entry + `drop4-tutor` guide shot; docs (`AI-PLAYERS.md`,
+    `BUILDING-GAMES.md` §10, `README.md`).
+  - LLM *narration* of these facts is deferred to the hybrid phase (below).
+
 ## Next
 - [ ] Phase 5 — **TS harness (browser select + narrate)**: `AIRuntime` port +
   WebLLM adapter (pinned model)
