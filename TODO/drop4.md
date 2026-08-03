@@ -59,9 +59,14 @@ Authoritative plan: `plans/2026-07-31-drop4-ai-harness.md`. Standards:
 - [x] Winning-four highlight + brief fanfare before the result; the result screen
   shows the **final board with the winning line**.
 
+- [x] P2 difficulty model — **class floor × within-class sloppiness**
+  (`live::{live_band, select_in_band}`, `wasm::live_move`): Easy/Medium = `Any`
+  (beatable); Hard/Perfect = `PreserveBestClass` (never throws), Perfect = 0
+  sloppiness. Values exact when tractable (≤16 empties, provably never-throws)
+  else depth-capped (never throws a horizon-visible loss). Retired the old
+  ε-random-over-all-legal. Follow-up: opening book for provably-perfect-from-open.
+
 ## Next
-- [ ] P2 (remaining) — map difficulty to the **class-floor × band-Δ** two-knob
-  model (`PreserveBestClass` = never-throws) instead of the depth+ε `live` knobs.
 - [ ] Phase 5 — **TS harness (browser select + narrate)**: `AIRuntime` port +
   WebLLM adapter (pinned model)
   + `LLMPlayer` + `Scorer` mirroring the Rust one + Playwright trial driver.

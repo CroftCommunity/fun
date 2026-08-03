@@ -383,11 +383,13 @@ What is the same, and what is new:
   solver is minutes from the opening; the shipped opponent is the depth-capped
   `live_move`. The exact oracle stays the source of scoring / tutoring / the
   difficulty band on tractable positions.
-- **Difficulty** is a knob on the *engine*, never on the LLM. The design target
-  is two knobs (class floor × within-class band width Δ). Drop 4 ships a picker
-  (Easy/Medium/Hard/Perfect) mapped to the `live` engine's depth + ε-randomness;
-  moving it onto the class-floor × band-Δ model (a `PreserveBestClass`
-  never-throws level) is the remaining difficulty work.
+- **Difficulty** is a knob on the *engine*, never on the LLM — two knobs: a
+  **class floor** (`PreserveBestClass` never throws the game) × **within-class
+  sloppiness**. Drop 4's picker (Easy/Medium/Hard/Perfect) maps to these over
+  per-move values that are **exact when the position is tractable** (provably
+  never-throws in the endgame) and **depth-capped otherwise** (never throws a
+  horizon-visible loss) — the full-solve speed wall means those are the honest
+  bounds. See `docs/AI-PLAYERS.md` → "How Drop 4 ships it".
 - **Give the opponent an identity.** A computer opponent should be legible as a
   *who*, not a silent force: a turn bar naming both sides (Drop 4: "The Engine
   🤖") and showing whose turn it is, the opponent's move made **visible** (a ring

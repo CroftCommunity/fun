@@ -248,9 +248,16 @@ the P2 difficulty picker folded in at the owner's request):
   winning line** (also makes the four self-evident, resolving a "looks like <4"
   confusion; win detection was already exact/golden-vectored).
 
-Remaining P2 work (not the picker): map difficulty to the **class-floor × band-Δ**
-two-knob model (`PreserveBestClass` never-throws level) rather than the `live`
-engine's depth+ε knobs. P3+ (AIRuntime/hybrid/tutor) unchanged.
+**P2 difficulty model — done (2026-08-03).** Difficulty now maps to the two-knob
+**class floor × within-class sloppiness** model (`drop4-solver::live::{live_band,
+select_in_band}` + `drop4-wasm::live_move`): Easy/Medium = `Any` floor (beatable);
+**Hard/Perfect = `PreserveBestClass` (never throws)**, Perfect = 0 sloppiness.
+Per-move values are the **exact oracle when tractable** (≤16 empties → provably
+never-throws) and the fast **depth-capped** search otherwise (never throws a
+horizon-visible loss) — the honest bound given the full-solve speed wall. The old
+ε-random-over-all-legal (which could throw the game at any level) is retired.
+Follow-up (optional): an opening book / full-solve for a provably-perfect-from-
+move-1 level. P3+ (AIRuntime/hybrid/tutor) unchanged.
 
 ### Pass 1 — 2026-08-03
 Build-out sequence for the remaining Drop 4 work, ordered localhost-first with a

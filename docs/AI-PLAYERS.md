@@ -109,6 +109,29 @@ Measured curve (Drop 4, exact oracle): regret climbs smoothly with Δ (0 → 4.3
 and blunder rate dials 0% → ~38% (perfect → ≈random). Bounded: small Δ means
 "sloppy," not "suicidal." The LLM then picks *within* the band.
 
+### How Drop 4 ships it (the live realization)
+
+The shipped `/drop4/` opponent applies these knobs live via `Level`, over
+per-move values that are **exact where tractable and depth-capped otherwise** —
+because a full solve from the opening is minutes (`drop4-solver::live` +
+`drop4-wasm::live_move`):
+
+- **Value source, auto-switched.** ≤ 16 empties → the exact oracle's
+  `move_values` (so the class floor is **provably** exact — never throws). More
+  empties → the fast depth-capped search, where the class is bounded to the
+  search horizon (never throws a *horizon-visible* loss). An immediate win is
+  always taken.
+- **The two knobs, per level.** Class floor: Easy/Medium = `Any` (may throw —
+  beatable); **Hard/Perfect = `PreserveBestClass` (never throws)**. Within-class
+  sloppiness is a *probability* of a random in-class move rather than the
+  tightest one — the live realization of the Δ dial (Perfect = 0%). The old
+  scheme (ε-random over **all** legal moves) is gone: a weaker level is now
+  sloppy *within its class floor*, so Hard/Perfect never hand you the game.
+- **Honest bound.** "Never throws" is *provable* once the game is within the
+  solver's exact reach (the endgame, where thrown wins actually happen) and
+  *horizon-bounded* earlier. A provably-perfect-from-move-1 level would need an
+  opening book or a full solve (a follow-up, not shipped).
+
 ## Tutoring / explanation — correct by construction
 
 The strongest LLM role. The engine supplies the ground truth; the LLM only
