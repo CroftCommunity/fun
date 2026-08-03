@@ -113,6 +113,32 @@ Authoritative plan: `plans/2026-07-31-drop4-ai-harness.md`. Standards:
 - [ ] Phase 7 (optional) — second `AIRuntime` adapter (Gemini Nano / transformers.js).
 
 ## Open threads
+- [ ] **Persona roster + externalized persona prompts (multi-opponent, refinable).**
+  Direction (owner, 2026-08-03): broaden the single "Chip" local-AI persona into a
+  **selectable roster** of characters with different temperaments (e.g. Chip, a
+  "Felicia" equivalent, …) the player chooses. And **stop inlining prompts** —
+  manage each persona's prompt text as **external text files** (not TS string
+  literals) so they refine independently and diffs stay clean/sane.
+  - **Target shape:** a persona = a small data record `{ id, name, avatar,
+    systemPromptFile, situationHints, fallbackLines }` loaded from text assets
+    (e.g. `src/games/drop4/personas/<id>.{md,json}`), a registry the picker lists,
+    and one "active persona" the game threads through. Adding "Felicia" becomes a
+    new file + a registry line — not edits scattered through `drop4.ts`.
+  - **Chip's current touch points to centralize** (`src/games/drop4/drop4.ts`,
+    approx. lines — will drift, re-grep `LOCAL_AI_PERSONA|HYBRID_SYSTEM|Situation|
+    FALLBACK_LINE|SITUATION_HINT|opponentIdentity|hybridPrompt|cleanBanter` before
+    refactoring):
+    - `LOCAL_AI_PERSONA = { name:"Chip", avatar:"😎" }` (~:69) — the identity record.
+    - `HYBRID_SYSTEM` (~:74) — the persona system prompt (→ external file).
+    - `SITUATION_HINT` (~:390) + `FALLBACK_LINE` (~:398) — per-situation prompt
+      hints + in-character canned lines (→ external, per persona).
+    - `readSituation` (~:383) — situation classifier (persona-agnostic; stays).
+    - `hybridPrompt` (~:408) / `cleanBanter` (~:421) — assemble the prompt / gate the
+      quip (persona-agnostic mechanics; consume the active persona's text).
+    - `opponentIdentity()` (~:299), the turn-bar name (~:514), the `.drop4-ai-say`
+      prefix (~:790), the "thinking"/warming-up status (~:359,:430,:434) — all read
+      the active persona's `{name, avatar}`.
+  - **Not now** — a tracked follow-on; the single-Chip version is shipped.
 - [ ] **Larger-binary hosting (self-host the LLM model + `model_lib` WASM).** The
   local-AI opponent embeds the WebLLM *library* same-origin, but the model
   **weights + per-model `model_lib` WASM** still stream from the MLC/HF CDN on
