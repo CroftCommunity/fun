@@ -91,6 +91,17 @@ Authoritative plan: `plans/2026-07-31-drop4-ai-harness.md`. Standards:
   firsthand: 0.5B loaded ~7.6s, schema-valid `{move∈enum, reason}` ~0.4s.
   Follow-on: self-host weights + `model_lib` WASM for full offline.
 
+## Done (cont.) — HybridPlayer opponent (2026-08-03, `plans/2026-08-03-drop4-ai-tutor-layer.md` Phase 3)
+- [x] **P4 `HybridPlayer` — shipped (experimental, toggle-gated).**
+  `src/harness/hybrid-player.ts`: engine builds a never-throw band, the LLM picks
+  in-band under a schema + speaks a reason, ANY failure falls back to the engine
+  top-of-band (`source: llm|fallback`). In `/drop4/`: a separate "Experimental:
+  local AI opponent" toggle offered only with a real (non-fallback) WebGPU
+  adapter, an up-front download disclosure, the spoken reason beside the move, and
+  LLM narration of the tutor's options when on. CI: MockRuntime (in-band /
+  malformed / out-of-band paths). Real: `AI_TRIAL_MODE=hybrid npm run ai:trial`
+  (system Chrome) — firsthand: legal move + "To move: O. Your opening is strong."
+
 ## Next
 - [ ] Phase 5 — **TS harness (browser select + narrate)**: `AIRuntime` port +
   WebLLM adapter (pinned model)

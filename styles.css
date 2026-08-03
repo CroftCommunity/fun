@@ -2240,6 +2240,37 @@ body.fullscreen .play-area {
   font-size: 0.9rem;
   font-weight: 600;
 }
+/* Experimental local-AI opponent: the first-use download disclosure and the
+   opponent's spoken reason. Semantic tokens (theme-aware + AA). */
+.drop4-ai-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--ink);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.drop4-ai-disclosure {
+  width: 100%;
+  max-width: 26rem;
+  margin: 0.3rem auto 0;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: var(--surface-2, var(--surface));
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+  text-align: center;
+}
+.drop4-ai-say {
+  width: 100%;
+  max-width: 26rem;
+  margin: 0 auto;
+  text-align: center;
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-style: italic;
+}
 /* ---- Align (falling-block stacker) ---------------------------------------- */
 /* One centred column: controls, callout, stage (hold · board · next), the touch
    pad, status. The board canvas draws its own dark play surface (--al-board);

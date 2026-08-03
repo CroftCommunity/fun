@@ -186,6 +186,43 @@ test("with hints off, 'I'm done' ends the round", async ({ page }) => {
   await expect(page.locator(".sol-result")).toBeVisible();
 });
 
+test("the experimental local-AI opponent is hidden with no real WebGPU adapter", async ({ page }) => {
+  // The gate: no adapter (or only a software/fallback one) → classic picker only,
+  // difficulty select untouched. Faked so it is deterministic across browsers.
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "gpu", {
+      configurable: true,
+      value: { requestAdapter: async () => null },
+    });
+  });
+  await page.goto("/drop4/?seed=7");
+  await ready(page);
+  // The difficulty select stays exactly the four levels — no experimental entry.
+  await expect(page.locator(".drop4-level option")).toHaveCount(4);
+  await expect(page.locator(".drop4-ai-toggle")).toHaveCount(0);
+});
+
+test("the experimental local-AI toggle appears with a real adapter and discloses the download", async ({ page }) => {
+  // Fake a real (non-fallback) WebGPU adapter so the probe passes — exercises the
+  // toggle + disclosure UI on CI without a real GPU or a model download.
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "gpu", {
+      configurable: true,
+      value: { requestAdapter: async () => ({ isFallbackAdapter: false }) },
+    });
+  });
+  await page.goto("/drop4/?seed=7");
+  await ready(page);
+  // The difficulty select is unchanged (still 4 levels); the local-AI opponent is
+  // a separate toggle that appears once the probe resolves.
+  await expect(page.locator(".drop4-level option")).toHaveCount(4);
+  const toggle = page.locator(".drop4-ai-toggle-input");
+  await expect(toggle).toHaveCount(1);
+  // Enabling it discloses the one-time, multi-hundred-MB model download up front.
+  await toggle.check();
+  await expect(page.locator(".drop4-ai-disclosure")).toContainText(/download|one[- ]time|GB|MB/i);
+});
+
 test("the board has no axe violations in light and dark", async ({ page }) => {
   await page.goto("/drop4/?seed=7");
   await ready(page);

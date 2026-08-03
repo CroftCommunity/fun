@@ -152,9 +152,13 @@ the exact solver stays the oracle for scoring/tutoring. A built-in **tutor**
 (on by default, no download) coaches from the engine's own facts: "Explain my
 options" lists the reasonable moves with a reason each, and it flags a blunder
 after the engine replies — honestly, only calling a move a mistake when the
-endgame makes it certain, softening to "looks risky" earlier. An experimental
-local-AI opponent is a follow-up. How the shelf builds AI opponents:
-`docs/AI-PLAYERS.md`.
+endgame makes it certain, softening to "looks risky" earlier. An **experimental
+local-AI opponent** ships behind a WebGPU-gated toggle (offered only when your
+browser has a real GPU adapter): the engine builds a never-throw band, an
+in-browser LLM picks within it and speaks a reason — characterful, not stronger,
+with the classic engine staying the default. The LLM runs fully on your device
+(a one-time model download, embedded — no third-party CDN for code). How the
+shelf builds AI opponents: `docs/AI-PLAYERS.md`.
 Plans: `plans/2026-07-31-drop4-ai-harness.md`, `plans/2026-08-03-drop4-playable-and-hybrid-buildout.md`.
 
 ## Align (playable — falling-block stacker)

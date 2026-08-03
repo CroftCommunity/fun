@@ -12,6 +12,8 @@
 
 import type { GameModule } from "../../contract.js";
 import { Drop4, type BoardView, type Level, type MoveAssessment } from "./drop4-wasm.js";
+import { WebLLMRuntime } from "../../harness/ai-runtime.js";
+import { buildBand, HybridPlayer, type BandMove } from "../../harness/hybrid-player.js";
 import {
   decodeRecord,
   encodeRecord,
@@ -39,6 +41,9 @@ declare global {
       refresh: () => void;
       seed: bigint;
     };
+    /** Test seam: override the local-AI model id (e.g. a smaller/faster model in
+     *  the ai:trial driver). Falls back to the pinned model when unset. */
+    __DROP4_AI_MODEL?: string;
   }
 }
 
@@ -49,6 +54,12 @@ const THINK_MS = 450;
 /** How long the winning board is held (a little fanfare) before the result. */
 const FANFARE_MS = 1300;
 const LEVELS: readonly Level[] = ["Easy", "Medium", "Hard", "Perfect"];
+/** The picker value / opponent kind for the experimental local-AI hybrid. */
+const LOCAL_AI = "local-ai";
+/** The pinned local-AI model (embedded WebLLM; downloaded once, then cached). */
+const LOCAL_AI_MODEL = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
+const HYBRID_SYSTEM =
+  'You are a Connect Four opponent with a bit of personality. Pick ONE of the offered legal moves and give a short, characterful reason. Reply ONLY with JSON {"move": <one of the offered column indices>, "reason": "<one short sentence>"}.';
 /** Display labels for the picker — the internal `Level`/persisted value stays
  *  `Perfect` (it is the exact/best-play level), but "Expert" reads better and
  *  doesn't overclaim (it is only provably perfect once the game is tractable). */
@@ -238,6 +249,17 @@ export function drop4Module(): GameModule {
   // engine replies (so it does not spoil the reply). Cleared each human turn.
   let coachMsg: string | null = null;
 
+  // --- experimental local-AI opponent (hybrid: engine band + LLM in-band pick) ---
+  // Offered only when a real WebGPU adapter is present; the classic engine stays
+  // the default. All LLM code is lazy — no model download unless the toggle is on
+  // and a move is played.
+  let localAiAvailable = false;
+  let opponentKind: "engine" | typeof LOCAL_AI = "engine";
+  let runtime: WebLLMRuntime | null = null;
+  let hybrid: HybridPlayer | null = null;
+  /** The opponent's spoken reason for its last move (local-AI only). */
+  let aiSay: string | null = null;
+
   const statusEl = el("p", { class: "sol-status", role: "status", "aria-live": "polite" });
   const setStatus = (msg: string): void => {
     statusEl.textContent = msg;
@@ -294,28 +316,83 @@ export function drop4Module(): GameModule {
     scheduleEngine(pending);
   };
 
-  // The engine replies after a brief "thinking" beat, using the fast live engine
-  // (never the exact oracle, which is minutes from the opening). Any coaching for
-  // the human's move is surfaced *after* the reply, so it does not spoil it.
+  // The opponent replies after a brief "thinking" beat. The classic engine uses
+  // the fast live engine (never the exact oracle, minutes from the opening); the
+  // experimental local-AI opponent asks the hybrid. Any coaching for the human's
+  // move is surfaced *after* the reply, so it does not spoil it.
   const scheduleEngine = (pending: string | null): void => {
     if (!game) return;
     thinking = true;
-    setStatus(`${OPPONENT.name} is thinking…`);
+    setStatus(opponentKind === LOCAL_AI ? "Local AI is thinking…" : `${OPPONENT.name} is thinking…`);
     render();
-    window.setTimeout(() => {
-      if (disposed || !game) return;
-      const col = game.liveMove(level);
-      thinking = false;
-      if (col !== null) applyMove(col);
-      if (gameOver()) {
-        coachMsg = pending;
-        finish();
-        return;
-      }
-      setStatus("");
+    window.setTimeout(() => void engineReply(pending), THINK_MS);
+  };
+
+  const engineReply = async (pending: string | null): Promise<void> => {
+    if (disposed || !game) return;
+    const col = opponentKind === LOCAL_AI ? await hybridMove() : game.liveMove(level);
+    if (disposed || !game) return;
+    thinking = false;
+    if (col !== null) applyMove(col);
+    if (gameOver()) {
       coachMsg = pending;
-      render();
-    }, THINK_MS);
+      finish();
+      return;
+    }
+    setStatus("");
+    coachMsg = pending;
+    render();
+  };
+
+  // Build the local-AI prompt from the board render + the never-throw band, then
+  // ask the hybrid to pick within it. Any failure (model, network, bad output)
+  // degrades to the classic engine move — the game never breaks.
+  const hybridPrompt = (g: Drop4, band: readonly BandMove[]): string => {
+    const legal = band.map((m) => m.col).join(", ");
+    const options = band.map((m) => `- ${m.col}: ${m.idea}`).join("\n");
+    return `${g.renderText()}\nReasonable moves (0-based column indices) and why each is fine:\n${options}\nPick ONE of these columns: ${legal}. Reply ONLY with JSON {"move", "reason"}.`;
+  };
+
+  const hybridMove = async (): Promise<number | null> => {
+    if (!game) return null;
+    try {
+      if (!runtime || !hybrid) {
+        setStatus("Local AI: preparing the model (one-time download)…");
+        render();
+        runtime = new WebLLMRuntime({
+          model: window.__DROP4_AI_MODEL ?? LOCAL_AI_MODEL,
+          onProgress: (t) => setStatus(`Local AI: ${t}`),
+        });
+        hybrid = new HybridPlayer(runtime);
+      }
+      const band = buildBand(game.tutor().moves);
+      if (band.length === 0) return game.liveMove(level); // no band → classic safety
+      const decision = await hybrid.pick(band, { prompt: hybridPrompt(game, band), system: HYBRID_SYSTEM });
+      aiSay = decision.reason;
+      return decision.move;
+    } catch {
+      aiSay = null;
+      return game.liveMove(level); // never break the game on an AI failure
+    }
+  };
+
+  // A real WebGPU adapter is required for the local-AI opponent; probe once on
+  // mount and offer the toggle only if it passes (classic levels otherwise).
+  const probeLocalAi = async (): Promise<void> => {
+    try {
+      const gpu = (
+        navigator as Navigator & {
+          gpu?: { requestAdapter(): Promise<{ isFallbackAdapter?: boolean } | null> };
+        }
+      ).gpu;
+      const adapter = gpu ? await gpu.requestAdapter() : null;
+      // Require a real adapter — exclude software/fallback adapters (e.g. bundled
+      // Chromium's SwiftShader), which cannot run the model usefully.
+      localAiAvailable = Boolean(adapter && adapter.isFallbackAdapter !== true);
+    } catch {
+      localAiAvailable = false;
+    }
+    if (!disposed) render();
   };
 
   // --- hints ---
@@ -410,6 +487,31 @@ export function drop4Module(): GameModule {
     }
 
     opts.append(levelLabel, marks);
+    // The experimental local-AI opponent — a separate toggle offered only when a
+    // real (non-fallback) WebGPU adapter is present. The classic engine + its
+    // difficulty picker stay the default and are unaffected.
+    if (localAiAvailable) {
+      const aiWrap = el("label", { class: "drop4-ai-toggle" });
+      const input = el("input", { type: "checkbox", class: "drop4-ai-toggle-input" });
+      (input as HTMLInputElement).checked = opponentKind === LOCAL_AI;
+      input.addEventListener("change", () => {
+        opponentKind = (input as HTMLInputElement).checked ? LOCAL_AI : "engine";
+        render();
+      });
+      aiWrap.append(input, document.createTextNode(" Experimental: local AI opponent"));
+      opts.append(aiWrap);
+    }
+    // First-use disclosure: the local-AI opponent downloads a model to the
+    // browser once, then runs on-device. Shown up front, before any download.
+    if (opponentKind === LOCAL_AI) {
+      opts.append(
+        el(
+          "p",
+          { class: "drop4-ai-disclosure", role: "note" },
+          "Experimental: this downloads a ~1 GB AI model to your browser once, then runs fully on your device (offline after that). It plays with personality, not extra strength — the classic engine stays the default and the stronger opponent.",
+        ),
+      );
+    }
     return opts;
   };
 
@@ -546,11 +648,33 @@ export function drop4Module(): GameModule {
       optionsEl.replaceChildren(
         ...band.map((m) => el("li", {}, `Column ${m.col + 1} — ${ideaFor(m)}`)),
       );
+      // When the local-AI toggle is on AND the model is already loaded, let the
+      // LLM narrate the same (engine-grounded) options in a friendlier sentence.
+      // The facts stay the deterministic list above; the LLM only reweords —
+      // best-effort, never triggers a download, degrades to the list on failure.
+      if (opponentKind === LOCAL_AI && runtime) void narrateOptions(band, note);
     });
     const coach = el("p", { class: "drop4-tutor-coach", role: "status", "aria-live": "polite" });
     if (coachMsg) coach.textContent = coachMsg;
     panel.append(explain, note, optionsEl, coach);
     return panel;
+  };
+
+  // Best-effort LLM narration of the (engine-grounded) options — only when the
+  // model is already loaded, so it never triggers a download; falls back silently
+  // to the deterministic list on any error.
+  const narrateOptions = async (band: MoveAssessment[], noteEl: HTMLElement): Promise<void> => {
+    if (!runtime) return;
+    try {
+      const list = band.map((m) => `${m.col}: ${ideaFor(m)}`).join("; ");
+      const raw = await runtime.generate(
+        `In one short, friendly sentence, tell the player their reasonable Connect Four options (0-based columns): ${list}. Do not add moves not listed.`,
+        { greedy: false, maxTokens: 60 },
+      );
+      if (raw.trim()) noteEl.textContent = raw.trim();
+    } catch {
+      /* keep the deterministic list */
+    }
   };
 
   const winLineNow = (b: BoardView): Cell[] =>
@@ -564,9 +688,7 @@ export function drop4Module(): GameModule {
       { class: "drop4-banner" },
       "Tap a column to drop your disc. Line up four in a row — across, up, or diagonally — before the engine does.",
     );
-    const game_ = el(
-      "div",
-      { class: "drop4-game" },
+    const parts: (Node | string)[] = [
       renderTurnbar(),
       renderOptions(),
       renderControls(),
@@ -574,8 +696,12 @@ export function drop4Module(): GameModule {
       buildBoard(board, { interactive: true, winLine: winLineNow(board) }),
       renderTutorPanel(),
       statusEl,
-    );
-    container.replaceChildren(game_);
+    ];
+    // The local-AI opponent's spoken reason for its last move (personality).
+    if (aiSay && opponentKind === LOCAL_AI) {
+      parts.splice(1, 0, el("p", { class: "drop4-ai-say", role: "status" }, `${OPPONENT.avatar} ${aiSay}`));
+    }
+    container.replaceChildren(el("div", { class: "drop4-game" }, ...parts));
   }
 
   // Hold the winning board for a beat (a little fanfare) before the result.
@@ -634,6 +760,7 @@ export function drop4Module(): GameModule {
     ending = false;
     lastMove = null;
     coachMsg = null;
+    aiSay = null;
     seed = seedOverride ?? randomSeed();
     game.newGame(seed);
     setStatus("");
@@ -700,6 +827,9 @@ export function drop4Module(): GameModule {
         }
         const seedParam = url.searchParams.get("seed");
         await startGame(seedParam !== null ? BigInt(seedParam) : undefined);
+        // Probe WebGPU in the background; if present, the picker re-renders with
+        // the experimental local-AI opponent offered (classic engine otherwise).
+        void probeLocalAi();
       })();
     },
     unmount(): void {
@@ -709,6 +839,9 @@ export function drop4Module(): GameModule {
       container = null;
       game = null;
       verifier = null;
+      // Release the WebGPU engine (local-AI) so its GPU resources can be freed.
+      runtime = null;
+      hybrid = null;
     },
   };
 }

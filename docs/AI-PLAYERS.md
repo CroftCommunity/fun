@@ -198,6 +198,26 @@ by construction.
   Firsthand 2026-08-03 (embedded bundle, Apple `metal-3`): 0.5B loaded in ~7.6 s,
   a schema-valid `{move∈enum, reason}` in ~0.4 s. CI exercises only `MockRuntime`.
 
+### Shipped: the experimental `HybridPlayer` opponent
+
+- **Engine band + LLM in-band pick + spoken reason.** `src/harness/hybrid-player.ts`:
+  `buildBand()` keeps only class-preserving moves (the never-throw floor);
+  `HybridPlayer.pick()` prompts the runtime for a schema-constrained `{move, reason}`
+  within the band and returns it only if the move is genuinely in-band, else falls
+  back to the engine's top-of-band. A `source: "llm" | "fallback"` flag records
+  which path ran. The engine is strength; the LLM is voice.
+- **Gated + honest in `/drop4/`.** A separate **"Experimental: local AI opponent"**
+  toggle appears only when a real (non-`isFallbackAdapter`) WebGPU adapter is
+  present; the classic engine + difficulty picker stay the default. Enabling it
+  shows an up-front one-time-download disclosure; the opponent's spoken reason
+  renders beside its move; when on, the tutor's "Explain my options" is narrated
+  by the LLM (deterministic facts, LLM wording — best-effort, model-ready only).
+- **Validated by the trial.** `AI_TRIAL_MODE=hybrid npm run ai:trial` drives the
+  real `/drop4/` UI on system Chrome. Firsthand 2026-08-03 (0.5B, Apple `metal-3`):
+  toggle offered → hybrid replied with a **legal** move + a spoken reason
+  ("To move: O. Your opening is strong."). CI exercises `HybridPlayer` via
+  `MockRuntime` (in-band pick + malformed-output + out-of-band-pick fallbacks).
+
 ## What we measured (Drop 4, WebLLM/WebGPU via system Chrome)
 
 | Finding | Result |

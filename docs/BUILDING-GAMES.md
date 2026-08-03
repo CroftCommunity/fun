@@ -481,9 +481,18 @@ What is the same, and what is new:
   the CI gate. Model weights + `model_lib` WASM stream from the model CDN on first
   load then cache; self-hosting them is a named follow-on.
 
-The experimental `HybridPlayer` and the scorer are documented in
-`docs/AI-PLAYERS.md` and filled in as they land; this section is the
-shelf-standards anchor for them.
+- **The experimental hybrid opponent is engine-first, toggle-gated, and never
+  loses to itself.** `HybridPlayer` (`src/harness/hybrid-player.ts`) has the engine
+  build a never-throw band (class-preserving moves only), the LLM pick within it
+  under a schema, and ANY failure (malformed output, out-of-band pick, runtime
+  error) fall back to the engine's top-of-band — so a broken model degrades to
+  the engine, never to an illegal or losing move. In Drop 4 it is a **separate
+  toggle** offered only when a real (non-fallback) WebGPU adapter is present, with
+  an up-front download disclosure; the classic engine stays the default and the
+  stronger player. Validated by `AI_TRIAL_MODE=hybrid npm run ai:trial`, not CI.
+
+The scorer/tournament harness is documented in `docs/AI-PLAYERS.md` and filled in
+as it lands; this section is the shelf-standards anchor for it.
 
 ## New-game checklist (Tier-1 Croft-native)
 
