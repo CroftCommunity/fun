@@ -116,7 +116,33 @@ behind an "Experimental: local AI" toggle that never gates the deploy.
   `build:wasm → typecheck → lint → unit → build.mjs → Pages`. **No e2e, no cargo
   test, no GPU.** So the LLM path is never on the CI gate; the tutor's unit +
   the MockRuntime unit are.
-- **[web research / prior spike, to re-confirm in Phase 0]** The
+- **[Phase 0 D1, firsthand 2026-08-03 — CONFIRMED, runnable here]** Probed system
+  Chrome (`channel:"chrome"`) via Playwright in this environment. **Egress works**
+  (HTTP 200 from the Hugging Face model CDN — `mlc-chat-config.json` fetched).
+  **WebGPU works** with a real **Apple `metal-3` adapter** — `navigator.gpu`
+  present and `requestAdapter()` returns the Metal adapter — on a **real secure
+  origin** (`https://fun.croft.ing/`, `/drop4/`), **both headless and headful**.
+  Gotcha that produced an initial false negative: on an **opaque `about:blank`
+  origin** `navigator.gpu` is absent even with the GPU present — the trial driver
+  must navigate to a real origin (the served app / localhost / the live site),
+  not a blank page. **Consequence: the entire LLM path — real inference, D3
+  structured output, the `ai:trial` transcript (2b), the live hybrid (3b) — is
+  runnable in this environment.** `fun.croft.ing` (or the localhost serve on
+  4180) is the origin the driver points system Chrome at.
+- **[Phase 0 D3 + D2, firsthand 2026-08-03 — CONFIRMED]** Ran a real WebLLM
+  inference in this environment (system Chrome, `https://fun.croft.ing/drop4/`,
+  `Qwen2.5-0.5B-Instruct-q4f16_1-MLC`): model loaded on WebGPU in ~7.4 s, one
+  generation in ~1.6 s. **D3 structured output works** via
+  `engine.chat.completions.create({ response_format: { type: "json_object",
+  schema: JSON.stringify(<JSON Schema>) } })` — returned `{"move": 3, "reason":
+  "…"}` with `move` inside the supplied legal-column `enum`, `temperature: 0`.
+  This is the exact `WebLLMRuntime` API. **D2 decision: runtime CDN import** —
+  `await import("https://esm.run/@mlc-ai/web-llm")` inside `WebLLMRuntime` only
+  (pinned by URL version). Zero bundle impact (app.js byte-unchanged, no esbuild
+  `splitting`), no `@mlc-ai/web-llm` **or** `zod` dependency (the schema is a
+  small hand-written JSON Schema object). Weights stream from the HF CDN at
+  runtime with an up-front size disclosure, as planned.
+- **[web research / prior spike, superseded by the D1 probe above]** The
   2026-08-03 harness Phase-0 spike loaded WebLLM (`Qwen2.5-0.5B/1.5B`) headless
   via **system Chrome** (`channel:"chrome"`), confirmed `navigator.gpu`, model-CDN
   egress (`huggingface.co → 200`), ~35 ms–1 s/move, and structured output
