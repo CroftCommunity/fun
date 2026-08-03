@@ -10,3 +10,6 @@
 # per-machine
 .DS_Store
 reference/
+
+# WebLLM model cache (ai:trial) — never commit the multi-GB weights
+.webllm-cache/

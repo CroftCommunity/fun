@@ -79,6 +79,18 @@ Authoritative plan: `plans/2026-07-31-drop4-ai-harness.md`. Standards:
     `BUILDING-GAMES.md` §10, `README.md`).
   - LLM *narration* of these facts is deferred to the hybrid phase (below).
 
+## Done (cont.) — AIRuntime port (2026-08-03, `plans/2026-08-03-drop4-ai-tutor-layer.md` Phase 2)
+- [x] **P3 `AIRuntime` port — shipped (mock CI-gated, real runtime embedded).**
+  `src/harness/ai-runtime.ts`: `AIRuntime` interface, deterministic `MockRuntime`
+  (CI), and `WebLLMRuntime` running a real in-browser model on WebGPU. Per the
+  no-CDN-for-code / offline-PWA constraint, `@mlc-ai/web-llm` is **embedded** —
+  `build.mjs` bundles it to a same-origin `/vendor/webllm.js`, dynamic-imported
+  lazily (app.js unchanged; CI never loads it). Structured output via
+  `response_format` json_object+schema (hand-written schema, no zod). Validated
+  by `npm run ai:trial` (standalone system-Chrome driver, staged diagnostic) —
+  firsthand: 0.5B loaded ~7.6s, schema-valid `{move∈enum, reason}` ~0.4s.
+  Follow-on: self-host weights + `model_lib` WASM for full offline.
+
 ## Next
 - [ ] Phase 5 — **TS harness (browser select + narrate)**: `AIRuntime` port +
   WebLLM adapter (pinned model)

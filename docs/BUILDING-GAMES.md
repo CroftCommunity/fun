@@ -471,9 +471,19 @@ What is the same, and what is new:
   facts are provably exact (endgame), softening to "looks risky" when they are the
   horizon-approximate capped search's. An LLM later only *narrates* these facts.
 
-The remaining harness ports (`AIRuntime`, the experimental `HybridPlayer`) and the
-scorer are documented in `docs/AI-PLAYERS.md` and filled in as they land; this
-section is the shelf-standards anchor for them.
+- **A browser LLM is an embedded, lazy, same-origin runtime — never a CDN.** The
+  `AIRuntime` port (`src/harness/ai-runtime.ts`) has a deterministic `MockRuntime`
+  (CI) and a real `WebLLMRuntime`. `@mlc-ai/web-llm` is a dependency **bundled to
+  a same-origin `/vendor/webllm.js`** and dynamic-imported only on first use — no
+  third-party CDN serves executable code (offline-capable PWA + no injection
+  vector), and `app.js` is unchanged for non-AI games. The real runtime is
+  validated by the standalone `npm run ai:trial` (system Chrome, WebGPU), **not**
+  the CI gate. Model weights + `model_lib` WASM stream from the model CDN on first
+  load then cache; self-hosting them is a named follow-on.
+
+The experimental `HybridPlayer` and the scorer are documented in
+`docs/AI-PLAYERS.md` and filled in as they land; this section is the
+shelf-standards anchor for them.
 
 ## New-game checklist (Tier-1 Croft-native)
 

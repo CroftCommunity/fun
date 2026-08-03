@@ -173,6 +173,31 @@ The LLM's later role here is purely to **narrate** these same facts in a warmer
 voice (Phase 3) — it changes the wording, never the facts, so it stays correct
 by construction.
 
+### Shipped: the `AIRuntime` port + embedded WebLLM runtime
+
+- **One small port.** `src/harness/ai-runtime.ts` defines `AIRuntime`
+  (`generate(prompt, {schema?, greedy, maxTokens, system}) -> Promise<string>`,
+  `fingerprint()`). `MockRuntime` is the deterministic CI double; `WebLLMRuntime`
+  is the real in-browser model.
+- **The library is embedded, not CDN-loaded.** `@mlc-ai/web-llm` is a
+  dependency, bundled by `build.mjs` to a **same-origin** `/vendor/webllm.js`
+  that `WebLLMRuntime` dynamic-imports **only** on first `generate()`. No
+  third-party CDN serves executable code (offline-capable PWA + no code-injection
+  vector), and `app.js` is unchanged for non-AI games (the vendor bundle is a
+  separate, lazily-loaded output). Structured output uses
+  `response_format: { type: "json_object", schema: JSON.stringify(<JSON Schema>) }`
+  — a hand-written schema, no `zod`.
+- **Weights, honestly.** The model **weights + per-model `model_lib` WASM** still
+  stream from the MLC/HF CDN on first load, then cache in-browser. Fully
+  self-hosting those (offline + closing the `model_lib` code-fetch vector) is a
+  **named follow-on** — ~1 GB is not viable on GitHub Pages.
+- **Validated by the trial, not CI.** `npm run ai:trial` (a standalone driver,
+  **not** a Playwright project) launches system Chrome against a real same-origin
+  page, imports the embedded runtime, and runs a structured generation with a
+  staged diagnostic (`gpu-adapter` / `model-load` / `generate` / `schema-validate`).
+  Firsthand 2026-08-03 (embedded bundle, Apple `metal-3`): 0.5B loaded in ~7.6 s,
+  a schema-valid `{move∈enum, reason}` in ~0.4 s. CI exercises only `MockRuntime`.
+
 ## What we measured (Drop 4, WebLLM/WebGPU via system Chrome)
 
 | Finding | Result |

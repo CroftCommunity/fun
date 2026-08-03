@@ -136,12 +136,22 @@ behind an "Experimental: local AI" toggle that never gates the deploy.
   `engine.chat.completions.create({ response_format: { type: "json_object",
   schema: JSON.stringify(<JSON Schema>) } })` — returned `{"move": 3, "reason":
   "…"}` with `move` inside the supplied legal-column `enum`, `temperature: 0`.
-  This is the exact `WebLLMRuntime` API. **D2 decision: runtime CDN import** —
-  `await import("https://esm.run/@mlc-ai/web-llm")` inside `WebLLMRuntime` only
-  (pinned by URL version). Zero bundle impact (app.js byte-unchanged, no esbuild
-  `splitting`), no `@mlc-ai/web-llm` **or** `zod` dependency (the schema is a
-  small hand-written JSON Schema object). Weights stream from the HF CDN at
-  runtime with an up-front size disclosure, as planned.
+  This is the exact `WebLLMRuntime` API. (The CDN import path was *proven* here
+  but is **not** how we ship — see D2.)
+- **[Phase 0 D2 decision, revised 2026-08-03 — EMBED, no third-party CDN for code]**
+  The maintainer's constraint: this is an **offline-capable PWA** and a
+  third-party CDN for executable code is both an availability and a **code-injection**
+  risk. So `@mlc-ai/web-llm` is a **`package.json` dependency, embedded** — bundled
+  by a **separate esbuild entry** to a same-origin lazy chunk (`dist/vendor/webllm.js`),
+  which `WebLLMRuntime` dynamically imports **from our own origin** only when the
+  experimental toggle fires. app.js stays byte-unchanged for non-AI games (a
+  distinct output, not global esbuild `splitting`). No `zod` (hand-written JSON
+  Schema). **Honest caveat, flagged to the user:** embedding the *library* closes
+  the CDN/injection vector for runtime code, but WebLLM still fetches the model
+  **weights + per-model `model_lib` WASM** from the MLC/HF CDN on first load (then
+  caches in-browser) — full self-hosting (offline + closing the `model_lib`
+  code-fetch vector) is a **named follow-on** (hosting ~1 GB is not viable on
+  GitHub Pages; needs a different host). The up-front size disclosure stays.
 - **[web research / prior spike, superseded by the D1 probe above]** The
   2026-08-03 harness Phase-0 spike loaded WebLLM (`Qwen2.5-0.5B/1.5B`) headless
   via **system Chrome** (`channel:"chrome"`), confirmed `navigator.gpu`, model-CDN
