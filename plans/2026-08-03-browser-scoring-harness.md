@@ -260,6 +260,14 @@ moves are classified exactly as the oracle sees them, capped/early moves skipped
 - [ ] `src/harness/tournament.ts` — `runTournament(gameFactory, a, b, {games,
   baseSeed}) → Report` (matchup label, side-A `Scorecard`, `render()` one-block
   text), alternating the opening side per game (seeded, deterministic).
+- [ ] **[Pass 3 — observability/honesty gate]** `render()` must surface
+  `scored_moves` and `skipped_early` **adjacent to** `blunders`/`blunderRate` in
+  the one-block text (e.g. `blunders 0 / scored 3 (skipped-early 41)`). The
+  exact-only gate means a short or opening-heavy game can grade **zero** moves, so
+  a bare "blunders: 0" headline is meaningless without its denominator — the
+  render must make "0 blunders over 0 graded" impossible to misread as "clean."
+  Pin this in `tests/tournament.test.ts`: assert the rendered block contains the
+  `scored_moves` count, not just the blunder count.
 - [ ] `tests/tournament.test.ts` — RED first: an **engine-vs-engine** tournament of
   a few games (real wasm) returns a `Report` where `wins+draws+losses === games`,
   every move across every game was legal, and — since Perfect-vs-Perfect never
@@ -290,6 +298,13 @@ and write the harness guide.
   origin, embedded `/vendor/webllm.js`). Runs `runTournament` with
   `HybridAiPlayer` (a `Player` wrapping `buildBand`+`HybridPlayer`+`WebLLMRuntime`)
   vs `EnginePlayer`, prints the `Report`. Not a Playwright project; not on CI.
+  **[Pass 3 — observability gate]** emit a **staged diagnostic** to stdout as the
+  run proceeds (model-load done → first move produced → per-game W/D/L tally →
+  per-move ms), mirroring `ai-trial.mjs`'s staged logging. An LLM move is ~seconds
+  and the model download is large; without staged progress a slow or hung run is
+  indistinguishable from a crash. The stages are also the debugging surface when a
+  trial produces an implausible Report (e.g. a stage that never prints localizes
+  the stall to model-load vs first-move vs a specific game).
 - [ ] `src/harness/match-runner.ts` — add `HybridAiPlayer` (band from
   `game.tutor().moves` → `HybridPlayer.pick`; falls back to engine on lock/failure).
   *(Small addition to Phase 1's file — kept here because it needs the runtime the
@@ -372,3 +387,39 @@ wiring test. No phase reordering.
 (`assess`/`tutor` `{quality, exact}`) both check out against the source; the
 exact-only grading gate via the shipped `exact` flag is faithful to the Rust ≤12
 rule (strict superset, documented). No BLOCKING items surfaced.
+
+### Pass 3: Quality Gates — 2026-08-03
+Applied the quality gates as additive extensions (no restructuring). The plan
+enters Pass 3 strong: TDD ordering is stated per phase (RED-first header) and
+Phase 0 is a clean Discovery Exemption; validation is genuinely calibrated
+(Phase 1/2 Moderate, Phase 3/4 Broad — not a reflexive "tests suffice"); the
+Concurrency Map is honest (all-sequential with the data-dependency reason, and
+Phase 4's second write to `match-runner.ts` is called out as sequential); the
+wiring tests reach the real substrate every phase (real-wasm replay in Phase 1,
+real-wasm `gradeSide` in Phase 2, full-rig end-to-end in Phase 3, `MockRuntime`
+hybrid-in-rig on CI + a real WebGPU trial in Phase 4). Documentation Impact is
+complete and greenfield-verified (HARNESS.md new; AI-PLAYERS/BUILDING-GAMES §10/
+package.json/TODO scheduled in Phase 4, the phase that makes them stale).
+
+**Two gates added (both observability/honesty, the class of gap Pass 3 exists
+to catch — the metrics rig's own output must not lie):**
+- **Report `render()` must print the denominator.** Added to Phase 3: the
+  one-block render surfaces `scored_moves`/`skipped_early` adjacent to
+  `blunders`, and `tests/tournament.test.ts` asserts it. The exact-only grading
+  gate can legitimately grade **zero** moves in a short game, so a bare
+  "blunders: 0" is the plan's own documented honesty trap — the render now makes
+  "0 over 0 graded" impossible to misread as "clean." This is the harness
+  grading *itself* honestly.
+- **`harness-trial.mjs` staged diagnostic.** Added to Phase 4: staged stdout
+  (model-load → first-move → per-game tally → per-move ms), mirroring
+  `ai-trial.mjs`. A multi-second-per-move LLM run over a large model download is
+  otherwise indistinguishable from a hang, and the stages localize a stall or an
+  implausible Report to a specific phase of the run.
+
+**Entry-point note (not a defect):** the harness is a library + a trial script,
+not a drawer-registered game, so its "entry point" is the vitest suites + `npm
+run harness:trial`, not a `/<id>/` URL. The wiring tests correctly target that
+surface; §8's URL-reachability gate does not apply to a measurement tool.
+**Validation calibration:** confirmed appropriate as written; no changes.
+**Open questions:** unchanged — 3, all ADVISORY/PHASE-GATED, no BLOCKING. Ready
+for execution (Phase 0 first).

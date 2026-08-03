@@ -198,9 +198,19 @@ Exemption (spikes produce knowledge, not shipped code).
   spike alpha-beta over a corner/mobility heuristic; measure (a) it beats a random
   player convincingly over 20 games, and (b) the largest empty-count whose *exact*
   full solve returns in a tap budget (~≤100 ms) — that fixes `TRACTABLE_EMPTIES`
-  for Othello. *Success:* a heuristic that clearly beats random + a measured exact
-  threshold N. *Disposition:* `promote` — the eval + threshold inform Phase 2
-  (`othello-solver`); TDD applies to the promoted code there, not the spike.
+  for Othello. **[Pass 3 gate] Measure (b) against the wasm target's cost, not
+  native Rust.** The shipped solve runs in-browser (wasm), which is materially
+  slower than a native `cargo` spike; a threshold measured natively will
+  *under-count* the true tap-budget cost and can blow the ~100 ms budget on the
+  actual site — silently degrading the tutor's `exact` promise into a slow
+  in-browser stall. Either measure the spike compiled to `wasm32` (preferred, e.g.
+  a quick `wasm-pack`/node harness), or apply a conservative margin over the native
+  number (e.g. pick N a few empties below the native breakpoint) and record the
+  native-vs-wasm ratio observed. The recorded `TRACTABLE_EMPTIES` must be the
+  in-browser-safe value. *Success:* a heuristic that clearly beats random + a
+  measured exact threshold N **valid in wasm**. *Disposition:* `promote` — the
+  eval + threshold inform Phase 2 (`othello-solver`); TDD applies to the promoted
+  code there, not the spike.
 - [ ] **D3: Does the game-agnostic TS harness plug in unchanged?** *Probe:* read
   `hybrid-player.ts` `buildBand`/`TutorFactMove` and confirm an Othello tutor report
   (per-move `{col→square, value, quality, immediateWin→completes-nothing (always
@@ -343,6 +353,16 @@ end-to-end (honest wording), "Explain my options" lists ≥2 band moves; the
 experimental toggle is hidden without a real WebGPU adapter and appears (faked
 adapter) with a disclosure. Real hybrid play validated by an `ai:trial`-style run
 against `/othello/` on system Chrome (reuse the driver with an origin arg).
+**[Pass 3 — honesty-invariant gate]** the e2e must assert the tutor's *wording*
+is **hedged in heuristic mode** and only certain in exact mode: on a mid-game
+(non-endgame, `exact=false`) position, the blunder/why-hint copy must **not**
+contain exact-certainty phrasing ("that threw the game", "X held it") and must
+use the hedged form ("looks risky"); on a deep-endgame (`exact=true`) fixture,
+certain phrasing is allowed. Othello is unsolved from the opening, so exact-mode
+wording on a heuristic verdict would be a false claim of perfect knowledge — the
+honesty flag is only real if the *rendered text* is asserted to respect it, not
+just the solver's `exact` boolean. This mirrors Drop 4's honest-wording rule and
+is the load-bearing correctness assertion for a heuristic-oracle game.
 **Depends on:** Phase 5, and the shipped `hybrid-player.ts`/`ai-runtime.ts`.
 **Write-set:** `othello.ts`, `othello-howto.ts`, `tools/guide-shots.mjs`,
 `assets/guide/othello-*.jpg`, `docs/AI-PLAYERS.md`, `docs/BUILDING-GAMES.md`,
@@ -423,3 +443,41 @@ are the correct seams; the drop4 crate/front/registry/build wiring is the right
 template; the heuristic-Oracle-with-exact-endgame shape mirrors `drop4-solver`'s
 exact|capped honesty (renamed exact|heuristic). BLOCKING D1 (rules) stands for
 execution (needs the Phase 0 spike). No new BLOCKING items.
+
+### Pass 3: Quality Gates — 2026-08-03
+Applied the quality gates as additive extensions (no restructuring). The plan
+enters Pass 3 strong: TDD ordering is stated (RED-first header, and D2's
+`promote` disposition correctly defers TDD to Phase 2 where the eval becomes
+production code); validation is calibrated (core/solver/wasm/wrapper Moderate,
+the playable + hybrid phases Broad); the Concurrency Map is honest (all-sequential
+with the crate-consumes-crate reason, and the two `build.mjs` writes in Phase 3
+vs Phase 5 are called out as sequential-no-conflict); wiring reaches the entry
+point (Phase 5's `tests/othello.spec.ts` goes through the real `/othello/` URL —
+the §8 gate). Documentation Impact is complete and greenfield-verified, with each
+doc scheduled in the phase that makes it stale and the guide-shot staging
+discipline (stage only othello shots) honored per `CLAUDE.md`.
+
+**Two gates added, both targeting the game's defining risk — its Oracle is
+*heuristic*, so its honesty flag is the thing most likely to silently lie:**
+- **D2 must measure `TRACTABLE_EMPTIES` in wasm, not native.** The exact-endgame
+  threshold gates the tutor's `exact` promise, but the shipped solve runs
+  in-browser where it is materially slower than a native `cargo` spike. A
+  natively-measured N under-counts the real tap-budget cost and can blow the
+  ~100 ms budget on the actual site — degrading `exact` into a stall. Added the
+  requirement to measure against the wasm target (or apply a conservative margin
+  and record the native/wasm ratio). This is the "no assumed behavior" guardrail
+  applied to a performance boundary.
+- **Phase 6 e2e must assert hedged *wording* in heuristic mode.** The solver's
+  `exact` boolean being correct (pinned in 2b) is necessary but not sufficient —
+  the honesty flag is only real if the *rendered* blunder/why-hint text respects
+  it. Added: on a `exact=false` position the copy must not use exact-certainty
+  phrasing ("that threw the game") and must hedge ("looks risky"); on an
+  `exact=true` endgame fixture certain phrasing is allowed. Othello is unsolved
+  from the opening, so an exact-worded verdict on a heuristic judgment is a false
+  claim of perfect knowledge.
+
+**Validation calibration:** confirmed appropriate as written; no changes.
+**Open questions:** unchanged — 6 total, **1 BLOCKING** (D1 Othello rules,
+resolved by the Phase 0 spike against reference positions), 2 PHASE-GATED
+(D2 threshold, band-selector duplicate-vs-extract), 3 ADVISORY. The BLOCKING D1
+must clear in Phase 0 before Phase 1 begins. Ready for execution (Phase 0 first).
