@@ -202,6 +202,41 @@ const SHOTS = [
     },
   },
   {
+    name: "drop4-board",
+    clip: ".drop4-board",
+    async run(page) {
+      await page.goto(`${origin}/drop4/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".drop4-board");
+      await page.waitForFunction(() => Boolean(window.__drop4));
+      // Populate a lived-in mid-game board (both sides' discs) for the shot.
+      await page.evaluate(() => {
+        const h = window.__drop4;
+        for (const c of [3, 2, 4, 1, 3, 5]) h.game.play(c);
+        h.refresh();
+      });
+      await page.waitForSelector(".drop4-cell.a");
+    },
+  },
+  {
+    name: "drop4-result",
+    clip: ".sol-result",
+    async run(page) {
+      await page.goto(`${origin}/drop4/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".drop4-board");
+      await page.waitForFunction(() => Boolean(window.__drop4));
+      // A few discs, then end the game to reach the verifiable result screen.
+      await page.evaluate(() => {
+        const h = window.__drop4;
+        for (const c of [3, 2, 4, 3, 2]) h.game.play(c);
+        h.refresh();
+      });
+      await page.click(".sol-settings summary");
+      await page.uncheck(".sol-set-hints");
+      await page.click(".sol-stuck");
+      await page.waitForSelector(".sol-result");
+    },
+  },
+  {
     name: "wyrdle-win",
     clip: ".sol-result",
     async run(page) {
