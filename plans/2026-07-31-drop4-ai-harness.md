@@ -899,7 +899,32 @@ Regret is monotonic in Δ; the endpoints anchor at perfect (Δ=0) and ~random
 (Δ=40, matching the ~33% Random-v-Random blunder rate). Small Δ bounds mistakes
 to low-single-digit blunder rates (vs the old best-or-uniform-random scheme,
 where every mistake can throw the game). Caveat: this validates the difficulty
-**mechanism** (the band); the LLM's within-band *selection* behavior is a Phase 5
-experiment. Refinement: for a "never throws the game" level, band on **class**
+**mechanism** (the band); the LLM's within-band *selection* behavior is measured
+below. Refinement: for a "never throws the game" level, band on **class**
 first (keep all class-preserving moves → 0 blunders) then tune within-class
 regret — a two-knob design (class floor × within-class sloppiness).
+
+### Phase 0 — hybrid selection MEASURED (2026-08-03, `scratchpad/hybrid-select`)
+Real loop: `drop4.wasm` oracle builds a band (Δ=8, value spread) over 14 late
+positions; the 1.5B model picks within it under a JSON-schema `{move∈band,
+reason}` constraint. Two context variants:
+
+| context | in-band rate | mean regret | random-in-band baseline |
+|---|---|---|---|
+| bare candidates | 100% | 2.64 | 2.41 |
+| rich board+history | 100% | 2.86 | 2.41 |
+
+Findings: (1) **schema enum enforcement works** — 100% in-band, so candidate
+membership / legality is guaranteed by construction in the hybrid loop; (2) at
+1.5B the LLM's within-band pick is **no better than random-in-band** (regret ≈
+or slightly above the uniform baseline), i.e. it adds no measurable *skill*
+inside the band; (3) richer context did **not** help here. Caveats: n=14, one Δ,
+one model; regret gaps are near noise — the safe claim is "not better than
+random-in-band."
+
+**Design consequence:** the hybrid's *quality* comes entirely from the engine
+band; the LLM contributes **legality + personality + explanation (UX), not
+strength**. So: strongest opponent = engine top-of-band (no LLM); characterful
+tunable opponent = band sets difficulty (Δ), LLM adds human feel at
+random-in-band quality. Whether a frontier-scale model picks *better* within the
+band is untested (the size sweep suggests not until well beyond 7B).
