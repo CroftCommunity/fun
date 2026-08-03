@@ -160,31 +160,148 @@ pub fn best_move_capped(board: &Board, max_depth: u32) -> Option<Col> {
     best_col
 }
 
-fn live_params(level: Level) -> (u32, u32) {
-    // (search depth, percent chance of a random move) — weaker levels are
-    // shallower and blunder more, all still instant.
-    match level {
-        Level::Easy => (2, 50),
-        Level::Medium => (5, 20),
-        Level::Hard => (8, 5),
-        Level::Perfect => (10, 0),
+/// The exact value of every legal move by bounded-depth search (side-to-move
+/// perspective; higher is better) — the fast source for a difficulty band. An
+/// immediate win is [`WIN`], a move that fills the board with no line is `0`,
+/// otherwise the depth-`max_depth` negamax score. Empty if the board is terminal.
+#[must_use]
+pub fn move_values_capped(board: &Board, max_depth: u32) -> Vec<(Col, i32)> {
+    legal_cols(board)
+        .into_iter()
+        .map(|c| {
+            let child = apply_move(board, c);
+            let v = if winner(&child) == Some(board.to_move) {
+                WIN
+            } else if legal_cols(&child).is_empty() {
+                0
+            } else {
+                -negamax_capped(
+                    &child,
+                    max_depth.saturating_sub(1),
+                    i32::MIN + 1,
+                    i32::MAX - 1,
+                )
+            };
+            (c, v)
+        })
+        .collect()
+}
+
+/// The win/draw/loss class of a **capped** value: `1` a forced win within the
+/// search horizon, `-1` a forced loss, `0` an unresolved (heuristic) position.
+/// (The exact path classifies by `i32::signum` instead.)
+fn capped_class(v: i32) -> i32 {
+    if v >= WIN / 2 {
+        1
+    } else if v <= -WIN / 2 {
+        -1
+    } else {
+        0
     }
 }
 
-/// A live opponent move at `level` (depth + blunder chance), or `None` if
-/// terminal. Fast from any position (this is the shipped opponent; the exact
-/// solver is the oracle).
+/// The two difficulty knobs, per [`Level`]: how deep the live search looks, the
+/// **class floor** (`preserve_class` = never admit a move that drops the
+/// win/draw/loss class → never throws the game), and **within-class sloppiness**
+/// (percent chance of a random in-class move rather than the tightest).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LiveBand {
+    /// Bounded search depth for the capped value source.
+    pub depth: u32,
+    /// Keep only moves in the best available class (never throw the game).
+    pub preserve_class: bool,
+    /// Percent chance (0-100) of a random in-class move instead of the tightest.
+    pub sloppiness_pct: u32,
+}
+
+/// The [`LiveBand`] for a [`Level`]: Easy/Medium allow class-dropping moves and
+/// are beatable; Hard/Perfect preserve the class (never throw), Perfect with no
+/// sloppiness (always the tightest in-class move).
+#[must_use]
+pub fn live_band(level: Level) -> LiveBand {
+    match level {
+        Level::Easy => LiveBand {
+            depth: 2,
+            preserve_class: false,
+            sloppiness_pct: 60,
+        },
+        Level::Medium => LiveBand {
+            depth: 5,
+            preserve_class: false,
+            sloppiness_pct: 30,
+        },
+        Level::Hard => LiveBand {
+            depth: 8,
+            preserve_class: true,
+            sloppiness_pct: 45,
+        },
+        Level::Perfect => LiveBand {
+            depth: 10,
+            preserve_class: true,
+            sloppiness_pct: 0,
+        },
+    }
+}
+
+/// Pick a move from a difficulty band over per-move `values`, using `class_of`
+/// to bucket each value's win/draw/loss class. With `preserve_class`, only moves
+/// in the best available class are eligible (so the pick never drops the class —
+/// never throws the game). With probability `sloppiness_pct` a random eligible
+/// move is chosen; otherwise the tightest (highest-value) eligible move. `None`
+/// only if `values` is empty.
+///
+/// This is the shared selector for both the exact path (values from
+/// [`crate::Solver::move_values`], `class_of = i32::signum`) and the fast capped
+/// path ([`move_values_capped`], `class_of = capped_class`).
+pub fn select_in_band(
+    values: &[(Col, i32)],
+    class_of: impl Fn(i32) -> i32,
+    preserve_class: bool,
+    sloppiness_pct: u32,
+    rng: &mut impl RngCore,
+) -> Option<Col> {
+    let best = values.iter().map(|&(_, v)| v).max()?;
+    let best_class = class_of(best);
+    let eligible: Vec<(Col, i32)> = values
+        .iter()
+        .copied()
+        .filter(|&(_, v)| !preserve_class || class_of(v) == best_class)
+        .collect();
+    if eligible.is_empty() {
+        return None; // unreachable: the best move is always eligible
+    }
+    if sloppiness_pct > 0 && rng.next_u32() % 100 < sloppiness_pct {
+        return Some(eligible[(rng.next_u32() as usize) % eligible.len()].0);
+    }
+    eligible.iter().max_by_key(|&&(_, v)| v).map(|&(c, _)| c)
+}
+
+/// A live opponent move at `level`, or `None` if terminal. Fast from any
+/// position (the shipped opponent; the exact solver is the oracle). Takes an
+/// immediate win, then selects within a class-floored, sloppiness-tuned band of
+/// the depth-capped move values — so Hard/Perfect never throw a horizon-visible
+/// loss, while Easy/Medium stay beatable.
 #[must_use]
 pub fn choose_capped(board: &Board, level: Level, rng: &mut impl RngCore) -> Option<Col> {
     let legal = legal_cols(board);
     if legal.is_empty() {
         return None;
     }
-    let (depth, pct) = live_params(level);
-    if pct > 0 && rng.next_u32() % 100 < pct {
-        return Some(legal[(rng.next_u32() as usize) % legal.len()]);
+    // An immediate win is always taken (the tightest possible move).
+    for &c in &legal {
+        if winner(&apply_move(board, c)) == Some(board.to_move) {
+            return Some(c);
+        }
     }
-    best_move_capped(board, depth)
+    let band = live_band(level);
+    let values = move_values_capped(board, band.depth);
+    select_in_band(
+        &values,
+        capped_class,
+        band.preserve_class,
+        band.sloppiness_pct,
+        rng,
+    )
 }
 
 #[cfg(test)]
@@ -259,5 +376,73 @@ mod tests {
         let mut rng = ChaCha20Rng::seed_from_u64(1);
         assert_eq!(choose_capped(&pos, Level::Perfect, &mut rng), Some(Col(0)));
         let _ = Side::A;
+    }
+
+    #[test]
+    fn select_in_band_preserve_class_never_drops_class() {
+        // Synthetic values: col 2 wins (+), cols 0/1 neutral (0), col 3 loses (-).
+        let values = [(Col(0), 0), (Col(1), 0), (Col(2), 5), (Col(3), -5)];
+        let class = |v: i32| v.signum();
+        // Even at full sloppiness, PreserveBestClass never returns the losing col.
+        let mut rng = ChaCha20Rng::seed_from_u64(3);
+        for _ in 0..200 {
+            let mv = select_in_band(&values, class, true, 100, &mut rng).unwrap();
+            assert_ne!(mv, Col(3), "class floor must never admit the losing move");
+        }
+        // With no sloppiness it plays the tightest (best-value) move.
+        let mut rng = ChaCha20Rng::seed_from_u64(4);
+        assert_eq!(
+            select_in_band(&values, class, true, 0, &mut rng),
+            Some(Col(2))
+        );
+        // `Any` floor at full sloppiness eventually admits the class-dropping move.
+        let mut rng = ChaCha20Rng::seed_from_u64(5);
+        let mut saw_drop = false;
+        for _ in 0..200 {
+            if select_in_band(&values, class, false, 100, &mut rng) == Some(Col(3)) {
+                saw_drop = true;
+                break;
+            }
+        }
+        assert!(saw_drop, "Any floor may admit a class-dropping move");
+    }
+
+    #[test]
+    fn hard_and_perfect_never_throw_a_horizon_visible_loss() {
+        // B has three stacked in col 3 (a mate-in-1 threat); A to move. A move
+        // other than col 3 lets B win next ply — a class drop within the horizon.
+        let pos = play(&[0, 3, 1, 3, 2, 3]);
+        for level in [Level::Hard, Level::Perfect] {
+            for seed in 0..24u64 {
+                let mut rng = ChaCha20Rng::seed_from_u64(seed);
+                let mv = choose_capped(&pos, level, &mut rng).unwrap();
+                let after = <Drop4 as Adversary>::apply(&pos, mv);
+                // After A's move, B must have no immediate win (A never throws).
+                let b_wins_now = legal_cols(&after)
+                    .into_iter()
+                    .any(|c| winner(&apply_move(&after, c)) == Some(after.to_move));
+                assert!(
+                    !b_wins_now,
+                    "{level:?} let B win at seed {seed} (threw the game)"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn easy_can_throw_the_game() {
+        // Easy (Any class floor) is beatable: over seeds it sometimes fails to
+        // block the mate-in-1, handing B the win.
+        let pos = play(&[0, 3, 1, 3, 2, 3]);
+        let mut threw = false;
+        for seed in 0..40u64 {
+            let mut rng = ChaCha20Rng::seed_from_u64(seed);
+            let mv = choose_capped(&pos, Level::Easy, &mut rng).unwrap();
+            if mv != Col(3) {
+                threw = true;
+                break;
+            }
+        }
+        assert!(threw, "Easy should be beatable (sometimes fails to block)");
     }
 }

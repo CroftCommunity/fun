@@ -19,8 +19,8 @@
 //! book/endgame positions until then.
 
 use adversary_core::{Adversary, MatchResult, Side};
-use drop4_core::{apply_move, legal_cols, Board, Col, Drop4, HEIGHT, WIDTH};
-use drop4_solver::{choose_capped, Level, Solver};
+use drop4_core::{apply_move, legal_cols, winner, Board, Col, Drop4, HEIGHT, WIDTH};
+use drop4_solver::{choose_capped, live_band, select_in_band, Level, Solver};
 use pond_outcome::{attest, Outcome};
 use rand_chacha::rand_core::SeedableRng;
 use rand_chacha::ChaCha20Rng;
@@ -234,18 +234,51 @@ pub extern "C" fn oracle_best(level: u32) -> u32 {
     }
 }
 
+/// Empties at or below which the exact oracle is fast enough for live play — so
+/// the class floor becomes **provably** exact in the endgame (earlier, the fast
+/// capped search bounds it to the search horizon).
+const TRACTABLE_EMPTIES: usize = 16;
+
+fn immediate_win(board: &Board) -> Option<Col> {
+    legal_cols(board)
+        .into_iter()
+        .find(|&c| winner(&apply_move(board, c)) == Some(board.to_move))
+}
+
 /// The **live** opponent's move at difficulty `level` (0 Easy / 1 Medium /
 /// 2 Hard / 3 Perfect) as a column index, or `0xFFFF_FFFF` if the match is
-/// over / no game. This is the **shipped** opponent: a depth-capped heuristic
-/// search that returns a move in well under a frame from any position, seeded by
-/// the session RNG (unlike [`oracle_best`], which is exact but slow from the
-/// opening — see the speed note in the module docs).
+/// over / no game. This is the **shipped** opponent. Difficulty is two knobs on
+/// the engine — a **class floor** (Hard/Perfect never throw the game) and
+/// within-class sloppiness — applied to per-move values: the **exact** oracle
+/// when the position is tractable (≤ [`TRACTABLE_EMPTIES`] empties → provably
+/// never throws), else the fast depth-capped search (never throws a
+/// horizon-visible loss). An immediate win is always taken.
 #[no_mangle]
 pub extern "C" fn live_move(level: u32) -> u32 {
     let Some(s) = session_mut() else {
         return 0xFFFF_FFFF;
     };
-    match choose_capped(&s.board, level_from(level), &mut s.rng) {
+    let board = s.board;
+    if let Some(w) = immediate_win(&board) {
+        return u32::from(w.0);
+    }
+    let lvl = level_from(level);
+    let empties = board.cells.iter().filter(|&&v| v == 0).count();
+    let col = if empties <= TRACTABLE_EMPTIES {
+        let band = live_band(lvl);
+        let solver = s.solver.get_or_insert_with(Solver::new);
+        let values = solver.move_values(&board);
+        select_in_band(
+            &values,
+            |v| v.signum(),
+            band.preserve_class,
+            band.sloppiness_pct,
+            &mut s.rng,
+        )
+    } else {
+        choose_capped(&board, lvl, &mut s.rng)
+    };
+    match col {
         Some(mv) => u32::from(mv.0),
         None => 0xFFFF_FFFF,
     }

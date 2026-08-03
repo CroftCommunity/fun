@@ -379,6 +379,50 @@ mod tests {
     }
 
     #[test]
+    fn exact_band_preserve_class_never_throws() {
+        // The tractable (≤16-empty) path: exact values classified by sign. On the
+        // "col 6 is the only win, cols 0-4 lose" fixture, PreserveBestClass must
+        // return col 6 for every seed — provably never throwing the win — while
+        // the `Any` floor may return a losing column.
+        #[rustfmt::skip]
+        let cells: [u8; 42] = [
+            2, 1, 2, 1, 1, 1, 2,
+            0, 2, 2, 1, 2, 2, 2,
+            0, 1, 0, 2, 2, 2, 1,
+            0, 2, 0, 0, 2, 1, 1,
+            0, 1, 0, 0, 0, 1, 1,
+            0, 0, 0, 0, 0, 1, 0,
+        ];
+        let board = Board {
+            cells,
+            to_move: adversary_core::Side::A,
+        };
+        let mut solver = Solver::new();
+        let values = solver.move_values(&board);
+        let sign = |v: i32| v.signum();
+        for seed in 0..50u64 {
+            let mut rng = ChaCha20Rng::seed_from_u64(seed);
+            // Full sloppiness, class floor on: only the winning class is eligible.
+            let mv = crate::live::select_in_band(&values, sign, true, 100, &mut rng).unwrap();
+            assert_eq!(
+                mv,
+                Col(6),
+                "PreserveBestClass must keep the win at seed {seed}"
+            );
+        }
+        let mut rng = ChaCha20Rng::seed_from_u64(7);
+        let mut saw_loss = false;
+        for _ in 0..200 {
+            let mv = crate::live::select_in_band(&values, sign, false, 100, &mut rng).unwrap();
+            if mv != Col(6) {
+                saw_loss = true;
+                break;
+            }
+        }
+        assert!(saw_loss, "the Any floor may admit a losing move");
+    }
+
+    #[test]
     fn choose_perfect_is_the_exact_best_move() {
         // On the late fixture, Perfect must return an exact-best move regardless
         // of the RNG (it never randomises).
