@@ -217,6 +217,32 @@ impl Adversary for Othello {
     }
 }
 
+impl pond_outcome::Game for Othello {
+    type Move = Move;
+    const KIND: &'static str = "othello";
+    const VERSION: u32 = 1;
+
+    fn replay(seed: u64, moves: &[Move]) -> pond_outcome::Replayed {
+        let mut pos = <Othello as Adversary>::initial(seed);
+        for &mv in moves {
+            // A tampered move (illegal, or a pass that wasn't forced) is not in
+            // `legal_moves`, so it is a no-op and the hash diverges from the
+            // honest match — verification then fails.
+            if legal_moves(&pos).contains(&mv) {
+                pos = apply_move(&pos, mv);
+            }
+        }
+        // `won` = Side A (the opening player) won; the shelf game assigns the
+        // human a side and interprets accordingly. The harness scores on
+        // `result()` directly, not on `won`.
+        let won = matches!(
+            <Othello as Adversary>::result(&pos),
+            Some(MatchResult::WinA)
+        );
+        pond_outcome::Replayed::new(state_hash(&pos), won)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -342,5 +368,47 @@ mod tests {
             None,
             "pass illegal when moves exist"
         );
+    }
+
+    /// Play to a terminal position by always taking the first legal move (a
+    /// `Place` of the lowest index, or `Pass` when forced) — deterministic.
+    fn deterministic_game(seed: u64) -> (Vec<Move>, Board) {
+        let mut pos = <Othello as Adversary>::initial(seed);
+        let mut moves = Vec::new();
+        while result(&pos).is_none() {
+            let mv = legal_moves(&pos)[0];
+            moves.push(mv);
+            pos = apply_move(&pos, mv);
+            assert!(moves.len() <= 200, "a game must terminate");
+        }
+        (moves, pos)
+    }
+
+    #[test]
+    fn a_full_game_including_a_forced_pass_replays_to_a_verifiable_hash() {
+        use pond_outcome::{attest, verify, Outcome};
+        let (moves, terminal) = deterministic_game(0);
+        assert!(result(&terminal).is_some(), "the game reaches a terminal");
+        // The deterministic first-legal game produces at least one forced pass —
+        // so the replay path exercises a Pass in the move list, not just Places.
+        assert!(
+            moves.contains(&Move::Pass),
+            "this line includes a forced pass ({} moves)",
+            moves.len()
+        );
+
+        let rec = attest::<Othello>(0, moves.clone(), Outcome::Abandoned, None);
+        assert!(verify::<Othello>(&rec).ok, "honest match (with a pass) replays");
+
+        // Tamper the first Place with an always-illegal opening cell (idx 0):
+        // replay skips it, the line diverges, verification fails.
+        let mut bad = rec.clone();
+        let first_place = bad
+            .moves
+            .iter()
+            .position(|m| matches!(m, Move::Place(_)))
+            .expect("a game has placements");
+        bad.moves[first_place] = Move::Place(0);
+        assert!(!verify::<Othello>(&bad).ok, "a tampered move list fails verify");
     }
 }
