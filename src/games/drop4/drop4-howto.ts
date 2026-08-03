@@ -5,7 +5,7 @@ import type { Guide } from "../../how-to.js";
 
 export const DROP4_GUIDE: Guide = {
   title: "How to play Drop 4",
-  lede: "Take turns dropping discs into a seven-column board against the computer. Line up four of your discs in a row — across, up, or on a diagonal — before it does. Every finished game is a record anyone can re-verify.",
+  lede: "Take turns dropping discs into a seven-column board against The Engine, the shelf's computer opponent. Line up four of your discs in a row — across, up, or on a diagonal — before it does. Every finished game is a record anyone can re-verify.",
   entries: [
     {
       testid: "howto-goal",
@@ -14,13 +14,17 @@ export const DROP4_GUIDE: Guide = {
       blocks: [
         {
           kind: "prose",
-          text: "You are ✕ and you go first; the computer is ○. On your turn you drop one disc into a column and it falls to the lowest empty slot. The first player to get four of their own discs in a line — horizontally, vertically, or diagonally — wins. If the board fills with no line, it is a draw.",
+          text: "You and The Engine take turns dropping discs; you go first. A disc falls to the lowest empty slot in the column you pick. The first player to get four of their own discs in a line — horizontally, vertically, or diagonally — wins. If the board fills with no line, it is a draw. The bar above the board shows both players and whose turn it is.",
+        },
+        {
+          kind: "prose",
+          text: "You can choose which disc you play — ✕ or ○ — with the \"You play\" buttons, and set how strong The Engine is with the Difficulty picker (Easy, Medium, Hard, or Perfect). Both choices are remembered for next time.",
         },
         {
           kind: "shot",
           name: "drop4-board",
-          alt: "A seven-column Drop 4 board on a green felt frame, with a row of drop buttons above the grid and a few red and blue discs stacked in the columns.",
-          caption: "The board, the drop buttons above each column, and the discs stacked from the bottom.",
+          alt: "A Drop 4 game: a turn bar reading “✕ You vs ○ The Engine”, a difficulty picker and disc chooser, and a seven-column board on a green felt frame with a drop-arrow above each column and red and blue discs stacked in the columns.",
+          caption: "The turn bar, the difficulty and disc pickers, and the board with a drop arrow above each column.",
         },
       ],
     },
@@ -36,25 +40,25 @@ export const DROP4_GUIDE: Guide = {
         {
           kind: "steps",
           items: [
-            "Tap the drop button (▾) above the column you want.",
+            "Tap anywhere in the column you want — the drop arrow (▼) above it lights up to show it is playable.",
             "Your disc falls to the lowest empty slot in that column.",
-            "The computer takes its turn, then it is your move again.",
+            "The Engine takes its turn; its move is ringed so you can see where it went, then it is your move again.",
           ],
         },
         {
           kind: "note",
-          text: "Only columns with room glow as targets. A full column is not a legal move, so tapping it does nothing — the game's core decides what is legal, not the screen.",
+          text: "Only columns with room light up as targets. A full column is not a legal move, so tapping it does nothing — the game's core decides what is legal, not the screen.",
         },
       ],
     },
     {
       testid: "howto-opponent",
-      title: "The computer opponent",
+      title: "The Engine",
       toc: "The opponent",
       blocks: [
         {
           kind: "prose",
-          text: "You play against the shelf's classic engine — the same engine that knows this game exactly. It replies in a moment, takes any win it sees, and blocks yours. It plays a solid game, so look a move or two ahead.",
+          text: "You play against the shelf's classic engine — the same engine that knows this game exactly. It replies in a moment, takes any win it sees, and blocks yours. On Easy it plays loosely and is very beatable; on Perfect it never makes a mistake. Pick a level that suits you and look a move or two ahead.",
         },
       ],
     },
@@ -69,13 +73,13 @@ export const DROP4_GUIDE: Guide = {
         },
         {
           kind: "prose",
-          text: "When the game ends you get a result you can re-verify: it replays every drop — yours and the engine's — against the game's core and re-derives the outcome, so nothing is taken on trust. Share it and the link checks itself before it shows.",
+          text: "When the game ends the winning four is highlighted for a moment, then you get a result you can re-verify. It shows the final board and replays every drop — yours and The Engine's — against the game's core to re-derive the outcome, so nothing is taken on trust. Share it and the link checks itself before it shows.",
         },
         {
           kind: "shot",
           name: "drop4-result",
-          alt: "A result panel with a green Verified check and a record listing the result, moves, seed, and final hash.",
-          caption: "The verifiable result: re-checked by replay, with the record and a self-verifying share link.",
+          alt: "A result panel reading “You won — verifiable” with a green Verified check, the final board with the winning four discs ringed in gold, and a record listing the result, moves, seed, and final hash.",
+          caption: "The verifiable result: the final board with the winning line, re-checked by replay, with a self-verifying share link.",
         },
       ],
     },

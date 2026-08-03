@@ -203,18 +203,19 @@ const SHOTS = [
   },
   {
     name: "drop4-board",
-    clip: ".drop4-board",
+    clip: ".drop4-game",
     async run(page) {
       await page.goto(`${origin}/drop4/?seed=7`, { waitUntil: "networkidle" });
       await page.waitForSelector(".drop4-board");
       await page.waitForFunction(() => Boolean(window.__drop4));
-      // Populate a lived-in mid-game board (both sides' discs) for the shot.
+      // Populate a lived-in mid-game board (both sides' discs) for the shot,
+      // including the turn bar + drop-arrow headers.
       await page.evaluate(() => {
         const h = window.__drop4;
         for (const c of [3, 2, 4, 1, 3, 5]) h.game.play(c);
         h.refresh();
       });
-      await page.waitForSelector(".drop4-cell.a");
+      await page.waitForSelector(".drop4-cell.x");
     },
   },
   {
@@ -224,16 +225,25 @@ const SHOTS = [
       await page.goto(`${origin}/drop4/?seed=7`, { waitUntil: "networkidle" });
       await page.waitForSelector(".drop4-board");
       await page.waitForFunction(() => Boolean(window.__drop4));
-      // A few discs, then end the game to reach the verifiable result screen.
-      await page.evaluate(() => {
+      // Build a real ✕-vertical-win record, then open its self-verifying ?r=
+      // link so the result screen shows the final board with the winning four
+      // highlighted (deterministic; also exercises the shared-result path).
+      const share = await page.evaluate(async () => {
         const h = window.__drop4;
-        for (const c of [3, 2, 4, 3, 2]) h.game.play(c);
-        h.refresh();
+        for (const c of [0, 1, 0, 1, 0, 1, 0]) h.game.play(c); // ✕ wins col 1
+        const env = h.game.outcome(false);
+        const json = new TextEncoder().encode(JSON.stringify(env));
+        const cs = new CompressionStream("deflate-raw");
+        const w = cs.writable.getWriter();
+        void w.write(json);
+        void w.close();
+        const buf = new Uint8Array(await new Response(cs.readable).arrayBuffer());
+        let bin = "";
+        for (const b of buf) bin += String.fromCharCode(b);
+        return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
       });
-      await page.click(".sol-settings summary");
-      await page.uncheck(".sol-set-hints");
-      await page.click(".sol-stuck");
-      await page.waitForSelector(".sol-result");
+      await page.goto(`${origin}/drop4/?r=${share}`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".sol-result .drop4-cell.win");
     },
   },
   {
