@@ -112,6 +112,15 @@ Authoritative plan: `plans/2026-07-31-drop4-ai-harness.md`. Standards:
   (difficulty Levels; optional "Experimental: local AI" toggle).
 - [ ] Phase 7 (optional) — second `AIRuntime` adapter (Gemini Nano / transformers.js).
 
+## Open threads
+- [ ] **Larger-binary hosting (self-host the LLM model + `model_lib` WASM).** The
+  local-AI opponent embeds the WebLLM *library* same-origin, but the model
+  **weights + per-model `model_lib` WASM** still stream from the MLC/HF CDN on
+  first load (then cache). For true offline + closing the `model_lib`
+  code-from-CDN vector we'd self-host those, but ~1 GB is not viable on GitHub
+  Pages — needs a different binary host. Tracked as an open thread (decision +
+  host TBD). See `plans/2026-08-03-drop4-ai-tutor-layer.md` (Phase 0 D2 caveat).
+
 ## Later (own phase-plans)
 - [ ] checkers (`checkers-core` + alpha-beta solver/oracle + shelf game).
 - [ ] chess (vetted move-gen + Stockfish WASM oracle + shelf game).
