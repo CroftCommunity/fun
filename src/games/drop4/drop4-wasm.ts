@@ -47,7 +47,8 @@ interface Exports {
   live_move(level: number): number;
   oracle_best(level: number): number;
   oracle_move_values_json(): number;
-  outcome_json(): number;
+  mark_assistance(): void;
+  outcome_json(declare: number): number;
 }
 
 /** A loaded Drop 4 binding bound to one match. */
@@ -115,8 +116,16 @@ export class Drop4 {
   oracleMoveValues(): MoveValue[] {
     return JSON.parse(this.read(this.x.oracle_move_values_json())) as MoveValue[];
   }
-  /** The verifiable `pond-outcome` record envelope for the current match. */
-  outcome(): unknown {
-    return JSON.parse(this.read(this.x.outcome_json()));
+  /** Record that a hint was used this match (assistance). */
+  markAssistance(): void {
+    this.x.mark_assistance();
+  }
+  /**
+   * The verifiable `pond-outcome` record envelope for the current match. When
+   * `declareAssistance` is true the self-declared assistance flag is carried;
+   * otherwise the declaration is opted out (`null`).
+   */
+  outcome(declareAssistance: boolean): unknown {
+    return JSON.parse(this.read(this.x.outcome_json(declareAssistance ? 1 : 0)));
   }
 }

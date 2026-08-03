@@ -34,6 +34,9 @@ struct Session {
     moves: Vec<Col>,
     rng: ChaCha20Rng,
     solver: Option<Solver>,
+    /// Self-declared assistance (a hint was used). Recorded in the outcome only
+    /// when the host declares it (see [`outcome_json`]).
+    assisted: bool,
 }
 
 static mut STATE: Option<Session> = None;
@@ -86,6 +89,7 @@ pub extern "C" fn new_game(seed_lo: u32, seed_hi: u32) {
             moves: Vec::new(),
             rng: ChaCha20Rng::seed_from_u64(seed),
             solver: None,
+            assisted: false,
         });
     }
 }
@@ -271,13 +275,26 @@ pub extern "C" fn oracle_move_values_json() -> *const u8 {
     set_out_json(&vals)
 }
 
+// --- assistance ----------
+
+/// Record that the player used a hint this match (assistance). Whether it is
+/// carried in the outcome is the host's honest declaration — see [`outcome_json`].
+#[no_mangle]
+pub extern "C" fn mark_assistance() {
+    if let Some(s) = session_mut() {
+        s.assisted = true;
+    }
+}
+
 // --- outcome ----------
 
 /// The outcome record for the current match as a `pond-docformat` envelope JSON
 /// (`kind = "drop4"`), verifiable by replaying `(seed, moves)` through
-/// `drop4_core::Drop4`. `Won` when Side A (the opening player) won.
+/// `drop4_core::Drop4`. `Won` when Side A (the opening player) won. When
+/// `declare` is non-zero the self-declared assistance flag is included
+/// (`Some(assisted)`); when `0` the declaration is opted out (`None`).
 #[no_mangle]
-pub extern "C" fn outcome_json() -> *const u8 {
+pub extern "C" fn outcome_json(declare: u32) -> *const u8 {
     let Some(s) = session_mut() else {
         return set_out_str("null");
     };
@@ -286,7 +303,8 @@ pub extern "C" fn outcome_json() -> *const u8 {
         Some(MatchResult::WinB | MatchResult::Draw) => Outcome::Lost,
         None => Outcome::Abandoned,
     };
-    let record = attest::<Drop4>(s.seed, s.moves.clone(), result, None);
+    let assistance = if declare != 0 { Some(s.assisted) } else { None };
+    let record = attest::<Drop4>(s.seed, s.moves.clone(), result, assistance);
     match pond_outcome::to_doc::<Drop4>(&record) {
         Ok(bytes) => set_out(bytes),
         Err(_) => set_out_str("null"),
@@ -335,8 +353,15 @@ mod tests {
         assert_eq!(play(0), 0);
         assert_eq!(result_code(), 1);
 
-        // Outcome is a drop4-kind envelope.
-        let rec: serde_json::Value = serde_json::from_slice(&out_slice(outcome_json())).unwrap();
+        // Opting out of the assistance declaration leaves it `null`.
+        let rec: serde_json::Value = serde_json::from_slice(&out_slice(outcome_json(0))).unwrap();
         assert_eq!(rec["kind"], serde_json::json!("drop4"));
+        assert_eq!(rec["payload"]["assistance"], serde_json::Value::Null);
+
+        // A declared assistance flag is honest: after `mark_assistance`, a
+        // declared outcome carries `assistance: true`.
+        mark_assistance();
+        let rec: serde_json::Value = serde_json::from_slice(&out_slice(outcome_json(1))).unwrap();
+        assert_eq!(rec["payload"]["assistance"], serde_json::json!(true));
     }
 }
