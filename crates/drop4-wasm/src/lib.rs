@@ -3,8 +3,9 @@
 //!
 //! The module holds **one** Drop 4 match. Rules exports let the host read legal
 //! columns / play / read the board, hash, result, and render text (for an LLM
-//! prompt). Oracle exports expose the exact solver as the opponent
-//! ([`oracle_best`], at a difficulty [`oracle_best`] `level`) and as the
+//! prompt). The **shipped opponent** is [`live_move`] — a depth-capped
+//! heuristic engine fast from any position. Oracle exports expose the exact
+//! solver as an opponent ([`oracle_best`], at a difficulty `level`) and as the
 //! per-move judgment source for a hybrid difficulty band
 //! ([`oracle_move_values_json`]). Reads are JSON written to one output buffer
 //! the host reads via the return pointer + [`out_len`].
@@ -19,7 +20,7 @@
 
 use adversary_core::{Adversary, MatchResult, Side};
 use drop4_core::{apply_move, legal_cols, Board, Col, Drop4, HEIGHT, WIDTH};
-use drop4_solver::{Level, Solver};
+use drop4_solver::{choose_capped, Level, Solver};
 use pond_outcome::{attest, Outcome};
 use rand_chacha::rand_core::SeedableRng;
 use rand_chacha::ChaCha20Rng;
@@ -229,6 +230,23 @@ pub extern "C" fn oracle_best(level: u32) -> u32 {
     }
 }
 
+/// The **live** opponent's move at difficulty `level` (0 Easy / 1 Medium /
+/// 2 Hard / 3 Perfect) as a column index, or `0xFFFF_FFFF` if the match is
+/// over / no game. This is the **shipped** opponent: a depth-capped heuristic
+/// search that returns a move in well under a frame from any position, seeded by
+/// the session RNG (unlike [`oracle_best`], which is exact but slow from the
+/// opening — see the speed note in the module docs).
+#[no_mangle]
+pub extern "C" fn live_move(level: u32) -> u32 {
+    let Some(s) = session_mut() else {
+        return 0xFFFF_FFFF;
+    };
+    match choose_capped(&s.board, level_from(level), &mut s.rng) {
+        Some(mv) => u32::from(mv.0),
+        None => 0xFFFF_FFFF,
+    }
+}
+
 #[derive(Serialize)]
 struct MoveValue {
     col: u8,
@@ -308,6 +326,10 @@ mod tests {
 
         // The exact oracle takes the immediate win in col 0 (fast: short-circuit).
         assert_eq!(oracle_best(3), 0, "Perfect takes the immediate win");
+
+        // The live (depth-capped) engine — the shipped opponent — also takes the
+        // immediate win in col 0, fast from any position.
+        assert_eq!(live_move(3), 0, "live engine takes the immediate win");
 
         // Play the winning move; A (1) has won.
         assert_eq!(play(0), 0);

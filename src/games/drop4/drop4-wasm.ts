@@ -44,6 +44,7 @@ interface Exports {
   result_code(): number;
   render_text(): number;
   play(col: number): number;
+  live_move(level: number): number;
   oracle_best(level: number): number;
   oracle_move_values_json(): number;
   outcome_json(): number;
@@ -96,7 +97,16 @@ export class Drop4 {
   play(col: number): MoveStatus {
     return STATUS[this.x.play(col)]!;
   }
-  /** The opponent's move at `level`, or null if the match is over. */
+  /**
+   * The **live** (shipped) opponent's move at `level`, or null if the match is
+   * over. A depth-capped heuristic engine — fast from any position (unlike
+   * {@link oracleBest}, which is exact but slow from the opening).
+   */
+  liveMove(level: Level): number | null {
+    const col = this.x.live_move(LEVEL_CODE[level]);
+    return col === 0xffff_ffff ? null : col;
+  }
+  /** The exact oracle's move at `level`, or null if the match is over. */
   oracleBest(level: Level): number | null {
     const col = this.x.oracle_best(LEVEL_CODE[level]);
     return col === 0xffff_ffff ? null : col;
