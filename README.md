@@ -9,7 +9,7 @@ a portable artifact addressable at its own URL.
 `fun.croft.ing` presents games in a **slide-out drawer** over a persistent play area; each game can
 also go **full-screen** or **open in its own tab** (so every game has its own URL). A game is a module
 that implements one contract and renders chrome-agnostically into a mount point — the drawer is built
-once and every game reuses it. Shelf order: **solitaire → match-3 → bubble → wyrdle → 2048 → drop 4 → cribbage**.
+once and every game reuses it. Shelf order: **solitaire → match-3 → bubble → wyrdle → 2048 → drop 4 → align → blockdoku → loose ends → cribbage**.
 
 ## Layout
 
@@ -23,8 +23,9 @@ crates/
   pond-outcome/      P8 verifiable-outcome record (replay → state hash)         — built
   match3-wasm/       browser binding over match3-core (raw C-ABI + serde-JSON)   — built
   solitaire-wasm/    browser binding over solitaire-core (raw C-ABI + serde-JSON) — built
-  bubble-core/       deterministic bubble-shooter engine (hex board, quantized-angle aim →
-                     fixed-point ray-cast/bounce landing, pop/drop) — green
+  bubble-core/       deterministic bubble-shooter engine (hex board w/ parity-offset top-row
+                     insert, quantized-angle aim → fixed-point landing, pop/drop; clear-board
+                     + levels mode) — green
   bubble-solver/     build-time clear-the-board solver + winnable-daily pack generator — green
   bubble-wasm/       browser binding over bubble-core (raw C-ABI + serde-JSON)     — built
   wyrdle-core/       deterministic word-guessing engine (two-pass scoring, embedded license-clean
@@ -32,10 +33,22 @@ crates/
   wyrdle-wasm/       browser binding over wyrdle-core (raw C-ABI + serde-JSON)     — built
   twenty48-core/     deterministic 2048 engine (exponent tiles, seeded spawns, slide/merge,
                      win@2048 / stuck) — green (no solver: every seed is playable)
+  align-core/        deterministic falling-block engine (fixed-timestep tick sim, 7-bag,
+                     SRS kicks, integer gravity, guideline scoring) — green
+  align-wasm/        browser binding over align-core (raw C-ABI + serde-JSON)          — built
+  blockdoku-core/    deterministic 9x9 block-sudoku engine (53-shape catalog from the
+                     original AGPL game, seeded deal, row/col/box union clearing,
+                     ported scoring, endless score-attack) — green (no solver: every deal is playable)
+  blockdoku-wasm/    browser binding over blockdoku-core (raw C-ABI + serde-JSON)      — built
+  looseends-core/    deterministic arrow-release (tap-away) engine — integer-exact
+                     FNV/mulberry32 RNG, FREE test + release, solvable-by-construction
+                     generator, state hash — green (no solver: solvable by construction)
+  looseends-wasm/    browser binding over looseends-core (raw C-ABI + serde-JSON)   — built
   twenty48-wasm/     browser binding over twenty48-core (raw C-ABI + serde-JSON)   — built
 games/solitaire/     daily-pack.json — a year of winnable daily seeds + a fixture win line (v2, seeds-lean)
 games/bubble/        daily-pack.json — a year of winnable clear-the-board seeds + a fixture clear line
 games/2048/          daily-pack.json — a year of shuffled daily seeds + a fixture replay line
+games/blockdoku/     daily-pack.json — a year of daily seeds (no solver: every deal is playable)
 games/wyrdle/        daily-pack.json — a year of shuffled answer seeds + a fixture win line;
                      PROVENANCE.md — the word-list sources + licences (all license-clean)
 src/                 the games drawer UI (vanilla TS + esbuild); each game owns src/games/<game>/
@@ -55,13 +68,19 @@ re-verifies the shared result before display (deflated, so even a long win stays
 
 ## Match-3 (playable — Candy-Crush-style)
 
-`/match3/` is a target-score-in-moves game: an 8×8 board of coloured, shaped gems (colour-blind safe),
-tap a gem then an adjacent one to swap (only match-making swaps are legal; the core decides and they
-glow), a 20-swap budget graded into 0–3 stars at score thresholds. Moves out → a verifiable score+stars
-record with re-verify + a `?r=` share. Daily board (date seed) + free-play (`?seed=`). v1 uses flat star
-thresholds (no per-deal par yet — see `TODO/match3.md`). Plan: `plans/2026-07-30-match3-playable.md`.
+`/match3/` is a target-score-in-moves game: an 8×8 board of big, glossy, distinctly-shaped candies
+(colour-blind safe), **swipe** a candy toward a neighbour to swap — or tap gem-then-neighbour, the
+accessible floor; only match-making swaps are legal (the core decides and they glow). A 20-swap budget
+graded into 0–3 stars. Clears hold long enough to read, spray a particle **burst**, and a multi-cascade
+flashes an escalating **Nice/Sweet/Divine**. Moves out → a verifiable score+stars record with re-verify +
+a `?r=` share. New players land in a **level campaign** (curated levels over verifiable seeds; the first
+are gentle and Level 1 glows an opening move); best-stars progress and the in-progress board (as a move
+list) persist, so a reload resumes. A **skippable narrative overlay** (Biscuit's beats) rides a small
+game-event bus — placeholder now, real clips later (`docs/MATCH3-STORY.md`). Also: Today's board (date
+seed), free-play (`?seed=`), six objectives. Plans: `plans/2026-08-02-match3-gameplay-feel.md`,
+`plans/2026-07-30-match3-playable.md`.
 
-## Bubble (playable — aim-and-shoot)
+## Bubble (playable — aim-and-shoot, leveled)
 
 `/bubble/` is a real Bubble-Shooter: a launcher at the bottom, **aim an angle**
 (point/drag on the board, the ←/→ keys, or the slider), and fire — the bubble
@@ -70,11 +89,22 @@ flies up, **bounces off the walls**, and sticks where it first touches; groups o
 **quantized integer angle**, resolved in the core by a **fixed-point** ray-cast
 (a committed integer direction table — `wasm32` has no runtime trig), so there
 are no floats on the hashed path and `native == wasm`. The smooth flight is
-cosmetic; the core owns every landing. Clear the board within the shot budget for
-a verifiable win (replay the angle line → re-derive the hash), with re-verify + a
-`?r=` share. A dotted **aim guide** previews the path (optional, on by default);
-daily board (winnable pack) + free-play (`?seed=`). Plan:
-`plans/2026-07-31-bubble-shooter-rebuild.md`.
+cosmetic; the core owns every landing.
+
+The default mode is **Levels** — escalating, point-gated survival: earn each
+level's points target (arcade scoring — 10 per pop, big drops score the most) to
+climb, while every few **shots** a new row is pushed in at the top and the stack
+marches toward the bottom deadline (a `parity_offset` on the hex board makes a
+single-row top insert a shift-down + parity flip). Each level adds colours,
+raises the target, and tightens the insert cadence; you lose when the stack
+crosses the line. Pressure is **shot-driven** (seeded rows folded into the hash)
+so `(seed, angles)` replays the whole run; an **optional timer** is a
+presentational practice clock only — never a verified loss. The result (highest
+level + score + star grade) is verifiable with a re-checking `?r=` share.
+**Classic** mode (the toggle, or `?variant=classic`) keeps the original
+clear-the-board game (winnable daily pack, its own verifiable win). Plans:
+`plans/2026-07-31-bubble-shooter-rebuild.md`,
+`plans/2026-08-01-bubble-shooter-levels-difficulty.md`.
 
 ## Wyrdle (playable — daily word game)
 
@@ -121,6 +151,25 @@ game. The opponent is the **live** depth-capped engine (fast from any position) 
 the exact solver stays the oracle for scoring/tutoring. An experimental local-AI
 opponent is a follow-up. How the shelf builds AI opponents: `docs/AI-PLAYERS.md`.
 Plans: `plans/2026-07-31-drop4-ai-harness.md`, `plans/2026-08-03-drop4-playable-and-hybrid-buildout.md`.
+
+## Align (playable — falling-block stacker)
+
+`/align/` is a real-time falling-block stacker (build-fresh; original name,
+palette, and presentation — no "-tris" name, not the guideline shape-to-colour
+mapping). Pieces fall; slide/rotate them (with SRS-compatible wall kicks) to pack
+complete rows, which clear; four at once is an **Align**. It is the shelf's first
+real-time game, and it earns a verifiable outcome the same way the turn-based ones
+do: the core is a **fixed-timestep integer tick engine** whose recorded artifact
+is a **tick-stamped stream of atomic actions**, so a whole run replays
+byte-identically from `(seed, moves)` — no floats, no wall clock on the hashed
+path, native==wasm. The wall clock only drives the render accumulator and stamps
+inputs, never the outcome (BUILDING-GAMES §4). Guideline scoring (T-spins,
+back-to-back, combo, perfect clear); Marathon + Sprint modes; hold, ghost, a
+five-piece preview; keyboard + on-screen touch controls; hints/assistance.
+Daily board (`games/align/daily-pack.json`, UTC rollover) + free-play (`?seed=`).
+A top-out / "End run" leads with a verification-forward result and a
+self-verifying `?r=` share. No solver: every seed is playable.
+Plan: `plans/2026-08-01-align-falling-blocks.md`.
 
 ## Identity (light/dark)
 

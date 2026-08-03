@@ -11,6 +11,15 @@ const AUTOPLAY_KEY = "fun-autoplay";
 const AIM_GUIDE_KEY = "fun-bubble-aim-guide";
 const DROP4_LEVEL_KEY = "fun-drop4-level";
 const DROP4_MARK_KEY = "fun-drop4-mark";
+const FIRE_ON_RELEASE_KEY = "fun-bubble-fire-on-release";
+const AIM_SNAP_KEY = "fun-bubble-aim-snap";
+const AIM_GAIN_KEY = "fun-bubble-aim-gain";
+const AIM_SETTLE_KEY = "fun-bubble-aim-settle";
+const ALIGN_HAPTICS_KEY = "fun-align-haptics";
+const ALIGN_MOVE_SPEED_KEY = "fun-align-move-speed";
+const CS_SKIN_KEY = "fun-color-sort-skin";
+const CS_ICONS_KEY = "fun-color-sort-icons";
+const CS_STRICT_KEY = "fun-color-sort-strict";
 
 /** Pure resolver: an explicit stored "on"/"off" wins; otherwise the default. */
 export function resolveBool(stored: string | null, fallback: boolean): boolean {
@@ -36,6 +45,23 @@ export function resolveMark(stored: string | null, fallback: Drop4Mark): Drop4Ma
   return stored === "x" || stored === "o" ? stored : fallback;
 }
 
+/** Bounds + default for a numeric setting. */
+export interface NumberSpec {
+  min: number;
+  max: number;
+  fallback: number;
+}
+
+/** Pure resolver for a numeric setting: parse the stored string, round to a
+ *  whole number and clamp into `[min, max]`; anything unparseable falls back to
+ *  the default (returned as-is, so a fractional default is preserved). */
+export function resolveNumber(stored: string | null, spec: NumberSpec): number {
+  if (stored === null || stored.trim() === "") return spec.fallback;
+  const n = Number(stored);
+  if (!Number.isFinite(n)) return spec.fallback;
+  return Math.max(spec.min, Math.min(spec.max, Math.round(n)));
+}
+
 function read(key: string, fallback: boolean): boolean {
   try {
     return resolveBool(localStorage.getItem(key), fallback);
@@ -47,6 +73,22 @@ function read(key: string, fallback: boolean): boolean {
 function write(key: string, on: boolean): void {
   try {
     localStorage.setItem(key, on ? "on" : "off");
+  } catch {
+    // Storage denied (private mode): the setting still applies for the session.
+  }
+}
+
+function readNum(key: string, spec: NumberSpec): number {
+  try {
+    return resolveNumber(localStorage.getItem(key), spec);
+  } catch {
+    return spec.fallback;
+  }
+}
+
+function writeNum(key: string, value: number): void {
+  try {
+    localStorage.setItem(key, String(value));
   } catch {
     // Storage denied (private mode): the setting still applies for the session.
   }
@@ -119,4 +161,145 @@ export function setDrop4Mark(mark: Drop4Mark): void {
   } catch {
     // Storage denied (private mode): the choice still applies for the session.
   }
+}
+
+// ---------- bubble aim-control tuning (device-dependent; see the "Aim &
+// controls" settings sheet) ----------
+
+/** Fire the shot when you release the aim slider (drag-and-let-go), rather than
+ *  pressing the Fire button — **off by default**. The board tap-to-fire path is
+ *  unaffected. */
+export function fireOnReleaseEnabled(): boolean {
+  return read(FIRE_ON_RELEASE_KEY, false);
+}
+export function setFireOnRelease(on: boolean): void {
+  write(FIRE_ON_RELEASE_KEY, on);
+}
+
+/** Snap granularity for the aim slider, in whole degrees (default 1° = no
+ *  snapping). Larger steps land on a stable angle more easily on a jittery
+ *  touchscreen. */
+export const AIM_SNAP_SPEC: NumberSpec = { min: 1, max: 5, fallback: 1 };
+export function aimSnapStep(): number {
+  return readNum(AIM_SNAP_KEY, AIM_SNAP_SPEC);
+}
+export function setAimSnapStep(deg: number): void {
+  writeNum(AIM_SNAP_KEY, deg);
+}
+
+/** Swipe gain: how many degrees a full slider sweep covers (default 160° = the
+ *  whole fan, i.e. an absolute aim). Lower values give finer control over a
+ *  narrower band that recenters between grabs. */
+export const AIM_GAIN_SPEC: NumberSpec = { min: 20, max: 160, fallback: 160 };
+export function aimSwipeGain(): number {
+  return readNum(AIM_GAIN_KEY, AIM_GAIN_SPEC);
+}
+export function setAimSwipeGain(deg: number): void {
+  writeNum(AIM_GAIN_KEY, deg);
+}
+
+/** Release settle window in milliseconds for fire-on-release: after lifting,
+ *  wait this long before firing (re-grabbing cancels). Default 150ms. Only
+ *  meaningful when fire-on-release is on. */
+export const AIM_SETTLE_SPEC: NumberSpec = { min: 0, max: 400, fallback: 150 };
+export function aimSettleMs(): number {
+  return readNum(AIM_SETTLE_KEY, AIM_SETTLE_SPEC);
+}
+export function setAimSettleMs(ms: number): void {
+  writeNum(AIM_SETTLE_KEY, ms);
+}
+
+// ---------- Align touch-control tuning (device-dependent; see the Align
+// settings sheet) ----------
+
+/** Haptic feedback — a short vibration on each touch-control press — **on by
+ *  default**. Degrades silently where `navigator.vibrate` is absent (desktop,
+ *  iOS Safari). A display/feel preference; it never touches the outcome. */
+export function alignHapticsEnabled(): boolean {
+  return read(ALIGN_HAPTICS_KEY, true);
+}
+export function setAlignHaptics(on: boolean): void {
+  write(ALIGN_HAPTICS_KEY, on);
+}
+
+/** Left/right hold sensitivity as a 1–10 speed (default 5). Higher slides
+ *  faster; see `moveSpeedToMs` for the ms mapping. Handling only — input timing,
+ *  not the hashed path — so every run stays verifiable. */
+export const ALIGN_MOVE_SPEED_SPEC: NumberSpec = { min: 1, max: 10, fallback: 5 };
+export function alignMoveSpeed(): number {
+  return readNum(ALIGN_MOVE_SPEED_KEY, ALIGN_MOVE_SPEED_SPEC);
+}
+export function setAlignMoveSpeed(speed: number): void {
+  writeNum(ALIGN_MOVE_SPEED_KEY, speed);
+}
+
+/** Pure map from a 1–10 move speed to the hold-repeat interval in ms: speed 1 →
+ *  250 ms (slow), 10 → 50 ms (fast), the default 5 → 161 ms. Clamps + rounds the
+ *  input so an out-of-range or fractional speed is well-defined. */
+export function moveSpeedToMs(speed: number): number {
+  const s = Math.max(1, Math.min(10, Math.round(speed)));
+  return Math.round(250 - (s - 1) * (200 / 9));
+}
+
+// ---------- Color Sort (skin, colourblind icons, Free/Strict) ----------
+
+/** The three render skins — all render the identical engine state. */
+export type ColorSortSkin = "water" | "ball" | "bolt";
+
+/** Pure resolver for the skin setting: a stored valid skin wins, else `water`. */
+export function resolveSkin(stored: string | null): ColorSortSkin {
+  return stored === "ball" || stored === "bolt" || stored === "water" ? stored : "water";
+}
+
+/** The chosen render skin — **water by default**. */
+export function colorSortSkin(): ColorSortSkin {
+  try {
+    return resolveSkin(localStorage.getItem(CS_SKIN_KEY));
+  } catch {
+    return "water";
+  }
+}
+export function setColorSortSkin(skin: ColorSortSkin): void {
+  try {
+    localStorage.setItem(CS_SKIN_KEY, skin);
+  } catch {
+    // Storage denied (private mode): the setting still applies for the session.
+  }
+}
+
+/** The per-skin default for the colourblind fruit icons: **off** in water,
+ *  **on** in ball and bolt (discrete-unit skins carry icons naturally; liquid
+ *  reads cleaner without them — brief §6). */
+export function iconsDefaultFor(skin: ColorSortSkin): boolean {
+  return skin !== "water";
+}
+
+/** Whether the fruit icons are shown, for `skin`. An explicit user choice (once
+ *  made) overrides the per-skin default thereafter; otherwise the per-skin
+ *  default applies. Returns the resolved boolean. */
+export function colorSortIconsFor(skin: ColorSortSkin): boolean {
+  try {
+    const stored = localStorage.getItem(CS_ICONS_KEY);
+    if (stored === "on") return true;
+    if (stored === "off") return false;
+  } catch {
+    // fall through to the per-skin default
+  }
+  return iconsDefaultFor(skin);
+}
+export function setColorSortIcons(on: boolean): void {
+  try {
+    localStorage.setItem(CS_ICONS_KEY, on ? "on" : "off");
+  } catch {
+    // Storage denied (private mode): the setting still applies for the session.
+  }
+}
+
+/** Strict mode — no undo, restart only — **off by default** (Free: unlimited
+ *  undo). Non-monetized, so undo is never rationed; Strict is opt-in commitment. */
+export function colorSortStrict(): boolean {
+  return read(CS_STRICT_KEY, false);
+}
+export function setColorSortStrict(on: boolean): void {
+  write(CS_STRICT_KEY, on);
 }

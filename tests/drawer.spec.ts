@@ -5,7 +5,9 @@ test("home page lists the games and the drawer opens", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /open games drawer/i }).click();
   await expect(page.locator("#games-drawer")).toBeVisible();
-  await expect(page.locator(".drawer-item")).toHaveCount(11);
+  // One item per REGISTRY entry (src/registry.ts). Bump this when a game is
+  // added or removed from the catalog.
+  await expect(page.locator(".drawer-item")).toHaveCount(17);
 });
 
 test("the drawer recollapses via its close button and via clicking off", async ({
@@ -31,6 +33,34 @@ test("the drawer recollapses via its close button and via clicking off", async (
   expect(box).not.toBeNull();
   await scrim.click({ position: { x: box!.width - 12, y: 120 } });
   await expect(drawer).toBeHidden();
+});
+
+test("the open drawer scrolls its own content instead of the background page", async ({
+  page,
+}) => {
+  // A short viewport that the full games list overflows — the drawer must scroll
+  // internally and keep the scroll from chaining to the page behind it.
+  await page.setViewportSize({ width: 480, height: 380 });
+  await page.goto("/");
+  await page.getByRole("button", { name: /open games drawer/i }).click();
+  const drawer = page.locator("#games-drawer");
+  await expect(drawer).toBeVisible();
+
+  const box = await drawer.evaluate((el) => {
+    const s = getComputedStyle(el);
+    return {
+      overflowY: s.overflowY,
+      overscrollBehaviorY: s.overscrollBehaviorY,
+      overflows: el.scrollHeight > el.clientHeight + 1,
+    };
+  });
+
+  // The content genuinely exceeds the drawer's height at this viewport.
+  expect(box.overflows).toBe(true);
+  // The drawer, not the page, owns that scroll…
+  expect(["auto", "scroll"]).toContain(box.overflowY);
+  // …and the scroll does not chain out to the background page.
+  expect(box.overscrollBehaviorY).toBe("contain");
 });
 
 test("a game page mounts the module; full-screen preserves the same instance", async ({

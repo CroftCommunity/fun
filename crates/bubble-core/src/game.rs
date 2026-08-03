@@ -24,7 +24,7 @@ const LAUNCHER_SEED_XOR: u64 = 0x9E37_79B9_7F4A_7C15;
 
 /// The distinct bubble colours currently on the board, in ascending order
 /// (deterministic).
-fn present_colors(board: &Board) -> Vec<u8> {
+pub(crate) fn present_colors(board: &Board) -> Vec<u8> {
     let mut set = BTreeSet::new();
     for cell in board.cells() {
         if let Cell::Bubble(c) = cell {
@@ -39,7 +39,7 @@ fn present_colors(board: &Board) -> Vec<u8> {
 /// — better gameplay than a purely random colour, and it keeps the board
 /// clearable, which is what makes the B4 winnable pack tractable. Returns `0`
 /// when the board is empty (the game is already won; the colour is unused).
-fn pick_color(board: &Board, rng: &mut DetRng) -> u8 {
+pub(crate) fn pick_color(board: &Board, rng: &mut DetRng) -> u8 {
     let present = present_colors(board);
     if present.is_empty() {
         return 0;
@@ -56,6 +56,12 @@ pub struct Game {
     deal_draws: u64,
     launcher: DetRng,
     current: u8,
+    /// The on-deck colour — the next shot's colour, shown as a preview. The
+    /// launcher is a 2-deep pipeline: `current` fires now, `next` is on deck.
+    /// Because `next` is chosen one shot ahead (from the board as it stood then),
+    /// it can be previewed before the intervening shot resolves — at the cost of
+    /// the fired colour no longer being guaranteed present on the current board.
+    next: u8,
     /// The recorded aim line (the outcome proof). Only [`Game::play`] appends;
     /// the solver's landing-space [`Game::play_at`] advances without recording.
     shots: Vec<Angle>,
@@ -92,7 +98,10 @@ impl Game {
     ) -> Self {
         let d = deal(seed, width, height, rows_filled, colors);
         let mut launcher = DetRng::from_seed(seed ^ LAUNCHER_SEED_XOR);
+        // Fill the 2-deep pipeline up front — both drawn from the initial board —
+        // so the on-deck colour can be previewed before the first shot.
         let current = pick_color(&d.board, &mut launcher);
+        let next = pick_color(&d.board, &mut launcher);
         Self {
             board: d.board,
             colors,
@@ -100,6 +109,7 @@ impl Game {
             deal_draws: d.draws,
             launcher,
             current,
+            next,
             shots: Vec::new(),
             taken: 0,
             score: 0,
@@ -116,6 +126,13 @@ impl Game {
     #[must_use]
     pub fn current_color(&self) -> u8 {
         self.current
+    }
+
+    /// The on-deck colour — the colour the shot *after* this one will place.
+    /// Shown as a next-piece preview; becomes `current_color` on the next shot.
+    #[must_use]
+    pub fn next_color(&self) -> u8 {
+        self.next
     }
 
     /// Shots remaining in the budget.
@@ -170,7 +187,10 @@ impl Game {
         self.score += report.score_gain;
         self.shots.push(angle);
         self.taken += 1;
-        self.current = pick_color(&self.board, &mut self.launcher);
+        // Advance the pipeline: the on-deck colour loads into the launcher, and a
+        // fresh on-deck colour is drawn from the now-resolved board.
+        self.current = self.next;
+        self.next = pick_color(&self.board, &mut self.launcher);
         report
     }
 }
@@ -181,7 +201,7 @@ pub struct Bubble;
 impl pond_outcome::Game for Bubble {
     type Move = Angle;
     const KIND: &'static str = "bubble";
-    const VERSION: u32 = 2;
+    const VERSION: u32 = 3;
 
     fn replay(seed: u64, moves: &[Angle]) -> pond_outcome::Replayed {
         let mut game = Game::new(seed);
@@ -234,6 +254,46 @@ mod tests {
             !verify::<Bubble>(&bad_angle).ok,
             "a tampered angle diverges the hash"
         );
+    }
+
+    #[test]
+    fn fresh_game_previews_current_and_next_from_the_deal() {
+        // The launcher is a 2-deep pipeline: a fresh game exposes the loaded
+        // colour AND the on-deck colour, both drawn from the initial board so a
+        // preview can be shown before the first shot.
+        let g = Game::new(7);
+        let present = present_colors(g.board());
+        assert!(
+            present.contains(&g.current_color()),
+            "loaded colour is present on the board"
+        );
+        assert!(
+            present.contains(&g.next_color()),
+            "on-deck colour is present on the board"
+        );
+    }
+
+    #[test]
+    fn next_promotes_to_current_on_each_shot() {
+        // The shown "next" is exactly the colour fired next: each shot promotes
+        // the on-deck colour into the launcher, then loads a fresh on-deck colour.
+        let mut g = Game::new(7);
+        for &a in &LINE {
+            let upcoming = g.next_color();
+            g.play(a);
+            assert_eq!(
+                g.current_color(),
+                upcoming,
+                "the previewed on-deck colour becomes the loaded colour after a shot"
+            );
+        }
+    }
+
+    #[test]
+    fn bubble_record_is_v3() {
+        // The 2-deep launcher changes the fired-colour sequence, so the outcome
+        // version is bumped (v2 shares no longer verify against v3 replay).
+        assert_eq!(<Bubble as pond_outcome::Game>::VERSION, 3);
     }
 
     #[test]

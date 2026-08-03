@@ -21,7 +21,7 @@ export const CLUMSYBIRD_GUIDE: Guide = {
           kind: "shot",
           name: "clumsybird-title",
           alt: "A pixel-art title screen reading 'Clumsy Bird' over a blue sky with a green city skyline and a grassy pipe.",
-          caption: "The title screen — tap, click, or press space to start.",
+          caption: "The title screen — tap, click, or press space or the up arrow to start.",
         },
       ],
     },
@@ -37,7 +37,7 @@ export const CLUMSYBIRD_GUIDE: Guide = {
         {
           kind: "steps",
           items: [
-            "Tap the screen, click the mouse, or press the space bar to flap.",
+            "Tap the screen, click the mouse, or press the space bar or up arrow to flap.",
             "Do it again to start a run, and keep tapping to stay airborne.",
             "Press 'm' to mute or unmute the sound.",
           ],

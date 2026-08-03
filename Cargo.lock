@@ -10,12 +10,61 @@ dependencies = [
 ]
 
 [[package]]
+name = "align-core"
+version = "0.0.0"
+dependencies = [
+ "hex",
+ "pond-docformat",
+ "pond-outcome",
+ "rand",
+ "rand_chacha",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+]
+
+[[package]]
+name = "align-wasm"
+version = "0.0.0"
+dependencies = [
+ "align-core",
+ "pond-outcome",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "block-buffer"
 version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3078c7629b62d3f0439517fa394996acacc5cbc91c5a20d8c658e77abd503a71"
 dependencies = [
  "generic-array",
+]
+
+[[package]]
+name = "blockdoku-core"
+version = "0.0.0"
+dependencies = [
+ "hex",
+ "pond-outcome",
+ "rand",
+ "rand_chacha",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+]
+
+[[package]]
+name = "blockdoku-wasm"
+version = "0.0.0"
+dependencies = [
+ "blockdoku-core",
+ "pond-outcome",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -56,6 +105,43 @@ name = "cfg-if"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
+
+[[package]]
+name = "color-sort-core"
+version = "0.0.0"
+dependencies = [
+ "hex",
+ "pond-docformat",
+ "pond-outcome",
+ "rand",
+ "rand_chacha",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+]
+
+[[package]]
+name = "color-sort-solver"
+version = "0.0.0"
+dependencies = [
+ "color-sort-core",
+ "pond-docformat",
+ "pond-outcome",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "color-sort-wasm"
+version = "0.0.0"
+dependencies = [
+ "color-sort-core",
+ "color-sort-solver",
+ "pond-outcome",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "cpufeatures"
@@ -160,6 +246,29 @@ name = "libc"
 version = "0.2.189"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2"
+
+[[package]]
+name = "looseends-core"
+version = "0.0.0"
+dependencies = [
+ "hex",
+ "pond-docformat",
+ "pond-outcome",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+]
+
+[[package]]
+name = "looseends-wasm"
+version = "0.0.0"
+dependencies = [
+ "looseends-core",
+ "pond-outcome",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "match3-core"

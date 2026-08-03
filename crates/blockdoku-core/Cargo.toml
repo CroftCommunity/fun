@@ -1,0 +1,17 @@
+[package]
+name = "blockdoku-core"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Deterministic, headless Blockdoku engine. 9x9 block-sudoku: seeded polyomino deal, placement legality, row/column/3x3-box union clearing, ported scoring, endless score-attack (no win), state hash. Replays from (seed, moves) so native==wasm. No network."
+
+[dependencies]
+rand.workspace = true
+rand_chacha.workspace = true
+serde = { workspace = true }
+serde_json.workspace = true
+sha2.workspace = true
+hex.workspace = true
+thiserror.workspace = true
+pond-outcome.workspace = true

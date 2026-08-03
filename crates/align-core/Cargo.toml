@@ -1,0 +1,18 @@
+[package]
+name = "align-core"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Deterministic, headless falling-block engine for Align. Fixed-timestep integer tick simulation, 7-bag seeded pieces, SRS-compatible rotation + kicks, integer gravity table, lock delay with move-reset, guideline scoring (T-spins, back-to-back, combo, perfect clear). A run replays byte-identically from (seed, tick-stamped actions) so native==wasm and the outcome is verifiable. No floats on the hashed path, no network."
+
+[dependencies]
+rand.workspace = true
+rand_chacha.workspace = true
+serde = { workspace = true }
+serde_json.workspace = true
+sha2.workspace = true
+hex.workspace = true
+thiserror.workspace = true
+pond-outcome.workspace = true
+pond-docformat.workspace = true

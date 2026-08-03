@@ -122,9 +122,12 @@ const SHOTS = [
     name: "bubble-board",
     clip: ".bub-game",
     async run(page) {
+      // Levels is the default: the level HUD (level, score->target progress, and
+      // the "stack drops in" pressure readout) plus the aim guide.
       await page.goto(`${origin}/bubble/?seed=7`, { waitUntil: "networkidle" });
       await page.waitForSelector(".bub-canvas");
       await page.waitForFunction(() => Boolean(window.__bubble));
+      await page.waitForSelector(".bub-level");
       // Aim an angled shot so the dotted trajectory guide + landing ring show.
       await page.evaluate(() => window.__bubble.setAim(115));
       await page.waitForTimeout(120);
@@ -134,19 +137,16 @@ const SHOTS = [
     name: "bubble-win",
     clip: ".sol-result",
     async run(page) {
-      await page.goto(`${origin}/bubble/`, { waitUntil: "networkidle" });
+      // Drive the levels run until the descending stack crosses the deadline, so
+      // the shot shows the verifiable "reached level N" result.
+      await page.goto(`${origin}/bubble/?seed=7`, { waitUntil: "networkidle" });
       await page.waitForSelector(".bub-canvas");
       await page.waitForFunction(() => Boolean(window.__bubble));
-      const fixture = await (await fetch(`${origin}/bubble-daily-pack.json`)).json();
-      await page.goto(`${origin}/bubble/?seed=${fixture.payload.fixture.seed}`, {
-        waitUntil: "networkidle",
+      await page.evaluate(() => {
+        const g = window.__bubble.game;
+        for (let i = 0; i < 500 && !g.levelIsLost(); i += 1) g.levelShoot(10 + ((i * 23) % 161));
+        window.__bubble.refresh();
       });
-      await page.waitForFunction(() => Boolean(window.__bubble));
-      await page.evaluate((moves) => {
-        const h = window.__bubble;
-        for (const m of moves) h.game.shoot(m);
-        h.refresh();
-      }, fixture.payload.fixture.moves);
       await page.waitForSelector(".sol-result");
     },
   },
@@ -247,6 +247,39 @@ const SHOTS = [
     },
   },
   {
+    name: "align-board",
+    clip: ".al-game",
+    async run(page) {
+      await page.goto(`${origin}/align/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".al-board");
+      await page.waitForFunction(() => Boolean(window.__align));
+      // Build a lived-in stack, then show a hint so the outlined placement reads.
+      await page.evaluate(() => {
+        const h = window.__align;
+        const seq = ["ShiftL", "ShiftL", "HardDrop", "ShiftR", "ShiftR", "HardDrop",
+          "RotCW", "HardDrop", "ShiftR", "HardDrop", "ShiftL", "RotCW", "HardDrop"];
+        for (const a of seq) { h.input(a); h.tick(2); }
+      });
+      await page.click(".sol-hint");
+      await page.waitForTimeout(120);
+    },
+  },
+  {
+    name: "align-result",
+    clip: ".sol-result",
+    async run(page) {
+      await page.goto(`${origin}/align/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".al-board");
+      await page.waitForFunction(() => Boolean(window.__align));
+      // Hard-drop in place until the stack tops out — a real game-over result.
+      await page.evaluate(() => {
+        const h = window.__align;
+        for (let i = 0; i < 400 && !h.board().over; i += 1) { h.input("HardDrop"); h.tick(1); }
+      });
+      await page.waitForSelector(".sol-result");
+    },
+  },
+  {
     name: "wyrdle-win",
     clip: ".sol-result",
     async run(page) {
@@ -260,6 +293,70 @@ const SHOTS = [
       await page.evaluate((moves) => {
         for (const m of moves) window.__wyrdle.submitGuess(m);
       }, fixture.payload.fixture.moves);
+      await page.waitForSelector(".sol-result");
+    },
+  },
+  {
+    name: "blockdoku-board",
+    clip: ".bdk-game",
+    async run(page) {
+      await page.goto(`${origin}/blockdoku/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".bdk-board");
+      await page.waitForFunction(() => Boolean(window.__blockdoku));
+      // Play a handful of first-legal moves so the shot shows a lived-in board.
+      await page.evaluate(() => {
+        const g = window.__blockdoku.game;
+        for (let i = 0; i < 8 && !g.isOver(); i += 1) {
+          const legal = g.legalMoves();
+          if (!legal.length) break;
+          g.playPlace(legal[0].slot, legal[0].row, legal[0].col);
+        }
+        window.__blockdoku.refresh();
+      });
+      await page.waitForSelector(".bdk-cell.bdk-filled");
+    },
+  },
+  {
+    name: "blockdoku-select",
+    clip: ".bdk-game",
+    async run(page) {
+      await page.goto(`${origin}/blockdoku/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".bdk-board");
+      await page.waitForFunction(() => Boolean(window.__blockdoku));
+      // Fill the board in a bit first, so the preview reads against real blocks.
+      await page.evaluate(() => {
+        const g = window.__blockdoku.game;
+        for (let i = 0; i < 7 && !g.isOver(); i += 1) {
+          const legal = g.legalMoves();
+          if (!legal.length) break;
+          g.playPlace(legal[0].slot, legal[0].row, legal[0].col);
+        }
+        window.__blockdoku.refresh();
+        // Hold a piece over a genuinely legal spot so the green preview shows
+        // (hint() selects a placeable piece and anchors the preview there).
+        window.__blockdoku.hint();
+      });
+      // The held piece previews its footprint in green where the shape fits.
+      await page.waitForSelector(".bdk-cell.bdk-ghost");
+    },
+  },
+  {
+    name: "blockdoku-result",
+    clip: ".sol-result",
+    async run(page) {
+      await page.goto(`${origin}/blockdoku/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".bdk-board");
+      await page.waitForFunction(() => Boolean(window.__blockdoku));
+      // Play to the natural game-over to reach the verifiable result screen.
+      await page.evaluate(() => {
+        const g = window.__blockdoku.game;
+        for (let i = 0; i < 500 && !g.isOver(); i += 1) {
+          const legal = g.legalMoves();
+          if (!legal.length) break;
+          g.playPlace(legal[0].slot, legal[0].row, legal[0].col);
+        }
+        window.__blockdoku.refresh();
+      });
       await page.waitForSelector(".sol-result");
     },
   },
@@ -307,12 +404,108 @@ const SHOTS = [
       await page.waitForTimeout(2000); // let the title screen paint
     },
   },
+  {
+    name: "looseends-home",
+    clip: ".le-home",
+    async run(page) {
+      await page.goto(`${origin}/looseends/`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".le-home");
+    },
+  },
+  {
+    name: "looseends-board",
+    clip: ".le-stage",
+    async run(page) {
+      await page.goto(`${origin}/looseends/`, { waitUntil: "networkidle" });
+      await page.waitForFunction(() => Boolean(window.__looseends));
+      // Open a small early level so the arrows read clearly, then let the
+      // canvas fit-view + first paint settle.
+      await page.evaluate(() => window.__looseends.openLevel(6));
+      await page.waitForSelector(".le-canvas");
+      await page.waitForTimeout(400);
+    },
+  },
+  {
+    name: "color-sort-board",
+    clip: ".cs-board",
+    async run(page) {
+      await page.goto(`${origin}/color-sort/?seed=0`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".cs-board");
+      await page.waitForFunction(() => Boolean(window.__colorSort));
+    },
+  },
+  {
+    name: "color-sort-select",
+    clip: ".cs-board",
+    async run(page) {
+      await page.goto(`${origin}/color-sort/?seed=0`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".cs-board");
+      await page.waitForFunction(() => Boolean(window.__colorSort));
+      // Select a real source so its legal target tubes glow.
+      await page.evaluate(() => {
+        const from = window.__colorSort.game.board().moves[0].from;
+        window.__colorSort.tapTube(from);
+      });
+      await page.waitForSelector(".cs-tube.legal");
+    },
+  },
+  {
+    name: "color-sort-win",
+    clip: ".sol-result",
+    async run(page) {
+      // Endless level 1 (4 colours) solves quickly via the solver hint.
+      await page.goto(`${origin}/color-sort/?level=1`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".cs-board");
+      await page.waitForFunction(() => Boolean(window.__colorSort));
+      await page.evaluate(() => {
+        const h = window.__colorSort;
+        for (let i = 0; i < 200 && !h.game.isWon(); i += 1) {
+          const mv = h.game.hint();
+          if (!mv) break;
+          h.game.pour(mv.from, mv.to);
+        }
+        h.refresh();
+      });
+      await page.waitForSelector(".sol-result");
+    },
+  },
+  {
+    name: "orchard-crate",
+    clip: ".wrapped-game-frame",
+    async run(page) {
+      await page.goto(`${origin}/orchard-drop/`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".wrapped-game-frame");
+      const frame = page.frameLocator(".wrapped-game-frame");
+      await frame.locator("#gameCanvas").waitFor({ state: "attached", timeout: 15000 });
+      // Drop a run of fruit across the crate so the shot shows a lived-in pile
+      // with merges, not an empty box. Aim varies so the fruit spreads and stacks.
+      const box = await page.locator(".wrapped-game-frame").boundingBox();
+      if (box) {
+        for (let i = 0; i < 22; i += 1) {
+          const x = box.x + box.width * (0.2 + 0.6 * ((i * 7) % 10) / 10);
+          const y = box.y + box.height * 0.35;
+          await page.mouse.move(x, y);
+          await page.mouse.down();
+          await page.mouse.up();
+          await page.waitForTimeout(560); // just over the 520ms drop cooldown
+        }
+      }
+      await page.waitForTimeout(1200); // let the last fruit settle and merges resolve
+    },
+  },
 ];
 
 const server = spawn("node", [join(root, "tools", "serve.mjs")], { stdio: "ignore" });
 await new Promise((r) => setTimeout(r, 700)); // let the server bind (fixed wait)
 
-const browser = await chromium.launch();
+// `PLAYWRIGHT_EXECUTABLE_PATH` pins a specific Chromium binary (e.g. a
+// sandbox/CI image whose pre-installed build differs from @playwright/test's
+// pinned revision); unset = Playwright's default resolution.
+const browser = await chromium.launch(
+  process.env.PLAYWRIGHT_EXECUTABLE_PATH
+    ? { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH }
+    : {},
+);
 try {
   for (const shot of SHOTS) {
     const context = await browser.newContext({

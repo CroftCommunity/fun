@@ -10,9 +10,14 @@ import { bubbleModule } from "./games/bubble/bubble.js";
 import { wyrdleModule } from "./games/wyrdle/wyrdle.js";
 import { twenty48Module } from "./games/2048/2048.js";
 import { drop4Module } from "./games/drop4/drop4.js";
+import { alignModule } from "./games/align/align.js";
+import { blockdokuModule } from "./games/blockdoku/blockdoku.js";
+import { looseendsModule } from "./games/looseends/looseends.js";
+import { colorSortModule } from "./games/color-sort/color-sort.js";
 import { astrayModule } from "./games/astray/astray.js";
 import { hexglModule } from "./games/hexgl/hexgl.js";
 import { clumsybirdModule } from "./games/clumsybird/clumsybird.js";
+import { orchardDropModule } from "./games/orchard-drop/orchard-drop.js";
 
 export const REGISTRY: readonly GameEntry[] = [
   {
@@ -28,6 +33,10 @@ export const REGISTRY: readonly GameEntry[] = [
   { id: "wyrdle", title: "Wyrdle", icon: "🐉", status: "playable", load: wyrdleModule },
   { id: "2048", title: "2048", icon: "🔢", status: "playable", load: twenty48Module },
   { id: "drop4", title: "Drop 4", icon: "🔴", status: "playable", load: drop4Module },
+  { id: "align", title: "Align", icon: "🟪", status: "playable", load: alignModule },
+  { id: "blockdoku", title: "Blockdoku", icon: "🟦", status: "playable", load: blockdokuModule },
+  { id: "looseends", title: "Loose Ends", icon: "🎯", status: "playable", load: looseendsModule },
+  { id: "color-sort", title: "Color Sort", icon: "🧪", status: "playable", load: colorSortModule },
   {
     id: "astray",
     title: "Astray",
@@ -67,6 +76,20 @@ export const REGISTRY: readonly GameEntry[] = [
       basedOn: "Flappy Bird by Dong Nguyen",
     },
     load: clumsybirdModule,
+  },
+  {
+    id: "orchard-drop",
+    title: "Orchard Drop",
+    icon: "🍉",
+    status: "playable",
+    tier: 2,
+    attribution: {
+      author: "the Croft shelf, with physics by @liabru's Matter.js",
+      license: "AGPL-3.0 (game) · MIT (Matter.js)",
+      upstreamUrl: "https://github.com/CroftCommunity/fun",
+      basedOn: "Suika Game (Watermelon Game)",
+    },
+    load: orchardDropModule,
   },
   { id: "cribbage", title: "Cribbage", icon: "🎴", status: "soon" },
 ];

@@ -42,14 +42,20 @@ pub fn deal(seed: u64, width: usize, height: usize, rows_filled: usize, colors: 
     }
 }
 
-/// What a shot did (RULES.md "The shot").
+/// What a shot did (RULES.md "The shot"). Carries the *cells* removed — with
+/// their colours — not just counts, so the UI can animate the pop (a burst at
+/// each popped cell) and the orphan drop (each stranded cell falling) instead of
+/// having them vanish on the next render. Presentational only: the cell lists are
+/// never hashed; `score_gain` and the board are unchanged by carrying them.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ShotReport {
-    /// Bubbles removed by the connected same-colour pop (0 if the cluster was < 3).
-    pub popped: usize,
-    /// Bubbles removed as floating clusters after the pop.
-    pub dropped: usize,
-    /// Score gained: `popped + 2 * dropped`.
+    /// Cells removed by the connected same-colour pop, each `(pos, colour)`
+    /// (empty if the cluster was < 3). All share the shot's colour.
+    pub popped: Vec<(Pos, u8)>,
+    /// Cells removed as now-floating clusters after the pop, each `(pos, colour)`
+    /// captured before clearing (colours are mixed — whatever was stranded).
+    pub dropped: Vec<(Pos, u8)>,
+    /// Score gained: `popped.len() + 2 * dropped.len()`.
     pub score_gain: u64,
 }
 
@@ -83,7 +89,7 @@ pub fn is_legal_target(board: &Board, target: Pos) -> bool {
 pub fn legal_targets(board: &Board) -> Vec<Pos> {
     let mut out = Vec::new();
     for r in 0..board.height {
-        for c in 0..Board::row_len(board.width, r) {
+        for c in 0..board.row_len_at(r) {
             if is_legal_target(board, (r, c)) {
                 out.push((r, c));
             }
@@ -121,11 +127,12 @@ fn connected_same_color(board: &Board, start: Pos, color: u8) -> Vec<Pos> {
 }
 
 /// Clear every bubble not connected to a filled top-row cell through filled
-/// six-neighbours; return how many dropped. Membership-only set use, so the
-/// result (board + count) is order-independent and deterministic.
-fn drop_floating(board: &mut Board) -> usize {
+/// six-neighbours; return the dropped cells as `(pos, colour)` (colour captured
+/// before clearing). Membership-only set use + a row-major clear scan, so the
+/// result (board + the dropped list) is order-independent and deterministic.
+fn drop_floating(board: &mut Board) -> Vec<(Pos, u8)> {
     let mut connected: HashSet<Pos> = HashSet::new();
-    let mut stack: Vec<Pos> = (0..Board::row_len(board.width, 0))
+    let mut stack: Vec<Pos> = (0..board.row_len_at(0))
         .filter(|&c| matches!(board.get(0, c), Some(Cell::Bubble(_))))
         .map(|c| (0, c))
         .collect();
@@ -139,12 +146,14 @@ fn drop_floating(board: &mut Board) -> usize {
             }
         }
     }
-    let mut dropped = 0;
+    let mut dropped = Vec::new();
     for r in 0..board.height {
-        for c in 0..Board::row_len(board.width, r) {
-            if matches!(board.get(r, c), Some(Cell::Bubble(_))) && !connected.contains(&(r, c)) {
-                board.set(r, c, Cell::Empty);
-                dropped += 1;
+        for c in 0..board.row_len_at(r) {
+            if let Some(Cell::Bubble(color)) = board.get(r, c) {
+                if !connected.contains(&(r, c)) {
+                    board.set(r, c, Cell::Empty);
+                    dropped.push(((r, c), color));
+                }
             }
         }
     }
@@ -159,16 +168,16 @@ fn drop_floating(board: &mut Board) -> usize {
 fn apply_shot(board: &mut Board, target: Pos, color: u8) -> ShotReport {
     board.set(target.0, target.1, Cell::Bubble(color));
     let cluster = connected_same_color(board, target, color);
-    let popped = if cluster.len() >= 3 {
+    let popped: Vec<(Pos, u8)> = if cluster.len() >= 3 {
         for &(r, c) in &cluster {
             board.set(r, c, Cell::Empty);
         }
-        cluster.len()
+        cluster.into_iter().map(|p| (p, color)).collect()
     } else {
-        0
+        Vec::new()
     };
     let dropped = drop_floating(board);
-    let score_gain = popped as u64 + 2 * dropped as u64;
+    let score_gain = popped.len() as u64 + 2 * dropped.len() as u64;
     ShotReport {
         popped,
         dropped,
@@ -253,14 +262,9 @@ mod b2_tests {
     fn shot_without_a_trio_just_places_the_bubble() {
         let mut b = board_3x3(&[(0, 0, 0)]);
         let rep = shoot(&mut b, (1, 0), 1).expect("legal");
-        assert_eq!(
-            rep,
-            ShotReport {
-                popped: 0,
-                dropped: 0,
-                score_gain: 0
-            }
-        );
+        assert!(rep.popped.is_empty(), "no trio, nothing pops");
+        assert!(rep.dropped.is_empty(), "nothing is stranded");
+        assert_eq!(rep.score_gain, 0);
         assert_eq!(b.get(1, 0), Some(Cell::Bubble(1)));
         assert_eq!(b.get(0, 0), Some(Cell::Bubble(0)));
     }
@@ -270,8 +274,12 @@ mod b2_tests {
         // (0,0),(0,1) are colour 0; firing 0 into (1,0) connects all three.
         let mut b = board_3x3(&[(0, 0, 0), (0, 1, 0)]);
         let rep = shoot(&mut b, (1, 0), 0).expect("legal");
-        assert_eq!(rep.popped, 3, "the connected trio pops");
-        assert_eq!(rep.dropped, 0);
+        assert_eq!(rep.popped.len(), 3, "the connected trio pops");
+        assert!(
+            rep.popped.iter().all(|&(_, col)| col == 0),
+            "popped cells carry the shot colour for the burst animation"
+        );
+        assert!(rep.dropped.is_empty());
         assert_eq!(rep.score_gain, 3);
         assert!(is_cleared(&b), "the board is empty after the pop");
     }
@@ -283,8 +291,12 @@ mod b2_tests {
         // strands (2,0) from the ceiling, so it drops.
         let mut b = board_3x3(&[(0, 0, 0), (0, 1, 0), (1, 0, 0), (2, 0, 1)]);
         let rep = shoot(&mut b, (1, 1), 0).expect("legal");
-        assert_eq!(rep.popped, 4, "the 4-cluster of colour 0 pops");
-        assert_eq!(rep.dropped, 1, "the stranded colour-1 bubble drops");
+        assert_eq!(rep.popped.len(), 4, "the 4-cluster of colour 0 pops");
+        assert_eq!(
+            rep.dropped,
+            vec![((2, 0), 1u8)],
+            "the stranded colour-1 bubble drops, carrying its position + colour so the UI can animate it falling"
+        );
         assert_eq!(rep.score_gain, 4 + 2, "dropped bubbles score double");
         assert!(is_cleared(&b));
     }
@@ -296,7 +308,7 @@ mod b2_tests {
         let mut b = Board::new_empty(8, 11).expect("dims");
         let landing = crate::aim::resolve_shot(&b, Angle(90)).pos;
         let rep = shoot_angle(&mut b, Angle(90), 3);
-        assert_eq!(rep.popped, 0, "a lone bubble does not pop");
+        assert!(rep.popped.is_empty(), "a lone bubble does not pop");
         assert_eq!(
             b.get(landing.0, landing.1),
             Some(Cell::Bubble(3)),
@@ -314,7 +326,10 @@ mod b2_tests {
             b.set(0, c, Cell::Bubble(0));
         }
         let rep = shoot_angle(&mut b, Angle(90), 0);
-        assert!(rep.popped >= 3, "completes a poppable cluster, got {rep:?}");
+        assert!(
+            rep.popped.len() >= 3,
+            "completes a poppable cluster, got {rep:?}"
+        );
     }
 
     #[test]

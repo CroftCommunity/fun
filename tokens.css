@@ -80,6 +80,60 @@
   --d4-o: #2f6fd0;            /* the ○ disc  on --d4-slot (4.08:1)      */
   --d4-win: #e0a72e;          /* the winning-line ring (gold)          */
 
+  /* Blockdoku board lines (graphical, not text): a thin cell grid and a heavier
+     3×3-box divider that also frames the board, so the nine sub-squares read at a
+     glance on the tan cells. */
+  --bdk-grid: #b8ad92;        /* thin line between cells               */
+  --bdk-box: #37503f;         /* heavy 3×3-box divider + board frame   */
+
+  /* Align — original falling-block palette (graphical: piece cells on the
+     always-dark play surface, theme-independent; not text, so not in PAIRS).
+     Deliberately NOT the guideline shape-to-colour mapping (IP guardrail). */
+  --al-board: #12141c;        /* the dark play surface                 */
+  --al-grid: #262b3b;         /* subtle grid line                      */
+  --al-well: #0c0e15;         /* the well border / frame               */
+  --al-ghost: #6b7186;        /* ghost / hint outline                  */
+  --al-i: #7c5cff;            /* violet   line piece                   */
+  --al-o: #ff6b5e;            /* coral    square piece                 */
+  --al-t: #1fb6a6;            /* teal     tee piece                    */
+  --al-s: #e8b93e;            /* gold     S piece                      */
+  --al-z: #4aa8ff;            /* sky      Z piece                      */
+  --al-j: #e05c8f;            /* rose     J piece                      */
+  --al-l: #5cc96a;            /* green    L piece                      */
+
+  /* Loose Ends — the "Paper" identity (canvas colours; the game surface is
+     exempt from text-contrast checks but stays legible). Deep sepia arrows on
+     warm paper. */
+  --le-bg: #f3ecdc;           /* warm paper play surface               */
+  --le-arrow: #7a5233;        /* sepia-brown arrow bodies + heads      */
+  --le-dot: #d9cbae;          /* faint lattice dots at grid corners    */
+  --le-accent: #c96f2a;       /* burnt-amber accent                    */
+  --le-hint: #1fae83;         /* mint — a safe (free) arrow            */
+  --le-danger: #cf3b22;       /* the blocked-tap flash                 */
+  --le-droplet: #3a63d0;      /* the droplet (lives) blue on paper     */
+
+  /* Color Sort — 12 maximally-distinct unit hues (graphical fills on the tube
+     glass; not text, so not in PAIRS — the fruit icons are the a11y guarantee).
+     Theme-independent so a solved tube reads the same in light and dark. */
+  --cs-c0: #e6423a;           /* red      🍎 */
+  --cs-c1: #f2c230;           /* lemon    🍋 */
+  --cs-c2: #8e44d0;           /* grape    🍇 */
+  --cs-c3: #74c53b;           /* kiwi     🥝 */
+  --cs-c4: #3a6fe6;           /* blueberry 🫐 */
+  --cs-c5: #ef8b25;           /* orange   🍊 */
+  --cs-c6: #ff7fbf;           /* strawberry 🍓 */
+  --cs-c7: #b98a4e;           /* coconut  🥥 */
+  --cs-c8: #6b3fa0;           /* eggplant 🍆 */
+  --cs-c9: #e8d44d;           /* corn     🌽 */
+  --cs-c10: #17a2a2;          /* carrot-teal 🥕 */
+  --cs-c11: #c9506a;          /* peach    🍑 */
+  /* Skin chrome: tube glass, bolt post/plate, and the solved cap. */
+  --cs-glass: #ffffff;        /* tube glass tint (low-opacity in styles) */
+  --cs-tube-edge: #cfc7b4;    /* tube outline on the felt              */
+  --cs-post: #9a917d;         /* bolt thread post                      */
+  --cs-plate: #6f6857;        /* bolt base plate                       */
+  --cs-cap: #37503f;          /* the locked-tube cap                   */
+
   /* Type roles (self-hostable display + system UI fallback). */
   --font-display: "Fredoka", "Baloo 2", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -149,6 +203,27 @@
   --d4-x: #ef6b8a;            /* the ✕ disc  on --d4-slot (5.00:1)      */
   --d4-o: #7fb0f0;            /* the ○ disc  on --d4-slot (6.57:1)      */
   --d4-win: #e0a72e;          /* the winning-line ring (gold)          */
+
+  /* Blockdoku board lines, re-tuned for dark: a subtle grid and a light-moss
+     box divider that pops on the near-black cells. */
+  --bdk-grid: #47412f;        /* thin line between cells               */
+  --bdk-box: #6f9079;         /* heavy 3×3-box divider + board frame   */
+
+  /* Loose Ends — the "Ink" identity: pale steel arrows on deep slate-blue. */
+  --le-bg: #182230;           /* deep slate-blue play surface          */
+  --le-arrow: #a7b6cb;        /* pale steel arrow bodies + heads       */
+  --le-dot: #2d3c51;          /* faint lattice dots                    */
+  --le-accent: #f2a541;       /* amber accent                          */
+  --le-hint: #3ddba9;         /* mint — a safe (free) arrow            */
+  --le-danger: #e4573d;       /* the blocked-tap flash                 */
+  --le-droplet: #4f7cff;      /* the droplet (lives) blue              */
+
+  /* Color Sort skin chrome, re-tuned for the night table (hues are shared). */
+  --cs-glass: #ffffff;
+  --cs-tube-edge: #4a4636;
+  --cs-post: #6b6455;
+  --cs-plate: #4a4636;
+  --cs-cap: #6f9079;
 
   --theme-color: #123f2b;
 }

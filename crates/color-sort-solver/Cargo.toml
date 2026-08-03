@@ -1,0 +1,16 @@
+[package]
+name = "color-sort-solver"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Budgeted best-first search over color-sort-core that finds a solving pour line if one exists within budget (par = its length, not claimed optimal — shortest is NP-complete). Certifies the winnable-daily pack, and drives runtime hints + endless generation. Order-agnostic canonical dedup + colour-break heuristic."
+
+[dependencies]
+color-sort-core = { workspace = true }
+pond-docformat.workspace = true
+serde = { workspace = true }
+
+[dev-dependencies]
+serde_json.workspace = true
+pond-outcome.workspace = true

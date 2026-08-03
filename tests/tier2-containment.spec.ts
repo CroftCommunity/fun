@@ -113,8 +113,12 @@ test.describe("Tier-2 containment/legibility gate", () => {
       const frame = page.locator("iframe.wrapped-game-frame");
       await expect(frame).toBeVisible();
 
+      // The frame takes keyboard focus on its own (no manual focus() first) —
+      // an opaque-origin sandbox otherwise leaves key events at the parent, so a
+      // keyboard game never receives them. This is the regression guard for that.
+      await expect(frame).toBeFocused();
+
       // Input reaches the game; the top window does not navigate away.
-      await frame.focus();
       await page.keyboard.press("ArrowUp");
       await page.waitForTimeout(200);
       expect(new URL(page.url()).pathname).toBe(`/${id}/`);

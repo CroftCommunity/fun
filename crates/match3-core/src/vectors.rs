@@ -36,6 +36,11 @@ pub struct Vector {
     /// `board`; omitted (empty) for plain boards.
     #[serde(default)]
     pub special: Vec<String>,
+    /// Optional parallel obstacle-flavour grid (`.`/`L`/`M`), for vectors that
+    /// pre-place licorice/meringue tiles (Track D, T7). Same shape as `board`;
+    /// each flavour cell must sit on a `Blocker`. Omitted (empty) otherwise.
+    #[serde(default)]
+    pub obstacle: Vec<String>,
     #[serde(default)]
     pub moves: Vec<Move4>,
     pub expect: Expect,
@@ -57,7 +62,11 @@ impl Vector {
 
     pub fn to_game(&self) -> Game {
         let rows: Vec<&str> = self.board.iter().map(|s| s.as_str()).collect();
-        let board = if self.special.is_empty() {
+        let board = if !self.obstacle.is_empty() {
+            // Obstacle vectors (T7) carry no specials, so the two grids never mix.
+            let orows: Vec<&str> = self.obstacle.iter().map(|s| s.as_str()).collect();
+            Board::from_rows_with_obstacles(&rows, &orows).expect("vector board parses")
+        } else if self.special.is_empty() {
             Board::from_rows(&rows).expect("vector board parses")
         } else {
             let srows: Vec<&str> = self.special.iter().map(|s| s.as_str()).collect();

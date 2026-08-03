@@ -1,0 +1,22 @@
+{
+  "name": "obstacle-clear",
+  "seed": 1,
+  "colors": 6,
+  "board": [
+    "A123",
+    "0051",
+    "120B"
+  ],
+  "obstacle": [
+    "L...",
+    "....",
+    "...M"
+  ],
+  "moves": [ [1, 2, 2, 2] ],
+  "expect": {
+    "move_legal": [true],
+    "step0_cleared": [ [[1,0],[1,1],[1,2]] ],
+    "step0_score": [50],
+    "final_state_hash": "2fc065f7724ae47b7e6e42d9d339e7813bdb11ce79056bb4f52a157bc4a4cb57"
+  }
+}

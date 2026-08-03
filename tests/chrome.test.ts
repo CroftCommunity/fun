@@ -76,7 +76,7 @@ describe("games drawer chrome", () => {
     const ids = [...document.querySelectorAll(".drawer-item")].map((a) =>
       a.getAttribute("data-game-id"),
     );
-    expect(ids).toEqual(["placeholder", "solitaire", "match3", "bubble", "wyrdle", "2048", "drop4", "astray", "hexgl", "clumsybird", "cribbage"]);
+    expect(ids).toEqual(["placeholder", "solitaire", "match3", "bubble", "wyrdle", "2048", "drop4", "align", "blockdoku", "looseends", "color-sort", "astray", "hexgl", "clumsybird", "orchard-drop", "cribbage"]);
     expect(
       document.querySelector('[data-game-id="solitaire"]')?.getAttribute("href"),
     ).toBe("/solitaire/");

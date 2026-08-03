@@ -54,6 +54,44 @@ pub enum SpecialKind {
     Fish,
 }
 
+/// An **obstacle flavour** carried by a `Blocker` cell via the parallel `obstacle`
+/// overlay (Track D, T7). A flavoured blocker is a distinct, mechanically-separate
+/// obstacle tile: **licorice** (single-hit) or **meringue** (a durable, multi-layer
+/// obstacle). Both clear by the proven adjacency mechanic (a match next to them
+/// chips one layer); the flavour governs only rendering identity (stable as
+/// meringue loses layers), the deal, and hashing. A plain blocker carries `None`,
+/// so the existing clear-blockers mode is byte-identical.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Obstacle {
+    /// A single-hit obstacle tile (dealt with one layer).
+    Licorice,
+    /// A durable multi-hit obstacle tile (dealt with 2–3 layers).
+    Meringue,
+}
+
+impl Obstacle {
+    /// The stable hash tag byte (RULES.md "State hash"). `0x00` is reserved for
+    /// "no obstacle", so flavours start at `0x01`. Part of the verifiable
+    /// fingerprint — never renumber a shipped value.
+    #[must_use]
+    pub fn tag(self) -> u8 {
+        match self {
+            Obstacle::Licorice => 0x01,
+            Obstacle::Meringue => 0x02,
+        }
+    }
+
+    /// The authoring char for `from_rows_with_obstacles` / debug grids.
+    fn from_char(ch: char) -> Option<Option<Obstacle>> {
+        match ch {
+            '.' => Some(None),
+            'L' => Some(Some(Obstacle::Licorice)),
+            'M' => Some(Some(Obstacle::Meringue)),
+            _ => None,
+        }
+    }
+}
+
 impl SpecialKind {
     /// The stable hash tag byte (RULES.md "State hash"). `0x00` is reserved for
     /// "no special", so kinds start at `0x01`. These bytes are part of the
@@ -102,6 +140,12 @@ pub struct Board {
     /// board with no specials appends nothing to the hash, so a gem-only board
     /// hashes exactly as it did before the overlay existed.
     special: Vec<Option<SpecialKind>>,
+    /// Parallel row-major **obstacle-flavour** overlay (Track D, T7): `Some` only
+    /// where the cell is a `Blocker` (licorice / meringue), `None` for a plain
+    /// blocker or any non-blocker cell. Like the other overlays it is orthogonal to
+    /// matching/legality and appends nothing to the hash when empty, so every
+    /// pre-obstacle board hashes exactly as before.
+    obstacle: Vec<Option<Obstacle>>,
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -136,13 +180,38 @@ impl Board {
         }
         let jelly = vec![0u8; want];
         let special = vec![None; want];
+        let obstacle = vec![None; want];
         Ok(Self {
             width,
             height,
             cells,
             jelly,
             special,
+            obstacle,
         })
+    }
+
+    /// The obstacle-flavour overlay, row-major (`None` = a plain blocker or a
+    /// non-blocker cell).
+    #[must_use]
+    pub fn obstacle(&self) -> &[Option<Obstacle>] {
+        &self.obstacle
+    }
+
+    /// The obstacle flavour on one cell (`None` = a plain blocker / non-blocker).
+    #[inline]
+    #[must_use]
+    pub fn obstacle_at(&self, row: usize, col: usize) -> Option<Obstacle> {
+        self.obstacle[self.idx(row, col)]
+    }
+
+    /// Set (or clear, with `None`) the obstacle flavour on one cell. Invariant: a
+    /// flavour is only ever set where the cell is a `Blocker`, and is cleared when
+    /// the blocker clears — the overlay never marks a gem, hole, or ingredient.
+    #[inline]
+    pub fn set_obstacle(&mut self, row: usize, col: usize, flavour: Option<Obstacle>) {
+        let i = self.idx(row, col);
+        self.obstacle[i] = flavour;
     }
 
     /// The special-candy overlay, row-major (`None` = a plain gem).
@@ -276,6 +345,33 @@ impl Board {
                 n += 1;
                 let kind = SpecialKind::from_char(ch).ok_or(BoardError::BadChar(ch))?;
                 board.set_special(r, c, kind);
+            }
+            if n != board.width {
+                return Err(BoardError::Ragged {
+                    row: r,
+                    got: n,
+                    width: board.width,
+                });
+            }
+        }
+        Ok(board)
+    }
+
+    /// Parse a char grid plus a parallel **obstacle-flavour** grid
+    /// (`.` = plain, `L` = licorice, `M` = meringue). Each flavour cell must sit on
+    /// a `Blocker` in the base grid. The two grids must have the same shape. Used by
+    /// obstacle golden vectors + tests.
+    pub fn from_rows_with_obstacles(
+        rows: &[&str],
+        obstacle_rows: &[&str],
+    ) -> Result<Self, BoardError> {
+        let mut board = Board::from_rows(rows)?;
+        for (r, orow) in obstacle_rows.iter().enumerate() {
+            let mut n = 0;
+            for (c, ch) in orow.chars().enumerate() {
+                n += 1;
+                let flavour = Obstacle::from_char(ch).ok_or(BoardError::BadChar(ch))?;
+                board.set_obstacle(r, c, flavour);
             }
             if n != board.width {
                 return Err(BoardError::Ragged {

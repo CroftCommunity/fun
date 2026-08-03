@@ -1,0 +1,17 @@
+[package]
+name = "color-sort-wasm"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Browser binding over color-sort-core + color-sort-solver for the shelf: raw C-ABI + serde-JSON (no wasm-bindgen). Holds one sort-puzzle game (daily from the baked pack, endless generated at runtime), integer-arg pour/undo/restart exports, board/hash/outcome JSON via an output buffer, a solver hint. Never panics."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+color-sort-core = { workspace = true }
+color-sort-solver = { workspace = true }
+pond-outcome = { workspace = true }
+serde = { workspace = true }
+serde_json.workspace = true

@@ -265,21 +265,34 @@ Execution plan for B0: `plans/2026-07-30-match3-b0-specials.md`.
 - **DoD:** star tiers are the player ladder; par table baked + verifiable; a
   recorded rationale for the rung choices.
 
-### Track D — Parity completeness (confirm each item before building)
+### Track D — Parity completeness — **COMPLETE (2026-07-31)**
 The rest of the Candy-Crush surface, surfaced honestly so "entirety" isn't a
-pretence. Each is an owner decision like D3/D4 before it is built:
-- **More objectives:** ingredients (drop-to-bottom) — **DONE (2026-07-31)**
-  (owner-confirmed; plan `plans/2026-07-31-match3-d-ingredients.md`). A fourth
-  objective over the 8×8 engine: `Cell::Ingredient`, a falling non-gem that exits
-  at the bottom row (hash tag `0x03`, additive — no re-lock); the full mode template
-  (deal → `find_ingredients` + winnable pack → `Mode::Ingredients` binding +
-  `match3-ingredients` outcome → UI toggle/tile/HUD + how-to + e2e). Playable at
-  `?mode=ingredients`, winnable-daily, verifiable, accessible, deployed. — order/mixed
-  (a checklist), timed (poor fit for the no-wall-clock verifiable model) still to confirm.
-- **More obstacle families:** licorice, spreading chocolate, meringue/icing,
-  marmalade, locks, timed bombs (each new state → hash + vectors + solver support).
-- **Meta (likely out of scope for the shelf):** boosters, lives, level maps,
-  progression — flagged as probably-not-us; confirm.
+pretence. Each was an owner decision like D3/D4 before it was built. Track D is now
+an **honest boundary**: the objectives + obstacle families that fit the shelf are
+shipped; the rest is recorded as deliberately out of scope, with reasons.
+- **Objectives — DONE.**
+  - **Ingredients (drop-to-bottom)** — DONE (plan `plans/2026-07-31-match3-d-ingredients.md`):
+    `Cell::Ingredient`, a falling non-gem exiting the bottom row (hash tag `0x03`).
+  - **Order/mixed CHECKLIST** — DONE (plan `plans/2026-07-31-match3-d-checklist-obstacles.md`):
+    the mixed order (clear N of a colour + make N striped + N wrapped), a **path-accumulated**
+    win (a `ChecklistProgress` accumulator fed by two neutral off-hash `StepReport` signals,
+    shared by binding + solver + replay). Playable at `?mode=checklist`, winnable-daily
+    (seed-template + solver-filtered pack), verifiable (`match3-checklist`), accessible,
+    deployed + live-smoked.
+  - **Timed — OUT OF SCOPE (deliberate).** A timed objective breaks the shelf's no-wall-clock
+    verifiable model: a result must be a pure function of `(seed, moves)`, but wall-clock is
+    not replayable, so a timed outcome could not be re-verified. Recorded, not built.
+- **Obstacle families — DONE (meringue + licorice).** DONE (same plan): licorice + meringue
+  ship as distinct, mechanically-separate tiles via a blocker-flavour overlay (`o\x00` hash
+  section, additive — no re-lock), in a new `Mode::Obstacles` (`?mode=obstacles`). Meringue is
+  the durable multi-hit tile (first shipped layered-blocker daily); licorice single-hit.
+  Winnable-daily + verifiable (`match3-obstacles`), deployed + live-smoked. **Further families
+  (spreading chocolate, marmalade, locks, timed bombs) — OUT OF SCOPE (deliberate):** buildable
+  later on the same T7 overlay pattern, but not part of this closeout; timed bombs also hit the
+  no-wall-clock limit.
+- **Meta (boosters, lives, level maps, progression) — OUT OF SCOPE (deliberate).** Contradicts
+  the single-daily-board, account-less, server-less shelf: no accounts to hold lives/
+  progression, no server to gate boosters. A deliberate boundary, not an omission.
 
 ### Backlog (not a phase yet)
 - **D6 in-browser AI hint/coach** — an advisory "show me a strong line" / smarter
@@ -340,3 +353,13 @@ deterministic player ladder baked into a committed table, calibrated offline and
 re-run after specials; Track D items are each owner-confirmed before build; the
 hint/coach is on the backlog. Every commit leaves Rust + `npm run test` +
 `npm run e2e` green and is deployed; docs reflect reality.
+
+**Status (2026-07-31): the parity program is COMPLETE.** Tracks A (jelly), B
+(specials + combos), C (par ladder), and D (parity completeness) all shipped.
+match-3 has **six objectives** (target-score, clear-blockers, clear-jelly,
+ingredients, order/mixed checklist, clear-obstacles), the full specials set + combo
+matrix, a calibrated baked par ladder, and two obstacle families (licorice +
+meringue). Parity is "complete enough" — an honest boundary: timed, spreading
+chocolate / marmalade / locks / timed bombs, and all meta (boosters, lives, level
+maps, progression) are recorded as **deliberately out of scope** with reasons (see
+Track D). The in-browser AI hint/coach (D6) remains the one backlog item.

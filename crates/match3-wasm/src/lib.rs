@@ -12,9 +12,10 @@
 //! to a status code or an empty/`"null"` buffer.
 
 use match3_core::{
-    blockers_mode, blockers_remaining, deal, deal_blockers, deal_ingredients, deal_jelly,
-    ingredients_mode, ingredients_remaining, jelly_mode, jelly_remaining, legal_swaps,
-    reference_score, Cell, Game as M3Game, SpecialKind,
+    blockers_mode, blockers_remaining, checklist_mode, checklist_targets, deal, deal_blockers,
+    deal_ingredients, deal_jelly, deal_obstacles, ingredients_mode, ingredients_remaining,
+    jelly_mode, jelly_remaining, legal_swaps, obstacles_mode, reference_score, Cell,
+    ChecklistProgress, ChecklistTargets, Game as M3Game, Obstacle, SpecialKind,
 };
 use pond_outcome::{attest, Game, Outcome, Replayed};
 use serde::{Deserialize, Serialize};
@@ -38,6 +39,13 @@ enum Mode {
     Jelly,
     /// Drop every ingredient to the bottom within the (larger) move budget (Track D).
     Ingredients,
+    /// Complete the mixed **checklist** (clear N of a colour, make N striped, make
+    /// N wrapped) within the move budget (Track D, T6). The win is path-accumulated.
+    Checklist,
+    /// Clear every **obstacle** — licorice + meringue tiles — within the move budget
+    /// (Track D, T7). Obstacles are `Blocker` cells, so the win reuses
+    /// `blockers_remaining == 0`.
+    Obstacles,
 }
 
 // --- the baked par table (parity Track P-now / C1) ---
@@ -136,6 +144,11 @@ struct Session {
     jelly_total: u32,
     /// Ingredients present in the deal (ingredients mode); `0` otherwise.
     ingredients_total: u32,
+    /// Checklist goals for this seed (checklist mode; default/zero otherwise).
+    checklist_targets: ChecklistTargets,
+    /// Running checklist progress, folded from each legal move's report
+    /// (checklist mode; stays zero otherwise). The win is `progress.met(targets)`.
+    checklist_progress: ChecklistProgress,
     /// Applied legal swaps `[from_row, from_col, to_row, to_col]` — the outcome proof.
     swaps: Vec<[u8; 4]>,
     assistance_used: bool,
@@ -150,6 +163,8 @@ impl Session {
             Mode::Blockers => blockers_remaining(&self.game.board) == 0,
             Mode::Jelly => jelly_remaining(&self.game.board) == 0,
             Mode::Ingredients => ingredients_remaining(&self.game.board) == 0,
+            Mode::Checklist => self.checklist_progress.met(&self.checklist_targets),
+            Mode::Obstacles => blockers_remaining(&self.game.board) == 0,
         }
     }
 }
@@ -207,6 +222,8 @@ pub extern "C" fn new_game(seed_lo: u32, seed_hi: u32) {
         blockers_total: 0,
         jelly_total: 0,
         ingredients_total: 0,
+        checklist_targets: ChecklistTargets::default(),
+        checklist_progress: ChecklistProgress::default(),
         swaps: Vec::new(),
         assistance_used: false,
     });
@@ -235,6 +252,8 @@ pub extern "C" fn new_blockers_game(seed_lo: u32, seed_hi: u32) {
         blockers_total,
         jelly_total: 0,
         ingredients_total: 0,
+        checklist_targets: ChecklistTargets::default(),
+        checklist_progress: ChecklistProgress::default(),
         swaps: Vec::new(),
         assistance_used: false,
     });
@@ -263,6 +282,8 @@ pub extern "C" fn new_jelly_game(seed_lo: u32, seed_hi: u32) {
         blockers_total: 0,
         jelly_total,
         ingredients_total: 0,
+        checklist_targets: ChecklistTargets::default(),
+        checklist_progress: ChecklistProgress::default(),
         swaps: Vec::new(),
         assistance_used: false,
     });
@@ -292,6 +313,69 @@ pub extern "C" fn new_ingredients_game(seed_lo: u32, seed_hi: u32) {
         blockers_total: 0,
         jelly_total: 0,
         ingredients_total,
+        checklist_targets: ChecklistTargets::default(),
+        checklist_progress: ChecklistProgress::default(),
+        swaps: Vec::new(),
+        assistance_used: false,
+    });
+}
+
+/// Start a fresh **checklist** game (Track D, T6): deal a winnable board from
+/// `seed` (the daily seeds come from the solver pack) on plain gems with the
+/// checklist-mode budget. The objective is to complete every goal in the seed's
+/// `checklist_targets` — the win is path-accumulated as moves are played.
+#[no_mangle]
+pub extern "C" fn new_checklist_game(seed_lo: u32, seed_hi: u32) {
+    let seed = (u64::from(seed_hi) << 32) | u64::from(seed_lo);
+    let board = deal(
+        seed,
+        checklist_mode::WIDTH,
+        checklist_mode::HEIGHT,
+        checklist_mode::COLORS,
+    );
+    set_session(Session {
+        seed,
+        mode: Mode::Checklist,
+        game: M3Game::new(board, seed, checklist_mode::COLORS),
+        budget: checklist_mode::MOVE_BUDGET,
+        targets: [0; 3],
+        blockers_total: 0,
+        jelly_total: 0,
+        ingredients_total: 0,
+        checklist_targets: checklist_targets(seed, checklist_mode::COLORS),
+        checklist_progress: ChecklistProgress::default(),
+        swaps: Vec::new(),
+        assistance_used: false,
+    });
+}
+
+/// Start a fresh **clear-the-obstacles** game (Track D, T7): deal a winnable board
+/// from `seed` (the daily seeds come from the solver pack) with the obstacles-mode
+/// budget. The objective is to clear every obstacle (licorice + meringue) — they
+/// are `Blocker` cells, so the win + count reuse the blocker machinery.
+#[no_mangle]
+pub extern "C" fn new_obstacles_game(seed_lo: u32, seed_hi: u32) {
+    let seed = (u64::from(seed_hi) << 32) | u64::from(seed_lo);
+    let board = deal_obstacles(
+        seed,
+        obstacles_mode::WIDTH,
+        obstacles_mode::HEIGHT,
+        obstacles_mode::COLORS,
+        obstacles_mode::LICORICE,
+        obstacles_mode::MERINGUE,
+    );
+    let blockers_total = blockers_remaining(&board);
+    set_session(Session {
+        seed,
+        mode: Mode::Obstacles,
+        game: M3Game::new(board, seed, obstacles_mode::COLORS),
+        budget: obstacles_mode::MOVE_BUDGET,
+        targets: [0; 3],
+        blockers_total,
+        jelly_total: 0,
+        ingredients_total: 0,
+        checklist_targets: ChecklistTargets::default(),
+        checklist_progress: ChecklistProgress::default(),
         swaps: Vec::new(),
         assistance_used: false,
     });
@@ -302,7 +386,8 @@ pub extern "C" fn new_ingredients_game(seed_lo: u32, seed_hi: u32) {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct BoardView {
-    /// `"target-score"`, `"blockers"`, or `"jelly"` — the UI branches on this.
+    /// `"target-score"` / `"blockers"` / `"jelly"` / `"ingredients"` /
+    /// `"checklist"` / `"obstacles"` — the UI branches on this.
     mode: &'static str,
     width: usize,
     height: usize,
@@ -334,6 +419,21 @@ struct BoardView {
     /// Ingredients mode: how many ingredients remain and how many the deal had.
     ingredients_remaining: u32,
     ingredients_total: u32,
+    /// Checklist mode (T6): the target colour and, per goal, the running progress
+    /// and its target (`0` in every other mode). The UI renders these as a tally.
+    checklist_color: u8,
+    checklist_color_cleared: u32,
+    checklist_color_target: u32,
+    checklist_striped_made: u32,
+    checklist_striped_target: u32,
+    checklist_wrapped_made: u32,
+    checklist_wrapped_target: u32,
+    /// Obstacles mode (T7): per-cell obstacle flavour — `""` (none) / `"licorice"` /
+    /// `"meringue"` — and, for a flavoured blocker, its remaining layer count (for
+    /// meringue pips; `0` elsewhere). The `blockers` mask + `blockers_remaining` /
+    /// `blockers_total` above carry the counts (obstacles are blockers).
+    obstacles: Vec<Vec<&'static str>>,
+    obstacle_layers: Vec<Vec<u8>>,
     won: bool,
 }
 
@@ -372,12 +472,35 @@ fn board_view(s: &Session) -> BoardView {
                 .collect()
         })
         .collect();
+    let obstacles = (0..b.height)
+        .map(|r| {
+            (0..b.width)
+                .map(|c| match b.obstacle_at(r, c) {
+                    None => "",
+                    Some(Obstacle::Licorice) => "licorice",
+                    Some(Obstacle::Meringue) => "meringue",
+                })
+                .collect()
+        })
+        .collect();
+    let obstacle_layers = (0..b.height)
+        .map(|r| {
+            (0..b.width)
+                .map(|c| match b.get(r, c) {
+                    Cell::Blocker(l) if b.obstacle_at(r, c).is_some() => l,
+                    _ => 0,
+                })
+                .collect()
+        })
+        .collect();
     BoardView {
         mode: match s.mode {
             Mode::TargetScore => "target-score",
             Mode::Blockers => "blockers",
             Mode::Jelly => "jelly",
             Mode::Ingredients => "ingredients",
+            Mode::Checklist => "checklist",
+            Mode::Obstacles => "obstacles",
         },
         width: b.width,
         height: b.height,
@@ -397,6 +520,15 @@ fn board_view(s: &Session) -> BoardView {
         jelly_total: s.jelly_total,
         ingredients_remaining: ingredients_remaining(b),
         ingredients_total: s.ingredients_total,
+        checklist_color: s.checklist_targets.color,
+        checklist_color_cleared: s.checklist_progress.color_cleared,
+        checklist_color_target: s.checklist_targets.color_count,
+        checklist_striped_made: s.checklist_progress.striped_made,
+        checklist_striped_target: s.checklist_targets.striped,
+        checklist_wrapped_made: s.checklist_progress.wrapped_made,
+        checklist_wrapped_target: s.checklist_targets.wrapped,
+        obstacles,
+        obstacle_layers,
         won: s.won(),
     }
 }
@@ -476,7 +608,14 @@ pub extern "C" fn play_swap(r1: u32, c1: u32, r2: u32, c2: u32) -> u32 {
     if from.0 >= HEIGHT || from.1 >= WIDTH || to.0 >= HEIGHT || to.1 >= WIDTH {
         return 2;
     }
-    if s.game.play_move(from, to).legal {
+    let report = s.game.play_move(from, to);
+    if report.legal {
+        // Checklist mode's win is path-accumulated: fold this move's report into
+        // the running progress. A no-op for every other mode.
+        if s.mode == Mode::Checklist {
+            s.checklist_progress
+                .apply(&report, s.checklist_targets.color);
+        }
         s.swaps.push([r1 as u8, c1 as u8, r2 as u8, c2 as u8]);
         0
     } else {
@@ -506,6 +645,10 @@ pub extern "C" fn play_swap_traced(r1: u32, c1: u32, r2: u32, c2: u32) -> *const
     let (report, snapshots) = s.game.play_move_traced(from, to);
     if !report.legal {
         return set_out_str("[]");
+    }
+    if s.mode == Mode::Checklist {
+        s.checklist_progress
+            .apply(&report, s.checklist_targets.color);
     }
     s.swaps.push([r1 as u8, c1 as u8, r2 as u8, c2 as u8]);
     let frames: Vec<Vec<String>> = snapshots.iter().map(match3_core::Board::to_rows).collect();
@@ -635,11 +778,71 @@ impl Game for Match3Ingredients {
     }
 }
 
+/// The `pond-outcome` [`Game`] impl for the **checklist** objective (Track D, T6) —
+/// replay `(seed, swaps)` by dealing the plain-gem board, re-deriving the seed's
+/// checklist targets, and folding each move's report into a `ChecklistProgress`;
+/// the win is verifiable (`Won` ⟺ every goal met). Metric is `move_count`; no
+/// score/stars.
+struct Match3Checklist;
+impl Game for Match3Checklist {
+    type Move = [u8; 4];
+    const KIND: &'static str = "match3-checklist";
+    const VERSION: u32 = 1;
+    fn replay(seed: u64, moves: &[[u8; 4]]) -> Replayed {
+        let board = deal(
+            seed,
+            checklist_mode::WIDTH,
+            checklist_mode::HEIGHT,
+            checklist_mode::COLORS,
+        );
+        let mut game = M3Game::new(board, seed, checklist_mode::COLORS);
+        let targets = checklist_targets(seed, checklist_mode::COLORS);
+        let mut progress = ChecklistProgress::default();
+        for m in moves {
+            let report = game.play_move(
+                (m[0] as usize, m[1] as usize),
+                (m[2] as usize, m[3] as usize),
+            );
+            progress.apply(&report, targets.color);
+        }
+        Replayed::new(game.state_hash(), progress.met(&targets))
+    }
+}
+
+/// The `pond-outcome` [`Game`] impl for **clear-the-obstacles** (Track D, T7) —
+/// replay `(seed, swaps)` by dealing the obstacle board and applying the swaps; the
+/// win is verifiable (`Won` ⟺ no blocker remains, licorice + meringue alike). Metric
+/// is `move_count`; no score/stars.
+struct Match3Obstacles;
+impl Game for Match3Obstacles {
+    type Move = [u8; 4];
+    const KIND: &'static str = "match3-obstacles";
+    const VERSION: u32 = 1;
+    fn replay(seed: u64, moves: &[[u8; 4]]) -> Replayed {
+        let board = deal_obstacles(
+            seed,
+            obstacles_mode::WIDTH,
+            obstacles_mode::HEIGHT,
+            obstacles_mode::COLORS,
+            obstacles_mode::LICORICE,
+            obstacles_mode::MERINGUE,
+        );
+        let mut game = M3Game::new(board, seed, obstacles_mode::COLORS);
+        for m in moves {
+            let _ = game.play_move(
+                (m[0] as usize, m[1] as usize),
+                (m[2] as usize, m[3] as usize),
+            );
+        }
+        Replayed::new(game.state_hash(), blockers_remaining(&game.board) == 0)
+    }
+}
+
 /// The outcome record for the current game, as a `pond-docformat` envelope JSON.
 /// `declare`: 1 = include the (self-declared) assistance flag, 0 = omit it. A
 /// run that did not meet the objective is `Lost`; a met objective is `Won`. The
 /// envelope `kind` distinguishes the modes (`match3` / `match3-blockers` /
-/// `match3-jelly`).
+/// `match3-jelly` / `match3-ingredients` / `match3-checklist` / `match3-obstacles`).
 #[no_mangle]
 pub extern "C" fn outcome_json(declare: u32) -> *const u8 {
     let Some(s) = session_mut() else {
@@ -668,6 +871,16 @@ pub extern "C" fn outcome_json(declare: u32) -> *const u8 {
             let record =
                 attest::<Match3Ingredients>(s.seed, s.swaps.clone(), Outcome::Lost, assistance);
             pond_outcome::to_doc::<Match3Ingredients>(&record)
+        }
+        Mode::Checklist => {
+            let record =
+                attest::<Match3Checklist>(s.seed, s.swaps.clone(), Outcome::Lost, assistance);
+            pond_outcome::to_doc::<Match3Checklist>(&record)
+        }
+        Mode::Obstacles => {
+            let record =
+                attest::<Match3Obstacles>(s.seed, s.swaps.clone(), Outcome::Lost, assistance);
+            pond_outcome::to_doc::<Match3Obstacles>(&record)
         }
     };
     match bytes {

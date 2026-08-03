@@ -3,7 +3,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::board::{Board, Cell, SpecialKind};
+use crate::board::{Board, Cell, Obstacle, SpecialKind};
 use crate::hash::state_hash;
 use crate::rng::DetRng;
 
@@ -29,6 +29,17 @@ pub struct StepReport {
     pub jelly_layers_removed: u32,
     /// Ingredients that reached the bottom row and exited this step (Track D).
     pub ingredients_collected: u32,
+    /// Gems **truly cleared** this step counted per colour (`index = colour`;
+    /// length = the game's colour count). Excludes creation survivors (they are
+    /// transformed, not cleared). The checklist objective's "clear N of a colour"
+    /// progress signal (Track D, T6). Off the hashed path.
+    pub gems_cleared_by_color: Vec<u32>,
+    /// Striped candies (H + V) created this step — the checklist objective's
+    /// "make N striped" progress signal (Track D, T6).
+    pub striped_created: u32,
+    /// Wrapped candies created this step — the checklist objective's "make N
+    /// wrapped" progress signal (Track D, T6).
+    pub wrapped_created: u32,
     pub score_gained: u64,
 }
 
@@ -897,6 +908,9 @@ pub fn clear_cells(board: &mut Board, matched: &[Pos]) -> ClearOutcome {
             blocker_layers_removed += 1;
             if l <= 1 {
                 board.set(r, c, Cell::Empty);
+                // A cleared blocker holds no obstacle flavour (Track D, T7) — the
+                // marker is scrubbed with it (its hole then refills as a plain gem).
+                board.set_obstacle(r, c, None);
             } else {
                 board.set(r, c, Cell::Blocker(l - 1));
             }
@@ -1267,6 +1281,53 @@ pub fn ingredients_remaining(board: &Board) -> u32 {
     u32::try_from(board.cells().iter().filter(|c| c.is_ingredient()).count()).unwrap_or(u32::MAX)
 }
 
+/// A seeded starting deal for the **clear-the-obstacles** objective (Track D, T7):
+/// a settled, no-initial-match, live board with `licorice` single-layer licorice
+/// blockers and `meringue` durable multi-layer (2–3) meringue blockers on distinct
+/// cells, deterministic from `seed`. Both are `Blocker` cells carrying an obstacle
+/// flavour, cleared by the proven adjacency mechanic; the objective is met when no
+/// blocker remains ([`blockers_remaining`]). Redraws (advancing the RNG) if a
+/// placement leaves no legal move (mirrors [`deal_blockers`]).
+#[must_use]
+pub fn deal_obstacles(
+    seed: u64,
+    width: usize,
+    height: usize,
+    colors: usize,
+    licorice: usize,
+    meringue: usize,
+) -> Board {
+    let mut rng = DetRng::from_seed(seed);
+    let cell_count = width * height;
+    let n = (licorice + meringue).min(cell_count);
+    for _ in 0..64 {
+        let mut board = fill_no_initial_match(&mut rng, width, height, colors);
+        // Distinct cell positions, drawn in RNG order (dedup by retrying a draw).
+        let mut chosen: BTreeSet<usize> = BTreeSet::new();
+        while chosen.len() < n {
+            chosen.insert(rng.index(cell_count));
+        }
+        // The first `licorice` chosen cells (scan order) become single-layer
+        // licorice; the rest become meringue with 2–3 layers (a fixed-order RNG
+        // draw per meringue, so the deal stays byte-identically reproducible).
+        for (i, &idx) in chosen.iter().enumerate() {
+            let (r, c) = (idx / width, idx % width);
+            if i < licorice {
+                board.set(r, c, Cell::Blocker(1));
+                board.set_obstacle(r, c, Some(Obstacle::Licorice));
+            } else {
+                let layers = 2 + u8::try_from(rng.index(2)).unwrap_or(0); // 2 or 3
+                board.set(r, c, Cell::Blocker(layers));
+                board.set_obstacle(r, c, Some(Obstacle::Meringue));
+            }
+        }
+        if has_legal_move(&board) {
+            return board;
+        }
+    }
+    fill_no_initial_match(&mut rng, width, height, colors)
+}
+
 /// A greedy reference playout: from the `seed` deal, play the highest-scoring
 /// legal swap each turn for `budget` swaps, and return the total score. Used to
 /// set **per-deal** star targets (fractions of this) — a deterministic function
@@ -1608,6 +1669,37 @@ impl Game {
                 combo_effect.as_ref(),
             );
             let activated = act.clear;
+            // Track D (T6) — the checklist's neutral per-step signals, computed on
+            // the **pre-clear** board (colours must still be present): gems truly
+            // cleared per colour (the activated set minus the creation survivors,
+            // which are transformed not cleared), and specials made this step by
+            // kind. No-op for every other mode (they just ignore these fields).
+            let mut gems_cleared_by_color = vec![0u32; self.colors];
+            for &(r, c) in &activated {
+                if creations.iter().any(|cr| cr.pos == (r, c)) {
+                    continue;
+                }
+                if let Cell::Gem(g) = self.board.get(r, c) {
+                    let gi = g as usize;
+                    if gi < gems_cleared_by_color.len() {
+                        gems_cleared_by_color[gi] += 1;
+                    }
+                }
+            }
+            let striped_created = u32::try_from(
+                creations
+                    .iter()
+                    .filter(|cr| matches!(cr.kind, SpecialKind::StripedH | SpecialKind::StripedV))
+                    .count(),
+            )
+            .unwrap_or(0);
+            let wrapped_created = u32::try_from(
+                creations
+                    .iter()
+                    .filter(|cr| cr.kind == SpecialKind::Wrapped)
+                    .count(),
+            )
+            .unwrap_or(0);
             let out = clear_cells(&mut self.board, &activated);
             // Each placement cell survives as a special candy: clear_cells set it
             // Empty (and scrubbed its jelly + damaged adjacent blockers as part of
@@ -1655,6 +1747,9 @@ impl Game {
                 blocker_layers_removed: out.blocker_layers_removed,
                 jelly_layers_removed: out.jelly_layers_removed,
                 ingredients_collected,
+                gems_cleared_by_color,
+                striped_created,
+                wrapped_created,
                 score_gained: step_score,
             });
             reblast_seed = act.pending;

@@ -6,6 +6,12 @@ is a real Bubble Shooter (aim → shoot → fly → bounce → stick → pop) wi
 shelf's verifiable outcome preserved via a quantized-angle + fixed-point core.
 Not pushed/PR'd (awaiting owner).
 
+**Followed by:** `plans/2026-08-01-bubble-shooter-levels-difficulty.md` adds the
+**levels mode** on top of this rebuild — point-gated level tiers, a descending
+top-row-insert stack (a `parity_offset` on the board), an optional presentational
+timer, and the `bubble-levels` verifiable outcome. Levels is now the default
+`/bubble/`; this clear-board game becomes the "Classic" toggle.
+
 ## Execution log
 
 - **V0+V1 (commit `0a21590`):** fixed-point aim → landing resolver (`aim.rs`:

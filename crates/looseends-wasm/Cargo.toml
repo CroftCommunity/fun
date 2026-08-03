@@ -1,0 +1,16 @@
+[package]
+name = "looseends-wasm"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Browser binding over looseends-core for the shelf: raw C-ABI + serde-JSON (no wasm-bindgen). Holds one Loose Ends game, integer-arg level/daily start + tap/hint exports, board/hash/outcome JSON via an output buffer. The core decides FREE/BLOCKED; the binding never panics."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+looseends-core = { path = "../looseends-core" }
+pond-outcome = { workspace = true }
+serde = { workspace = true }
+serde_json.workspace = true

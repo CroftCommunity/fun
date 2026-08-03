@@ -79,7 +79,11 @@ Tier-1. Everything in §§2–8 is Tier-1 unless noted.
   match/legality (a special candy still matches/swaps/falls as its colour), so the
   determinism-critical core stays untouched. If the new state changes scoring or
   clearing, remember it also shifts any committed solver/par packs — regenerate
-  and re-lock them in the same commit (see the match-3 B0 plan).
+  and re-lock them in the same commit (see the match-3 B0 plan). An overlay can sit
+  on a non-gem cell too: match-3's **obstacle flavour** (Track D — licorice / meringue)
+  is an overlay on a `Blocker`, giving two distinct, mechanically-separate tiles that
+  reuse the blocker's clear mechanic while rendering distinctly (the flavour is
+  additive to `state_hash`, so no pre-obstacle vector re-locks).
 - **When the new state is a new *kind* of cell, not a facet of a gem, add a `Cell`
   variant instead of an overlay.** match-3's **ingredient** (Track D) is a non-gem
   object that occupies a cell and *falls* — no gem lives under it, so an overlay
@@ -114,6 +118,17 @@ Tier-1. Everything in §§2–8 is Tier-1 unless noted.
   solver crate**; the pack is just a deterministic seed schedule + a fixture
   win-line (wyrdle). Don't ship an empty solver to look symmetric — say it's
   trivially winnable and note why.
+- **Board-state vs path-accumulated objectives.** Most win checks are a function of
+  the *current* board (clear every blocker / scrub all jelly / drop all ingredients).
+  An objective can instead be **path-accumulated** — met by what the run has produced,
+  not any single board — like match-3's **order/mixed checklist** (clear N of a colour,
+  make N striped + N wrapped). Model it with a small **progress accumulator** in the
+  core, fed by **neutral, off-hash per-move report signals** (never add it to
+  `state_hash` — it is not board state), and derive the per-seed targets from a
+  deterministic seed template. Share that accumulator + target fn across the binding,
+  the solver, and outcome replay so all three agree bit-for-bit; the solver then needs a
+  progress-carrying search (memoize on `(state_hash, progress)`), not the board-state
+  one. Winnability is still a solver-filtered pack (see the match-3 Track D checklist plan).
 - **Verifiable share vs spoiler.** The `?r=` record contains the move list (it
   must, to replay), so opening it reveals the solution — it is a *completed-result*
   artifact, honestly a spoiler for that seed. Where the game's social object is
@@ -142,6 +157,33 @@ Tier-1. Everything in §§2–8 is Tier-1 unless noted.
   becomes a keyboard-operable control (an angle slider + Fire, ←/→ + Space)
   rather than tap-a-cell. Reference: `crates/bubble-core/src/aim.rs` +
   `src/games/bubble/`.
+- **Pressure and progression must be move-derived, never wall-clock.** Difficulty
+  ramps — descending stacks, level tiers, spawn cadences — have to be pure
+  functions of the seed and the recorded move list, so replay reproduces every
+  transition and the outcome stays verifiable. The bubble shooter's levels mode
+  pushes a new row in on a **shot count** (not a timer) and fills it from the
+  seeded RNG, so `(seed, angles)` replays the whole escalation. A **clock may
+  inform the player** (an optional countdown for felt pressure) but must **never
+  decide the verified outcome** — real elapsed time can't be reproduced by
+  replay, and a client-asserted time is forgeable, so a time-out loss can't be a
+  verifiable result (§9 "no faked verifiable outcome"). Reference:
+  `crates/bubble-core/src/levels.rs`.
+- **A real-time game is verifiable by a tick-stamped input record.** When play is
+  continuous *and* clock-driven (a falling-block stacker, where gravity advances
+  whether or not the player acts), model the core as a **fixed-timestep integer
+  tick engine** and record the run as a **tick-stamped stream of atomic actions**
+  (`[(tick, action)]`). Each `tick()` advances one integer timestep of gravity +
+  lock resolution; the front-end's wall clock only drives the accumulator (how
+  many `tick()`s this frame) and stamps captured inputs with the engine's current
+  tick — it never decides the outcome. Handling (DAS/ARR/SDF) resolves held keys
+  into the *atomic* actions in the input layer, so the record is
+  handling-independent and a shared `?r=` reproduces the exact moves. The float
+  gravity curve is baked into an integer ticks-per-row table so nothing float
+  touches the hashed path. The state hash includes the tick, pinning the whole
+  timeline: a run and its replay agree only if every gravity/lock tick lined up.
+  Align (`crates/align-core/`, `src/games/align/`) is the reference — the same
+  move-derived-pressure contract as the bubble shooter, applied to a clock-driven
+  game.
 
 ### Centre the play surface — the default layout
 
@@ -282,7 +324,9 @@ meta's `approxSizeKb`).
 - **Contained mount.** The `GameModule` mounts through the shared
   `mountWrappedGame` primitive: an `iframe[sandbox="allow-scripts"]` (opaque
   origin; `allow-same-origin` is refused because, with scripts, it lets the frame
-  remove its own sandbox). Clean teardown on `unmount`.
+  remove its own sandbox). Clean teardown on `unmount`. The primitive also
+  **focuses the frame on load** — see "Keyboard focus" below for why this is
+  mandatory for any keyboard-driven wrap.
 - **Honest representation.** The chrome renders a persistent "Wrapped game — no
   verifiable record" banner + attribution (author · license · source link) above
   the game, driven by `GameEntry.tier === 2`.
@@ -290,7 +334,8 @@ meta's `approxSizeKb`).
   parameterized over every `tier2.meta.json`. It asserts the game's real behavior
   matches its declared posture: sandbox flags, **zero off-origin egress**, no
   breakout, our-origin storage untouched, legible in our chrome at 360px +
-  desktop, axe-clean chrome, input reaches the game with no focus trap.
+  desktop, axe-clean chrome, the frame **auto-focuses so the keyboard reaches the
+  game without a click**, and focus still returns to our chrome (no focus trap).
 
 ### Porting a game — the step-by-step recipe
 
@@ -345,6 +390,25 @@ governs the chrome + frame, not the vendored game's internals:
 - **Focus + full-screen.** Input reaches the frame, but focus must return to our
   chrome (Esc / the drawer toggle) — no focus trap. Full-screen must keep the
   game mounted and legible. The gate asserts both.
+- **Keyboard focus — the sandboxed-iframe gotcha.** An **opaque-origin sandboxed
+  iframe never takes keyboard focus on its own.** Pointer events land on the game
+  canvas regardless of focus (so mouse/touch "just work"), but *key* events go to
+  the parent document and never reach the wrapped game — a keyboard game looks
+  dead to the keyboard while clicks flap fine. This bit Clumsy Bird: the space bar
+  did nothing until the frame was focused. Two layers fix it, and a keyboard wrap
+  needs both:
+  1. **Initial focus (shared, automatic).** `mountWrappedGame` focuses the frame
+     on its `load` event, so the keyboard works from the first key with no click.
+     Every wrap gets this for free; the containment gate asserts it
+     (`await expect(frame).toBeFocused()` after load, with no manual `focus()`).
+  2. **Re-grab on interaction (per-vendor).** If the player clicks our surrounding
+     chrome and then clicks back onto the game, only the frame can observe that
+     pointer event (the parent can't reach across the opaque origin), so the
+     vendored bundle must restore its own focus. Add a tiny script to the wrap's
+     `index.html`: `window.addEventListener("pointerdown", () => window.focus(),
+     true)` (also on `load` as a belt-and-braces). Record it as a `patches` entry.
+  Any remapped or added keys likewise belong in a recorded `index.html` patch —
+  Clumsy Bird wraps `me.input.bindKey` so the Up arrow mirrors the space bar.
 - **Size disclosure.** A heavy bundle (HexGL, ~17 MB) is allowed but its size
   goes in `approxSizeKb` **and** in the how-to lede, up front, before the player
   commits to the download.

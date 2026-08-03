@@ -9,19 +9,33 @@
 //! via `?r=`.
 
 import type { GameModule } from "../../contract.js";
-import { Bubble, type BoardView, type Geom } from "./bubble-wasm.js";
-import { boardSubpixelSize, cellCenter, clampAngle, launcherOrigin, pointerToAngle } from "./bubble-aim.js";
+import { Bubble, type BoardView, type Geom, type LevelBoardView } from "./bubble-wasm.js";
+import {
+  aimBand,
+  boardSubpixelSize,
+  cellCenterOff,
+  clampAngle,
+  launcherOrigin,
+  pointerToAngle,
+  snapAngle,
+} from "./bubble-aim.js";
 import {
   decodeRecord,
   encodeRecord,
+  verifyLevelRecord,
   verifyRecord,
   type BubbleEnvelope,
   type VerifyResult,
 } from "./bubble-outcome.js";
+import { renderAimSettings } from "./bubble-aim-settings.js";
 import { dayIndexUTC } from "../share.js";
 import {
   aimGuideEnabled,
+  aimSettleMs,
+  aimSnapStep,
+  aimSwipeGain,
   declareAssistanceEnabled,
+  fireOnReleaseEnabled,
   hintsEnabled,
   setAimGuide,
   setDeclareAssistance,
@@ -142,6 +156,79 @@ export function renderResultScreen(
   return section;
 }
 
+export interface LevelResultOpts extends ResultScreenOpts {
+  /** The highest level reached (re-derived by replay). */
+  level: number;
+}
+
+/** Build the levels result screen: highest level + cumulative score, a star
+ *  grade, the verification badge, the record, and share/re-verify controls.
+ *  Levels are endless survival, so the headline is "reached level N", never a
+ *  clear-the-board win. */
+export function renderLevelResultScreen(
+  env: BubbleEnvelope,
+  verification: VerifyResult,
+  opts: LevelResultOpts,
+): HTMLElement {
+  const rec = env.payload;
+  const section = el("section", { class: "sol-result", role: "region", "aria-label": "Result" });
+  const stars = rec.stars ?? 0;
+  const head = verification.ok
+    ? `Reached level ${opts.level} — score ${rec.score ?? 0} — verifiable`
+    : "Verification FAILED — this result does not check out";
+  section.append(el("h2", { class: "sol-headline" }, head));
+
+  if (stars > 0) {
+    section.append(
+      el(
+        "p",
+        { class: "bub-stars", role: "img", "aria-label": `${stars} of 3 stars` },
+        "★".repeat(stars) + "☆".repeat(3 - stars),
+      ),
+    );
+  }
+
+  const badge = el("p", { class: `sol-verify-badge ${verification.ok ? "ok" : "fail"}`, role: "status" });
+  badge.textContent = verification.ok
+    ? "Verified ✓ — re-checked by replaying every shot against the core."
+    : `Verification failed — expected hash ${verification.expected}, replay produced ${verification.actual}.`;
+  section.append(badge);
+
+  const dl = el("dl", { class: "sol-record" });
+  const row = (term: string, value: string, cls = ""): void => {
+    dl.append(el("dt", {}, term), el("dd", cls ? { class: cls } : {}, value));
+  };
+  row("Level reached", String(opts.level));
+  row("Score", String(rec.score ?? 0));
+  row("Shots fired", String(rec.move_count));
+  row("Seed", String(rec.seed));
+  row("Final hash", rec.final_hash, "sol-hash");
+  section.append(dl);
+
+  const controls = el("div", { class: "sol-result-controls" });
+  if (opts.onReverify) {
+    const b = el("button", { type: "button", class: "sol-reverify" }, "Re-verify");
+    b.addEventListener("click", opts.onReverify);
+    controls.append(b);
+  }
+  if (opts.shareUrl) {
+    controls.append(
+      el("a", { class: "sol-share", href: opts.shareUrl, "data-share": opts.shareUrl }, "Share this result"),
+    );
+  }
+  if (opts.onPlayAgain) {
+    const b = el(
+      "button",
+      { type: "button", class: "sol-again" },
+      opts.shared ? "Play the daily challenge" : "Play again",
+    );
+    b.addEventListener("click", opts.onPlayAgain);
+    controls.append(b);
+  }
+  if (controls.childNodes.length) section.append(controls);
+  return section;
+}
+
 // ---------- canvas palette (theme-aware) ----------
 
 interface Palette {
@@ -177,6 +264,10 @@ export function bubbleModule(): GameModule {
   let container: HTMLElement | null = null;
   let disposed = false;
 
+  // `variant` picks the game: levels (escalating, point-gated, descending rows —
+  // the default experience) or classic (clear the daily board within a budget).
+  // `mode` is the board source within either variant (daily vs free-play).
+  let variant: "levels" | "classic" = "levels";
   let mode: "daily" | "free" = "daily";
   let seed = 0n;
   let geom: Geom = { diam: 256, radius: 128, rowH: 222, fanLo: 10, fanHi: 170 };
@@ -185,7 +276,18 @@ export function bubbleModule(): GameModule {
   let raf = 0;
   let canvas: HTMLCanvasElement | null = null;
   let aimInput: HTMLInputElement | null = null;
+  let aimReadout: HTMLElement | null = null;
+  // Pending fire-on-release settle timer (0 = none). A re-grab of the slider
+  // cancels it; it clears on unmount/animation.
+  let settleTimer = 0;
   let cascadeEl: HTMLElement | null = null;
+  // Presentational per-level countdown (levels only; never a verified loss).
+  let timerEnabled = false;
+  let timerEnd = 0;
+  let timerRaf = 0;
+  let lastLevel = 0;
+
+  const isLevels = (): boolean => variant === "levels";
 
   const statusEl = el("p", { class: "sol-status", role: "status", "aria-live": "polite" });
   const setStatus = (msg: string): void => {
@@ -201,16 +303,71 @@ export function bubbleModule(): GameModule {
   const shareUrlFor = async (env: BubbleEnvelope): Promise<string> =>
     `${location.origin}${location.pathname}?r=${await encodeRecord(env)}`;
 
-  const verify = (env: BubbleEnvelope): VerifyResult => verifyRecord(verifier!, env);
+  const verify = (env: BubbleEnvelope): VerifyResult =>
+    env.kind === "bubble-levels"
+      ? verifyLevelRecord(verifier!, env)
+      : verifyRecord(verifier!, env);
 
-  // The round is over when the board clears or the shot budget runs out.
-  const gameOver = (): boolean => {
-    if (!game) return false;
-    const b = game.board();
-    return b.cleared || b.shotsLeft === 0;
+  // The highest level reached, re-derived by replaying the record (works for a
+  // just-ended live run and a shared `?r=` record alike).
+  const replayLevel = (env: BubbleEnvelope): number => {
+    verifier!.newLevelGame(BigInt(env.payload.seed));
+    for (const angle of env.payload.moves) verifier!.levelShoot(angle);
+    return verifier!.levelBoard().level;
   };
 
-  const origin = (board: BoardView) => launcherOrigin(board.width, board.height, geom);
+  // A board normalized across variants for the shared canvas/aim code: geometry
+  // + parity + cells + launcher colours + whether the round is over.
+  interface Uni {
+    width: number;
+    height: number;
+    parityOffset: number;
+    cells: number[][];
+    currentColor: number;
+    nextColor: number;
+    over: boolean;
+  }
+
+  const levelView = (): LevelBoardView | null => (isLevels() && game ? game.levelBoard() : null);
+
+  // The unified board for the active variant. Classic has no parity offset (0).
+  const uni = (): Uni | null => {
+    if (!game) return null;
+    if (isLevels()) {
+      const b = game.levelBoard();
+      return {
+        width: b.width,
+        height: b.height,
+        parityOffset: b.parityOffset,
+        cells: b.cells,
+        currentColor: b.currentColor,
+        nextColor: b.nextColor,
+        over: b.lost,
+      };
+    }
+    const b: BoardView = game.board();
+    return {
+      width: b.width,
+      height: b.height,
+      parityOffset: 0,
+      cells: b.cells,
+      currentColor: b.currentColor,
+      nextColor: b.nextColor,
+      over: b.cleared || b.shotsLeft === 0,
+    };
+  };
+
+  const activeTrajectory = (angle: number) =>
+    isLevels() ? game!.levelTrajectory(angle) : game!.trajectory(angle);
+
+  // The round is over when the levels stack crosses the deadline, or the classic
+  // board clears / the shot budget runs out.
+  const gameOver = (): boolean => {
+    const u = uni();
+    return u ? u.over : false;
+  };
+
+  const origin = (u: Uni) => launcherOrigin(u.width, u.height, geom);
 
   // ---------- canvas drawing ----------
 
@@ -220,49 +377,94 @@ export function bubbleModule(): GameModule {
     x: number,
     y: number,
     color: number,
+    scale = 1,
+    alpha = 1,
   ): void => {
+    const r = geom.radius * 0.92 * scale;
+    ctx.save();
+    ctx.globalAlpha = alpha;
     ctx.beginPath();
-    ctx.arc(x, y, geom.radius * 0.92, 0, Math.PI * 2);
+    ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fillStyle = p.surface;
     ctx.fill();
     ctx.fillStyle = p.gems[color] ?? p.ink;
-    ctx.font = `${Math.round(geom.radius * 1.15)}px system-ui, sans-serif`;
+    ctx.font = `${Math.round(geom.radius * 1.15 * scale)}px system-ui, sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(BUBBLE_GLYPH[color] ?? "●", x, y + geom.radius * 0.06);
+    ctx.fillText(BUBBLE_GLYPH[color] ?? "●", x, y + geom.radius * 0.06 * scale);
+    ctx.restore();
+  };
+
+  // The on-deck ("next") bubble, drawn small and dimmed beside the launcher so
+  // the player can plan the shot after this one (a next-piece preview).
+  const drawOnDeck = (
+    ctx: CanvasRenderingContext2D,
+    p: Palette,
+    o: { x: number; y: number },
+    color: number,
+  ): void => {
+    const x = o.x + geom.diam * 0.95;
+    drawBubble(ctx, p, x, o.y, color, 0.58, 0.7);
+  };
+
+  // A translucent danger band over the reserved bottom deadline rows (levels
+  // only) — telegraphs "don't let the stack reach here". `yShift` slides it with
+  // the board during an insert animation.
+  const drawDeadline = (
+    ctx: CanvasRenderingContext2D,
+    p: Palette,
+    u: Uni,
+    deadlineRows: number,
+    yShift = 0,
+  ): void => {
+    if (deadlineRows <= 0) return;
+    const top = geom.radius + (u.height - deadlineRows) * geom.rowH - geom.radius + yShift;
+    ctx.save();
+    ctx.globalAlpha = 0.14;
+    ctx.fillStyle = p.focus;
+    ctx.fillRect(0, top, u.width * geom.diam, deadlineRows * geom.rowH + geom.radius);
+    ctx.restore();
   };
 
   // Draw the board + launcher, plus (when `flight` is null) the dotted aim
-  // preview, or (during a shot) the flying projectile at `flight`.
-  const drawScene = (flight: { x: number; y: number } | null = null): void => {
+  // preview, or (during a shot) the flying projectile at `flight`. `yShift` nudges
+  // the whole stack down (the insert slide animation).
+  const drawScene = (flight: { x: number; y: number } | null = null, yShift = 0): void => {
     if (!canvas || !game) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const board = game.board();
+    const u = uni();
+    if (!u) return;
+    const lv = levelView();
     const p = palette();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    board.cells.forEach((rowCells, r) => {
+    if (lv) drawDeadline(ctx, p, u, lv.deadlineRows, yShift);
+
+    u.cells.forEach((rowCells, r) => {
       rowCells.forEach((color, c) => {
         if (color >= 0) {
-          const { x, y } = cellCenter(r, c, geom);
-          drawBubble(ctx, p, x, y, color);
+          const { x, y } = cellCenterOff(r, c, geom, u.parityOffset);
+          drawBubble(ctx, p, x, y + yShift, color);
         }
       });
     });
 
-    const o = origin(board);
-    if (!board.cleared) drawBubble(ctx, p, o.x, o.y, board.currentColor);
+    const o = origin(u);
+    if (!u.over) {
+      drawBubble(ctx, p, o.x, o.y, u.currentColor);
+      drawOnDeck(ctx, p, o, u.nextColor);
+    }
 
     if (flight) {
-      drawBubble(ctx, p, flight.x, flight.y, board.currentColor);
+      drawBubble(ctx, p, flight.x, flight.y, u.currentColor);
       return;
     }
     if (gameOver() || !aimGuideEnabled()) return;
 
     // Dotted trajectory preview + a landing ring where the shot resolves (the
     // optional aim guide — off = a harder aiming challenge).
-    const traj = game.trajectory(aim);
+    const traj = activeTrajectory(aim);
     ctx.save();
     ctx.strokeStyle = p.aimLine;
     ctx.globalAlpha = 0.85;
@@ -274,7 +476,7 @@ export function bubbleModule(): GameModule {
     ctx.restore();
 
     const [lr, lc] = traj.landing;
-    const lp = cellCenter(lr, lc, geom);
+    const lp = cellCenterOff(lr, lc, geom, u.parityOffset);
     ctx.save();
     ctx.strokeStyle = p.active;
     ctx.lineWidth = Math.max(2, geom.radius * 0.16);
@@ -321,33 +523,150 @@ export function bubbleModule(): GameModule {
       raf = requestAnimationFrame(step);
     });
 
+  // The shot resolution: popped bubbles burst (scale up + fade), orphaned
+  // bubbles fall away (translate down + fade) over the settled board — so a pop
+  // and its knock-on drops read as cause→effect instead of vanishing. Drawn on
+  // the post-shot board; skipped under reduced motion (the caller checks).
+  const animateResolve = (ls: { popped: number[][]; dropped: number[][] }): Promise<void> =>
+    new Promise((resolve) => {
+      if (!canvas || !game) return resolve();
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return resolve();
+      const u = uni();
+      if (!u) return resolve();
+      const p = palette();
+      const o = origin(u);
+      const dur = 380;
+      const start = performance.now();
+      const step = (now: number): void => {
+        if (disposed || !canvas) return resolve();
+        const t = Math.min(1, (now - start) / dur);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        u.cells.forEach((rowCells, r) => {
+          rowCells.forEach((color, c) => {
+            if (color >= 0) {
+              const { x, y } = cellCenterOff(r, c, geom, u.parityOffset);
+              drawBubble(ctx, p, x, y, color);
+            }
+          });
+        });
+        if (!u.over) {
+          drawBubble(ctx, p, o.x, o.y, u.currentColor);
+          drawOnDeck(ctx, p, o, u.nextColor);
+        }
+        // Popped: a quick outward burst that fades.
+        for (const [r, c, color] of ls.popped) {
+          const { x, y } = cellCenterOff(r!, c!, geom, u.parityOffset);
+          drawBubble(ctx, p, x, y, color!, 1 + 0.7 * t, 1 - t);
+        }
+        // Orphans: accelerate downward (gravity) and fade as they leave.
+        const fall = t * t * geom.rowH * 7;
+        for (const [r, c, color] of ls.dropped) {
+          const { x, y } = cellCenterOff(r!, c!, geom, u.parityOffset);
+          drawBubble(ctx, p, x, y + fall, color!, 1, 1 - 0.85 * t);
+        }
+        if (t >= 1) return resolve();
+        raf = requestAnimationFrame(step);
+      };
+      raf = requestAnimationFrame(step);
+    });
+
+  // The top-row insert (levels): the whole stack slides down one row into place
+  // as the new row appears at the ceiling. `drawScene`'s yShift animates from
+  // one row up to settled.
+  const animateInsert = (): Promise<void> =>
+    new Promise((resolve) => {
+      if (!canvas || !game) return resolve();
+      const dur = 260;
+      const start = performance.now();
+      const step = (now: number): void => {
+        if (disposed || !canvas) return resolve();
+        const t = Math.min(1, (now - start) / dur);
+        drawScene(null, -(1 - t) * geom.rowH);
+        if (t >= 1) return resolve();
+        raf = requestAnimationFrame(step);
+      };
+      raf = requestAnimationFrame(step);
+    });
+
   const fire = async (): Promise<void> => {
     if (!game || gameOver() || animating) return;
+    cancelReleaseFire();
     const angle = aim;
-    const traj = game.trajectory(angle);
+    const traj = activeTrajectory(angle);
     setStatus(`Fired at ${angle} degrees`);
     animating = true;
     syncControlsDisabled();
     if (!prefersReducedMotion() && traj.points.length >= 2) {
       await animateFlight(traj.points);
     }
+    if (disposed || !game) {
+      animating = false;
+      return;
+    }
+    if (isLevels()) {
+      game.levelShoot(angle);
+      const ls = game.levelLastShot();
+      if (!prefersReducedMotion()) {
+        // On an insert shot the stack-slide is the dominant motion (the pop/drop
+        // cells are in pre-insert coordinates, so we don't overlay them there);
+        // otherwise the usual burst + orphan-fall.
+        if (ls.inserted) await animateInsert();
+        else if (ls.popped.length > 0 || ls.dropped.length > 0) await animateResolve(ls);
+      }
+    } else {
+      game.shoot(angle);
+      const ls = game.lastShot();
+      if (!prefersReducedMotion() && (ls.popped.length > 0 || ls.dropped.length > 0)) {
+        await animateResolve(ls);
+      }
+    }
     animating = false;
     if (disposed || !game) return;
-    game.shoot(angle);
     render();
   };
 
   // ---------- controls + interaction ----------
 
+  // Point the aim slider's window at the current aim for the active swipe gain
+  // (min/max = the band). At full gain this is always the whole fan, so the
+  // slider is an absolute aim (the default feel); a lower gain narrows it around
+  // the current aim for finer control, recentred here between grabs.
+  const applyBand = (): void => {
+    if (!aimInput) return;
+    const { lo, hi } = aimBand(aim, aimSwipeGain(), geom);
+    aimInput.min = String(lo);
+    aimInput.max = String(hi);
+  };
+
   const syncAim = (): void => {
     if (aimInput) aimInput.value = String(aim);
+    if (aimReadout) aimReadout.textContent = `${aim}°`;
     if (canvas) canvas.setAttribute("aria-label", boardLabel());
   };
 
   const setAim = (deg: number): void => {
-    aim = clampAngle(deg, geom);
+    aim = snapAngle(deg, aimSnapStep(), geom);
     syncAim();
     if (!animating) drawScene();
+  };
+
+  const cancelReleaseFire = (): void => {
+    if (settleTimer) {
+      clearTimeout(settleTimer);
+      settleTimer = 0;
+    }
+  };
+
+  // Fire-on-release: after the slider is let go, wait the settle window, then
+  // fire — unless the slider is re-grabbed (which cancels), or the round is over.
+  const scheduleReleaseFire = (): void => {
+    cancelReleaseFire();
+    if (!fireOnReleaseEnabled() || animating || gameOver()) return;
+    settleTimer = window.setTimeout(() => {
+      settleTimer = 0;
+      void fire();
+    }, aimSettleMs());
   };
 
   const syncControlsDisabled = (): void => {
@@ -358,6 +677,10 @@ export function bubbleModule(): GameModule {
 
   const boardLabel = (): string => {
     if (!game) return "Bubble board";
+    const lv = levelView();
+    if (lv) {
+      return `Bubble board: level ${lv.level}, score ${lv.totalScore} of ${lv.targetScore} to next level, ${lv.shotsToInsert} shots until the stack drops, aiming ${aim} degrees`;
+    }
     const b = game.board();
     const bubbles = b.cells.reduce((n, row) => n + row.filter((c) => c >= 0).length, 0);
     return `Bubble board: ${bubbles} bubbles left, ${b.shotsLeft} shots left, aiming ${aim} degrees`;
@@ -373,8 +696,13 @@ export function bubbleModule(): GameModule {
 
   const showHint = (): void => {
     if (!game || gameOver()) return;
-    game.markAssistance();
-    setAim(game.hintAngle());
+    if (isLevels()) {
+      game.levelMarkAssistance();
+      setAim(game.levelHintAngle());
+    } else {
+      game.markAssistance();
+      setAim(game.hintAngle());
+    }
     setStatus(`Hint: aim at ${aim} degrees (a hint counts as assistance)`);
   };
 
@@ -383,14 +711,39 @@ export function bubbleModule(): GameModule {
     render(true);
   };
 
-  const renderControls = (board: BoardView): HTMLElement => {
+  const fmtClock = (ms: number): string => {
+    const s = Math.max(0, Math.ceil(ms / 1000));
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  };
+
+  const renderControls = (u: Uni): HTMLElement => {
     const bar = el("div", { class: "sol-controls" });
+
+    // Variant toggle: the escalating levels game vs the classic clear-board game.
+    const variants = el("div", { class: "bub-variants", role: "group", "aria-label": "Game mode" });
+    const levelsBtn = el(
+      "button",
+      { type: "button", class: "bub-variant-levels", "aria-pressed": String(variant === "levels") },
+      "Levels",
+    );
+    const classicBtn = el(
+      "button",
+      {
+        type: "button",
+        class: "bub-variant-classic",
+        "aria-pressed": String(variant === "classic"),
+      },
+      "Classic",
+    );
+    levelsBtn.addEventListener("click", () => void startVariant("levels"));
+    classicBtn.addEventListener("click", () => void startVariant("classic"));
+    variants.append(levelsBtn, classicBtn);
 
     const modes = el("div", { class: "sol-modes", role: "group", "aria-label": "Board" });
     const daily = el(
       "button",
       { type: "button", class: "sol-mode-daily", "aria-pressed": String(mode === "daily") },
-      "Today’s board",
+      isLevels() ? "Daily challenge" : "Today’s board",
     );
     const fresh = el(
       "button",
@@ -437,11 +790,20 @@ export function bubbleModule(): GameModule {
         drawScene();
       }),
     );
+    if (isLevels()) {
+      settings.append(
+        setting(timerEnabled, "Show level timer (practice clock)", "bub-set-timer", (on) => {
+          timerEnabled = on;
+          render();
+        }),
+      );
+    }
 
-    const color = board.currentColor;
-    const hud = el(
+    const color = u.currentColor;
+    const nextColor = u.nextColor;
+    const launcher = el(
       "div",
-      { class: "bub-hud" },
+      { class: "bub-launcher-hud" },
       el(
         "span",
         {
@@ -451,11 +813,58 @@ export function bubbleModule(): GameModule {
         },
         BUBBLE_GLYPH[color] ?? "●",
       ),
-      el("span", { class: "bub-score" }, `Score ${board.score}`),
-      el("span", { class: "bub-shots" }, `Shots left ${board.shotsLeft}`),
+      el(
+        "span",
+        {
+          class: `bub-next bub-color-${nextColor}`,
+          role: "img",
+          "aria-label": `Next up: ${BUBBLE_NAME[nextColor] ?? "bubble"}`,
+        },
+        BUBBLE_GLYPH[nextColor] ?? "●",
+      ),
     );
 
-    bar.append(modes, actionBtn, settings);
+    const hud = el("div", { class: "bub-hud" }, launcher);
+    const lv = levelView();
+    if (lv) {
+      const pct = lv.targetScore > 0 ? Math.min(100, (lv.levelScore / lv.targetScore) * 100) : 0;
+      const progress = el(
+        "div",
+        {
+          class: "bub-progress",
+          role: "progressbar",
+          "aria-label": "Level score progress",
+          "aria-valuemin": "0",
+          "aria-valuemax": String(lv.targetScore),
+          "aria-valuenow": String(lv.levelScore),
+        },
+        el("span", { class: "bub-progress-fill", style: `width:${pct}%` }),
+      );
+      hud.append(
+        el("span", { class: "bub-level" }, `Level ${lv.level}`),
+        el("span", { class: "bub-score" }, `Score ${lv.totalScore}`),
+        progress,
+        el("span", { class: "bub-target" }, `${lv.levelScore} / ${lv.targetScore} to next`),
+        el("span", { class: "bub-drop" }, `Stack drops in ${lv.shotsToInsert}`),
+      );
+      if (timerEnabled) {
+        hud.append(
+          el(
+            "span",
+            { class: "bub-timer", role: "timer", "aria-label": "Level practice clock" },
+            fmtClock(timerEnd - Date.now()),
+          ),
+        );
+      }
+    } else if (game) {
+      const b = game.board();
+      hud.append(
+        el("span", { class: "bub-score" }, `Score ${b.score}`),
+        el("span", { class: "bub-shots" }, `Shots left ${b.shotsLeft}`),
+      );
+    }
+
+    bar.append(variants, modes, actionBtn, settings);
     const wrap = el("div");
     wrap.append(bar, hud);
     return wrap;
@@ -463,24 +872,59 @@ export function bubbleModule(): GameModule {
 
   const renderAimBar = (): HTMLElement => {
     const bar = el("div", { class: "bub-aimbar" });
+
+    const band = aimBand(aim, aimSwipeGain(), geom);
     const range = el("input", {
       type: "range",
       class: "bub-aim",
-      min: String(geom.fanLo),
-      max: String(geom.fanHi),
+      min: String(band.lo),
+      max: String(band.hi),
+      step: "1",
       value: String(aim),
       "aria-label": "Aim angle in degrees",
     }) as HTMLInputElement;
-    range.addEventListener("input", () => setAim(Number(range.value)));
     aimInput = range;
+    const readout = el("span", { class: "bub-aim-readout", "aria-hidden": "true" }, `${aim}°`);
+    aimReadout = readout;
+
+    range.addEventListener("input", () => setAim(Number(range.value)));
+    // Grabbing recentres the band on the current aim (fine-gain mode) and cancels
+    // any pending release-fire; letting go schedules a fire when fire-on-release
+    // is on. At full gain the band is the whole fan, so this is a plain slider.
+    range.addEventListener("pointerdown", () => {
+      cancelReleaseFire();
+      applyBand();
+    });
+    range.addEventListener("pointerup", () => {
+      applyBand();
+      scheduleReleaseFire();
+    });
+
+    const row = el(
+      "div",
+      { class: "bub-aim-row" },
+      el("span", { class: "bub-aim-label" }, "Aim"),
+      range,
+      readout,
+    );
+
     const fireBtn = el("button", { type: "button", class: "bub-fire" }, "Fire");
     fireBtn.addEventListener("click", () => void fire());
-    bar.append(el("span", { class: "bub-aim-label" }, "Aim"), range, fireBtn);
+
+    const settings = renderAimSettings({
+      geom,
+      // A coarser/finer snap re-snaps the current aim immediately.
+      onSnapChange: () => setAim(aim),
+      // A changed gain re-centres the slider band on the current aim.
+      onGainChange: () => applyBand(),
+    });
+
+    bar.append(row, fireBtn, settings);
     return bar;
   };
 
-  const renderCanvas = (board: BoardView): HTMLCanvasElement => {
-    const { w, h } = boardSubpixelSize(board.width, board.height, geom);
+  const renderCanvas = (u: Uni): HTMLCanvasElement => {
+    const { w, h } = boardSubpixelSize(u.width, u.height, geom);
     const c = el("canvas", {
       class: "bub-canvas",
       width: String(w),
@@ -494,7 +938,7 @@ export function bubbleModule(): GameModule {
     const aimFromEvent = (e: PointerEvent): void => {
       if (animating || gameOver()) return;
       const s = canvasToSub(e.clientX, e.clientY);
-      setAim(pointerToAngle(s.x, s.y, origin(board), geom));
+      setAim(pointerToAngle(s.x, s.y, origin(u), geom));
     };
     c.addEventListener("pointermove", aimFromEvent);
     c.addEventListener("pointerdown", (e) => {
@@ -507,11 +951,14 @@ export function bubbleModule(): GameModule {
     });
     c.addEventListener("keydown", (e) => {
       if (animating || gameOver()) return;
+      // One key press moves at least the snap step, so arrows always advance to
+      // the next reachable angle even at a coarse snap.
+      const kb = Math.max(2, aimSnapStep());
       if (e.key === "ArrowLeft") {
-        setAim(aim + 2); // left = larger angle (toward 170°)
+        setAim(aim + kb); // left = larger angle (toward 170°)
         e.preventDefault();
       } else if (e.key === "ArrowRight") {
-        setAim(aim - 2);
+        setAim(aim - kb);
         e.preventDefault();
       } else if (e.key === " " || e.key === "Enter" || e.key === "ArrowUp") {
         void fire();
@@ -542,6 +989,24 @@ export function bubbleModule(): GameModule {
 
   const presentResult = async (): Promise<void> => {
     if (!container || !game) return;
+    if (isLevels()) {
+      const env = game.levelOutcome(declareAssistanceEnabled()) as BubbleEnvelope;
+      const level = game.levelBoard().level;
+      container.replaceChildren(
+        el("div", { class: "sol-loading" }, "Preparing your verifiable result…"),
+      );
+      const shareUrl = await shareUrlFor(env);
+      if (disposed || !container) return;
+      const build = (): HTMLElement =>
+        renderLevelResultScreen(env, verify(env), {
+          level,
+          shareUrl,
+          onReverify: () => container!.replaceChildren(build()),
+          onPlayAgain: () => void startGame(mode),
+        });
+      container.replaceChildren(build());
+      return;
+    }
     const env = game.outcome(declareAssistanceEnabled()) as BubbleEnvelope;
     if (env.payload.result === "Won") playCascade();
     container.replaceChildren(el("div", { class: "sol-loading" }, "Preparing your verifiable result…"));
@@ -559,38 +1024,74 @@ export function bubbleModule(): GameModule {
   function render(force = false): void {
     if (disposed || !container || !game) return;
     if (raf) cancelAnimationFrame(raf);
+    cancelReleaseFire();
     if (force || gameOver()) {
       canvas = null;
       aimInput = null;
+      aimReadout = null;
       void presentResult();
       return;
     }
-    const board = game.board();
+    const u = uni();
+    if (!u) return;
     aim = clampAngle(aim, geom);
+    // Reset the presentational clock when a new level begins.
+    const lv = levelView();
+    if (lv && lv.level !== lastLevel) {
+      lastLevel = lv.level;
+      timerEnd = Date.now() + lv.timeLimitSecs * 1000;
+    }
     const root = el(
       "div",
       { class: "bub-game" },
-      renderControls(board),
-      renderCanvas(board),
+      renderControls(u),
+      renderCanvas(u),
       renderAimBar(),
       statusEl,
     );
     container.replaceChildren(root);
     syncControlsDisabled();
     drawScene();
+    runTimer();
     exposeHook();
+  }
+
+  // Tick the presentational clock (levels + timer setting on). Never touches game
+  // state — a spent clock is a nudge, not a loss.
+  const runTimer = (): void => {
+    if (timerRaf) cancelAnimationFrame(timerRaf);
+    if (!isLevels() || !timerEnabled || gameOver()) return;
+    const tick = (): void => {
+      if (disposed || !timerEnabled || !isLevels() || gameOver()) return;
+      const span = container?.querySelector<HTMLElement>(".bub-timer");
+      if (span) span.textContent = fmtClock(timerEnd - Date.now());
+      timerRaf = requestAnimationFrame(tick);
+    };
+    timerRaf = requestAnimationFrame(tick);
+  };
+
+  // Switch between the levels and classic variants (restarts on the current
+  // board source).
+  async function startVariant(next: "levels" | "classic"): Promise<void> {
+    if (variant === next) return;
+    variant = next;
+    lastLevel = 0;
+    await startGame(mode);
   }
 
   async function startGame(nextMode: "daily" | "free", seedOverride?: bigint): Promise<void> {
     if (!game || disposed) return;
     mode = nextMode;
+    // Levels reuse the clear-board daily seed as a fixed "daily challenge" start.
     seed =
       seedOverride ??
       (nextMode === "daily" ? BigInt(game.dailySeed(dayIndexUTC(new Date()))) : randomSeed());
-    game.newGame(seed);
+    if (isLevels()) game.newLevelGame(seed);
+    else game.newGame(seed);
     geom = game.geom();
     aim = clampAngle(90, geom);
     animating = false;
+    lastLevel = 0;
     setStatus("");
     render();
   }
@@ -605,6 +1106,20 @@ export function bubbleModule(): GameModule {
       return;
     }
     if (disposed || !container) return;
+    if (env.kind === "bubble-levels") {
+      const level = replayLevel(env);
+      const build = (): HTMLElement =>
+        renderLevelResultScreen(env, verify(env), {
+          level,
+          shared: true,
+          onReverify: () => container!.replaceChildren(build()),
+          onPlayAgain: () => {
+            location.href = location.pathname;
+          },
+        });
+      container.replaceChildren(build());
+      return;
+    }
     const build = (): HTMLElement =>
       renderResultScreen(env, verify(env), {
         shared: true,
@@ -652,6 +1167,9 @@ export function bubbleModule(): GameModule {
           await showShared(shared);
           return;
         }
+        // Levels is the default experience; `?variant=classic` opens the classic
+        // clear-the-board game instead.
+        if (url.searchParams.get("variant") === "classic") variant = "classic";
         const seedParam = url.searchParams.get("seed");
         if (seedParam !== null) {
           await startGame("free", BigInt(seedParam));
@@ -663,7 +1181,10 @@ export function bubbleModule(): GameModule {
     unmount(): void {
       disposed = true;
       if (raf) cancelAnimationFrame(raf);
+      if (timerRaf) cancelAnimationFrame(timerRaf);
+      cancelReleaseFire();
       raf = 0;
+      timerRaf = 0;
       delete window.__bubble;
       cascadeEl?.remove();
       cascadeEl = null;
@@ -671,6 +1192,7 @@ export function bubbleModule(): GameModule {
       container = null;
       canvas = null;
       aimInput = null;
+      aimReadout = null;
       game = null;
       verifier = null;
     },
