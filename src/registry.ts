@@ -16,7 +16,6 @@ import { colorSortModule } from "./games/color-sort/color-sort.js";
 import { astrayModule } from "./games/astray/astray.js";
 import { hexglModule } from "./games/hexgl/hexgl.js";
 import { clumsybirdModule } from "./games/clumsybird/clumsybird.js";
-import { puzzlesModule } from "./games/puzzles/puzzles.js";
 import { orchardDropModule } from "./games/orchard-drop/orchard-drop.js";
 
 export const REGISTRY: readonly GameEntry[] = [
@@ -75,19 +74,6 @@ export const REGISTRY: readonly GameEntry[] = [
       basedOn: "Flappy Bird by Dong Nguyen",
     },
     load: clumsybirdModule,
-  },
-  {
-    id: "puzzles",
-    title: "Puzzles",
-    icon: "🧩",
-    status: "playable",
-    tier: 2,
-    attribution: {
-      author: "Simon Tatham",
-      license: "MIT",
-      upstreamUrl: "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/",
-    },
-    load: puzzlesModule,
   },
   {
     id: "orchard-drop",

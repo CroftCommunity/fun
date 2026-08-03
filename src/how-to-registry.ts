@@ -14,7 +14,6 @@ import { COLOR_SORT_GUIDE } from "./games/color-sort/color-sort-howto.js";
 import { ASTRAY_GUIDE } from "./games/astray/astray-howto.js";
 import { HEXGL_GUIDE } from "./games/hexgl/hexgl-howto.js";
 import { CLUMSYBIRD_GUIDE } from "./games/clumsybird/clumsybird-howto.js";
-import { PUZZLES_GUIDE } from "./games/puzzles/puzzles-howto.js";
 import { ORCHARD_DROP_GUIDE } from "./games/orchard-drop/orchard-drop-howto.js";
 
 export const GUIDES: Readonly<Record<string, Guide>> = {
@@ -30,7 +29,6 @@ export const GUIDES: Readonly<Record<string, Guide>> = {
   astray: ASTRAY_GUIDE,
   hexgl: HEXGL_GUIDE,
   clumsybird: CLUMSYBIRD_GUIDE,
-  puzzles: PUZZLES_GUIDE,
   "orchard-drop": ORCHARD_DROP_GUIDE,
 };
 
