@@ -274,3 +274,28 @@ record and grades each move against the exact oracle: **Optimal /
 ResultPreserving / Blunder** (a blunder provably drops the win/draw/loss class),
 plus legality and cost. `examples/trial.rs` and `examples/difficulty.rs` are the
 reproducible experiments.
+
+### Measuring players in the browser (P6)
+
+The Rust harness grades Rust `Player`s; it cannot exercise the *browser*
+`WebLLMRuntime` / `HybridPlayer` (WebGPU only runs in a page). `src/harness/`
+mirrors the rig over the browser substrate — the shipped `drop4-wasm` + the TS
+players — with the pure scorer + wasm-driving runner on the CI gate (deterministic
+players + `MockRuntime`) and the real WebGPU Hybrid-vs-Engine trial behind a
+standalone system-Chrome driver (`npm run harness:trial`, off CI). It grades a
+move **iff the wasm reports it `exact`** (the same honesty gate the tutor uses;
+≤16 empties — a strict, still-provably-exact superset of the Rust rig's ≤12).
+The full guide is **`docs/HARNESS.md`**.
+
+First browser-rig numbers (`Qwen2.5-0.5B` hybrid vs the Perfect engine, 2 games,
+real WebGPU / apple metal-3):
+
+| Finding | Result |
+|---|---|
+| Strength | Hybrid **0-0-2** vs Perfect — the LLM adds no strength |
+| In-band adherence | **0 blunders over 7 graded moves** (6 optimal · 1 preserving) — never drops the class |
+| Cost | **~1130 ms/graded move** — the LLM is slow, not strong |
+
+This is the same conclusion the Rust rig reached, now measured on the *actual
+shipped browser hybrid*: legality + class-preservation by construction, no skill
+added, slower than the engine.

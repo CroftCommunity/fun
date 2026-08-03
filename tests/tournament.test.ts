@@ -83,12 +83,15 @@ describe("tournament: full rig over the real wasm", () => {
       const hybrid = new HybridAiPlayer(
         new HybridPlayer(new MockRuntime({ reply: (_p, o) => JSON.stringify({ move: firstEnumMove(o.schema), reason: "best" }) })),
       );
+      const seenGames: number[] = [];
       const report = await runTournament(loadReal, hybrid, new EnginePlayer("Perfect"), {
-        games: 1,
+        games: 2,
         baseSeed: 0n,
+        onGame: (i) => seenGames.push(i), // the trial's per-game progress hook
       });
       const c = report.card;
-      expect(c.games).toBe(1);
+      expect(seenGames).toEqual([0, 1]); // onGame fires once per game, in order
+      expect(c.games).toBe(2);
       expect(c.scoredMoves).toBeGreaterThan(0); // reached the exact endgame
       expect(c.optimal + c.preserving + c.blunders).toBe(c.scoredMoves);
       expect(c.blunders).toBe(0); // the band is class-preserving — the hybrid never throws

@@ -83,6 +83,20 @@ await build({
   outfile: join(dist, "vendor", "webllm.js"),
 });
 
+// The browser AI-scoring harness (P6) — a SEPARATE bundle at /vendor/harness.js
+// that the standalone trial driver (tools/harness-trial.mjs) imports into a real
+// WebGPU page to measure the shipped hybrid vs the engine. Never in app.js.
+await build({
+  entryPoints: [join(root, "src/harness/harness-trial-entry.ts")],
+  bundle: true,
+  format: "esm",
+  target: "es2022",
+  minify: true,
+  sourcemap: false,
+  platform: "browser",
+  outfile: join(dist, "vendor", "harness.js"),
+});
+
 // One stylesheet: tokens (the only hex) then components. The pre-paint script
 // has already set [data-theme] by the time this loads.
 const tokensCss = await readFile(join(root, "tokens.css"), "utf8");

@@ -10,7 +10,7 @@
 //! one to grade — the verifier must replay from `initial`).
 
 import type { Drop4, SideCode } from "../games/drop4/drop4-wasm.js";
-import { runMatch, type Player } from "./match-runner.js";
+import { runMatch, type MatchRecord, type Player } from "./match-runner.js";
 import { blunderRate, gradeSide, sumScorecards, type Scorecard } from "./scorer.js";
 
 /** Options for a tournament run. */
@@ -19,6 +19,13 @@ export interface TournamentOptions {
   readonly games: number;
   /** Base seed; game `i` uses `baseSeed + i`. */
   readonly baseSeed: bigint;
+  /**
+   * Optional per-game progress hook, called after each game completes with its
+   * index, the played record, and player `a`'s scorecard for that game. Used by
+   * the standalone trial driver for its staged diagnostic (a long WebGPU run
+   * needs legible progress); CI leaves it unset.
+   */
+  readonly onGame?: (index: number, record: MatchRecord, card: Scorecard) => void;
 }
 
 /** A tournament report: the matchup and the player-under-test's aggregate card. */
@@ -52,7 +59,9 @@ export async function runTournament(
 
     const verifier = await gameFactory();
     const aSide: SideCode = aOpens ? 1 : 2; // the side `a` played this game
-    cards.push(gradeSide(record, verifier, aSide));
+    const card = gradeSide(record, verifier, aSide);
+    cards.push(card);
+    opts.onGame?.(i, record, card);
   }
   return { matchup: `${a.label} vs ${b.label}`, card: sumScorecards(cards) };
 }

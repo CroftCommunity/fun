@@ -421,6 +421,11 @@ governs the chrome + frame, not the vendored game's internals:
 governing plans are `plans/2026-07-31-drop4-ai-harness.md` and
 `plans/2026-08-03-drop4-playable-and-hybrid-buildout.md`.)*
 
+> **Measuring the players.** The browser AI-scoring harness (`src/harness/`,
+> `npm run harness:trial`) grades the shipped browser players move-by-move
+> against the wasm's exact oracle — the browser mirror of `drop4-harness`. Full
+> guide: `docs/HARNESS.md`.
+
 A **two-player adversarial** game (two sides, alternating turns, a win/draw/loss
 result) is still a Tier-1 Croft-native game: it keeps §§2–8 (determinism-first
 core → wasm, verifiable outcome, tap-first core-decides-legality, tokens/WCAG,

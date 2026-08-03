@@ -102,6 +102,16 @@ Authoritative plan: `plans/2026-07-31-drop4-ai-harness.md`. Standards:
   malformed / out-of-band paths). Real: `AI_TRIAL_MODE=hybrid npm run ai:trial`
   (system Chrome) — firsthand: legal move + "To move: O. Your opening is strong."
 
+- [x] **P6 — browser AI-scoring harness** (`plans/2026-08-03-browser-scoring-harness.md`,
+  `docs/HARNESS.md`). `src/harness/{match-runner,scorer,tournament}.ts` mirror the
+  Rust `drop4-harness` over the browser substrate (shipped `drop4-wasm` + TS
+  players): `Player`/`MatchRecord`/`Scorecard`/`Report`, grading a move iff the
+  wasm reports it `exact` (≤16 empties). Pure scorer + wasm runner on the CI gate
+  (deterministic players + `MockRuntime`); the real WebGPU Hybrid-vs-Engine trial
+  is `npm run harness:trial` (system Chrome, staged diagnostic, off CI). First
+  live numbers: 0.5B hybrid **0-0-2** vs Perfect, **0 blunders / 7 graded**,
+  ~1130 ms/move — no strength, in-band by construction, slow.
+
 ## Next
 - [ ] Phase 5 — **TS harness (browser select + narrate)**: `AIRuntime` port +
   WebLLM adapter (pinned model)
