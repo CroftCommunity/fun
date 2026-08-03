@@ -37,7 +37,19 @@ Authoritative plan: `plans/2026-07-31-drop4-ai-harness.md`. Standards:
   game), `assess(move)` + `is_immediate_win`/`blocks_opponent_win` (engine-
   grounded tutoring facts the LLM narrates). Verified against the exact oracle.
 
+## Done (cont.) — build-out plan `plans/2026-08-03-drop4-playable-and-hybrid-buildout.md`
+- [x] P0 — responsive live engine (`drop4-solver::live` — `best_move_capped`/
+  `choose_capped`; depth-capped negamax + heuristic, fast from any position).
+- [x] P1 — **playable `/drop4/` vs the (capped) engine.** `live_move` wasm export
+  + `liveMove` wrapper; honest assistance in the outcome record (`mark_assistance`
+  + `outcome_json(declare)`); `src/games/drop4/drop4.ts` GameModule (tap a column,
+  core-driven legal glow, engine replies at Medium, verification-forward end
+  screen + `?r=` share, standard settings); registry/how-to/build/tokens wiring;
+  `tests/drop4.spec.ts` (16 e2e incl. axe + 360px + centred). Difficulty fixed at
+  Medium (the picker is P2). Localhost-review checkpoint.
+
 ## Next
+- [ ] P2 — opponent picker (Easy / Medium / Hard / Perfect), persisted.
 - [ ] Phase 5 — **TS harness (browser select + narrate)**: `AIRuntime` port +
   WebLLM adapter (pinned model)
   + `LLMPlayer` + `Scorer` mirroring the Rust one + Playwright trial driver.

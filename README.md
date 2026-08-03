@@ -9,7 +9,7 @@ a portable artifact addressable at its own URL.
 `fun.croft.ing` presents games in a **slide-out drawer** over a persistent play area; each game can
 also go **full-screen** or **open in its own tab** (so every game has its own URL). A game is a module
 that implements one contract and renders chrome-agnostically into a mount point — the drawer is built
-once and every game reuses it. Shelf order: **solitaire → match-3 → bubble → wyrdle → 2048 → cribbage**.
+once and every game reuses it. Shelf order: **solitaire → match-3 → bubble → wyrdle → 2048 → drop 4 → cribbage**.
 
 ## Layout
 
@@ -104,6 +104,20 @@ no floats, native==wasm. Daily board (a shuffled seed from
 record (score + best tile, re-derived by replay), one-tap re-verify, and a `?r=`
 share. No solver: every seed is playable (reaching 2048 is skill, not seed).
 Plan: `plans/2026-07-31-2048.md`.
+
+## Drop 4 (playable — vs a computer opponent)
+
+`/drop4/` is the shelf's first **two-player adversarial** game: you (✕) versus the
+classic engine (○). Tap a column to drop your disc into its lowest empty slot;
+four in a row — across, up, or diagonally — wins, and a full board is a draw. The
+core owns legality (a full column is not a legal target); a match records **both**
+sides' drops in one list, so the finished game replays to a verifiable
+`pond-outcome` record with a self-verifying `?r=` share, same as every Tier-1
+game. The opponent is the **live** depth-capped engine (fast from any position) —
+the exact solver stays the oracle for scoring/tutoring. Difficulty is fixed at
+Medium for now; an opponent picker and an experimental local-AI opponent are
+follow-ups. How the shelf builds AI opponents: `docs/AI-PLAYERS.md`. Plans:
+`plans/2026-07-31-drop4-ai-harness.md`, `plans/2026-08-03-drop4-playable-and-hybrid-buildout.md`.
 
 ## Identity (light/dark)
 

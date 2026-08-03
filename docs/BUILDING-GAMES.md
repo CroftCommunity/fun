@@ -351,6 +351,46 @@ governs the chrome + frame, not the vendored game's internals:
 - **Our chrome stays accessible.** Tokens/WCAG-AA/axe apply to the banner and
   surrounding chrome (the embedded game canvas is exempt).
 
+## 10. Adversarial two-player games + the AI-player standard
+
+*(Stub — grows as the harness lands. The full guide is `docs/AI-PLAYERS.md`; the
+governing plans are `plans/2026-07-31-drop4-ai-harness.md` and
+`plans/2026-08-03-drop4-playable-and-hybrid-buildout.md`.)*
+
+A **two-player adversarial** game (two sides, alternating turns, a win/draw/loss
+result) is still a Tier-1 Croft-native game: it keeps §§2–8 (determinism-first
+core → wasm, verifiable outcome, tap-first core-decides-legality, tokens/WCAG,
+standard settings, how-to, the gate). It adds a **computer opponent**. **Drop 4**
+(`src/games/drop4/`, `crates/drop4-*`) is the reference implementation.
+
+What is the same, and what is new:
+
+- **Rules as code — the `Adversary` trait** (`crates/adversary-core`): `initial`
+  / `side_to_move` / `legal_moves` / `apply` / `result` / `state_hash` + a text
+  bridge. Each game core implements it *and* `pond_outcome::Game`.
+- **Verifiable outcome carries over.** A match records **both** sides' moves in
+  one alternating list, so replaying `(seed, moves)` reproduces the final board
+  regardless of who chose each move — the `?r=` share re-verifies exactly as for
+  a single-player game. (Drop 4: the record is A-centric — `Won` = the opening
+  human won; the human-facing screen derives a draw-aware label from the live
+  result code.)
+- **The engine is strength; the LLM is UX.** In a solved / perfect-information
+  game a strong move is a *computable fact*, so the classic engine is the shipped
+  opponent (fast, strong, deterministic, tiny). An LLM adds legality by
+  construction, personality, explanation, and tutoring — **not** strength. See
+  `docs/AI-PLAYERS.md` for the full rationale and the measured findings.
+- **Live play uses a depth-capped engine, not the exact oracle.** The exact
+  solver is minutes from the opening; the shipped opponent is the depth-capped
+  `live_move`. The exact oracle stays the source of scoring / tutoring / the
+  difficulty band on tractable positions.
+- **Difficulty** is two knobs on the *engine* (class floor × within-class band
+  width Δ), never on the LLM. (Drop 4 P1 ships a fixed Medium; the picker is a
+  follow-up.)
+
+The harness ports (`Player` / `AIRuntime` / `Oracle`), the scorer, the hybrid
+band, and the tutor are documented in `docs/AI-PLAYERS.md` and filled in as they
+land; this section is the shelf-standards anchor for them.
+
 ## New-game checklist (Tier-1 Croft-native)
 
 - [ ] Rust core + rules doc + golden vectors; native==wasm verified.

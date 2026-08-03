@@ -59,6 +59,12 @@ at them and add what's specific to this repo. Git identity: chasemp
   `tier2.meta.json` (provenance + posture). Avoid the Emscripten + runtime-untar
   class (the SuperTuxKart cut, `plans/2026-07-31-supertuxkart-wrap.md`).
 
+**Adversarial (two-player) games + AI opponents.** Drop 4 (`/drop4/`) is the
+shelf's first two-player game vs a computer opponent — a Tier-1 build with a
+verifiable outcome. The engine is strength/difficulty, the LLM is UX
+(legality/personality/explanation/tutoring); the standard lives in
+`docs/BUILDING-GAMES.md` §10 and the full guide in `docs/AI-PLAYERS.md`.
+
 The candidate inventory + the Tier-2 inclusion filter live in discovery:
 `discovery/alpha/thinking/app/ponds/client-side-static-game-candidates.md`.
 
