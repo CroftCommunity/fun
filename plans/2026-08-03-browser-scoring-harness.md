@@ -119,6 +119,19 @@ logic; this consumes what P1–P3 shipped.
 - **A "cost" metric needs a clock.** The Rust rig doesn't time moves; the browser
   rig can record `performance.now()` per move (engine µs vs LLM ~ms/s). Recorded
   as an optional `Scorecard` field, not a gate.
+- **[Phase 0 D2 — confirmed 2026-08-03]** An engine-vs-engine game drives to a
+  terminal result **deterministically** over the real `drop4.wasm` under vitest
+  (via the fetch-shim + `Drop4.load()`): Perfect-vs-Perfect from `newGame(0n)`
+  played 42 moves to a **draw** (full board — the expected class-floor outcome),
+  reproducing an identical `currentHash()` across two runs. **Calibration
+  finding:** a full Perfect game is ~10 s in vitest (deep search × 42 plies + wasm
+  load), so any test that drives full games must raise `testTimeout` (30 s used in
+  the probe) and keep N small. Perfect-vs-Perfect is the deterministic driver that
+  guarantees reaching the exact-grading endgame (a full board is entirely ≤16
+  empties) with `blunders === 0` — so it is the natural Phase 1 wiring driver and
+  Phase 3 tournament driver (N=2, raised timeout). `liveMove("Perfect")` returns
+  `null` only at a terminal position; `play()` returns `"applied"` for every legal
+  move. (Probe was `throwaway` per its disposition; removed.)
 
 ## Documentation Impact
 
