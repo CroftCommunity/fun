@@ -2192,6 +2192,54 @@ body.fullscreen .play-area {
 @media (prefers-reduced-motion: reduce) {
   .drop4-cell.win { animation: none; }
 }
+/* Tutor panel — engine-grounded coaching (on by default, no model download).
+   Semantic tokens so it stays theme-aware + AA in light and dark. */
+.drop4-tutor {
+  width: 100%;
+  max-width: 26rem;
+  margin: 0.2rem auto 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  text-align: center;
+}
+.drop4-tutor-explain {
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--surface-2, var(--surface));
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.3rem 0.9rem;
+  cursor: pointer;
+}
+.drop4-tutor-explain:hover {
+  border-color: var(--active);
+}
+.drop4-tutor-note {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+  font-style: italic;
+}
+.drop4-tutor-options {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+.drop4-tutor-coach {
+  margin: 0;
+  min-height: 1.2em;
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
 /* ---- Align (falling-block stacker) ---------------------------------------- */
 /* One centred column: controls, callout, stage (hold · board · next), the touch
    pad, status. The board canvas draws its own dark play surface (--al-board);

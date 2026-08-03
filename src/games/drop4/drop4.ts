@@ -11,7 +11,7 @@
 //! chosen mark persist.
 
 import type { GameModule } from "../../contract.js";
-import { Drop4, type BoardView, type Level } from "./drop4-wasm.js";
+import { Drop4, type BoardView, type Level, type MoveAssessment } from "./drop4-wasm.js";
 import {
   decodeRecord,
   encodeRecord,
@@ -75,6 +75,34 @@ function el<K extends keyof HTMLElementTagNameMap>(
 
 const glyphFor = (m: Mark): string => (m === "x" ? "✕" : "○");
 const other = (m: Mark): Mark => (m === "x" ? "o" : "x");
+
+/** A short, engine-grounded idea for why a move is reasonable (tutor copy). */
+const ideaFor = (m: MoveAssessment): string =>
+  m.immediateWin
+    ? "wins now"
+    : m.blocksOpponentWin
+      ? "blocks their threat"
+      : m.quality === "optimal"
+        ? "your strongest line"
+        : "stays safe";
+
+/**
+ * Coaching for a just-tapped move, or null if it was not a blunder. Honest
+ * about certainty: only when the facts are provably `exact` (endgame) does it
+ * say the move *threw* the game; when the facts are the horizon-approximate
+ * capped search's it softens to "looks risky" (it cannot prove the class drop).
+ */
+const coachFor = (
+  verdict: MoveAssessment | null,
+  bestCol: number | null,
+  exact: boolean,
+): string | null => {
+  if (!verdict || verdict.quality !== "blunder" || bestCol === null) return null;
+  const held = `column ${bestCol + 1}`;
+  return exact
+    ? `That threw the game — ${held} held it.`
+    : `That looks risky — ${held} may have been safer.`;
+};
 
 /** The human-facing outcome from a live/replayed result code (draw-aware). */
 function outcomeLabel(code: number): string {
@@ -206,6 +234,9 @@ export function drop4Module(): GameModule {
   let level: Level = drop4Level();
   let playerMark: Mark = drop4Mark();
   let lastMove: Cell | null = null;
+  // Engine-grounded coaching for the human's last move, surfaced after the
+  // engine replies (so it does not spoil the reply). Cleared each human turn.
+  let coachMsg: string | null = null;
 
   const statusEl = el("p", { class: "sol-status", role: "status", "aria-live": "polite" });
   const setStatus = (msg: string): void => {
@@ -246,19 +277,27 @@ export function drop4Module(): GameModule {
 
   const playCol = (col: number): void => {
     if (!game || thinking || ending || gameOver() || !humanToMove()) return;
+    coachMsg = null; // clear last turn's coaching
+    // Assess the tapped move at the *current* position (human to move) before
+    // it is applied — "was that a blunder" needs the position before the move.
+    const report = game.tutor();
+    const verdict = report.moves.find((m) => m.col === col) ?? null;
+    const pending = coachFor(verdict, report.bestCol, report.exact);
     if (!applyMove(col)) return; // the core decides; illegal = no-op
     setStatus("");
     if (gameOver()) {
+      coachMsg = pending; // a game-ending blunder is still explained
       finish();
       return;
     }
     render();
-    scheduleEngine();
+    scheduleEngine(pending);
   };
 
   // The engine replies after a brief "thinking" beat, using the fast live engine
-  // (never the exact oracle, which is minutes from the opening).
-  const scheduleEngine = (): void => {
+  // (never the exact oracle, which is minutes from the opening). Any coaching for
+  // the human's move is surfaced *after* the reply, so it does not spoil it.
+  const scheduleEngine = (pending: string | null): void => {
     if (!game) return;
     thinking = true;
     setStatus(`${OPPONENT.name} is thinking…`);
@@ -269,10 +308,12 @@ export function drop4Module(): GameModule {
       thinking = false;
       if (col !== null) applyMove(col);
       if (gameOver()) {
+        coachMsg = pending;
         finish();
         return;
       }
       setStatus("");
+      coachMsg = pending;
       render();
     }, THINK_MS);
   };
@@ -281,12 +322,15 @@ export function drop4Module(): GameModule {
 
   const showHint = (): void => {
     if (!game || thinking || ending || gameOver() || !humanToMove()) return;
-    // A strong suggestion from the live engine at its top setting (fast, and it
-    // consumes no RNG at Perfect). Using a hint counts as assistance.
-    const col = game.liveMove("Perfect");
-    if (col === null) return;
+    // The engine's best move *and why* — a class-preserving band move plus the
+    // fact that makes it good. Using a hint counts as assistance.
+    const report = game.tutor();
+    const best = report.bestCol;
+    if (best === null) return;
+    const m = report.moves.find((mm) => mm.col === best) ?? null;
     game.markAssistance();
-    setStatus(`Hint: column ${col + 1} is a strong drop (a hint counts as assistance).`);
+    const why = m ? ideaFor(m) : "a strong drop";
+    setStatus(`Hint: column ${best + 1} — ${why} (a hint counts as assistance).`);
   };
 
   const endNow = (): void => {
@@ -478,6 +522,37 @@ export function drop4Module(): GameModule {
     return boardEl;
   };
 
+  // --- the tutor panel (engine-grounded coaching; on by default, no GPU) ---
+
+  const renderTutorPanel = (): HTMLElement => {
+    const panel = el("section", { class: "drop4-tutor", "aria-label": "Tutor" });
+    const explain = el(
+      "button",
+      { type: "button", class: "drop4-tutor-explain" },
+      "Explain my options",
+    );
+    const note = el("p", { class: "drop4-tutor-note", "aria-live": "polite" });
+    const optionsEl = el("ul", { class: "drop4-tutor-options", "aria-label": "Reasonable moves" });
+    explain.addEventListener("click", () => {
+      if (!game || thinking || ending || gameOver() || !humanToMove()) return;
+      const report = game.tutor();
+      // The class-preserving band — moves that do not throw the game — best first.
+      const band = report.moves
+        .filter((m) => m.quality !== "blunder")
+        .sort((a, b) => b.value - a.value);
+      // Honest: early facts are horizon-approximate, not proven (kept out of the
+      // list so each list item is a real column option).
+      note.textContent = report.exact ? "" : "Reading ahead (not yet certain):";
+      optionsEl.replaceChildren(
+        ...band.map((m) => el("li", {}, `Column ${m.col + 1} — ${ideaFor(m)}`)),
+      );
+    });
+    const coach = el("p", { class: "drop4-tutor-coach", role: "status", "aria-live": "polite" });
+    if (coachMsg) coach.textContent = coachMsg;
+    panel.append(explain, note, optionsEl, coach);
+    return panel;
+  };
+
   const winLineNow = (b: BoardView): Cell[] =>
     b.result === 1 || b.result === 2 ? winningLine(b.cells, b.result) : [];
 
@@ -497,6 +572,7 @@ export function drop4Module(): GameModule {
       renderControls(),
       banner,
       buildBoard(board, { interactive: true, winLine: winLineNow(board) }),
+      renderTutorPanel(),
       statusEl,
     );
     container.replaceChildren(game_);
@@ -520,6 +596,9 @@ export function drop4Module(): GameModule {
         { class: "drop4-game" },
         renderTurnbar(),
         flash,
+        ...(coachMsg
+          ? [el("p", { class: "drop4-tutor-coach", role: "status" }, coachMsg)]
+          : []),
         buildBoard(board, { interactive: false, winLine: line }),
       ),
     );
@@ -554,6 +633,7 @@ export function drop4Module(): GameModule {
     thinking = false;
     ending = false;
     lastMove = null;
+    coachMsg = null;
     seed = seedOverride ?? randomSeed();
     game.newGame(seed);
     setStatus("");

@@ -132,6 +132,51 @@ test("a full game plays to a terminal result; the final board + winning line sho
   await shared.close();
 });
 
+test("the tutor flags a blunder end-to-end with an honest explanation", async ({ page }) => {
+  await page.goto("/drop4/?seed=7");
+  await ready(page);
+  // Set up a position where the human (Side A) has an immediate win in col 0 but
+  // B has a standing threat in col 1: after [0,1,0,1,0,1], A to move. Playing
+  // col 1 (index 1) gives up the win — a class-dropping blunder the early
+  // (capped) search reports as "risky" (it cannot *prove* the class drop yet).
+  await page.evaluate(() => {
+    const g = window.__drop4!.game;
+    for (const c of [0, 1, 0, 1, 0, 1]) g.play(c);
+    window.__drop4!.refresh();
+  });
+  await page.locator('.drop4-col[data-col="1"]').click();
+  await waitHumanOrOver(page);
+  const coach = page.locator(".drop4-tutor-coach");
+  await expect(coach).toBeVisible();
+  // Honest wording: capped facts soften to "looks risky" (never the confident
+  // "threw the game" reserved for provably-exact endgame facts), and it names
+  // the column that held the line (col 0 → "column 1").
+  await expect(coach).toContainText(/looks risky/i);
+  await expect(coach).not.toContainText(/threw the game/i);
+  await expect(coach).toContainText(/column 1\b/);
+});
+
+test("'Explain my options' lists at least two band moves with an idea each", async ({ page }) => {
+  await page.goto("/drop4/?seed=7");
+  await ready(page);
+  await page.locator(".drop4-tutor-explain").click();
+  const items = page.locator(".drop4-tutor-options li");
+  // A fresh position has several class-preserving moves — the tutor lists them.
+  expect(await items.count()).toBeGreaterThanOrEqual(2);
+  // Each option names a column and an idea (why it is reasonable).
+  await expect(items.first()).toContainText(/column \d/i);
+});
+
+test("the why-hint names a column and a reason", async ({ page }) => {
+  await page.goto("/drop4/?seed=7");
+  await ready(page);
+  // Hints are on by default; the upgraded hint says *why*, not just "column N".
+  await page.locator(".sol-hint").click();
+  const status = page.locator(".sol-status");
+  await expect(status).toContainText(/column \d/i);
+  await expect(status).toContainText(/strongest|stays safe|blocks|wins now/i);
+});
+
 test("with hints off, 'I'm done' ends the round", async ({ page }) => {
   await page.goto("/drop4/?seed=7");
   await ready(page);
