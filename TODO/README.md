@@ -12,4 +12,5 @@ guide). These files are the running, checkbox-level worklist.
 - [bubble.md](bubble.md) — **playable**; aim-preview/specials/ceiling-advance follow-ups.
 - [cribbage.md](cribbage.md) — **gated**; needs P2P transport + fair-reveal first.
 - [digger.md](digger.md) — **concept, not started**; Tier-1 build-fresh (our own take on an LD29 digger — the original is all-rights-reserved, so not wrappable).
+- [puzzles.md](puzzles.md) — **concept, not started**; Tier-1 build-fresh logic puzzles (Minesweeper / Nonograms / Sudoku / …) — the Tatham Tier-2 embed was tried and torn out as unreadable.
 - [supertuxkart.md](supertuxkart.md) — **Tier-2, under owner review**; local preview built + served, awesome-or-not test pending.

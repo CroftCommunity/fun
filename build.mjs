@@ -13,11 +13,11 @@ const dist = join(root, "dist");
 
 // Game entry pages: "" is the home/drawer page (no game mounted); the rest carry
 // <body data-game> so the chrome knows what to mount.
-const GAME_PAGES = ["", "placeholder", "solitaire", "match3", "bubble", "wyrdle", "2048", "align", "blockdoku", "looseends", "color-sort", "astray", "hexgl", "clumsybird", "puzzles", "orchard-drop", "cribbage"];
+const GAME_PAGES = ["", "placeholder", "solitaire", "match3", "bubble", "wyrdle", "2048", "align", "blockdoku", "looseends", "color-sort", "astray", "hexgl", "clumsybird", "orchard-drop", "cribbage"];
 
 // Tier-2 wrapped games: their vendored bundle ships under src/games/<id>/vendor/
 // and is served at /<id>/vendor/ for the sandboxed iframe to load same-origin.
-const TIER2_VENDORS = ["astray", "hexgl", "clumsybird", "puzzles", "orchard-drop"];
+const TIER2_VENDORS = ["astray", "hexgl", "clumsybird", "orchard-drop"];
 
 // Pre-paint theme resolution: set [data-theme] before first paint so the felt
 // table never flashes the wrong theme. Same rule as src/theme.ts resolveTheme.
