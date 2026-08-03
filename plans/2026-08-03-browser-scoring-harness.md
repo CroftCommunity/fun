@@ -102,11 +102,20 @@ logic; this consumes what P1–P3 shipped.
   `AIRuntime`/`MockRuntime`/`WebLLMRuntime`; `buildBand(moves)` → `BandMove[]`,
   `HybridPlayer.pick(band, {prompt,system})` → `{move, reason, source}`.
 - **Test + tooling conventions** (read repo): vitest units in `tests/*.test.ts`
-  (may load the real wasm — the suite runs `build:wasm` in `preunit`); Playwright
-  e2e in `tests/*.spec.ts`; standalone drivers in `tools/*.mjs` (`ai-trial.mjs`,
-  `guide-shots.mjs`, `serve.mjs`) launch system Chrome via `@playwright/test`
-  `channel:"chrome"`. CI gate (`.github/workflows/deploy.yml`): `build:wasm →
-  typecheck → lint → unit → build → Pages` — **no e2e, no GPU**.
+  (env `jsdom` — `vitest.config.ts:5`); Playwright e2e in `tests/*.spec.ts`;
+  standalone drivers in `tools/*.mjs` (`ai-trial.mjs`, `guide-shots.mjs`,
+  `serve.mjs`) launch system Chrome via `@playwright/test` `channel:"chrome"`. CI
+  gate (`.github/workflows/deploy.yml`): `build:wasm → typecheck → lint → unit →
+  build → Pages` — **no e2e, no GPU**.
+- **How a unit test loads the real wasm** (read `tests/solitaire-unit.test.ts:22-33`,
+  `tests/match3-unit.test.ts:12-17`) — **Pass 2, the concrete pattern P6 must use**:
+  the suite runs `build:wasm` in `preunit` (so `target/wasm32-unknown-unknown/release/
+  <game>_wasm.wasm` exists), then a test shims `globalThis.fetch` to return a
+  `Response` over the on-disk bytes (`readFile`) and calls `Game.load()` (which
+  `fetch`es `/drop4.wasm`), restoring `fetch` after. **`Drop4.load()` therefore
+  works under vitest only with this shim** — the match-runner/scorer/tournament
+  tests must wrap their `Drop4.load()` in it (path
+  `target/wasm32-unknown-unknown/release/drop4_wasm.wasm`).
 - **A "cost" metric needs a clock.** The Rust rig doesn't time moves; the browser
   rig can record `performance.now()` per move (engine µs vs LLM ~ms/s). Recorded
   as an optional `Scorecard` field, not a gate.
@@ -192,7 +201,10 @@ return a `MatchRecord` (seed, per-side move list, result, terminal hash).
 `Drop4.play` → `Drop4.board()`.
 **Wiring test:** `tests/match-runner.test.ts` — drives a full game through the real
 wasm (not a mock) and asserts terminal-hash replay. This proves the runner is live
-against the shipped core.
+against the shipped core. **Loads the wasm via the `globalThis.fetch` shim +
+`Drop4.load()` (the `solitaire-unit.test.ts:24-33` pattern, path
+`target/wasm32-unknown-unknown/release/drop4_wasm.wasm`)** — the runner takes an
+already-loaded `Drop4`, so the shim lives in the test, not the runner.
 **Depends on:** Phase 0.
 **Read-set:** `src/games/drop4/drop4-wasm.ts`. **Write-set:**
 `src/harness/match-runner.ts`, `tests/match-runner.test.ts`.
@@ -339,3 +351,24 @@ provably-exact endgame moves via the shipped `exact` flag (mirrors the Rust
 ≤12-empties gate). Phases: 0 grading-parity discovery → 1 match-runner → 2 pure
 scorer → 3 tournament → 4 trial + docs. 3 open questions, all ADVISORY/PHASE-GATED
 (no BLOCKING).
+
+### Pass 2: Gap Analysis — 2026-08-03
+**Found:**
+- **Wasm-in-vitest load pattern was assumed, not specified (the biggest factual
+  risk).** `Drop4.load()` uses `fetch("/drop4.wasm")`, which does not resolve in
+  the vitest `jsdom` env by itself. Read `tests/solitaire-unit.test.ts:22-33` +
+  `match3-unit.test.ts`: the real pattern is a `globalThis.fetch` shim serving the
+  on-disk `target/.../<game>_wasm.wasm` via `readFile`, with `preunit` building the
+  wasm first. Added this to Verified Assumptions and to Phase 1's wiring test so the
+  executor uses the shim (path `…/drop4_wasm.wasm`) rather than discovering the fetch
+  gap mid-phase. Phases 2/3 inherit it (they take an already-loaded `Drop4`).
+**Concurrency:** map confirmed — all sequential (each phase consumes the prior's
+data). Phase 4 adds `HybridAiPlayer` to Phase 1's `match-runner.ts` (a second write
+to that file), but sequentially, so no conflict; noted in Phase 4's write-set.
+**Changed:** added the fetch-shim load pattern to Verified Assumptions + Phase 1
+wiring test. No phase reordering.
+**Confirmed:** the Rust-harness shapes to mirror (`Player`/`Scorecard`/`score_side`/
+`SCORE_MAX_EMPTIES=12`/`Report`/`run_trial`) and the shipped grading surface
+(`assess`/`tutor` `{quality, exact}`) both check out against the source; the
+exact-only grading gate via the shipped `exact` flag is faithful to the Rust ≤12
+rule (strict superset, documented). No BLOCKING items surfaced.

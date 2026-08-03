@@ -115,6 +115,20 @@ reuse that doesn't are both documented as the generality finding.
   `buildBand(moves: TutorFactMove[])` and `HybridPlayer.pick(band, {prompt})` take a
   plain band + `{quality, value, immediateWin, blocksOpponentWin}` facts — **no
   Drop 4 import**. `ai-runtime.ts` is fully generic. Both reuse unchanged.
+- **[Pass 2] `TutorFactMove`'s per-move *facts* are Drop-4-flavored** (`immediateWin`,
+  `blocksOpponentWin`) — Othello has no immediate 4-in-a-row win or single-square
+  block, so those are always `false` there. `buildBand` still works (it filters by
+  `quality` and sorts by `value`); its `ideaFor` just degrades to the
+  quality-based idea ("your strongest line" / "stays safe") instead of "wins now" /
+  "blocks their threat". So the reuse **holds unchanged**, with generic ideas — the
+  optional "takes a corner" enrichment (a new fact or a game-supplied idea) is the
+  ADVISORY open question, not required for v1.
+- **[Pass 2] Wasm-in-vitest load pattern** (read `tests/solitaire-unit.test.ts:22-33`,
+  `match3-unit.test.ts:12-17`): `preunit` builds the wasm, then a unit test shims
+  `globalThis.fetch` to serve `target/wasm32-unknown-unknown/release/<game>_wasm.wasm`
+  via `readFile` and calls `Game.load()`. Phase 4's `othello-unit.test.ts` uses this
+  (path `…/othello_wasm.wasm`) — `Othello.load()` won't resolve `fetch` under jsdom
+  otherwise.
 - **The tutor/hybrid UI is Drop-4-specific TS** (read `src/games/drop4/drop4.ts`):
   the tutor panel, the availability probe (`navigator.gpu` non-fallback), the
   experimental toggle + disclosure, the LLM narration — a **pattern to copy**, not
@@ -262,8 +276,11 @@ band units.
 **Changes:** `crates/othello-wasm/{Cargo.toml, src/lib.rs}` — mirror `drop4-wasm`:
 one held session + OUT buffer; `new_game/play/board_json/legal_moves_json/
 current_hash/result_code/render_text/live_move/oracle_best/oracle_move_values_json/
-assess_json/tutor_json/mark_assistance/outcome_json`. Handle `Pass` in `play`
-(a pass is a legal "move"; expose whether the side must pass). Never panics.
+assess_json/tutor_json/mark_assistance/outcome_json`. **[Pass 2] Encode `Pass`
+explicitly:** a dedicated `pass()` C-ABI export (clearer than overloading
+`play(square)` with a sentinel), and `legal_moves_json` signals when `[Pass]` is
+the only option so the UI can auto-pass; the `Move {Place(u8), Pass}` serializes
+into the outcome move list so `(seed, moves)` replays passes exactly. Never panics.
 `tools/build-wasm.sh` (+`-p othello-wasm`) + `build.mjs` (copy `othello.wasm`).
 **Wiring test:** `cargo test -p othello-wasm` — a single stateful cabi test
 (global session): play a reachable opening, `assess_json`/`tutor_json` report the
@@ -376,3 +393,33 @@ Band selector duplicated (not extracted) per rule-of-three. Phases: 0 discovery
 3 wasm → 4 wrapper+outcome → 5 playable-wired → 6 tutor+hybrid+docs+shot; sub-phases
 keep each unit ≤ ~4 files. 6 open questions (1 BLOCKING = D1 rules, 2 PHASE-GATED,
 3 ADVISORY).
+
+### Pass 2: Gap Analysis — 2026-08-03
+**Found:**
+- **`TutorFactMove` reuse is real but its *facts* are Drop-4-flavored.**
+  `immediateWin`/`blocksOpponentWin` don't exist in Othello (wins are by final
+  count). Verified `hybrid-player.ts`: `buildBand` filters by `quality` + sorts by
+  `value`, so it reuses **unchanged**; only `ideaFor`'s labels degrade to
+  quality-based ("your strongest line") instead of "wins now"/"blocks". Recorded
+  as a Verified Assumption; the "takes a corner" enrichment stays the ADVISORY
+  open question. The "reuse the harness unchanged" claim holds — sharpened to note
+  the graceful degradation rather than overclaiming identical ideas.
+- **Wasm-in-vitest load pattern was assumed, not specified.** Same gap as P6:
+  `Othello.load()` uses `fetch`, which needs the `globalThis.fetch` shim under
+  jsdom (`solitaire-unit.test.ts:22-33`). Added to Verified Assumptions so Phase
+  4's `othello-unit.test.ts` uses it (path `…/othello_wasm.wasm`).
+- **`Pass` encoding in the C-ABI was under-specified.** Sharpened Phase 3: a
+  dedicated `pass()` export (not a `play` sentinel), `legal_moves_json` signals a
+  forced pass, and `Move {Place, Pass}` serializes into the outcome list so replay
+  handles passes — closing the "how does a pass round-trip through `?r=`" gap.
+**Concurrency:** map confirmed — all sequential (each layer consumes the prior
+crate/wrapper). The internal Phase 2 a/b split is sequential (2b consumes 2a's
+`move_values`). `build.mjs` is written in both Phase 3 (wasm copy) and Phase 5
+(GAME_PAGES) — sequential, no conflict; noted. No missed parallelism.
+**Changed:** added the `TutorFactMove`-degradation + fetch-shim Verified
+Assumptions; sharpened Phase 3's `Pass` encoding. No phase reordering.
+**Confirmed:** the `Adversary` trait + `pond_outcome::Game` (drop4-core `game.rs:171`)
+are the correct seams; the drop4 crate/front/registry/build wiring is the right
+template; the heuristic-Oracle-with-exact-endgame shape mirrors `drop4-solver`'s
+exact|capped honesty (renamed exact|heuristic). BLOCKING D1 (rules) stands for
+execution (needs the Phase 0 spike). No new BLOCKING items.
