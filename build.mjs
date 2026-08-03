@@ -67,6 +67,22 @@ async function rename(from, to) {
 await rename("main.js", "app.js");
 await rename("how-to-page.js", "how-to.js");
 
+// Embedded WebLLM runtime — a SEPARATE bundle at /vendor/webllm.js so the
+// experimental local-AI opponent's library ships from our own origin (never a
+// third-party CDN: offline-capable PWA + no CDN-served executable code).
+// WebLLMRuntime dynamic-imports it by URL, lazily, only when the toggle fires —
+// so it is NOT in app.js and non-AI games never load it.
+await build({
+  entryPoints: [join(root, "src/harness/webllm-vendor.ts")],
+  bundle: true,
+  format: "esm",
+  target: "es2022",
+  minify: true,
+  sourcemap: false, // a third-party lib chunk — no need to ship its 6MB map
+  platform: "browser",
+  outfile: join(dist, "vendor", "webllm.js"),
+});
+
 // One stylesheet: tokens (the only hex) then components. The pre-paint script
 // has already set [data-theme] by the time this loads.
 const tokensCss = await readFile(join(root, "tokens.css"), "utf8");
