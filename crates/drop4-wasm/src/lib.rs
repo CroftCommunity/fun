@@ -20,7 +20,9 @@
 
 use adversary_core::{Adversary, MatchResult, Side};
 use drop4_core::{apply_move, legal_cols, winner, Board, Col, Drop4, HEIGHT, WIDTH};
-use drop4_solver::{choose_capped, live_band, select_in_band, Level, Solver};
+use drop4_solver::{
+    assess, choose_capped, live_band, select_in_band, Level, MoveClass, Solver, TutorMove,
+};
 use pond_outcome::{attest, Outcome};
 use rand_chacha::rand_core::SeedableRng;
 use rand_chacha::ChaCha20Rng;
@@ -308,6 +310,98 @@ pub extern "C" fn oracle_move_values_json() -> *const u8 {
     set_out_json(&vals)
 }
 
+// --- tutor (engine-grounded coaching facts) ----------
+
+fn quality_str(q: MoveClass) -> &'static str {
+    match q {
+        MoveClass::Optimal => "optimal",
+        MoveClass::ResultPreserving => "resultPreserving",
+        MoveClass::Blunder => "blunder",
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AssessView {
+    col: u8,
+    value: i32,
+    best_value: i32,
+    regret: i32,
+    /// `"optimal"` / `"resultPreserving"` / `"blunder"`.
+    quality: &'static str,
+    immediate_win: bool,
+    blocks_opponent_win: bool,
+    /// `true` when the facts are provably exact (endgame); `false` when they are
+    /// the horizon-approximate capped search's (so the UI softens its wording).
+    exact: bool,
+}
+
+fn assess_view(m: &TutorMove, exact: bool) -> AssessView {
+    AssessView {
+        col: m.col.0,
+        value: m.value,
+        best_value: m.best_value,
+        regret: m.regret,
+        quality: quality_str(m.quality),
+        immediate_win: m.immediate_win,
+        blocks_opponent_win: m.blocks_opponent_win,
+        exact,
+    }
+}
+
+/// Engine-grounded assessment of the candidate move `col` at the **current**
+/// position (before it is played): its quality, regret, immediate-win /
+/// blocks-threat facts, and whether those facts are `exact`. `"null"` if there
+/// is no game or `col` is not a legal move. Never panics.
+#[no_mangle]
+pub extern "C" fn assess_json(col: u32) -> *const u8 {
+    let Some(s) = session_mut() else {
+        return set_out_str("null");
+    };
+    let Ok(c) = u8::try_from(col) else {
+        return set_out_str("null");
+    };
+    let board = s.board;
+    let solver = s.solver.get_or_insert_with(Solver::new);
+    let report = assess(&board, solver);
+    match report.moves.iter().find(|m| m.col.0 == c) {
+        Some(m) => set_out_json(&assess_view(m, report.exact)),
+        None => set_out_str("null"),
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TutorView {
+    moves: Vec<AssessView>,
+    /// The best column (first, if several tie), or `null` if terminal.
+    best_col: Option<u8>,
+    exact: bool,
+}
+
+/// The current position's whole-position tutor report: every legal move's
+/// assessment, the best column, and whether the facts are `exact`. `"null"` if
+/// there is no game. Never panics.
+#[no_mangle]
+pub extern "C" fn tutor_json() -> *const u8 {
+    let Some(s) = session_mut() else {
+        return set_out_str("null");
+    };
+    let board = s.board;
+    let solver = s.solver.get_or_insert_with(Solver::new);
+    let report = assess(&board, solver);
+    let view = TutorView {
+        moves: report
+            .moves
+            .iter()
+            .map(|m| assess_view(m, report.exact))
+            .collect(),
+        best_col: report.best_col.map(|c| c.0),
+        exact: report.exact,
+    };
+    set_out_json(&view)
+}
+
 // --- assistance ----------
 
 /// Record that the player used a hint this match (assistance). Whether it is
@@ -396,5 +490,88 @@ mod tests {
         mark_assistance();
         let rec: serde_json::Value = serde_json::from_slice(&out_slice(outcome_json(1))).unwrap();
         assert_eq!(rec["payload"]["assistance"], serde_json::json!(true));
+
+        // --- tutor facts (folded into this single stateful test: the module
+        // holds one global `STATE`, so all C-ABI interaction stays in one test
+        // to avoid racing across parallel test threads). The C-ABI reaches
+        // positions only by playing from new_game; the ≤16-empty (exact) path is
+        // covered by the solver-level `drop4_solver::tutor` units, not here. ---
+
+        // Win position: after [0,1,0,1,0,1] A has three in col 0 (an immediate
+        // win) and B has three in col 1 (a standing threat), A to move.
+        new_game(1, 0);
+        for c in [0, 1, 0, 1, 0, 1] {
+            assert_eq!(play(c), 0);
+        }
+
+        // assess_json(0): the winning move is optimal, wins now, capped (early),
+        // no regret.
+        let a: serde_json::Value = serde_json::from_slice(&out_slice(assess_json(0))).unwrap();
+        assert_eq!(a["immediateWin"], serde_json::json!(true), "col 0 wins now");
+        assert_eq!(
+            a["quality"],
+            serde_json::json!("optimal"),
+            "the win is optimal"
+        );
+        assert_eq!(
+            a["exact"],
+            serde_json::json!(false),
+            "early position is capped"
+        );
+        assert_eq!(
+            a["regret"],
+            serde_json::json!(0),
+            "the best move has no regret"
+        );
+
+        // A non-winning move (col 2) lets B win in col 1 → a class-dropping
+        // blunder the capped search detects within the horizon.
+        let bad: serde_json::Value = serde_json::from_slice(&out_slice(assess_json(2))).unwrap();
+        assert_eq!(
+            bad["quality"],
+            serde_json::json!("blunder"),
+            "col 2 throws it"
+        );
+        assert!(
+            bad["regret"].as_i64().unwrap() > 0,
+            "the blunder has regret"
+        );
+
+        // tutor_json(): whole-position report — capped flag, best column, one
+        // assessment per legal move.
+        let legal_len = {
+            let v: serde_json::Value =
+                serde_json::from_slice(&out_slice(legal_moves_json())).unwrap();
+            v.as_array().unwrap().len()
+        };
+        let t: serde_json::Value = serde_json::from_slice(&out_slice(tutor_json())).unwrap();
+        assert_eq!(
+            t["exact"],
+            serde_json::json!(false),
+            "capped in the opening"
+        );
+        assert_eq!(t["bestCol"], serde_json::json!(0), "col 0 is the best move");
+        assert_eq!(
+            t["moves"].as_array().unwrap().len(),
+            legal_len,
+            "one assessment per legal move"
+        );
+
+        // An out-of-range / illegal column assesses to `null`, not a panic.
+        let over: serde_json::Value = serde_json::from_slice(&out_slice(assess_json(99))).unwrap();
+        assert!(over.is_null(), "an illegal column assesses to null");
+
+        // Block position: after [0,3,1,3,2,3] B threatens col 3, A to move → col
+        // 3 blocks the immediate opponent win (a one-ply exact fact).
+        new_game(2, 0);
+        for c in [0, 3, 1, 3, 2, 3] {
+            assert_eq!(play(c), 0);
+        }
+        let blk: serde_json::Value = serde_json::from_slice(&out_slice(assess_json(3))).unwrap();
+        assert_eq!(
+            blk["blocksOpponentWin"],
+            serde_json::json!(true),
+            "col 3 blocks B's immediate threat"
+        );
     }
 }

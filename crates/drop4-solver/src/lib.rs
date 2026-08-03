@@ -12,6 +12,7 @@
 pub mod bitboard;
 pub mod live;
 pub mod solver;
+pub mod tutor;
 
 pub use bitboard::Position;
 pub use live::{
@@ -19,3 +20,4 @@ pub use live::{
     LiveBand,
 };
 pub use solver::{best_move, choose, evaluate, solve, Eval, Level, Solver};
+pub use tutor::{assess, MoveClass, TutorMove, TutorReport};

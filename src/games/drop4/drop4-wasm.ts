@@ -26,6 +26,41 @@ export interface MoveValue {
   value: number;
 }
 
+/** A move's quality relative to the position's best move. */
+export type MoveQuality = "optimal" | "resultPreserving" | "blunder";
+
+/**
+ * Engine-grounded assessment of one legal move — the ground truth the tutor
+ * surfaces. `exact` says whether the facts are provably right (endgame) or
+ * horizon-approximate (early), so the UI can be honest.
+ */
+export interface MoveAssessment {
+  col: number;
+  /** Value (side-to-move perspective; higher is better), exact or capped. */
+  value: number;
+  /** The best value available in the position. */
+  bestValue: number;
+  /** How far below the best value (0 = optimal). */
+  regret: number;
+  quality: MoveQuality;
+  /** Completes a four-in-a-row now (always an exact one-ply fact). */
+  immediateWin: boolean;
+  /** Blocks an immediate opponent win (always an exact one-ply fact). */
+  blocksOpponentWin: boolean;
+  /** True when the facts are provably exact; false when horizon-approximate. */
+  exact: boolean;
+}
+
+/** The current position's whole-position tutor report. */
+export interface TutorReport {
+  /** One assessment per legal move; empty if the position is terminal. */
+  moves: MoveAssessment[];
+  /** The best column (first, if several tie), or null if terminal. */
+  bestCol: number | null;
+  /** True when the facts are provably exact; false when horizon-approximate. */
+  exact: boolean;
+}
+
 /** Move application status. */
 export type MoveStatus = "applied" | "illegal" | "over";
 const STATUS: Record<number, MoveStatus> = { 0: "applied", 1: "illegal", 2: "over" };
@@ -47,6 +82,8 @@ interface Exports {
   live_move(level: number): number;
   oracle_best(level: number): number;
   oracle_move_values_json(): number;
+  assess_json(col: number): number;
+  tutor_json(): number;
   mark_assistance(): void;
   outcome_json(declare: number): number;
 }
@@ -115,6 +152,22 @@ export class Drop4 {
   /** The exact value of every legal move — the source for a difficulty band. */
   oracleMoveValues(): MoveValue[] {
     return JSON.parse(this.read(this.x.oracle_move_values_json())) as MoveValue[];
+  }
+  /**
+   * Engine-grounded assessment of the candidate move `col` at the **current**
+   * position (before it is played) — quality, regret, immediate-win /
+   * blocks-threat, and whether the facts are exact. `null` if there is no game
+   * or `col` is not a legal move.
+   */
+  assess(col: number): MoveAssessment | null {
+    return JSON.parse(this.read(this.x.assess_json(col))) as MoveAssessment | null;
+  }
+  /**
+   * The current position's whole-position tutor report: every legal move's
+   * assessment, the best column, and whether the facts are exact.
+   */
+  tutor(): TutorReport {
+    return JSON.parse(this.read(this.x.tutor_json())) as TutorReport;
   }
   /** Record that a hint was used this match (assistance). */
   markAssistance(): void {

@@ -6,6 +6,13 @@
 > `plans/2026-07-31-drop4-ai-harness.md` and `docs/AI-PLAYERS.md`; this plan is
 > the **build sequence**. Optimised for **localhost design review between us**
 > and **frequent commits**.
+>
+> **Re-ordered (2026-08-03):** the AI + tutor layer (P3/P4/P5) has its own
+> detailed plan, `plans/2026-08-03-drop4-ai-tutor-layer.md`, which builds the
+> **deterministic tutor first** (P5 before P4) to de-risk the WebGPU dependency —
+> the tutor ships everywhere and is fully CI-gated, while the GPU-dependent LLM
+> runtime + hybrid opponent are quarantined behind an experimental toggle that
+> never gates the deploy. Follow that plan for P3–P5.
 
 ## Problem Statement
 

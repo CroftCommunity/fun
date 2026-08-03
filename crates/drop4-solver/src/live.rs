@@ -190,7 +190,7 @@ pub fn move_values_capped(board: &Board, max_depth: u32) -> Vec<(Col, i32)> {
 /// The win/draw/loss class of a **capped** value: `1` a forced win within the
 /// search horizon, `-1` a forced loss, `0` an unresolved (heuristic) position.
 /// (The exact path classifies by `i32::signum` instead.)
-fn capped_class(v: i32) -> i32 {
+pub(crate) fn capped_class(v: i32) -> i32 {
     if v >= WIN / 2 {
         1
     } else if v <= -WIN / 2 {
