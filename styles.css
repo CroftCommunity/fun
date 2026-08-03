@@ -1194,15 +1194,16 @@ body.fullscreen .play-area {
   .t48-tile:not(.t48-empty) { animation: none; }
 }
 
-/* Drop 4: a tap-a-column two-player board played against the classic engine.
-   A single centred column (controls · banner · board · status); the felt board
-   frame holds a row of drop buttons above a 7×6 grid of slots. Discs carry a
-   glyph (✕ you / ○ engine) and an a11y label, so colour is never the only cue. */
+/* Drop 4: a tap-a-column two-player board played against The Engine. A single
+   centred column (turn bar · options · controls · banner · board · status). The
+   whole column is a drop target with a distinct arrow header that glows when a
+   drop is legal; discs carry a glyph (✕ / ○, the player's choice) + an a11y
+   label, so colour is never the only cue. */
 .drop4-game {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.55rem;
   max-width: 32rem;
   margin: 0 auto;
   padding-inline: 0.6rem;
@@ -1212,57 +1213,167 @@ body.fullscreen .play-area {
   margin-bottom: 0;
 }
 .drop4-banner {
-  max-width: 24rem;
-  margin: 0.2rem auto 0;
+  max-width: 26rem;
+  margin: 0.1rem auto 0;
   text-align: center;
   color: var(--ink-muted);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
 }
+
+/* Turn bar — the two players' identities, with the active side lit. */
+.drop4-turnbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 26rem;
+}
+.drop4-player {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  color: var(--ink);
+  font-weight: 600;
+}
+.drop4-player.active {
+  border-color: var(--active);
+  background: color-mix(in srgb, var(--active) 14%, transparent);
+}
+.drop4-vs {
+  color: var(--ink-muted);
+  font-size: 0.85rem;
+}
+.drop4-thinking {
+  color: var(--ink-muted);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 0.85rem;
+}
+/* A small disc chip, reused in the turn bar + the mark chooser. */
+.drop4-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  font-size: 0.9rem;
+  line-height: 1;
+  color: rgb(255 255 255 / 92%);
+  text-shadow: 0 1px 1px rgb(0 0 0 / 45%);
+}
+.drop4-chip.x { background: var(--d4-x); }
+.drop4-chip.o { background: var(--d4-o); }
+
+/* Options: difficulty + which mark you play. */
+.drop4-options {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+.drop4-level-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.drop4-level {
+  font: inherit;
+  padding: 0.2rem 0.4rem;
+  border-radius: 6px;
+  border: 1px solid var(--surface-border, var(--ink-muted));
+  background: var(--surface);
+  color: var(--ink);
+}
+.drop4-marks {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.drop4-marks-label {
+  color: var(--ink-muted);
+}
+.drop4-mark {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  color: rgb(255 255 255 / 92%);
+  text-shadow: 0 1px 1px rgb(0 0 0 / 45%);
+  touch-action: manipulation;
+}
+.drop4-mark.x { background: var(--d4-x); }
+.drop4-mark.o { background: var(--d4-o); }
+.drop4-mark[aria-pressed="true"] {
+  border-color: var(--active);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--active) 40%, transparent);
+}
+.drop4-mark:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* The board — a felt frame around 7 columns; each column is one drop target. */
 .drop4-board {
   --d4-cell: clamp(1.9rem, 11vw, 2.9rem);
   --d4-gap: 0.4rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--d4-gap);
   padding: 0.5rem;
   margin: 0;
   background: var(--d4-board);
   border-radius: var(--radius);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 12%), 0 2px 8px rgb(0 0 0 / 20%);
 }
-.drop4-cols,
-.drop4-row {
+.drop4-cols {
   display: flex;
   gap: var(--d4-gap);
 }
+/* A whole column is the tap target (so "tap a column" is literally true). */
 .drop4-col {
-  width: var(--d4-cell);
-  height: 2.4rem;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  font-size: 1.1rem;
-  line-height: 1;
-  border: none;
-  border-radius: 6px;
-  background: rgb(255 255 255 / 14%);
-  color: rgb(255 255 255 / 55%);
+  gap: var(--d4-gap);
+  padding-top: 0.15rem;
+  border-radius: 8px;
   cursor: pointer;
   touch-action: manipulation; /* no 300ms tap delay / double-tap zoom on mobile */
 }
-.drop4-col.legal:not(:disabled) {
+.drop4-col:hover .drop4-drop,
+.drop4-col.legal .drop4-drop {
   background: var(--d4-slot);
   color: var(--d4-board);
 }
-.drop4-col.legal:not(:disabled):hover {
-  filter: brightness(1.06);
+.drop4-col.legal:hover {
+  background: rgb(255 255 255 / 8%);
 }
-.drop4-col:disabled {
-  cursor: default;
-  opacity: 0.5;
+/* The drop-arrow header — the distinct affordance that says "drop here". */
+.drop4-drop {
+  width: var(--d4-cell);
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  line-height: 1;
+  background: rgb(255 255 255 / 12%);
+  color: rgb(255 255 255 / 45%);
+  cursor: pointer;
+  touch-action: manipulation;
 }
-.drop4-col:focus-visible {
+.drop4-drop:focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 2px;
 }
@@ -1279,14 +1390,43 @@ body.fullscreen .play-area {
   color: transparent;
   box-shadow: inset 0 2px 4px rgb(0 0 0 / 22%);
 }
-.drop4-cell.a {
-  background: var(--d4-a);
-}
-.drop4-cell.b {
-  background: var(--d4-b);
-}
-.drop4-cell.a,
-.drop4-cell.b {
+.drop4-cell.x { background: var(--d4-x); }
+.drop4-cell.o { background: var(--d4-o); }
+.drop4-cell.x,
+.drop4-cell.o {
   color: rgb(255 255 255 / 92%);
   text-shadow: 0 1px 1px rgb(0 0 0 / 45%);
+}
+/* The engine's (and your) most recent drop — a ring so you can see the move. */
+.drop4-cell.just-played {
+  box-shadow: 0 0 0 3px var(--active), inset 0 2px 4px rgb(0 0 0 / 22%);
+}
+/* The winning four — a gold ring + a gentle pulse of fanfare. */
+.drop4-cell.win {
+  box-shadow: 0 0 0 3px var(--d4-win), inset 0 2px 4px rgb(0 0 0 / 22%);
+  animation: drop4-pop 0.5s ease-out 2;
+}
+@keyframes drop4-pop {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+/* The end-of-game banner (a little, not a lot, of fanfare). */
+.drop4-flash {
+  margin: 0.2rem auto;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--ink);
+}
+.drop4-flash.win {
+  color: var(--active);
+}
+/* The static final board shown on the result screen. */
+.drop4-board.drop4-final {
+  --d4-cell: clamp(1.5rem, 8vw, 2.2rem);
+  margin: 0.3rem auto 0.6rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .drop4-cell.win { animation: none; }
 }

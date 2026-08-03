@@ -82,8 +82,8 @@ const PAIRS: ReadonlyArray<readonly [string, string, number]> = [
   ["t48-mid-ink", "t48-mid", 3],
   ["t48-hi-ink", "t48-hi", 3],
   ["t48-max-ink", "t48-max", 3],
-  ["d4-a", "d4-slot", 3], // Drop 4 discs must read against the empty slot (UI floor)
-  ["d4-b", "d4-slot", 3],
+  ["d4-x", "d4-slot", 3], // Drop 4 discs must read against the empty slot (UI floor)
+  ["d4-o", "d4-slot", 3],
 ];
 
 describe.each(["light", "dark"] as const)("tokens: %s theme clears WCAG AA", (name) => {
