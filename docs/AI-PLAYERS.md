@@ -22,6 +22,29 @@ engine (exact/near-exact Oracle)   LLM (in-browser, WebGPU)
   = STRENGTH + DIFFICULTY             = EXPERIENCE (UX), not strength
 ```
 
+### Which opponent actually runs (the default is the engine, no model)
+
+Do not conflate "the opponent" with "the model" — by default there is **no model**:
+
+- **Default opponent = The Engine.** With nothing toggled, you play the classic
+  engine (in Drop 4: `live_move` — the Rust solver compiled to wasm). **No LLM, no
+  download, instant, deterministic**, with the difficulty knob (Easy…Expert). This
+  is the shipped default for every player and the **strong** opponent.
+- **The LLM is strictly opt-in** behind an **"Experimental: local AI opponent"**
+  toggle that only appears when the browser has a real WebGPU adapter. Ticking it
+  swaps in the `HybridPlayer` — the engine builds a never-throw band, the
+  in-browser LLM picks a move *within* that band and speaks a reason. It downloads
+  a model once, is **characterful but not stronger** (bounded by the engine's
+  band), and **falls back to The Engine on any failure**.
+- **The tutor is engine-grounded either way.** "Explain my options" / blunder flag
+  / hint are on by default and computed from the solver — **no model**. When the
+  LLM toggle is on it additionally *narrates* those same facts; it never sources
+  them. So a player who never touches the toggle still gets full tutoring, and the
+  model never influences strength, legality, or the tutor's facts.
+
+One-line mental model: **the engine plays and coaches; the LLM (opt-in) only
+changes the voice.**
+
 ### Why the LLM can't beat the engine here (and where it could)
 
 The game value of every position is fixed; deviating from an optimal move can
