@@ -193,6 +193,28 @@ impl Solver {
         self.evaluate(board).best_move
     }
 
+    /// The exact value (side-to-move perspective) of **every** legal move — the
+    /// Oracle's per-move judgment. This is the source for a difficulty band (keep
+    /// moves within Δ of the best) and for the move-quality scorer. Empty if the
+    /// board is terminal.
+    pub fn move_values(&mut self, board: &Board) -> Vec<(Col, i32)> {
+        let moves = Position::from_board(board).moves;
+        legal_cols(board)
+            .into_iter()
+            .map(|c| {
+                let child = apply_move(board, c);
+                let v = if winner(&child) == Some(board.to_move) {
+                    win_score(moves) // immediate win
+                } else if legal_cols(&child).is_empty() {
+                    0 // full board, no winner => draw
+                } else {
+                    -self.solve(&Position::from_board(&child))
+                };
+                (c, v)
+            })
+            .collect()
+    }
+
     /// Choose a move for `board` at `level`, drawing randomness from `rng`.
     /// `None` only if the board is terminal.
     pub fn choose(&mut self, board: &Board, level: Level, rng: &mut impl RngCore) -> Option<Col> {
@@ -320,6 +342,39 @@ mod tests {
         assert!(
             [Col(2), Col(3), Col(5)].contains(&eval.best_move.unwrap()),
             "best move must be one of the independent solver's optimal columns"
+        );
+    }
+
+    #[test]
+    fn move_values_ranks_the_only_win_highest() {
+        // A late (16-empty, fast to solve) position: A to move, col 6 is the only
+        // win (+), cols 0-4 all lose (-). Independent solver; see drop4-harness.
+        #[rustfmt::skip]
+        let cells: [u8; 42] = [
+            2, 1, 2, 1, 1, 1, 2,
+            0, 2, 2, 1, 2, 2, 2,
+            0, 1, 0, 2, 2, 2, 1,
+            0, 2, 0, 0, 2, 1, 1,
+            0, 1, 0, 0, 0, 1, 1,
+            0, 0, 0, 0, 0, 1, 0,
+        ];
+        let pos = Board {
+            cells,
+            to_move: adversary_core::Side::A,
+        };
+        let mut solver = Solver::new();
+        let vals = solver.move_values(&pos);
+        assert_eq!(
+            vals.len(),
+            legal_cols(&pos).len(),
+            "one value per legal move"
+        );
+        let (best_col, best_val) = vals.iter().copied().max_by_key(|&(_, v)| v).unwrap();
+        assert_eq!(best_col, Col(6), "col 6 is the only winning move");
+        assert!(best_val > 0, "the win is a positive value");
+        assert!(
+            vals.iter().all(|&(c, v)| c == Col(6) || v < 0),
+            "every other move loses"
         );
     }
 

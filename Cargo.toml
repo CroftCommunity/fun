@@ -31,6 +31,7 @@ members = [
     "crates/drop4-core",
     "crates/drop4-solver",
     "crates/drop4-harness",
+    "crates/drop4-wasm",
     "crates/xbuild",
 ]
 

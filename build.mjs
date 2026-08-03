@@ -96,6 +96,10 @@ const t48wasm = join(root, "target/wasm32-unknown-unknown/release/twenty48_wasm.
 if (await exists(t48wasm)) await cp(t48wasm, join(dist, "2048.wasm"));
 else console.warn("note: 2048.wasm not built yet — run `npm run build:wasm` (2048 needs it)");
 
+const d4wasm = join(root, "target/wasm32-unknown-unknown/release/drop4_wasm.wasm");
+if (await exists(d4wasm)) await cp(d4wasm, join(dist, "drop4.wasm"));
+else console.warn("note: drop4.wasm not built yet — run `npm run build:wasm` (drop4 needs it)");
+
 // The winnable-daily pack (Phase S) — served static so the daily mode and the
 // E2E win-path fixture can fetch it. `payload[0]` is the win-path fixture.
 const pack = join(root, "games/solitaire/daily-pack.json");

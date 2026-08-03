@@ -121,6 +121,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "drop4-wasm"
+version = "0.0.0"
+dependencies = [
+ "adversary-core",
+ "drop4-core",
+ "drop4-solver",
+ "pond-outcome",
+ "rand_chacha",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "generic-array"
 version = "0.14.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"

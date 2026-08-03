@@ -17,9 +17,16 @@ Authoritative plan: `plans/2026-07-31-drop4-ai-harness.md`. Standards:
   trial runs** (`cargo run -p drop4-harness --example trial`): Greedy 98% vs
   Random; Random-v-Random exercises the oracle scorer (33% endgame blunder rate).
 
+## Done (cont.)
+- [x] Phase 3 — `drop4-wasm` C-ABI binding (rules: legal/play/board/hash/result/
+  render; oracle: `oracle_best(level)` + `oracle_move_values_json` for the band;
+  `outcome_json`) + typed `src/games/drop4/drop4-wasm.ts` wrapper. Compiles to a
+  ~113 KB wasm, cabi test + solver `move_values` test green, clippy/tsc/eslint
+  clean, wired into build-wasm.sh + build.mjs. **Speed caveat:** exact oracle is
+  endgame-fast but slow from the opening — live play needs an opening book or
+  depth cap (follow-up); until then, call the oracle from book/endgame positions.
+
 ## Next
-- [ ] Phase 3 — `drop4-wasm` C-ABI + typed TS wrapper (rules + `oracle_*`), so
-  the browser reuses this exact core/solver.
 - [ ] Phase 5 — **TS harness**: `AIRuntime` port + WebLLM adapter (pinned model)
   + `LLMPlayer` + `Scorer` mirroring the Rust one + Playwright trial driver.
   This is the on-device-LLM trial (needs a browser/WebGPU). Phase 0 D1/D2
