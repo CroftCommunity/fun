@@ -882,3 +882,24 @@ constrained legality, prompt = GamePackage + SessionContext) to *measure models*
 (b) `HybridPlayer` (engine band + game-agnostic schema-constrained selector) as
 the *shippable experimental opponent*. Both scored by the exact oracle. Trial
 driver launches **system Chrome** (bundled Chromium has no WebGPU here).
+
+**Difficulty tunability — MEASURED (2026-08-03, `examples/difficulty.rs`).** The
+engine band Δ is a smooth, bounded difficulty knob (46 solved positions, exact
+oracle):
+
+| Δ | avg band size | avg regret | blunder rate |
+|---|---|---|---|
+| 0 | 2.02 | 0.00 | 0.0% (perfect) |
+| 1 | 2.78 | 0.21 | 3.1% |
+| 3 | 2.87 | 0.25 | 3.8% |
+| 8 | 3.24 | 0.61 | 8.7% |
+| 40 | 4.76 | 4.31 | 37.9% (≈ random) |
+
+Regret is monotonic in Δ; the endpoints anchor at perfect (Δ=0) and ~random
+(Δ=40, matching the ~33% Random-v-Random blunder rate). Small Δ bounds mistakes
+to low-single-digit blunder rates (vs the old best-or-uniform-random scheme,
+where every mistake can throw the game). Caveat: this validates the difficulty
+**mechanism** (the band); the LLM's within-band *selection* behavior is a Phase 5
+experiment. Refinement: for a "never throws the game" level, band on **class**
+first (keep all class-preserving moves → 0 blunders) then tune within-class
+regret — a two-knob design (class floor × within-class sloppiness).
