@@ -10,7 +10,9 @@
 #![warn(missing_docs)]
 
 pub mod bitboard;
+pub mod live;
 pub mod solver;
 
 pub use bitboard::Position;
+pub use live::{best_move_capped, choose_capped, heuristic};
 pub use solver::{best_move, choose, evaluate, solve, Eval, Level, Solver};
