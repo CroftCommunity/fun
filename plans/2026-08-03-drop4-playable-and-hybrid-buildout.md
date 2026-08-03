@@ -227,6 +227,31 @@ real contrast (where an LLM can add strategic value).
 - [RECOMMENDED: ADVISORY] localhost port — `tools/serve.mjs` default (confirm at P1).
 
 ## Review Log
+### Execution — P1 + localhost-review refinements (2026-08-03)
+P0 (responsive `live` engine) and P1 (playable `/drop4/`) built TDD-first and
+committed: `live_move` wasm export + `liveMove` wrapper; honest assistance
+(`mark_assistance` + `outcome_json(declare)`); the `drop4.ts` GameModule; full
+wiring + `tests/drop4.spec.ts`; how-to + guide shots; docs.
+
+The localhost design review then drove a refinement round (still P1-scope, plus
+the P2 difficulty picker folded in at the owner's request):
+- **Interaction/identity:** the *whole column* is the drop target (so "tap a
+  column" is literal) with a distinct glowing drop-arrow header; a **turn bar**
+  gives the opponent an identity — **"The Engine 🤖"** — and shows whose turn /
+  "thinking…"; the engine's last move is **ringed** so it is visible.
+- **Choices (persisted):** a **difficulty picker** (Easy/Medium/Hard/Perfect →
+  `Level`) — this is **P2's picker, landed early** — and a **mark chooser** (play
+  as ✕ or ○, colour follows the mark). Both persist via `src/settings.ts`
+  (`resolveLevel`/`resolveMark` + `drop4Level`/`drop4Mark`).
+- **Endgame:** on a win the four is highlighted with a brief fanfare, held a
+  beat, then the result screen — which now shows the **final board with the
+  winning line** (also makes the four self-evident, resolving a "looks like <4"
+  confusion; win detection was already exact/golden-vectored).
+
+Remaining P2 work (not the picker): map difficulty to the **class-floor × band-Δ**
+two-knob model (`PreserveBestClass` never-throws level) rather than the `live`
+engine's depth+ε knobs. P3+ (AIRuntime/hybrid/tutor) unchanged.
+
 ### Pass 1 — 2026-08-03
 Build-out sequence for the remaining Drop 4 work, ordered localhost-first with a
 review checkpoint + commit cadence per phase. P0 responsive engine (prereq) →

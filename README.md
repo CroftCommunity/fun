@@ -107,17 +107,20 @@ Plan: `plans/2026-07-31-2048.md`.
 
 ## Drop 4 (playable — vs a computer opponent)
 
-`/drop4/` is the shelf's first **two-player adversarial** game: you (✕) versus the
-classic engine (○). Tap a column to drop your disc into its lowest empty slot;
-four in a row — across, up, or diagonally — wins, and a full board is a draw. The
+`/drop4/` is the shelf's first **two-player adversarial** game: you versus **The
+Engine**, the classic computer opponent. Tap anywhere in a column to drop your
+disc into its lowest empty slot; four in a row — across, up, or diagonally —
+wins, and a full board is a draw. A turn bar shows both players and whose move it
+is; The Engine's reply is ringed so you can see it; on a win the four is
+highlighted before a final board you can re-verify. You choose your disc (✕ or ○)
+and the opponent's strength (Easy / Medium / Hard / Perfect); both persist. The
 core owns legality (a full column is not a legal target); a match records **both**
 sides' drops in one list, so the finished game replays to a verifiable
 `pond-outcome` record with a self-verifying `?r=` share, same as every Tier-1
 game. The opponent is the **live** depth-capped engine (fast from any position) —
-the exact solver stays the oracle for scoring/tutoring. Difficulty is fixed at
-Medium for now; an opponent picker and an experimental local-AI opponent are
-follow-ups. How the shelf builds AI opponents: `docs/AI-PLAYERS.md`. Plans:
-`plans/2026-07-31-drop4-ai-harness.md`, `plans/2026-08-03-drop4-playable-and-hybrid-buildout.md`.
+the exact solver stays the oracle for scoring/tutoring. An experimental local-AI
+opponent is a follow-up. How the shelf builds AI opponents: `docs/AI-PLAYERS.md`.
+Plans: `plans/2026-07-31-drop4-ai-harness.md`, `plans/2026-08-03-drop4-playable-and-hybrid-buildout.md`.
 
 ## Identity (light/dark)
 

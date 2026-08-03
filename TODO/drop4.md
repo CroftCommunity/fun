@@ -48,8 +48,20 @@ Authoritative plan: `plans/2026-07-31-drop4-ai-harness.md`. Standards:
   `tests/drop4.spec.ts` (16 e2e incl. axe + 360px + centred). Difficulty fixed at
   Medium (the picker is P2). Localhost-review checkpoint.
 
+## Done (cont.) — P1 localhost-review refinements (2026-08-03)
+- [x] Whole-column drop target + distinct glowing drop-arrow header; banner copy
+  matches ("tap a column").
+- [x] Opponent identity — **"The Engine 🤖"** turn bar (whose turn / thinking);
+  the engine's last move is ringed (`.just-played`) so it is visible.
+- [x] **Difficulty picker** Easy/Medium/Hard/Perfect (P2's picker, landed early)
+  + **mark chooser** (play as ✕/○, colour follows). Both persisted via
+  `settings.ts` (`resolveLevel`/`resolveMark`, `drop4Level`/`drop4Mark`).
+- [x] Winning-four highlight + brief fanfare before the result; the result screen
+  shows the **final board with the winning line**.
+
 ## Next
-- [ ] P2 — opponent picker (Easy / Medium / Hard / Perfect), persisted.
+- [ ] P2 (remaining) — map difficulty to the **class-floor × band-Δ** two-knob
+  model (`PreserveBestClass` = never-throws) instead of the depth+ε `live` knobs.
 - [ ] Phase 5 — **TS harness (browser select + narrate)**: `AIRuntime` port +
   WebLLM adapter (pinned model)
   + `LLMPlayer` + `Scorer` mirroring the Rust one + Playwright trial driver.

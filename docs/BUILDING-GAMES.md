@@ -383,9 +383,18 @@ What is the same, and what is new:
   solver is minutes from the opening; the shipped opponent is the depth-capped
   `live_move`. The exact oracle stays the source of scoring / tutoring / the
   difficulty band on tractable positions.
-- **Difficulty** is two knobs on the *engine* (class floor × within-class band
-  width Δ), never on the LLM. (Drop 4 P1 ships a fixed Medium; the picker is a
-  follow-up.)
+- **Difficulty** is a knob on the *engine*, never on the LLM. The design target
+  is two knobs (class floor × within-class band width Δ). Drop 4 ships a picker
+  (Easy/Medium/Hard/Perfect) mapped to the `live` engine's depth + ε-randomness;
+  moving it onto the class-floor × band-Δ model (a `PreserveBestClass`
+  never-throws level) is the remaining difficulty work.
+- **Give the opponent an identity.** A computer opponent should be legible as a
+  *who*, not a silent force: a turn bar naming both sides (Drop 4: "The Engine
+  🤖") and showing whose turn it is, the opponent's move made **visible** (a ring
+  on its last drop + a brief "thinking" beat), and — on a decisive end — the
+  winning move shown with a beat of fanfare before the result screen (which
+  carries the final board). Where the marks are symmetric, let the player choose
+  which they are.
 
 The harness ports (`Player` / `AIRuntime` / `Oracle`), the scorer, the hybrid
 band, and the tutor are documented in `docs/AI-PLAYERS.md` and filled in as they
