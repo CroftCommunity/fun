@@ -748,3 +748,45 @@ question (ship the LLM as a selectable opponent) gates only Phase 6's
 "Experimental" toggle, not Phases 0-5; proceeding on the recommended resolution
 (classic default; LLM behind a toggle iff it clears D1's bar) per the owner's
 "go ahead."
+
+### Execution log — Phases 1/2/4 (2026-07-31)
+Built Rust-first and committed: Phase 1 (`adversary-core` + `drop4-core`), Phase 2
+(`drop4-solver` perfect negamax + exact oracle; empty-board `+1` proof confirmed
+via `--ignored`, ~40 min), Phase 4 (`drop4-harness` — players, match-runner,
+exact-oracle scorer, `run_trial`). First deterministic trial runs: Greedy 98% vs
+Random; Random-v-Random ~33% endgame blunder rate. Phases 3/5/6 (browser + LLM +
+shelf game) remain.
+
+### Phase 0 execution — LLM feasibility spike (2026-08-03)
+Throwaway spike (Playwright + **system Chrome**, headless), findings recorded here;
+disposition honored (no committed spike code — it lives in the session scratchpad).
+
+**D2 — headless WebGPU + browser egress: RESOLVED, both work here.**
+- Playwright's bundled Chromium/headless-shell exposes **no** `navigator.gpu`
+  (all flag combos, headed and headless). **System Chrome via `channel:"chrome"`
+  works headless** — real Apple/Metal adapter, no special flags needed. This is
+  the launch config the Phase 5 trial driver must use (not bundled Chromium).
+- Browser egress to the model CDN works (`GET huggingface.co/... → 200`).
+
+**D1 — can a small pinned model play? Runtime YES; zero-shot play quality NO.**
+- WebLLM loaded `Qwen2.5-0.5B-Instruct-q4f16_1` (~266 MB) in ~9.6 s (cached),
+  ~35 ms/move after a ~1.2 s warmup; **100 % parseable, 100 % legal** when the
+  prompt supplies the legal-column set.
+- But play is **board-agnostic**: over 7 positions with an immediate one-move win,
+  0.5B took it **2/7 (29 %)** — and those were coincidences (it output `"0"` for
+  5/7 regardless of the board). **Qwen2.5-1.5B** (~1 GB) was **worse: 1/7 (14 %)**,
+  outputting `"6"` for all 7. Bigger model, different constant, same failure mode:
+  it is not perceiving the ASCII board.
+
+**Implications (feed forward):**
+- Confirms the plan's core decision: **ship the classic engine**; the LLM is the
+  **scored experiment**, not a viable opponent at 0.5–1.5B zero-shot.
+- Phase 5's first question is therefore **not** "does it load" (yes) but "can any
+  model + prompt + board-encoding play *legally well*" — a sweep the exact-oracle
+  scorer is built to run. Untested levers: few-shot, explicit reasoning,
+  coordinate/JSON board encodings (vs ASCII art), and larger models (3B+).
+- The `LLMPlayer` retry/forfeit policy + our `parse_move` legality re-check remain
+  necessary (the model will propose illegal/again-legal moves once the legal set
+  isn't spoon-fed).
+- Trial-driver note for Phase 5: launch **system Chrome**, not Playwright's
+  bundled Chromium (the latter has no WebGPU here).
