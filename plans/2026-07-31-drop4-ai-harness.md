@@ -790,3 +790,44 @@ disposition honored (no committed spike code — it lives in the session scratch
   isn't spoon-fed).
 - Trial-driver note for Phase 5: launch **system Chrome**, not Playwright's
   bundled Chromium (the latter has no WebGPU here).
+
+### Phase 0 refinement — prompt-design sweep + architecture (2026-08-03)
+The initial "board-agnostic / bigger is worse" read was under-powered (single
+answer token, no reasoning room, no history). A fuller sweep on the same 7
+"take-the-immediate-win" positions (Qwen2.5-1.5B) shows prompt **content moves
+behavior**, with a model-capability ceiling:
+
+| Prompt | win-take |
+|---|---|
+| minimal ("pick a column", 6-token cap) | 1/7 (constant output) |
+| + rules + goal + criteria + per-column board + reasoning room | 0/7 |
+| + move history (transcript) | 2/7 |
+| + few-shot example games (in the move notation) | 2/7 |
+
+History flips it from 0 → 2/7 and produces genuine threat reasoning; few-shot
+teaches the *frame* but the 1.5B model still misattributes stacks (reads its own
+three as the opponent's). Bottleneck = board-state comprehension at ≤1.5B, not
+knowledge of rules/goal. Untested levers: **larger models (3B/7B)**, cleaner
+encodings, and how much the harness pre-computes for the model (there is a
+spectrum from "let it read the board" to "hand it the threats" — the latter
+tests the harness, not the model, so keep that knob explicit).
+
+**Prompt architecture (adopted for Phase 5) — two halves:**
+- **`GamePackage` (static, per-game, authored once):** name, rules/mechanics,
+  goal + decision criteria, few-shot example games (in the move notation), and
+  the encoding spec. This is what makes an LLM a *player* of the game at all. It
+  is the **pedagogical** twin of the `Adversary` trait's text bridge (the
+  *mechanical* twin) — two faces of one game's "rules and expectations." A new
+  game therefore provides: trait (rules as code) + `GamePackage` (rules as
+  teaching) + optional oracle.
+- **`SessionContext` (dynamic, per-turn):** move history (transcript), the
+  derived board + legal moves, whose turn.
+- **Why the split matters beyond tidiness:** the `GamePackage` is a stable prompt
+  **prefix** → KV/prompt-cache friendly, so the large rules+examples cost is paid
+  once per session and each move appends only the cheap `SessionContext` delta
+  (directly attacks in-browser latency/cost). It is also model-agnostic, so the
+  harness sweeps two independent axes — **package variants × models** — each
+  scored by the exact oracle.
+- **Generality note:** this makes the earlier "adapts to any game / any model"
+  claim concrete. Axis 1 (game) = trait + `GamePackage` (+ oracle); Axis 2
+  (model) = `AIRuntime` adapter. Neither touches the shared runner/scorer.
