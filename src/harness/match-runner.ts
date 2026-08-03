@@ -12,6 +12,7 @@
 //! hash — a verifiable match regardless of who chose each move.
 
 import type { Drop4, Level } from "../games/drop4/drop4-wasm.js";
+import { buildBand, HybridPlayer, type BandMove } from "./hybrid-player.js";
 
 /**
  * A move-chooser over a live `Drop4`. Reads the game state (and, for the engine,
@@ -99,6 +100,51 @@ export class GreedyPlayer implements Player {
     if (block) return Promise.resolve(block.col);
     const centre = CENTRE_OUT.find((c) => legal.includes(c));
     return Promise.resolve(centre ?? legal[0]!);
+  }
+}
+
+/** The `{prompt, system}` the hybrid opponent sends the model for one move. */
+export interface HybridPromptContext {
+  readonly prompt: string;
+  readonly system?: string;
+}
+
+/** Builds the model prompt from the live game + the class-preserving band. */
+export type HybridPromptBuilder = (game: Drop4, band: readonly BandMove[]) => HybridPromptContext;
+
+/** Default Drop 4 prompt: the board text + the offered (safe) columns. */
+const defaultHybridPrompt: HybridPromptBuilder = (game, band) => ({
+  system: "You are a Connect-Four opponent. Choose exactly one of the offered columns and reply as JSON {move, reason}.",
+  prompt: `Board (bottom row first):\n${game.renderText()}\nOffered columns: ${band
+    .map((b) => `${b.col} (${b.idea})`)
+    .join(", ")}\nPick one column and say why in one short sentence.`,
+});
+
+/**
+ * The experimental hybrid opponent as a harness `Player`: it builds the
+ * class-preserving band from `game.tutor()`, lets the wrapped {@link HybridPlayer}
+ * pick within it (LLM in-band, else engine top-of-band fallback), and returns the
+ * column. Reuses the shipped `buildBand`/`HybridPlayer` unchanged — so the harness
+ * measures the actual shipped hybrid, and a broken model degrades to the engine,
+ * never to a blunder.
+ */
+export class HybridAiPlayer implements Player {
+  readonly label: string;
+  readonly #hybrid: HybridPlayer;
+  readonly #buildPrompt: HybridPromptBuilder;
+  constructor(hybrid: HybridPlayer, opts?: { label?: string; buildPrompt?: HybridPromptBuilder }) {
+    this.#hybrid = hybrid;
+    this.#buildPrompt = opts?.buildPrompt ?? defaultHybridPrompt;
+    this.label = opts?.label ?? "Hybrid";
+  }
+  async chooseMove(game: Drop4): Promise<number | null> {
+    const report = game.tutor();
+    if (report.bestCol === null || report.moves.length === 0) return null;
+    const band = buildBand(report.moves);
+    if (band.length === 0) return report.bestCol; // safety: the engine's best move
+    const { prompt, system } = this.#buildPrompt(game, band);
+    const decision = await this.#hybrid.pick(band, { prompt, system });
+    return decision.move;
   }
 }
 

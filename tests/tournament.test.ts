@@ -12,8 +12,16 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 import { Drop4 } from "../src/games/drop4/drop4-wasm.js";
-import { EnginePlayer } from "../src/harness/match-runner.js";
+import { MockRuntime } from "../src/harness/ai-runtime.js";
+import { HybridPlayer } from "../src/harness/hybrid-player.js";
+import { EnginePlayer, HybridAiPlayer } from "../src/harness/match-runner.js";
 import { renderReport, runTournament } from "../src/harness/tournament.js";
+
+/** The first legal move the schema offers (a MockRuntime that always picks in-band). */
+function firstEnumMove(schema: unknown): number {
+  const s = schema as { properties?: { move?: { enum?: number[] } } };
+  return s.properties?.move?.enum?.[0] ?? 0;
+}
 
 const WASM = "target/wasm32-unknown-unknown/release/drop4_wasm.wasm";
 
@@ -46,6 +54,44 @@ describe("tournament: full rig over the real wasm", () => {
       expect(c.skippedEarly).toBeGreaterThan(0); // early moves honestly skipped
       expect(c.optimal + c.preserving + c.blunders).toBe(c.scoredMoves);
       expect(c.blunders).toBe(0); // the class floor — perfect play never throws
+    },
+    90_000,
+  );
+
+  it("HybridAiPlayer plugs into the rig: an in-band pick is legal, garbage falls back to engine best", async () => {
+    const game = await loadReal();
+    game.newGame(0n);
+    const bestCol = game.tutor().bestCol;
+
+    // Mock that always picks the first (best) offered column -> an in-band pick.
+    const inBand = new HybridAiPlayer(
+      new HybridPlayer(new MockRuntime({ reply: (_p, o) => JSON.stringify({ move: firstEnumMove(o.schema), reason: "ok" }) })),
+    );
+    const legal = game.legalMoves();
+    expect(legal).toContain(await inBand.chooseMove(game));
+
+    // Mock that returns garbage -> HybridPlayer falls back to the engine's top-of-band.
+    const garbage = new HybridAiPlayer(
+      new HybridPlayer(new MockRuntime({ reply: () => "not json at all" })),
+    );
+    expect(await garbage.chooseMove(game)).toBe(bestCol);
+  });
+
+  it(
+    "a MockRuntime HybridAiPlayer stays in-band in a full game: zero blunders over graded moves",
+    async () => {
+      const hybrid = new HybridAiPlayer(
+        new HybridPlayer(new MockRuntime({ reply: (_p, o) => JSON.stringify({ move: firstEnumMove(o.schema), reason: "best" }) })),
+      );
+      const report = await runTournament(loadReal, hybrid, new EnginePlayer("Perfect"), {
+        games: 1,
+        baseSeed: 0n,
+      });
+      const c = report.card;
+      expect(c.games).toBe(1);
+      expect(c.scoredMoves).toBeGreaterThan(0); // reached the exact endgame
+      expect(c.optimal + c.preserving + c.blunders).toBe(c.scoredMoves);
+      expect(c.blunders).toBe(0); // the band is class-preserving — the hybrid never throws
     },
     90_000,
   );
