@@ -121,7 +121,9 @@ because a full solve from the opening is minutes (`drop4-solver::live` +
   empties → the fast depth-capped search, where the class is bounded to the
   search horizon (never throws a *horizon-visible* loss). An immediate win is
   always taken.
-- **The two knobs, per level.** Class floor: Easy/Medium = `Any` (may throw —
+- **The two knobs, per level.** (The internal top level is `Perfect`; the picker
+  labels it **"Expert"** — it is only provably perfect once tractable, so the
+  label doesn't overclaim.) Class floor: Easy/Medium = `Any` (may throw —
   beatable); **Hard/Perfect = `PreserveBestClass` (never throws)**. Within-class
   sloppiness is a *probability* of a random in-class move rather than the
   tightest one — the live realization of the Δ dial (Perfect = 0%). The old

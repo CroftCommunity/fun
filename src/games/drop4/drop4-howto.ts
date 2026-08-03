@@ -18,7 +18,7 @@ export const DROP4_GUIDE: Guide = {
         },
         {
           kind: "prose",
-          text: "You can choose which disc you play — ✕ or ○ — with the \"You play\" buttons, and set how strong The Engine is with the Difficulty picker (Easy, Medium, Hard, or Perfect). Both choices are remembered for next time.",
+          text: "You can choose which disc you play — ✕ or ○ — with the \"You play\" buttons, and set how strong The Engine is with the Difficulty picker (Easy, Medium, Hard, or Expert). Both choices are remembered for next time.",
         },
         {
           kind: "shot",
@@ -58,7 +58,7 @@ export const DROP4_GUIDE: Guide = {
       blocks: [
         {
           kind: "prose",
-          text: "You play against the shelf's classic engine — the same engine that knows this game exactly. It replies in a moment, takes any win it sees, and blocks yours. On Easy it plays loosely and is very beatable; on Perfect it never makes a mistake. Pick a level that suits you and look a move or two ahead.",
+          text: "You play against the shelf's classic engine — the same engine that knows this game exactly. It replies in a moment, takes any win it sees, and blocks yours. On Easy it plays loosely and is very beatable; on Expert it never makes a mistake. Pick a level that suits you and look a move or two ahead.",
         },
       ],
     },

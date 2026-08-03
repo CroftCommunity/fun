@@ -37,8 +37,11 @@ test("the board, columns, turn bar, and options render", async ({ page }) => {
   // The opponent has an identity: the turn bar names You and The Engine.
   await expect(page.locator(".drop4-turnbar")).toContainText(/you/i);
   await expect(page.locator(".drop4-turnbar")).toContainText(/the engine/i);
-  // The difficulty picker offers the four levels.
+  // The difficulty picker offers the four levels, with the top one labelled
+  // "Expert" (not "Perfect").
   await expect(page.locator(".drop4-level option")).toHaveCount(4);
+  await expect(page.locator(".drop4-level")).toContainText("Expert");
+  await expect(page.locator(".drop4-level")).not.toContainText("Perfect");
   // Fresh board: empty, and every column glows as a legal target.
   expect(await filled(page)).toBe(0);
   await expect(page.locator(".drop4-col.legal")).toHaveCount(7);

@@ -49,6 +49,15 @@ const THINK_MS = 450;
 /** How long the winning board is held (a little fanfare) before the result. */
 const FANFARE_MS = 1300;
 const LEVELS: readonly Level[] = ["Easy", "Medium", "Hard", "Perfect"];
+/** Display labels for the picker — the internal `Level`/persisted value stays
+ *  `Perfect` (it is the exact/best-play level), but "Expert" reads better and
+ *  doesn't overclaim (it is only provably perfect once the game is tractable). */
+const LEVEL_LABELS: Record<Level, string> = {
+  Easy: "Easy",
+  Medium: "Medium",
+  Hard: "Hard",
+  Perfect: "Expert",
+};
 
 type Mark = Drop4Mark;
 type Cell = [number, number];
@@ -323,7 +332,7 @@ export function drop4Module(): GameModule {
     const levelLabel = el("label", { class: "drop4-level-label" }, "Difficulty ");
     const select = el("select", { class: "drop4-level", "aria-label": "Difficulty" });
     for (const lv of LEVELS) {
-      const o = el("option", { value: lv }, lv);
+      const o = el("option", { value: lv }, LEVEL_LABELS[lv]);
       if (lv === level) (o as HTMLOptionElement).selected = true;
       select.append(o);
     }

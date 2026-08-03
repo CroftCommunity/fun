@@ -113,7 +113,7 @@ disc into its lowest empty slot; four in a row — across, up, or diagonally —
 wins, and a full board is a draw. A turn bar shows both players and whose move it
 is; The Engine's reply is ringed so you can see it; on a win the four is
 highlighted before a final board you can re-verify. You choose your disc (✕ or ○)
-and the opponent's strength (Easy / Medium / Hard / Perfect); both persist. The
+and the opponent's strength (Easy / Medium / Hard / Expert); both persist. The
 core owns legality (a full column is not a legal target); a match records **both**
 sides' drops in one list, so the finished game replays to a verifiable
 `pond-outcome` record with a self-verifying `?r=` share, same as every Tier-1
