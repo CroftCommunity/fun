@@ -1,0 +1,17 @@
+[package]
+name = "othello-core"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Deterministic, headless Othello (Reversi) engine. 8x8 board, place-and-flip moves with forced passes, terminal by disc count, canonical state hash. Implements the shared Adversary trait and pond_outcome::Game, so a two-player match replays from (seed, moves) exactly (passes included) and native==wasm. No floats on the hashed path, no network."
+
+[dependencies]
+adversary-core = { path = "../adversary-core" }
+serde = { workspace = true }
+sha2.workspace = true
+hex.workspace = true
+pond-outcome.workspace = true
+
+[dev-dependencies]
+pond-docformat.workspace = true

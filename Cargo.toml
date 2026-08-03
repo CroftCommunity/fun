@@ -41,6 +41,7 @@ members = [
     "crates/drop4-solver",
     "crates/drop4-harness",
     "crates/drop4-wasm",
+    "crates/othello-core",
     "crates/xbuild",
 ]
 
