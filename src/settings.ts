@@ -9,12 +9,31 @@ const HINTS_KEY = "fun-hints";
 const ASSIST_KEY = "fun-declare-assistance";
 const AUTOPLAY_KEY = "fun-autoplay";
 const AIM_GUIDE_KEY = "fun-bubble-aim-guide";
+const DROP4_LEVEL_KEY = "fun-drop4-level";
+const DROP4_MARK_KEY = "fun-drop4-mark";
 
 /** Pure resolver: an explicit stored "on"/"off" wins; otherwise the default. */
 export function resolveBool(stored: string | null, fallback: boolean): boolean {
   if (stored === "on") return true;
   if (stored === "off") return false;
   return fallback;
+}
+
+/** Drop 4 difficulty level (opponent strength). */
+export type Drop4Level = "Easy" | "Medium" | "Hard" | "Perfect";
+const DROP4_LEVELS: readonly Drop4Level[] = ["Easy", "Medium", "Hard", "Perfect"];
+
+/** Pure resolver: a stored known level wins; otherwise the default. */
+export function resolveLevel(stored: string | null, fallback: Drop4Level): Drop4Level {
+  return DROP4_LEVELS.includes(stored as Drop4Level) ? (stored as Drop4Level) : fallback;
+}
+
+/** Drop 4 player disc mark (which glyph/colour the human plays). */
+export type Drop4Mark = "x" | "o";
+
+/** Pure resolver: a stored "x"/"o" wins; otherwise the default. */
+export function resolveMark(stored: string | null, fallback: Drop4Mark): Drop4Mark {
+  return stored === "x" || stored === "o" ? stored : fallback;
 }
 
 function read(key: string, fallback: boolean): boolean {
@@ -68,4 +87,36 @@ export function aimGuideEnabled(): boolean {
 }
 export function setAimGuide(on: boolean): void {
   write(AIM_GUIDE_KEY, on);
+}
+
+/** Drop 4 opponent difficulty — **Medium by default**. */
+export function drop4Level(): Drop4Level {
+  try {
+    return resolveLevel(localStorage.getItem(DROP4_LEVEL_KEY), "Medium");
+  } catch {
+    return "Medium";
+  }
+}
+export function setDrop4Level(level: Drop4Level): void {
+  try {
+    localStorage.setItem(DROP4_LEVEL_KEY, level);
+  } catch {
+    // Storage denied (private mode): the choice still applies for the session.
+  }
+}
+
+/** The disc the human plays in Drop 4 — **✕ by default** (the opening side). */
+export function drop4Mark(): Drop4Mark {
+  try {
+    return resolveMark(localStorage.getItem(DROP4_MARK_KEY), "x");
+  } catch {
+    return "x";
+  }
+}
+export function setDrop4Mark(mark: Drop4Mark): void {
+  try {
+    localStorage.setItem(DROP4_MARK_KEY, mark);
+  } catch {
+    // Storage denied (private mode): the choice still applies for the session.
+  }
 }

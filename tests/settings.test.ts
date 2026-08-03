@@ -3,7 +3,29 @@
 
 import { describe, expect, it } from "vitest";
 
-import { resolveBool } from "../src/settings.js";
+import { resolveBool, resolveLevel, resolveMark } from "../src/settings.js";
+
+describe("resolveLevel (Drop 4 difficulty)", () => {
+  it("honours a stored valid level", () => {
+    expect(resolveLevel("Easy", "Medium")).toBe("Easy");
+    expect(resolveLevel("Perfect", "Medium")).toBe("Perfect");
+  });
+  it("falls back to the default for null or a garbage value", () => {
+    expect(resolveLevel(null, "Medium")).toBe("Medium");
+    expect(resolveLevel("banana", "Hard")).toBe("Hard");
+  });
+});
+
+describe("resolveMark (Drop 4 player disc)", () => {
+  it("honours a stored valid mark", () => {
+    expect(resolveMark("x", "x")).toBe("x");
+    expect(resolveMark("o", "x")).toBe("o");
+  });
+  it("falls back to the default for null or a garbage value", () => {
+    expect(resolveMark(null, "x")).toBe("x");
+    expect(resolveMark("triangle", "x")).toBe("x");
+  });
+});
 
 describe("resolveBool", () => {
   it("honours an explicit stored on/off", () => {
