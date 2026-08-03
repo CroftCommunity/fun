@@ -831,3 +831,54 @@ tests the harness, not the model, so keep that knob explicit).
 - **Generality note:** this makes the earlier "adapts to any game / any model"
   claim concrete. Axis 1 (game) = trait + `GamePackage` (+ oracle); Axis 2
   (model) = `AIRuntime` adapter. Neither touches the shared runner/scorer.
+
+### Phase 0 — model sweep + HybridPlayer architecture (2026-08-03)
+**Model sweep (take-the-win, 7 positions, full-context prompt, WebLLM/WebGPU via
+system Chrome):** the whole PWA-viable ladder is **flat**.
+
+| model | win-take | ~latency/move |
+|---|---|---|
+| Qwen2.5-0.5B | 1/7 | 35 ms |
+| Qwen2.5-1.5B | 2/7 | ~1 s |
+| Llama-3.2-3B | 2/7 | ~5 s |
+| Qwen2.5-3B | 2/7 | ~9 s |
+| Qwen2.5-7B | 2/7 | ~12 s |
+
+Scaling 0.5B→7B (14×) did not move board-tactics; it got ~300× slower. **A
+bigger model is not the fix** in the browser-viable range — the deficit is
+board-state comprehension, and the fix is to move the judgment into the engine.
+
+**Structured output CONFIRMED (0.5B, WebLLM):** both `response_format:
+{type:"json_object", schema: JSON.stringify(<JSONSchema>)}` (returned typed
+`{move,reason}`) and `{type:"grammar", grammar:'root ::= "0"|..."6"'}` (returned
+one legal digit) work. So legality can be **guaranteed by construction** (grammar
+over the legal set) and the return is a **typed object** (author via Zod→JSON
+Schema, the browser's Pydantic equivalent) — no parsing/retry/forfeit.
+
+**Adopted architecture — `HybridPlayer` (engine generates the field, LLM
+selects):** the recommended *shippable* opponent, distinct from the pure-LLM
+*research* player.
+```
+per GAME:  Adversary trait (mechanics/legal/outcome) + Oracle (evaluate each move)
+shared  :  Oracle→normalized weights → difficulty band (top Δ) → LLM selector
+           (schema/grammar-constrained {pick∈band, reason}) → move + explanation
+```
+- The `Oracle` is a per-game **port**: exact solver (Drop 4), borrowed Stockfish
+  (chess), heuristic alpha-beta (checkers). Quality floor tracks its strength.
+- The **selection/personality/difficulty layer is game-agnostic** (consumes
+  `{candidates, weights}`), written once and reused. Difficulty = band width Δ
+  (Δ=0 perfect, wide Δ casual); personality = the LLM's choice + narration.
+- Blunder rate is **bounded by Δ by construction**; still oracle-scorable.
+- This offloads exactly what the sweep showed small models can't do (see the
+  board / find tactics) to the engine, leaving the LLM a language task (choose
+  among vetted options + explain) — likely to work well even at 0.5–1.5B.
+
+**Refined "what a new game provides":** `Adversary` trait (rules as code) + an
+`Oracle` (evaluator). The prose `GamePackage` is needed **only** for the
+pure-LLM research player, not for the shippable `HybridPlayer`.
+
+**Phase 5 revision:** build two players — (a) `LLMPlayer` (pure, grammar-
+constrained legality, prompt = GamePackage + SessionContext) to *measure models*;
+(b) `HybridPlayer` (engine band + game-agnostic schema-constrained selector) as
+the *shippable experimental opponent*. Both scored by the exact oracle. Trial
+driver launches **system Chrome** (bundled Chromium has no WebGPU here).
