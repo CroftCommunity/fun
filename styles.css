@@ -2202,6 +2202,109 @@ body.fullscreen .play-area {
 @media (prefers-reduced-motion: reduce) {
   .drop4-cell.win { animation: none; }
 }
+
+/* ---------- Othello ---------- */
+.othello-game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+.othello-turnbar {
+  display: flex;
+  gap: 0.9rem;
+  align-items: baseline;
+  font-weight: 600;
+}
+.othello-turn {
+  color: var(--ink-soft, var(--ink));
+  font-weight: 500;
+}
+.othello-controls {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.othello-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+}
+.othello-banner {
+  max-width: 26rem;
+  margin: 0;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--ink-soft, var(--ink));
+}
+.othello-board {
+  --oth-cell: clamp(1.7rem, 9.5vw, 2.6rem);
+  display: grid;
+  grid-template-columns: repeat(8, var(--oth-cell));
+  gap: 2px;
+  padding: 0.5rem;
+  background: var(--oth-line);
+  border-radius: var(--radius);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%), 0 2px 8px rgb(0 0 0 / 22%);
+}
+.othello-cell {
+  width: var(--oth-cell);
+  height: var(--oth-cell);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--oth-board);
+  border: none;
+  padding: 0;
+  font-size: calc(var(--oth-cell) * 0.72);
+  line-height: 1;
+  color: transparent;
+  touch-action: manipulation;
+}
+.othello-disc {
+  width: 76%;
+  height: 76%;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 40%);
+}
+.othello-cell.black .othello-disc { background: var(--oth-a); }
+.othello-cell.white .othello-disc { background: var(--oth-b); }
+/* A legal placement — a gold hint dot + a pointer affordance. */
+.othello-cell.legal {
+  cursor: pointer;
+}
+.othello-cell.legal::after {
+  content: "";
+  width: 28%;
+  height: 28%;
+  border-radius: 50%;
+  background: var(--oth-legal);
+  opacity: 0.55;
+}
+.othello-cell.legal:hover::after {
+  opacity: 0.85;
+}
+.othello-cell.legal:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: -3px;
+}
+/* The most recent placement — a ring so the move is visible. */
+.othello-cell.just-played {
+  box-shadow: inset 0 0 0 3px var(--active);
+}
+.othello-flash {
+  margin: 0.2rem auto;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--ink);
+}
+.othello-flash.win { color: var(--active); }
+.othello-board.othello-final {
+  --oth-cell: clamp(1.3rem, 7vw, 2rem);
+  margin: 0.3rem auto 0.6rem;
+}
 /* Tutor panel — engine-grounded coaching (on by default, no model download).
    Semantic tokens so it stays theme-aware + AA in light and dark. */
 .drop4-tutor {

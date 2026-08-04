@@ -173,6 +173,70 @@ export function setDrop4Mark(mark: Drop4Mark): void {
   }
 }
 
+// ---------- Othello ----------
+
+/** Othello difficulty level (opponent strength). Note: **Expert**, not Perfect —
+ *  Othello is unsolved from the opening, so there is no perfect level. */
+export type OthelloLevel = "Easy" | "Medium" | "Hard" | "Expert";
+const OTHELLO_LEVELS: readonly OthelloLevel[] = ["Easy", "Medium", "Hard", "Expert"];
+const OTHELLO_LEVEL_KEY = "fun-othello-level";
+
+/** Pure resolver: a stored known Othello level wins; otherwise the default. */
+export function resolveOthelloLevel(stored: string | null, fallback: OthelloLevel): OthelloLevel {
+  return OTHELLO_LEVELS.includes(stored as OthelloLevel) ? (stored as OthelloLevel) : fallback;
+}
+
+/** The disc the human plays in Othello: **black** (Side A, opens) or white. */
+export type OthelloDisc = "black" | "white";
+const OTHELLO_DISCS: readonly OthelloDisc[] = ["black", "white"];
+const OTHELLO_DISC_KEY = "fun-othello-disc";
+const OTHELLO_TUTOR_KEY = "fun-othello-tutor";
+
+/** Pure resolver: a stored known disc wins; otherwise the default. */
+export function resolveDisc(stored: string | null, fallback: OthelloDisc): OthelloDisc {
+  return OTHELLO_DISCS.includes(stored as OthelloDisc) ? (stored as OthelloDisc) : fallback;
+}
+
+export function othelloLevel(): OthelloLevel {
+  try {
+    return resolveOthelloLevel(localStorage.getItem(OTHELLO_LEVEL_KEY), "Medium");
+  } catch {
+    return "Medium";
+  }
+}
+export function setOthelloLevel(level: OthelloLevel): void {
+  try {
+    localStorage.setItem(OTHELLO_LEVEL_KEY, level);
+  } catch {
+    // Storage denied (private mode): the choice still applies for the session.
+  }
+}
+
+/** The disc the human plays in Othello — **black by default** (the opener). */
+export function othelloDisc(): OthelloDisc {
+  try {
+    return resolveDisc(localStorage.getItem(OTHELLO_DISC_KEY), "black");
+  } catch {
+    return "black";
+  }
+}
+export function setOthelloDisc(disc: OthelloDisc): void {
+  try {
+    localStorage.setItem(OTHELLO_DISC_KEY, disc);
+  } catch {
+    // Storage denied (private mode): the choice still applies for the session.
+  }
+}
+
+/** Show the engine-grounded tutor panel in Othello — **off by default** (opt-in,
+ *  matching Drop 4). */
+export function othelloTutorEnabled(): boolean {
+  return read(OTHELLO_TUTOR_KEY, false);
+}
+export function setOthelloTutor(on: boolean): void {
+  write(OTHELLO_TUTOR_KEY, on);
+}
+
 // ---------- bubble aim-control tuning (device-dependent; see the "Aim &
 // controls" settings sheet) ----------
 

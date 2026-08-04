@@ -6,9 +6,11 @@ import { describe, expect, it } from "vitest";
 import {
   moveSpeedToMs,
   resolveBool,
+  resolveDisc,
   resolveLevel,
   resolveMark,
   resolveNumber,
+  resolveOthelloLevel,
 } from "../src/settings.js";
 
 describe("resolveLevel (Drop 4 difficulty)", () => {
@@ -30,6 +32,28 @@ describe("resolveMark (Drop 4 player disc)", () => {
   it("falls back to the default for null or a garbage value", () => {
     expect(resolveMark(null, "x")).toBe("x");
     expect(resolveMark("triangle", "x")).toBe("x");
+  });
+});
+
+describe("resolveOthelloLevel (Othello difficulty)", () => {
+  it("honours a stored valid level (note: Expert, not Perfect)", () => {
+    expect(resolveOthelloLevel("Easy", "Medium")).toBe("Easy");
+    expect(resolveOthelloLevel("Expert", "Medium")).toBe("Expert");
+  });
+  it("falls back to the default for null or a garbage value", () => {
+    expect(resolveOthelloLevel(null, "Medium")).toBe("Medium");
+    expect(resolveOthelloLevel("Perfect", "Hard")).toBe("Hard"); // Perfect is not an Othello level
+  });
+});
+
+describe("resolveDisc (Othello player colour)", () => {
+  it("honours a stored valid disc", () => {
+    expect(resolveDisc("black", "black")).toBe("black");
+    expect(resolveDisc("white", "black")).toBe("white");
+  });
+  it("falls back to the default for null or a garbage value", () => {
+    expect(resolveDisc(null, "black")).toBe("black");
+    expect(resolveDisc("green", "black")).toBe("black");
   });
 });
 

@@ -10,6 +10,7 @@ import { bubbleModule } from "./games/bubble/bubble.js";
 import { wyrdleModule } from "./games/wyrdle/wyrdle.js";
 import { twenty48Module } from "./games/2048/2048.js";
 import { drop4Module } from "./games/drop4/drop4.js";
+import { othelloModule } from "./games/othello/othello.js";
 import { alignModule } from "./games/align/align.js";
 import { blockdokuModule } from "./games/blockdoku/blockdoku.js";
 import { looseendsModule } from "./games/looseends/looseends.js";
@@ -33,6 +34,7 @@ export const REGISTRY: readonly GameEntry[] = [
   { id: "wyrdle", title: "Wyrdle", icon: "🐉", status: "playable", load: wyrdleModule },
   { id: "2048", title: "2048", icon: "🔢", status: "playable", load: twenty48Module },
   { id: "drop4", title: "Drop 4", icon: "🔴", status: "playable", load: drop4Module },
+  { id: "othello", title: "Othello", icon: "⚫", status: "playable", load: othelloModule },
   { id: "align", title: "Align", icon: "🟪", status: "playable", load: alignModule },
   { id: "blockdoku", title: "Blockdoku", icon: "🟦", status: "playable", load: blockdokuModule },
   { id: "looseends", title: "Loose Ends", icon: "🎯", status: "playable", load: looseendsModule },

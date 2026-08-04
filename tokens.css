@@ -79,6 +79,11 @@
   --d4-x: #c62247;            /* the ✕ disc  on --d4-slot (4.73:1)      */
   --d4-o: #2f6fd0;            /* the ○ disc  on --d4-slot (4.08:1)      */
   --d4-win: #e0a72e;          /* the winning-line ring (gold)          */
+  --oth-board: #1b7d4a;       /* Othello felt (green)                  */
+  --oth-line: #0f5030;        /* the grid lines                        */
+  --oth-a: #16181d;           /* black disc                            */
+  --oth-b: #f6f4ef;           /* white disc                            */
+  --oth-legal: #e0a72e;       /* a legal-move hint dot (gold)          */
 
   /* Blockdoku board lines (graphical, not text): a thin cell grid and a heavier
      3×3-box divider that also frames the board, so the nine sub-squares read at a
@@ -203,6 +208,11 @@
   --d4-x: #ef6b8a;            /* the ✕ disc  on --d4-slot (5.00:1)      */
   --d4-o: #7fb0f0;            /* the ○ disc  on --d4-slot (6.57:1)      */
   --d4-win: #e0a72e;          /* the winning-line ring (gold)          */
+  --oth-board: #146b3f;       /* Othello felt (darker green)           */
+  --oth-line: #0a3f26;        /* the grid lines                        */
+  --oth-a: #0c0d10;           /* black disc                            */
+  --oth-b: #eceae4;           /* white disc                            */
+  --oth-legal: #e0a72e;       /* a legal-move hint dot (gold)          */
 
   /* Blockdoku board lines, re-tuned for dark: a subtle grid and a light-moss
      box divider that pops on the near-black cells. */
