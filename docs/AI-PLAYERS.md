@@ -299,3 +299,36 @@ real WebGPU / apple metal-3):
 This is the same conclusion the Rust rig reached, now measured on the *actual
 shipped browser hybrid*: legality + class-preservation by construction, no skill
 added, slower than the engine.
+
+## Generality: a second game (Othello)
+
+Othello (`/othello/`, `crates/othello-*`) is the proof that the adversarial +
+AI machinery generalizes beyond the game it was built with. What reused, and
+what was new, *is* the finding:
+
+- **Reused unchanged (shared code):** the game-agnostic harness —
+  `src/harness/hybrid-player.ts` (`buildBand` / `HybridPlayer`) and
+  `ai-runtime.ts` (`AIRuntime` / `WebLLMRuntime`). Othello builds its band from
+  `othello.tutor().moves` exactly as Drop 4 does; the wasm tutor view is a
+  structural superset of `TutorFactMove` (`immediateWin`/`blocksOpponentWin`
+  carried as `false`), so `buildBand` needed no change. Othello's one-ply fact is
+  `takesCorner` instead.
+- **Reused as a pattern (copied per-game TS):** the tutor panel, the
+  WebGPU-availability probe + experimental toggle, the result screen, the how-to.
+- **New (game-specific):** the Rust `othello-{core,solver,wasm}` and the
+  front-end wrapper — implementing the shared `Adversary` trait +
+  `pond_outcome::Game`.
+
+**The honesty flag generalizes with a twist.** Drop 4 is solvable, so its oracle
+is exact-when-tractable / capped-otherwise. Othello is **not solved from the
+opening**, so its oracle is a *heuristic* alpha-beta with an **exact full solve
+only in the deep endgame** — the same shape, renamed **exact / heuristic**.
+Because a heuristic proves no win/draw/loss class, Othello's tutor **never** grades
+a move a blunder outside the exact endgame: it says "that threw the game" only
+when `exact`, and hedges to "looks risky" otherwise. An exact-worded verdict on a
+heuristic judgment would be a false claim of perfect knowledge, so the wording is
+bound to the `exact` flag (pinned by the `coachFor` unit test).
+
+The seam a new game plugs into: the `Adversary` trait + `pond_outcome::Game` (the
+core), the TS harness (the opponent), and the tutor's `{quality, exact}` interface
+(the coaching) — not shared game logic.

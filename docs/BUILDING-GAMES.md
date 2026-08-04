@@ -430,7 +430,20 @@ A **two-player adversarial** game (two sides, alternating turns, a win/draw/loss
 result) is still a Tier-1 Croft-native game: it keeps §§2–8 (determinism-first
 core → wasm, verifiable outcome, tap-first core-decides-legality, tokens/WCAG,
 standard settings, how-to, the gate). It adds a **computer opponent**. **Drop 4**
-(`src/games/drop4/`, `crates/drop4-*`) is the reference implementation.
+(`src/games/drop4/`, `crates/drop4-*`) is the reference implementation, and
+**Othello** (`src/games/othello/`, `crates/othello-*`) is the second — the
+generality proof that the trait + harness carry to a different game.
+
+**Variation — a heuristic Oracle (Othello).** §10's "exact when tractable" assumes
+a solvable game. Othello is **not solved from the opening**, so its Oracle is a
+*heuristic* alpha-beta with an **exact full solve only in the deep endgame**. The
+honesty flag generalizes from exact/capped to **exact/heuristic**: the tutor
+claims a win/draw/loss class (and words a blunder as "threw the game") only when
+`exact`; otherwise it hedges ("looks risky") because a heuristic proves no class.
+When your game is unsolved, this is the honest shape — do not fake an exact
+verdict. The game-agnostic TS harness (`src/harness/*`) reuses unchanged; only the
+Rust core/solver/tutor and the front-end wrapper are new. See `docs/AI-PLAYERS.md`
+→ "Generality: a second game (Othello)".
 
 What is the same, and what is new:
 

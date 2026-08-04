@@ -161,6 +161,28 @@ with the classic engine staying the default. The LLM runs fully on your device
 shelf builds AI opponents: `docs/AI-PLAYERS.md`.
 Plans: `plans/2026-07-31-drop4-ai-harness.md`, `plans/2026-08-03-drop4-playable-and-hybrid-buildout.md`.
 
+## Othello (playable — the generality proof)
+
+`/othello/` is the shelf's second two-player game vs a computer opponent, and the
+proof that the adversarial machinery generalizes. It is a full Tier-1 build — an
+8×8 place-and-flip board with forced passes, a verifiable `?r=` outcome (passes
+encoded so it replays exactly), the engine-grounded tutor, and the same
+WebGPU-gated experimental local-AI opponent — but it plays a very different game.
+The key difference: **Othello is not solved from the opening**, so its engine is a
+strong *heuristic* alpha-beta (corners, mobility, stable edges) with an **exact
+full solve only in the deep endgame**. That carries the honesty flag from
+exact/capped to **exact/heuristic**: the tutor says a move "threw the game" only
+once the endgame makes it certain, and "looks risky" otherwise — it never claims a
+win/draw/loss class it cannot prove.
+
+The generality result: the game-agnostic TS harness (`src/harness/hybrid-player.ts`,
+`ai-runtime.ts`) reused **unchanged**; the tutor/experimental-opponent UI was
+reused as a *pattern* (copied per-game TS); and only the Rust `othello-{core,
+solver,wasm}` and the front-end wrapper were new — implementing the shared
+`Adversary` trait + `pond_outcome::Game`. That split is the finding: a new game
+plugs into the trait + the harness + the tutor's `{quality, exact}` interface.
+Plan: `plans/2026-08-03-othello-game.md`. AI rationale: `docs/AI-PLAYERS.md`.
+
 ## Align (playable — falling-block stacker)
 
 `/align/` is a real-time falling-block stacker (build-fresh; original name,
