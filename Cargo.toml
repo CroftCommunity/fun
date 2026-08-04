@@ -43,6 +43,7 @@ members = [
     "crates/drop4-wasm",
     "crates/othello-core",
     "crates/othello-solver",
+    "crates/othello-wasm",
     "crates/xbuild",
 ]
 

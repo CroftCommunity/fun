@@ -130,6 +130,10 @@ const d4wasm = join(root, "target/wasm32-unknown-unknown/release/drop4_wasm.wasm
 if (await exists(d4wasm)) await cp(d4wasm, join(dist, "drop4.wasm"));
 else console.warn("note: drop4.wasm not built yet — run `npm run build:wasm` (drop4 needs it)");
 
+const owasm = join(root, "target/wasm32-unknown-unknown/release/othello_wasm.wasm");
+if (await exists(owasm)) await cp(owasm, join(dist, "othello.wasm"));
+else console.warn("note: othello.wasm not built yet — run `npm run build:wasm` (othello needs it)");
+
 const alwasm = join(root, "target/wasm32-unknown-unknown/release/align_wasm.wasm");
 if (await exists(alwasm)) await cp(alwasm, join(dist, "align.wasm"));
 else console.warn("note: align.wasm not built yet — run `npm run build:wasm` (align needs it)");
