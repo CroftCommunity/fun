@@ -79,3 +79,23 @@ match3-core = { path = "crates/match3-core" }
 solitaire-core = { path = "crates/solitaire-core" }
 pond-docformat = { path = "crates/pond-docformat" }
 pond-outcome = { path = "crates/pond-outcome" }
+
+# Lint policy for crates that opt in with `[lints] workspace = true`.
+#
+# Default-level clippy is enforced workspace-wide in CI (`-D warnings`); this
+# table is the *additional* pedantic tier, adopted per-crate rather than
+# globally. Measured 2026-08-04: pedantic across the existing 33 crates is ~190
+# warnings, and 154 of them (81%) are the cast family below — firing on exactly
+# the deliberate `usize`->`u32` narrowing the determinism discipline requires at
+# RNG/hash boundaries so `native == wasm` (see CLAUDE.md). Allowing those four
+# here beats decorating the repo's most correctness-critical code with 154
+# scattered `#[allow]`s, and keeps the ~36 pedantic lints that do earn their
+# keep (missing_panics_doc, doc_markdown, match_same_arms, ...).
+#
+# New crates opt in. Existing crates are grandfathered, not exempted forever.
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+cast_possible_truncation = "allow"
+cast_possible_wrap = "allow"
+cast_sign_loss = "allow"
+cast_precision_loss = "allow"
