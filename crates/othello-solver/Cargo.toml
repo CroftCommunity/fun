@@ -1,0 +1,13 @@
+[package]
+name = "othello-solver"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Othello (Reversi) engine: a positional/mobility alpha-beta heuristic search that is the classic opponent (with difficulty levels), an EXACT full solve in the deep endgame (the honest oracle for tutoring/scoring), and a class-preserving difficulty band. Othello is unsolved from the opening, so the oracle is heuristic early and exact only late — the honesty flag carries which. No network, no floats on any compared path (native==wasm move choice)."
+
+[dependencies]
+adversary-core = { path = "../adversary-core" }
+othello-core = { path = "../othello-core" }
+rand.workspace = true
+rand_chacha.workspace = true
