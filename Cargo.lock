@@ -310,6 +310,42 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 
 [[package]]
+name = "othello-core"
+version = "0.0.0"
+dependencies = [
+ "adversary-core",
+ "hex",
+ "pond-docformat",
+ "pond-outcome",
+ "serde",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
+name = "othello-solver"
+version = "0.0.0"
+dependencies = [
+ "adversary-core",
+ "othello-core",
+ "rand",
+ "rand_chacha",
+]
+
+[[package]]
+name = "othello-wasm"
+version = "0.0.0"
+dependencies = [
+ "adversary-core",
+ "othello-core",
+ "othello-solver",
+ "pond-outcome",
+ "rand_chacha",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "pond-docformat"
 version = "0.0.0"
 dependencies = [
