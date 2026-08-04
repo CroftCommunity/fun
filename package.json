@@ -16,7 +16,8 @@
     "ai:trial": "node build.mjs && node tools/ai-trial.mjs",
     "harness:trial": "node build.mjs && node tools/harness-trial.mjs",
     "serve": "node build.mjs && node tools/serve.mjs",
-    "test": "npm run typecheck && npm run lint && npm run unit && npm run build"
+    "test:rust": "bash tools/rust-gate.sh",
+    "test": "npm run test:rust && npm run typecheck && npm run lint && npm run unit && npm run build"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.1",

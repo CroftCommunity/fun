@@ -50,8 +50,45 @@ jobs:
         with:
           path: dist
 
+  # The Rust gate. `build` only proves the 11 wasm crates *compile* for
+  # wasm32 — not that any test passes, not that lints are clean, and not that
+  # host-only crates (e.g. drop4-harness) build at all. Runs in parallel with
+  # `build`: they share no outputs, so wall clock is the max of the two.
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          # Requested explicitly rather than relying on the action's default
+          # profile — a missing component is a cheap fix and an expensive round trip.
+          components: clippy, rustfmt
+      # Without this, every run recompiles 33 crates from scratch. A gate slow
+      # enough to resent is a gate that eventually gets deleted.
+      - uses: Swatinem/rust-cache@v2
+      # On the record: local and CI clippy disagreed during this gate's
+      # bring-up (2026-08-04), so the versions are printed every run.
+      - run: rustc --version && cargo clippy --version && cargo fmt --version
+      # The same command README.md's Build section already documents.
+      - run: cargo fmt --all --check
+      # --release is load-bearing, not an optimization. Measured 2026-08-04:
+      # the debug profile ran >20 min and was killed, dominated entirely by
+      # bubble-solver's committed_pack_seeds_are_winnable_spotcheck (three full
+      # find_win searches); release runs the whole workspace in ~53s. Do not
+      # drop --release to "speed up the build" — it does the opposite.
+      - run: cargo test --workspace --release
+      # --all-targets is load-bearing: the workspace's only pre-existing clippy
+      # warning lived in a *lib test*, so a plain `cargo clippy` reported clean
+      # and would have gated nothing in test code — which is where this repo's
+      # fixtures and soaks live.
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+
   deploy:
-    needs: build
+    # A Rust regression blocks publication, not just annotates it.
+    needs: [build, rust]
+    # `workflow_dispatch` can be aimed at any ref; without this guard, dispatching
+    # against a scratch branch would publish that branch to production.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
