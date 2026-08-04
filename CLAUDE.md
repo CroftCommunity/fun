@@ -18,9 +18,28 @@ at them and add what's specific to this repo. Git identity: chasemp
   a task list.
 - **Rust discipline** (`rust-enforcer`): no `unwrap()`/`expect()` in production
   paths, `Result<T,E>` for fallible ops, `#[warn(missing_docs)]`, `thiserror`
-  errors, `clippy::pedantic` clean, `cargo fmt --check` clean. The cores are
-  determinism-critical — no floats on the hashed path; `usize`→`u32` at RNG/hash
-  boundaries so native==wasm.
+  errors. The cores are determinism-critical — no floats on the hashed path;
+  `usize`→`u32` at RNG/hash boundaries so native==wasm.
+  - **Enforced in CI** by the `rust` job in `.github/workflows/deploy.yml`, which
+    `deploy` depends on: `cargo fmt --all --check`, `cargo test --workspace
+    --release`, `cargo clippy --workspace --all-targets -- -D warnings`. Same three
+    locally via `npm run test:rust` (folded into `npm run test`).
+    `--release` on the test command is **load-bearing**, not tuning: in debug the
+    suite runs >20 min (bubble-solver's search), in release ~53s.
+  - **Run the gate through `npm run test:rust`, not bare `cargo clippy`.**
+    Homebrew's cargo/clippy shadow rustup on PATH — the same trap `build-wasm.sh`
+    already documents for `rustc` — and Homebrew's clippy *lags*. During this
+    gate's bring-up local clippy 0.1.94 passed code CI's 0.1.97 rejected, three
+    round trips in a row. `tools/rust-gate.sh` pins rustup's stable toolchain so
+    local and CI agree; the job also prints its versions every run.
+  - **Lint level: default clippy workspace-wide, `pedantic` opt-in per crate.**
+    New crates opt in with `[lints] workspace = true`, which picks up
+    `[workspace.lints.clippy]` in the root `Cargo.toml` — pedantic **minus the cast
+    family**. Measured 2026-08-04: 81% of pedantic's 190 hits here are
+    `cast_possible_truncation` and friends firing on exactly the `usize`→`u32`
+    narrowing the line above *requires*. Existing crates are grandfathered.
+    (This bullet used to claim "`clippy::pedantic` clean" workspace-wide; nothing
+    checked it and nothing ever had. It now says what is true.)
 - **Commit at every stable (green) point.** No batching phases. Each commit is a
   working checkpoint. Co-author trailer:
   `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`. Don't push/PR unless
