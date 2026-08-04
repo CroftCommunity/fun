@@ -509,8 +509,46 @@ What is the same, and what is new:
   an up-front download disclosure; the classic engine stays the default and the
   stronger player. Validated by `AI_TRIAL_MODE=hybrid npm run ai:trial`, not CI.
 
-The scorer/tournament harness is documented in `docs/AI-PLAYERS.md` and filled in
-as it lands; this section is the shelf-standards anchor for it.
+The scorer/tournament harness has landed (`src/harness/{match-runner,scorer,
+tournament}.ts`, `npm run harness:trial`): it plays two `Player`s over the shipped
+wasm, grades each move against the wasm's exact oracle (only where provably
+`exact`), and aggregates a `Scorecard`/`Report`. Full guide: `docs/HARNESS.md`.
+This section is the shelf-standards anchor.
+
+### Recipe — adding an AI opponent to a new adversarial game
+
+Othello proved the split generalizes. When you add a second (or third) adversarial
+game, this is what you write vs what you reuse:
+
+**Reuse unchanged (shared code — do not fork):**
+- `crates/adversary-core` — the `Adversary` trait your core implements.
+- `src/harness/ai-runtime.ts` — the `AIRuntime` port + `MockRuntime` (CI) +
+  `WebLLMRuntime` (embedded, same-origin, lazy).
+- `src/harness/hybrid-player.ts` — `buildBand(tutorFacts)` + `HybridPlayer.pick`.
+  Your wasm tutor view must be a **structural superset of `TutorFactMove`**
+  (`col`, `value`, `quality`, `immediateWin`, `blocksOpponentWin`) — carry the
+  Drop-4-flavored one-ply facts as `false` if your game has no such notion, and
+  `buildBand` reuses with no change (its ideas degrade to quality-based).
+- `src/harness/{match-runner,scorer,tournament}.ts` — the scoring rig (today it
+  grades via `drop4-wasm`; generalizing it to an injected game/oracle adapter is
+  the tracked follow-on — see `TODO/harness.md`).
+
+**Reuse as a pattern (copy the per-game TS, don't share it):** the tutor panel,
+the WebGPU-availability probe + experimental toggle + disclosure, the AI-banter
+line, the result screen.
+
+**Write new (game-specific):** the Rust `<game>-{core,solver,wasm}` (rules +
+`Adversary` + `pond_outcome::Game`; the solver's Oracle + a class-preserving band
++ `tutor::assess`), and the front-end `<game>-{wasm.ts,outcome.ts,ts,howto.ts}`.
+Duplicate the ~30-line band selector into your solver until a **third** game
+exists (rule of three), then extract a shared `adversary-solver`.
+
+**Honesty gate (non-negotiable):** if your game is **not solved from the opening**
+(Othello, chess), the Oracle is *heuristic early, exact only in the deep endgame*.
+Carry an `exact` flag on every tutor fact and **bind the wording to it**: claim a
+win/draw/loss class (and word a blunder as "threw the game") only when `exact`;
+hedge ("looks risky") otherwise. Never fake an exact verdict from a heuristic.
+Pin it with a `coachFor`-style unit test.
 
 ## New-game checklist (Tier-1 Croft-native)
 
@@ -523,6 +561,32 @@ as it lands; this section is the shelf-standards anchor for it.
 - [ ] Standard settings wired (Enable hints on; Declare assistance on; hints-off → "I'm stuck" ends + reports).
 - [ ] "How to play" guide (pure data) + `guide:shots` screenshots + sync tests; header link.
 - [ ] Gate green (unit + e2e + Rust) and deployed.
+
+## New-game checklist (adversarial + AI opponent — §10, on top of Tier-1)
+
+For a two-player game vs a computer opponent, add these to the Tier-1 checklist.
+Reference implementations: **Drop 4** (solvable), **Othello** (heuristic Oracle).
+
+- [ ] Core implements `adversary_core::Adversary` (rules) **and**
+  `pond_outcome::Game` (replay/verify); moves — passes included — serialize so
+  `(seed, moves)` replays exactly (prefer a compact numeric code over a tagged enum).
+- [ ] Solver: an Oracle (exact where tractable, else heuristic depth-capped), a
+  difficulty `Level` → class-preserving **band** (`select_in_band`, duplicated per
+  rule-of-three), and `tutor::assess` → `{value, regret, quality, exact}` per move.
+- [ ] wasm C-ABI adds the opponent (`live_move`) + tutor (`assess_json`/`tutor_json`,
+  a superset of the shared `TutorFactMove`) + any special move export (e.g. `pass()`).
+- [ ] Opt-in tutor panel (off by default) with **honesty bound to `exact`**
+  (`coachFor` unit test): "threw the game" only when exact, "looks risky" otherwise.
+- [ ] Experimental hybrid opponent behind a **WebGPU-gated toggle** (real,
+  non-fallback adapter only) + up-front download disclosure, reusing
+  `hybrid-player.ts`/`ai-runtime.ts` **unchanged**; engine stays the default and
+  falls back on any LLM failure. Validated by an `ai:trial`-style run, not CI.
+- [ ] CI proves the hybrid plug-in with a `MockRuntime` (no GPU on the gate).
+- [ ] (Optional) measure the shipped players with the browser harness
+  (`docs/HARNESS.md`).
+
+See §10's "Recipe — adding an AI opponent to a new adversarial game" for what
+reuses vs what is new.
 
 ## New-game checklist (Tier-2 wrap — see §9)
 

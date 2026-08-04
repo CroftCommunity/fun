@@ -157,6 +157,10 @@ Authoritative plan: `plans/2026-07-31-drop4-ai-harness.md`. Standards:
   Pages — needs a different binary host. Tracked as an open thread (decision +
   host TBD). See `plans/2026-08-03-drop4-ai-tutor-layer.md` (Phase 0 D2 caveat).
 
-## Later (own phase-plans)
-- [ ] checkers (`checkers-core` + alpha-beta solver/oracle + shelf game).
-- [ ] chess (vetted move-gen + Stockfish WASM oracle + shelf game).
+## Later — next adversarial games (moved to the shelf slate)
+
+The next adversarial games are tracked in the shelf-wide slate, not here, so they
+don't drift as a parallel list: see `TODO/README.md` → "Next games" and
+`TODO/checkers.md`. In short: **checkers** next (the 3rd adversarial game → extract
+`adversary-solver`), then **chess** (heavier — vetted move-gen + Stockfish-WASM
+oracle, gated on larger-binary hosting).
