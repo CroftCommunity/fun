@@ -1401,7 +1401,7 @@ pub fn reference_score_beam(
         }
         // Keep the `beam_width` highest-cumulative states; the sort is stable, so
         // equal scores keep their (deterministic) generation order.
-        next.sort_by(|a, b| b.1.cmp(&a.1));
+        next.sort_by_key(|&(_, score)| core::cmp::Reverse(score));
         next.truncate(beam_width.max(1));
         best = best.max(next.iter().map(|(_, s)| *s).max().unwrap_or(0));
         frontier = next;
@@ -1478,11 +1478,7 @@ pub fn reference_score_specials(
         // Rank for SURVIVAL by actual score + special potential (special-building lines
         // survive pruning); report the best ACTUAL score. Stable sort keeps equal-key
         // states in deterministic generation order.
-        next.sort_by(|a, b| {
-            let ka = a.1 + special_potential(&a.0.board);
-            let kb = b.1 + special_potential(&b.0.board);
-            kb.cmp(&ka)
-        });
+        next.sort_by_key(|s| core::cmp::Reverse(s.1 + special_potential(&s.0.board)));
         next.truncate(beam_width.max(1));
         best = best.max(next.iter().map(|(_, s)| *s).max().unwrap_or(0));
         frontier = next;

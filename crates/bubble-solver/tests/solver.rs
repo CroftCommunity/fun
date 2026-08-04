@@ -117,7 +117,7 @@ fn probe_acceptance() {
             total_len += line.len();
         }
     }
-    let avg = if wins > 0 { total_len / wins } else { 0 };
+    let avg = total_len.checked_div(wins).unwrap_or(0);
     println!("PROBE: {wins}/{sample} winnable within budget {PACK_BUDGET}; avg line {avg} shots");
     assert!(wins > 0, "at least some seeds should be winnable");
 }

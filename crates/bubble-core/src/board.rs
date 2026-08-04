@@ -322,10 +322,10 @@ mod tests {
             assert_eq!(b.get(0, c), Some(Cell::Empty), "new top row is empty");
         }
         // Old row r moved to r+1, same colour and same classification (length).
-        for r in 0..b.height - 1 {
+        for (r, &old) in old_len.iter().enumerate().take(b.height - 1) {
             assert_eq!(
                 b.row_len_at(r + 1),
-                old_len[r],
+                old,
                 "row {r} kept its full/short classification after shifting to {}",
                 r + 1
             );

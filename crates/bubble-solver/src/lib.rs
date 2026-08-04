@@ -126,7 +126,7 @@ fn dfs(
             scored.push((gain, angle));
         }
     }
-    scored.sort_by(|a, b| b.0.cmp(&a.0));
+    scored.sort_by_key(|&(gain, _)| core::cmp::Reverse(gain));
     for (_, angle) in scored {
         let mut next = game.clone();
         next.play(angle);
