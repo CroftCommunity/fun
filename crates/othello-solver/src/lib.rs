@@ -12,7 +12,11 @@
 #![warn(missing_docs)]
 
 pub mod eval;
+pub mod live;
 pub mod search;
+pub mod tutor;
 
 pub use eval::{heuristic, WEIGHTS};
+pub use live::{capped_class, choose, live_band, select_in_band, LiveBand};
 pub use search::{best_move, move_values, Level, TRACTABLE_EMPTIES};
+pub use tutor::{assess, MoveClass, TutorMove, TutorReport};
