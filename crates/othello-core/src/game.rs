@@ -2,19 +2,51 @@
 //! the [`Adversary`] impl. ([`pond_outcome::Game`] is added in Phase 1b.)
 
 use adversary_core::{Adversary, MatchResult, Side};
-use serde::{Deserialize, Serialize};
+use serde::de::Error as _;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::board::{cell_of, side_of_cell, Board, CELLS, SIZE};
 use crate::hash::state_hash;
 
 /// A move: place a disc at a flat cell index `0..64`, or pass (only legal when
 /// the side to move has no placement but the game is not yet over).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Move {
     /// Place a disc at flat index `row * SIZE + col`.
     Place(u8),
     /// Pass (forced — no legal placement, opponent still has one).
     Pass,
+}
+
+/// The compact `u8` code a `Pass` serializes to (board cells are `0..64`, so
+/// `64` is the first free code). Placements serialize to their cell index.
+const PASS_CODE: u8 = CELLS as u8;
+
+// A `Move` serializes as a single `u8` — a placement to its cell index
+// (`0..64`), a pass to `PASS_CODE` (`64`) — so an outcome's move list is a plain
+// JSON number array (compact `?r=` shares; the TS side reads numbers, not tagged
+// enum objects). native == wasm.
+impl Serialize for Move {
+    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        let code = match self {
+            Move::Place(idx) => *idx,
+            Move::Pass => PASS_CODE,
+        };
+        s.serialize_u8(code)
+    }
+}
+
+impl<'de> Deserialize<'de> for Move {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let code = u8::deserialize(d)?;
+        match code {
+            PASS_CODE => Ok(Move::Pass),
+            idx if (idx as usize) < CELLS => Ok(Move::Place(idx)),
+            other => Err(D::Error::custom(format!(
+                "invalid Othello move code {other}"
+            ))),
+        }
+    }
 }
 
 /// The Othello game marker (zero-sized) the trait impls hang off.
@@ -370,6 +402,20 @@ mod tests {
         );
     }
 
+    #[test]
+    fn move_serializes_to_a_compact_u8_code() {
+        // The TS `?r=` share reads a plain number array: a placement is its cell
+        // index, a pass is 64. Lock that wire contract.
+        assert_eq!(serde_json::to_string(&Move::Place(19)).unwrap(), "19");
+        assert_eq!(serde_json::to_string(&Move::Pass).unwrap(), "64");
+        assert_eq!(serde_json::from_str::<Move>("19").unwrap(), Move::Place(19));
+        assert_eq!(serde_json::from_str::<Move>("64").unwrap(), Move::Pass);
+        assert!(
+            serde_json::from_str::<Move>("65").is_err(),
+            "out-of-range code rejected"
+        );
+    }
+
     /// Play to a terminal position by always taking the first legal move (a
     /// `Place` of the lowest index, or `Pass` when forced) — deterministic.
     fn deterministic_game(seed: u64) -> (Vec<Move>, Board) {
@@ -398,7 +444,10 @@ mod tests {
         );
 
         let rec = attest::<Othello>(0, moves.clone(), Outcome::Abandoned, None);
-        assert!(verify::<Othello>(&rec).ok, "honest match (with a pass) replays");
+        assert!(
+            verify::<Othello>(&rec).ok,
+            "honest match (with a pass) replays"
+        );
 
         // Tamper the first Place with an always-illegal opening cell (idx 0):
         // replay skips it, the line diverges, verification fails.
@@ -409,6 +458,9 @@ mod tests {
             .position(|m| matches!(m, Move::Place(_)))
             .expect("a game has placements");
         bad.moves[first_place] = Move::Place(0);
-        assert!(!verify::<Othello>(&bad).ok, "a tampered move list fails verify");
+        assert!(
+            !verify::<Othello>(&bad).ok,
+            "a tampered move list fails verify"
+        );
     }
 }
