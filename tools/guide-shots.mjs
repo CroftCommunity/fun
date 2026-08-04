@@ -267,6 +267,84 @@ const SHOTS = [
     },
   },
   {
+    name: "othello-board",
+    clip: ".othello-game",
+    async run(page) {
+      await page.goto(`${origin}/othello/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".othello-board");
+      await page.waitForFunction(() => Boolean(window.__othello));
+      // A lived-in mid-game board (both sides' discs), human to move so the gold
+      // legal-move dots show.
+      await page.evaluate(() => {
+        const h = window.__othello;
+        for (const idx of [19, 18, 20, 21]) {
+          const b = h.game.board();
+          if (b.result !== -1) break;
+          if (b.legal.includes(idx)) h.game.play(idx);
+          else if (b.legal.length) h.game.play(b.legal[0]);
+        }
+        h.refresh();
+      });
+      await page.waitForSelector(".othello-cell.white .othello-disc");
+    },
+  },
+  {
+    name: "othello-tutor",
+    clip: ".othello-game",
+    async run(page) {
+      await page.addInitScript(() => localStorage.setItem("fun-othello-tutor", "on"));
+      await page.goto(`${origin}/othello/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".othello-board");
+      await page.waitForFunction(() => Boolean(window.__othello));
+      await page.evaluate(() => {
+        const h = window.__othello;
+        // An even number of first-legal plies returns to Black (the human) to
+        // move, mid-game, so "Explain my options" has options to list.
+        for (let i = 0; i < 4; i += 1) {
+          const b = h.game.board();
+          if (b.result !== -1) break;
+          if (b.legal.length === 0) h.game.pass();
+          else h.game.play(b.legal[0]);
+        }
+        h.refresh();
+      });
+      await page.click(".othello-tutor-explain");
+      await page.waitForSelector(".othello-tutor-options li");
+    },
+  },
+  {
+    name: "othello-result",
+    clip: ".sol-result",
+    async run(page) {
+      await page.goto(`${origin}/othello/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".othello-board");
+      await page.waitForFunction(() => Boolean(window.__othello));
+      // Play a full first-legal game (passes included) to a terminal, then open
+      // its self-verifying ?r= link so the result screen shows the final board.
+      const share = await page.evaluate(async () => {
+        const h = window.__othello;
+        for (let i = 0; i < 200; i += 1) {
+          const b = h.game.board();
+          if (b.result !== -1) break;
+          if (b.legal.length === 0) h.game.pass();
+          else h.game.play(b.legal[0]);
+        }
+        const env = h.game.outcome(false);
+        const json = new TextEncoder().encode(JSON.stringify(env));
+        const cs = new CompressionStream("deflate-raw");
+        const w = cs.writable.getWriter();
+        void w.write(json);
+        void w.close();
+        const buf = new Uint8Array(await new Response(cs.readable).arrayBuffer());
+        let bin = "";
+        for (const b2 of buf) bin += String.fromCharCode(b2);
+        return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      });
+      await page.goto(`${origin}/othello/?r=${share}`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".sol-result .othello-board.othello-final");
+    },
+  },
+  {
     name: "align-board",
     clip: ".al-game",
     async run(page) {
