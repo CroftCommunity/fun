@@ -258,11 +258,21 @@ page (`/how-to/?game=<id>`). It follows the Croft user-guide pattern:
 
 - **TDD first**, always: the wiring test runs through the real entry point (the
   crate API, the wasm boundary, the `/<game>/` URL) and is RED before GREEN.
-- `npm run test` = typecheck · lint · unit (builds the wasm first) · build.
-  `npm run e2e` = Playwright incl. axe. Rust: `cargo test --workspace`, `fmt
-  --check`, `clippy`. All green before shipping.
-- Deploy is GitHub Actions → Pages (`.github/workflows/deploy.yml`): it builds the
-  wasm, runs the gate, and publishes `dist/` to `fun.croft.ing`.
+- `npm run test` = **rust** · typecheck · lint · unit (builds the wasm first) ·
+  build. `npm run test:rust` alone (`tools/rust-gate.sh`) = `cargo fmt --all
+  --check` · `cargo clippy --workspace --all-targets -- -D warnings` ·
+  `cargo test --workspace --release`, run through **rustup's** stable toolchain —
+  Homebrew's cargo/clippy shadow it on PATH and lag behind, so a bare
+  `cargo clippy` can pass code CI rejects. `npm run e2e` = Playwright incl. axe.
+  All green before shipping.
+- **A new crate must pass the Rust gate**, and opts into the pedantic tier with
+  `[lints] workspace = true` in its `Cargo.toml` (see `[workspace.lints.clippy]`
+  in the root manifest, and `CLAUDE.md` for why it excludes the cast lints).
+- Deploy is GitHub Actions → Pages (`.github/workflows/deploy.yml`): a `build` job
+  (wasm · typecheck · lint · unit · site) and a parallel `rust` job (the three
+  commands above). `deploy` needs **both**, and is guarded to `refs/heads/main` —
+  so a Rust regression blocks publication, and a `workflow_dispatch` aimed at a
+  branch cannot publish it.
 
 ---
 
