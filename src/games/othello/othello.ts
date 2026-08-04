@@ -11,11 +11,15 @@
 //! level. Difficulty (Easy…Expert) and the chosen disc persist.
 
 import type { GameModule } from "../../contract.js";
+import { WebLLMRuntime } from "../../harness/ai-runtime.js";
+import { buildBand, HybridPlayer, type BandMove } from "../../harness/hybrid-player.js";
 import {
   othelloDisc,
   othelloLevel,
+  othelloTutorEnabled,
   setOthelloDisc,
   setOthelloLevel,
+  setOthelloTutor,
   type OthelloDisc,
   type OthelloLevel,
 } from "../../settings.js";
@@ -26,7 +30,7 @@ import {
   type OthelloEnvelope,
   type VerifyResult,
 } from "./othello-outcome.js";
-import { Othello, type BoardView, type Level } from "./othello-wasm.js";
+import { Othello, type BoardView, type Level, type MoveAssessment } from "./othello-wasm.js";
 
 declare global {
   interface Window {
@@ -36,11 +40,63 @@ declare global {
       refresh: () => void;
       seed: bigint;
     };
+    /** Test seam: override the local-AI model id (a smaller/faster model). */
+    __OTHELLO_AI_MODEL?: string;
   }
 }
 
 /** The opponent's identity — honest: it is the shelf's classic engine. */
 const OPPONENT = { name: "The Engine", avatar: "🤖" } as const;
+
+const LOCAL_AI = "local-ai";
+/** A small, fast model — the local-AI opponent is UX (banter), not strength. */
+const LOCAL_AI_MODEL = "Qwen2.5-0.5B-Instruct-q4f16_1-MLC";
+/** The experimental local-AI opponent's persona. (A selectable roster of
+ *  temperaments — managed as external prompt files — is a tracked follow-on;
+ *  today there is one persona, kept small and in one place.) */
+const LOCAL_AI_PERSONA = { name: "Rowan", avatar: "🌿" } as const;
+const HYBRID_SYSTEM = [
+  "You are Rowan, a friendly but competitive Othello opponent.",
+  "You always pick from the offered squares (they are safe by construction).",
+  "You add a short, in-character line of banter — never analysis, never move lists.",
+].join(" ");
+
+/** A human-readable cell label, e.g. cell 19 -> "row 3, column 4" (1-based). */
+const cellLabel = (idx: number): string => `row ${Math.floor(idx / 8) + 1}, column ${(idx % 8) + 1}`;
+
+/** A short, engine-grounded idea for why a placement is reasonable (tutor copy). */
+export const ideaFor = (m: MoveAssessment): string =>
+  m.takesCorner
+    ? "takes a corner"
+    : m.quality === "optimal"
+      ? "your strongest line"
+      : "stays safe";
+
+/**
+ * Coaching for a just-tapped placement, or null if it does not warrant a note.
+ * Honest about certainty: only when the facts are provably `exact` (deep
+ * endgame) does it say the move *threw* the game; a horizon-approximate
+ * (heuristic) verdict can never claim a class drop, so it softens to "looks
+ * risky" and only for a move the heuristic clearly dislikes (a negative value
+ * while a positive one was on offer). Othello is unsolved early, so this is the
+ * only honest split. (Pinned by the `coachFor` unit test — the Pass 3 gate.)
+ */
+export const coachFor = (
+  verdict: MoveAssessment | null,
+  bestCol: number | null,
+  exact: boolean,
+): string | null => {
+  if (!verdict || bestCol === null) return null;
+  if (exact) {
+    return verdict.quality === "blunder"
+      ? `That threw the game — ${cellLabel(bestCol)} held it.`
+      : null;
+  }
+  // Heuristic (not proven): flag only a clearly weak move, and hedge.
+  return verdict.value < 0 && verdict.bestValue > 0
+    ? `That looks risky — ${cellLabel(bestCol)} may be stronger.`
+    : null;
+};
 
 const THINK_MS = 450;
 const PASS_MS = 950;
@@ -167,9 +223,26 @@ export function othelloModule(): GameModule {
   let level: OthelloLevel = othelloLevel();
   let disc: OthelloDisc = othelloDisc();
   let lastMove: number | null = null;
+  // Engine-grounded coaching for the human's last move, surfaced after the
+  // engine replies (so it does not spoil the reply). Cleared each human turn.
+  let coachMsg: string | null = null;
+  let pendingCoach: string | null = null;
+
+  // --- experimental local-AI opponent (hybrid: engine band + LLM in-band pick) ---
+  // Offered only when a real WebGPU adapter is present; the classic engine is the
+  // default. All LLM code is lazy — no model download unless the toggle is on and
+  // a move is played. Reuses the game-agnostic hybrid harness unchanged.
+  let localAiAvailable = false;
+  let opponentKind: "engine" | typeof LOCAL_AI = "engine";
+  let runtime: WebLLMRuntime | null = null;
+  let hybrid: HybridPlayer | null = null;
+  let aiSay: string | null = null;
+  let lastHumanQuality: "optimal" | "resultPreserving" | "blunder" | null = null;
 
   /** The side value the human plays: 1 (black, opens) or 2 (white). */
   const humanSide = (): 1 | 2 => (disc === "black" ? 1 : 2);
+  const opponentIdentity = (): { name: string; avatar: string } =>
+    opponentKind === LOCAL_AI ? LOCAL_AI_PERSONA : OPPONENT;
 
   const statusEl = el("p", { class: "sol-status", role: "status", "aria-live": "polite" });
   const setStatus = (msg: string): void => {
@@ -224,29 +297,154 @@ export function othelloModule(): GameModule {
       return;
     }
     // The opponent's turn (place or forced pass), after a brief beat.
+    const who = opponentIdentity().name;
     thinking = true;
-    setStatus(b.mustPass ? `${OPPONENT.name} has no move — passing.` : `${OPPONENT.name} is thinking…`);
+    setStatus(b.mustPass ? `${who} has no move — passing.` : `${who} is thinking…`);
     render();
     window.setTimeout(() => {
-      if (disposed || !game) return;
-      const mv = game.liveMove(level as Level);
-      if (mv === "pass") {
-        game.pass();
-        lastMove = null;
-      } else if (typeof mv === "number") {
-        applyMove(mv);
-      }
-      thinking = false;
-      step();
+      void (async () => {
+        if (disposed || !game) return;
+        if (b.mustPass) {
+          game.pass();
+          lastMove = null;
+        } else {
+          const mv = opponentKind === LOCAL_AI ? await hybridMove() : game.liveMove(level as Level);
+          if (disposed || !game) return;
+          if (mv === "pass") game.pass();
+          else if (typeof mv === "number") applyMove(mv);
+        }
+        thinking = false;
+        // Surface any coaching for the human's move now the reply is in.
+        if (pendingCoach !== null) {
+          coachMsg = pendingCoach;
+          pendingCoach = null;
+        }
+        step();
+      })();
     }, b.mustPass ? PASS_MS : THINK_MS);
   };
 
   const playCell = (idx: number): void => {
     if (!game || thinking || ending || gameOver() || !humanToMove()) return;
     if (!game.board().legal.includes(idx)) return; // the core decides legality
+    coachMsg = null; // clear last turn's coaching
+    // Assess the tapped move at the *current* position (before it is applied) —
+    // drives the opt-in tutor coach AND the local-AI opponent's reaction.
+    const report = game.tutor();
+    const verdict = report.moves.find((m) => m.col === idx) ?? null;
+    lastHumanQuality = verdict?.quality ?? null;
+    const pending = othelloTutorEnabled() ? coachFor(verdict, report.bestCol, report.exact) : null;
     if (!applyMove(idx)) return;
     setStatus("");
+    if (gameOver()) {
+      coachMsg = pending; // a game-ending blunder is still explained (tutor on)
+      step();
+      return;
+    }
+    pendingCoach = pending;
     step();
+  };
+
+  // What just happened, in one word — drives the persona prompt + the fallback
+  // line, so the banter is reactive, not generic.
+  type Situation = "corner" | "blundered" | "solid" | "neutral";
+  const readSituation = (band: readonly BandMove[]): Situation => {
+    if (band.some((m) => m.idea === "takes a corner")) return "corner";
+    if (lastHumanQuality === "blunder") return "blundered";
+    if (lastHumanQuality === "optimal") return "solid";
+    return "neutral";
+  };
+  const SITUATION_HINT: Record<Situation, string> = {
+    corner: "A corner is on offer — claim it with a little flourish.",
+    blundered: "The player just slipped — tease taking advantage.",
+    solid: "The player made a solid move — give a little credit, stay competitive.",
+    neutral: "Nothing decisive yet — a light competitive jab.",
+  };
+  const FALLBACK_LINE: Record<Situation, string> = {
+    corner: "A corner? Don't mind if I do.",
+    blundered: "Ooh, that opened up — thanks.",
+    solid: "Nice one. I'm just getting started.",
+    neutral: "Your move. I'm not worried yet.",
+  };
+
+  const hybridPrompt = (g: Othello, band: readonly BandMove[], sit: Situation): string => {
+    const legal = band.map((m) => m.col).join(", ");
+    return [
+      `Board (you play as your discs):\n${g.renderText()}`,
+      SITUATION_HINT[sit],
+      `Place on ONE of these cell indices: ${legal}.`,
+      `Reply ONLY with JSON {"move": <one of ${legal}>, "reason": "<your one-line quip, under 12 words>"}.`,
+    ].join("\n");
+  };
+
+  const cleanBanter = (reason: string, sit: Situation): string => {
+    const r = reason.trim();
+    return r.length > 0 && r.length <= 90 ? r : FALLBACK_LINE[sit];
+  };
+
+  // The hybrid opponent's move: the engine builds a never-throw band, the LLM
+  // picks within it and quips; any failure falls back to the engine. Reuses the
+  // shipped buildBand/HybridPlayer unchanged (the generality proof).
+  const hybridMove = async (): Promise<number | "pass" | null> => {
+    if (!game) return null;
+    try {
+      if (!runtime || !hybrid) {
+        setStatus(`${LOCAL_AI_PERSONA.name}: warming up the model (one-time download)…`);
+        render();
+        runtime = new WebLLMRuntime({
+          model: window.__OTHELLO_AI_MODEL ?? LOCAL_AI_MODEL,
+          onProgress: (t) => setStatus(`${LOCAL_AI_PERSONA.name}: ${t}`),
+        });
+        hybrid = new HybridPlayer(runtime);
+      }
+      const band = buildBand(game.tutor().moves);
+      if (band.length === 0) return game.liveMove(level as Level); // no band → classic safety
+      const sit = readSituation(band);
+      const decision = await hybrid.pick(band, { prompt: hybridPrompt(game, band, sit), system: HYBRID_SYSTEM });
+      aiSay = decision.source === "llm" ? cleanBanter(decision.reason, sit) : FALLBACK_LINE[sit];
+      return decision.move;
+    } catch {
+      aiSay = null;
+      return game.liveMove(level as Level); // never break the game on an AI failure
+    }
+  };
+
+  // A real WebGPU adapter is required for the local-AI opponent; probe once on
+  // mount and offer the toggle only if it passes (classic engine otherwise).
+  const probeLocalAi = async (): Promise<void> => {
+    try {
+      const gpu = (
+        navigator as Navigator & {
+          gpu?: { requestAdapter(): Promise<{ isFallbackAdapter?: boolean } | null> };
+        }
+      ).gpu;
+      const adapter = gpu ? await gpu.requestAdapter() : null;
+      localAiAvailable = Boolean(adapter) && adapter?.isFallbackAdapter !== true;
+    } catch {
+      localAiAvailable = false;
+    }
+    if (!disposed && localAiAvailable) render();
+  };
+
+  // --- the tutor panel (engine-grounded coaching; opt-in, no GPU) ---
+  const renderTutorPanel = (): HTMLElement => {
+    const panel = el("section", { class: "othello-tutor", "aria-label": "Tutor" });
+    const explain = el("button", { type: "button", class: "othello-tutor-explain" }, "Explain my options");
+    const note = el("p", { class: "othello-tutor-note", "aria-live": "polite" });
+    const optionsEl = el("ul", { class: "othello-tutor-options", "aria-label": "Reasonable moves" });
+    explain.addEventListener("click", () => {
+      if (!game || thinking || ending || gameOver() || !humanToMove()) return;
+      const report = game.tutor();
+      const band = report.moves.filter((m) => m.quality !== "blunder").sort((a, b) => b.value - a.value);
+      note.textContent = report.exact ? "" : "Reading ahead (not yet certain):";
+      optionsEl.replaceChildren(
+        ...band.slice(0, 6).map((m) => el("li", {}, `${cellLabel(m.col)} — ${ideaFor(m)}`)),
+      );
+    });
+    const coach = el("p", { class: "othello-tutor-coach", role: "status", "aria-live": "polite" });
+    if (coachMsg) coach.textContent = coachMsg;
+    panel.append(explain, note, optionsEl, coach);
+    return panel;
   };
 
   const buildBoard = (board: BoardView, interactive: boolean): HTMLElement => {
@@ -300,12 +498,13 @@ export function othelloModule(): GameModule {
     const themSide = humanSide() === 1 ? 2 : 1;
     const you = discCount(board.cells, humanSide());
     const them = discCount(board.cells, themSide);
+    const opp = opponentIdentity();
     const turn =
       board.result !== -1
         ? ""
         : board.toMove === humanSide()
           ? "Your move"
-          : `${OPPONENT.name} to move`;
+          : `${opp.name} to move`;
     return el(
       "div",
       { class: "othello-turnbar" },
@@ -313,7 +512,7 @@ export function othelloModule(): GameModule {
       el(
         "span",
         { class: "othello-score them" },
-        `${OPPONENT.name} ${OPPONENT.avatar} ${glyphFor(themSide)} ${them}`,
+        `${opp.name} ${opp.avatar} ${glyphFor(themSide)} ${them}`,
       ),
       el("span", { class: "othello-turn", role: "status", "aria-live": "polite" }, turn),
     );
@@ -356,27 +555,70 @@ export function othelloModule(): GameModule {
       el("label", { class: "othello-field" }, "You play ", discSel),
       fresh,
     );
+
+    // Settings: the opt-in tutor, and (only on a real WebGPU adapter) the
+    // experimental local-AI opponent.
+    const toggle = (
+      checked: boolean,
+      label: string,
+      cls: string,
+      onChange: (on: boolean) => void,
+    ): HTMLElement => {
+      const input = el("input", { type: "checkbox", class: cls });
+      if (checked) input.setAttribute("checked", "");
+      input.addEventListener("change", () => onChange((input as HTMLInputElement).checked));
+      return el("label", { class: "othello-toggle" }, input, ` ${label}`);
+    };
+    const details = el("details", { class: "sol-settings othello-settings" });
+    details.append(el("summary", {}, "Settings"));
+    details.append(
+      toggle(othelloTutorEnabled(), "Show tutor", "othello-set-tutor", (on) => {
+        setOthelloTutor(on);
+        render();
+      }),
+    );
+    if (localAiAvailable) {
+      details.append(
+        toggle(opponentKind === LOCAL_AI, "Experimental: local AI opponent", "othello-ai-toggle-input", (on) => {
+          opponentKind = on ? LOCAL_AI : "engine";
+          aiSay = null;
+          render();
+        }),
+        el(
+          "p",
+          { class: "othello-ai-disclosure" },
+          `An in-browser model (${LOCAL_AI_PERSONA.name}) picks within the engine's safe moves and adds banter — a one-time model download on first use; it never plays a losing move (the engine's band decides).`,
+        ),
+      );
+    }
+    bar.append(details);
     return bar;
   };
 
   function render(): void {
     if (disposed || !container || !game) return;
     const board = game.board();
-    container.replaceChildren(
+    const parts: (Node | string)[] = [
+      renderTurnbar(board),
+      renderControls(),
       el(
-        "div",
-        { class: "othello-game" },
-        renderTurnbar(board),
-        renderControls(),
-        el(
-          "p",
-          { class: "othello-banner" },
-          "Tap a highlighted square to place your disc and flip the line. Most discs when neither side can move wins.",
-        ),
-        buildBoard(board, true),
-        statusEl,
+        "p",
+        { class: "othello-banner" },
+        "Tap a highlighted square to place your disc and flip the line. Most discs when neither side can move wins.",
       ),
-    );
+      buildBoard(board, true),
+      ...(othelloTutorEnabled() ? [renderTutorPanel()] : []),
+      statusEl,
+    ];
+    // The local-AI opponent's spoken reason for its last move (personality).
+    if (aiSay && opponentKind === LOCAL_AI) {
+      parts.splice(
+        1,
+        0,
+        el("p", { class: "othello-ai-say", role: "status" }, `${LOCAL_AI_PERSONA.name}: ${aiSay}`),
+      );
+    }
+    container.replaceChildren(el("div", { class: "othello-game" }, ...parts));
   }
 
   const outcomeLabel = (board: BoardView): string => {
@@ -390,7 +632,7 @@ export function othelloModule(): GameModule {
           ? "You won"
           : code === -1
             ? "Ended early"
-            : `${OPPONENT.name} won`;
+            : `${opponentIdentity().name} won`;
     return code === -1 ? head : `${head} ${you}–${them}`;
   };
 
@@ -507,6 +749,9 @@ export function othelloModule(): GameModule {
         }
         const seedParam = url.searchParams.get("seed");
         await startGame(seedParam !== null ? BigInt(seedParam) : undefined);
+        // Probe WebGPU in the background; if present, the controls re-render with
+        // the experimental local-AI opponent offered (classic engine otherwise).
+        void probeLocalAi();
       })();
     },
     unmount(): void {
@@ -516,6 +761,8 @@ export function othelloModule(): GameModule {
       container = null;
       game = null;
       verifier = null;
+      runtime = null; // release the WebGPU engine (local-AI) if it was created
+      hybrid = null;
     },
   };
 }

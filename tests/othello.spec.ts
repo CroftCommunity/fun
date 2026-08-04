@@ -109,3 +109,57 @@ test("the board fits a narrow phone viewport (no horizontal overflow)", async ({
   });
   expect(fits).toBe(true);
 });
+
+// The tutor panel is opt-in (off by default); enable it via its setting.
+async function enableTutor(page: Page): Promise<void> {
+  await page.addInitScript(() => localStorage.setItem("fun-othello-tutor", "on"));
+}
+
+test("the tutor panel is off by default and appears when enabled in settings", async ({ page }) => {
+  await page.goto("/othello/?seed=7");
+  await ready(page);
+  await expect(page.locator(".othello-tutor")).toHaveCount(0);
+  await page.locator(".othello-settings summary").click();
+  await page.locator(".othello-set-tutor").check();
+  await expect(page.locator(".othello-tutor-explain")).toBeVisible();
+});
+
+test("'Explain my options' lists at least two band moves with an idea each", async ({ page }) => {
+  await enableTutor(page);
+  await page.goto("/othello/?seed=7");
+  await ready(page);
+  await page.locator(".othello-tutor-explain").click();
+  const items = page.locator(".othello-tutor-options li");
+  expect(await items.count()).toBeGreaterThanOrEqual(2);
+  // Each option names a square and an idea (why it is reasonable).
+  await expect(items.first()).toContainText(/row \d, column \d/i);
+});
+
+test("the experimental local-AI opponent is hidden with no real WebGPU adapter", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "gpu", {
+      configurable: true,
+      value: { requestAdapter: async () => null },
+    });
+  });
+  await page.goto("/othello/?seed=7");
+  await ready(page);
+  await page.locator(".othello-settings summary").click();
+  await expect(page.locator(".othello-ai-toggle-input")).toHaveCount(0);
+});
+
+test("the experimental local-AI toggle appears with a real adapter and discloses the download", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "gpu", {
+      configurable: true,
+      value: { requestAdapter: async () => ({ isFallbackAdapter: false }) },
+    });
+  });
+  await page.goto("/othello/?seed=7");
+  await ready(page);
+  await page.locator(".othello-settings summary").click();
+  const toggle = page.locator(".othello-ai-toggle-input");
+  await expect(toggle).toHaveCount(1);
+  await toggle.check();
+  await expect(page.locator(".othello-ai-disclosure")).toContainText(/download|one[- ]time|GB|MB/i);
+});

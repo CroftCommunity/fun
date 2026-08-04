@@ -2305,6 +2305,60 @@ body.fullscreen .play-area {
   --oth-cell: clamp(1.3rem, 7vw, 2rem);
   margin: 0.3rem auto 0.6rem;
 }
+/* Tutor panel (opt-in) + the experimental local-AI banter. Semantic tokens. */
+.othello-tutor {
+  width: 100%;
+  max-width: 26rem;
+  margin: 0.2rem auto 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  text-align: center;
+}
+.othello-tutor-explain {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--line, currentColor);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+.othello-tutor-note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ink-soft, var(--ink));
+}
+.othello-tutor-options {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+}
+.othello-tutor-coach {
+  margin: 0;
+  font-weight: 600;
+  color: var(--active);
+}
+.othello-ai-say {
+  margin: 0;
+  text-align: center;
+  font-style: italic;
+  color: var(--ink-soft, var(--ink));
+}
+.othello-toggle {
+  display: block;
+  font-size: 0.9rem;
+  margin: 0.2rem 0;
+}
+.othello-ai-disclosure {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  color: var(--ink-soft, var(--ink));
+  max-width: 26rem;
+}
 /* Tutor panel — engine-grounded coaching (on by default, no model download).
    Semantic tokens so it stays theme-aware + AA in light and dark. */
 .drop4-tutor {
