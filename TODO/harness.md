@@ -13,14 +13,17 @@ anchor: `docs/BUILDING-GAMES.md` §10.
   `npm run harness:trial` measures the real WebGPU hybrid (staged diagnostic).
 
 ## Open threads
-- [ ] **Generalize the rig to an injected game/oracle adapter.** Today it grades
-  the shipped **Drop 4** players via `drop4-wasm` directly (the P6 open question
-  chose Drop-4-specific for v1 — rule of three). Othello is now the second
-  adversarial game with the same `assess`/`tutor` `{quality, exact}` surface, so
-  the rule of three is met: extract a small `GameOracle` adapter (load wasm,
-  `assess(move)`, `play`, `board`) so `match-runner`/`scorer`/`tournament` can
-  grade **any** game's players, then add an Othello trial. Do this alongside the
-  `adversary-solver` crate extraction (`TODO/othello.md`) — same rule-of-three moment.
+- [x] **Generalize the rig to an injected game/oracle adapter.** Done in P8
+  Phases 1–3 (`plans/2026-08-04-checkers-game.md`). `src/harness/game-oracle.ts`
+  is a ten-member port; each game ships `src/games/<game>/<game>-oracle.ts`.
+  `match-runner`/`scorer`/`tournament` name no game. **Othello now grades on CI**
+  (`tests/othello-harness.test.ts`) and `HARNESS_TRIAL_GAME=othello npm run
+  harness:trial` runs the real trial. The proof it generalized: grading a second
+  game required **zero** diff to the three rig files — asserted by the phase gate,
+  not assumed.
+  - Gained along the way: `MatchRecord.abortReason` + `Report.abortedGames`, so a
+    tournament that grades nothing says so instead of rendering a clean
+    `W-D-L 0-0-0`. Othello made this necessary — a mishandled forced pass aborts.
 - [ ] **Self-host the model weights + `model_lib` WASM.** The WebLLM *library* is
   embedded same-origin, but weights + the per-model `model_lib` WASM still stream
   from the MLC/HF CDN on first load (then cache). True offline + closing the

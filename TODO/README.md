@@ -30,10 +30,10 @@ files are the running, checkbox-level worklist.
 
 ## Subsystems
 
-- [harness.md](harness.md) — the browser AI-scoring harness (P6). Next: generalize
-  it from Drop-4-specific to an injected game/oracle adapter so it grades Othello
-  (and future games) too — the same rule-of-three moment as the `adversary-solver`
-  extraction. Full guide: `docs/HARNESS.md`.
+- [harness.md](harness.md) — the browser AI-scoring harness (P6). **Generalized**
+  (P8 Phases 1–3): it drives a `GameOracle` port, names no game, and grades Drop 4
+  **and Othello** on CI. A new game plugs in with one adapter file. Full guide:
+  `docs/HARNESS.md`.
 
 ## Next games (proposed, ordered)
 

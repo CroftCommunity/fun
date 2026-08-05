@@ -539,9 +539,13 @@ game, this is what you write vs what you reuse:
   (`col`, `value`, `quality`, `immediateWin`, `blocksOpponentWin`) — carry the
   Drop-4-flavored one-ply facts as `false` if your game has no such notion, and
   `buildBand` reuses with no change (its ideas degrade to quality-based).
-- `src/harness/{match-runner,scorer,tournament}.ts` — the scoring rig (today it
-  grades via `drop4-wasm`; generalizing it to an injected game/oracle adapter is
-  the tracked follow-on — see `TODO/harness.md`).
+- `src/harness/{match-runner,scorer,tournament}.ts` — the scoring rig. It is
+  **game-agnostic**: it drives a `GameOracle` (`src/harness/game-oracle.ts`), so
+  your game plugs in by shipping one adapter, `src/games/<game>/<game>-oracle.ts`
+  — no rig change. Two contracts: a move is your game's compact **numeric wire
+  code** (the same code your `?r=` share carries), and `liveMove` takes a level
+  `0..3` (Easy → *your* top level), because the games' own `Level` unions disagree
+  on the top member. Drop 4 and Othello are the two worked examples.
 
 **Reuse as a pattern (copy the per-game TS, don't share it):** the tutor panel,
 the WebGPU-availability probe + experimental toggle + disclosure, the AI-banter
