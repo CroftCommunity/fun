@@ -132,13 +132,21 @@ pub fn row_col(square: u8) -> (usize, usize) {
     (row, col)
 }
 
-/// A checkers position: what stands on each dark square, plus whose turn it is.
+/// A checkers position: what stands on each dark square, whose turn it is, and
+/// how long it has been since anything irreversible happened.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Board {
     /// Square bytes, index `i` = square number `i + 1`. See [`cell_of`].
     pub cells: [u8; SQUARES],
     /// The side to move.
     pub to_move: Side,
+    /// Plies since the last capture or man advance — the no-progress counter.
+    ///
+    /// This is **position state, not bookkeeping**: two boards with identical men
+    /// and the same side to move have different legal futures if their counters
+    /// differ, because one is closer to the draw. So it is hashed
+    /// ([`crate::hash::state_hash`]) and it is part of `PartialEq`.
+    pub no_progress: u16,
 }
 
 impl Board {
@@ -156,6 +164,7 @@ impl Board {
         Board {
             cells,
             to_move: Side::A,
+            no_progress: 0,
         }
     }
 
@@ -165,6 +174,7 @@ impl Board {
         Board {
             cells: [0u8; SQUARES],
             to_move,
+            no_progress: 0,
         }
     }
 

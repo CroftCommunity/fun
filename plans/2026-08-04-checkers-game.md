@@ -1073,13 +1073,13 @@ can produce a game that never finishes, which would hang `runMatch` and break th
 verifiable-outcome property.
 
 **Changes:**
-- [ ] `crates/checkers-core/src/board.rs` + `src/hash.rs` — add the no-progress
+- [x] `crates/checkers-core/src/board.rs` + `src/hash.rs` — add the no-progress
       counter to the position **and to the hash** (D4's finding: two identical
       boards with different counters have different legal futures, so they are
       different states).
-- [ ] `crates/checkers-core/src/game.rs` — `result()` returns `Draw` at the
+- [x] `crates/checkers-core/src/game.rs` — `result()` returns `Draw` at the
       no-progress threshold; the counter resets on a capture or a man advance.
-- [ ] `crates/checkers-core/src/game.rs` — `impl pond_outcome::Game` (`replay`
+- [x] `crates/checkers-core/src/game.rs` — `impl pond_outcome::Game` (`replay`
       skipping illegal moves so a tampered list diverges the hash, per the Othello
       precedent).
 
@@ -2108,6 +2108,68 @@ calibration, documentation-impact coverage) — to be run in a fresh context.
 
 **Confirmed ready:** yes, pending one new unreviewed ADVISORY question (the hybrid
 `llm`/`fallback` telemetry) and the two previously-confirmed PHASE-GATED items.
+
+### Phase 5 execution — 2026-08-05
+
+**Landed:** the no-progress counter on `Board` and in `state_hash`, the draw at
+`NO_PROGRESS_LIMIT = 80` plies, and `impl pond_outcome::Game for Checkers`.
+**25 tests green** (0.66s in debug, so the soak stays in the per-phase gate); full
+gate exits 0 with zero warnings; `Cargo.lock` +1 line (`pond-outcome` into
+`checkers-core`).
+
+**Termination is now established, not hoped for.** The 10k-game `#[ignore]`d soak,
+run by hand for this phase:
+
+> **10,000 seeded games, every one terminated. 39 draws (0.39%). Longest game 289
+> plies.**
+
+Phase 4 measured the same generator running past **200,000 plies without ending**.
+That is the phase, in one before/after.
+
+The measured 289 fed straight back into the fixtures: the soak caps dropped from
+20,000 plies to **1,000** (~3.5x headroom). A cap is the real termination
+assertion — everything else is a message — so it wants to be tight enough that a
+regression fails in seconds instead of grinding through 20k plies a game, and the
+old number was picked before there was anything to size it against.
+
+**The Risk the plan flagged did not materialize, and it is worth saying why.** It
+warned that adding the counter to the hash after Phase 4 wrote hash tests would
+change those fixtures' expected hashes, and that updating them must be deliberate
+rather than reflexive. No hash needed updating: Phase 4's hash tests assert
+*stability and difference* (same board hashes the same; a changed field hashes
+differently), never a literal hex value. Behavioural hash assertions survive an
+encoding change by construction, which is a point in their favour worth keeping in
+mind for Phase 9's transposition table.
+
+**Decisions taken during execution:**
+- **The terminal tie-break is loss-before-draw**, documented at `result()`. When a
+  side both cannot move and has hit the counter, it loses. Reasoning: no-legal-move
+  is a concrete rule of the game, whereas the no-progress draw adjudicates play
+  that would otherwise continue indefinitely — and if play has already stopped, it
+  is not continuing indefinitely. Recorded because an undocumented tie-break in a
+  hashed, replay-verified core is what bites two phases later.
+- **A drawn game reports no legal moves**, via a single early return in
+  `resolved()`. It reads the counter directly rather than calling `result()`, which
+  would recurse; `result()` in turn reads the raw generator, so a draw is not
+  mistaken for a loss.
+- **`saturating_add` on the counter.** An overflowing counter is a panic, and the
+  core does not panic on its own arithmetic.
+
+**Deviation from the stated fixtures.** The plan specified "a capture at ply 79
+resets the counter" as a move played inside the shuffle. That is not constructible:
+capture is mandatory, so a position offering a capture offers *nothing else* — one
+position cannot present a capture, a man advance and a king move. Instead there are
+three sibling positions with the counter set to 79, differing only in the kind of
+move available, asserting reset / reset / tick-to-draw. Same rule, sharper contrast,
+and it isolates the variable the rule is actually about. The 79/80/81 threshold
+edges are still reached by real play through the D4 king-shuffle fixture.
+
+**One honest note about the wiring test.** `a_full_game_replays_to_a_verifiable_hash`
+**passed at RED time**, before the counter was implemented — `attest` and `verify`
+both call the same `replay`, so they agree with each other even when the position
+is wrong. Its value is the tamper case, not the counter; the counter's RED came
+from the three draw-rule tests, which did fail. Flagged so nobody later reads that
+test as covering more than it does.
 
 ### Phase 4 execution — 2026-08-05
 

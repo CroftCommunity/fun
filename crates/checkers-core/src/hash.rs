@@ -1,8 +1,15 @@
 //! Canonical state hash — the verifiable-outcome anchor.
 //!
 //! Lowercase-hex SHA-256 over a domain tag, the playable-square count, the
-//! side-to-move byte, then the 32 square bytes. Every integer field is
-//! little-endian, so the hash is byte-identical on native and `wasm32`.
+//! side-to-move byte, the 32 square bytes, and the no-progress counter. Every
+//! integer field is little-endian, so the hash is byte-identical on native and
+//! `wasm32`.
+//!
+//! The counter is in the hash because it is **position state**: two boards with
+//! identical men and the same side to move have different legal futures if one is
+//! closer to the no-progress draw than the other. Leaving it out would let two
+//! genuinely different states share a hash — and a transposition table keyed on
+//! that hash would then answer from the wrong position.
 
 use adversary_core::Side;
 use sha2::{Digest, Sha256};
@@ -25,6 +32,7 @@ pub fn state_hash(board: &Board) -> String {
     h.update((SQUARES as u32).to_le_bytes());
     h.update([side_byte(board.to_move)]);
     h.update(board.cells);
+    h.update(board.no_progress.to_le_bytes());
     hex::encode(h.finalize())
 }
 

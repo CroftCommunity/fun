@@ -41,6 +41,13 @@ const VARIANT_MASK: u16 = (1 << VARIANT_BITS) - 1;
 /// different move.
 pub const MAX_MOVE_CODE: u16 = (1 << (SQUARE_BITS * 2 + VARIANT_BITS)) - 1;
 
+/// Plies of no capture and no man advance after which the game is a draw.
+///
+/// The standard tournament no-progress rule: **40 moves by each side**. Stated in
+/// plies here because that is the unit the counter actually ticks in, and "40
+/// moves" versus "80 plies" is exactly where the off-by-one hides.
+pub const NO_PROGRESS_LIMIT: u16 = 80;
+
 /// A move: the origin square, the final destination, and the `variant` that
 /// disambiguates two capture chains sharing both.
 ///
@@ -295,6 +302,12 @@ fn generate(board: &Board) -> Vec<Chain> {
 /// for a given position — which is all the wire format needs, since a code is
 /// only ever resolved against the position it was played in.
 fn resolved(board: &Board) -> Vec<(Move, Chain)> {
+    // A drawn game is over, so it offers no moves — the same way a side with no
+    // pieces offers none. This is the single choke point for it, and it reads the
+    // counter directly rather than calling `result()`, which would recurse.
+    if board.no_progress >= NO_PROGRESS_LIMIT {
+        return Vec::new();
+    }
     let mut out: Vec<(Move, Chain)> = Vec::new();
     for chain in generate(board) {
         let variant = out
@@ -373,20 +386,48 @@ pub fn apply_move(board: &Board, mv: Move) -> Board {
         rank,
     });
     next.to_move = board.to_move.other();
+
+    // Progress is a capture or a man advance — the two irreversible things that
+    // can happen. A man only ever moves toward its king row, so *any* man move is
+    // an advance; a king move is not progress, which is precisely the shuffle the
+    // draw rule exists to terminate. `saturating_add` because a counter that
+    // overflows is a panic, and the core does not panic on its own arithmetic.
+    let progress = !chain.captures.is_empty() || piece.rank == Rank::Man;
+    next.no_progress = if progress {
+        0
+    } else {
+        board.no_progress.saturating_add(1)
+    };
     next
 }
 
 /// `Some(result)` when the position is terminal, else `None`.
 ///
-/// A side loses when it cannot move — which covers both terminal conditions the
-/// rules state, since a side with no pieces left has no moves either.
+/// Two terminal conditions, checked in this order:
+///
+/// 1. **The side to move cannot move — it loses.** That covers both endings the
+///    rules state, since a side with no pieces left has no moves either.
+/// 2. **The no-progress counter has reached [`NO_PROGRESS_LIMIT`] — a draw.**
+///
+/// The order is the tie-break, and it is deliberate: a side that cannot move has
+/// lost by a concrete rule of the game, whereas the no-progress draw is an
+/// adjudication for play that would otherwise continue indefinitely. If play has
+/// already stopped, it is not continuing indefinitely. Stated here because an
+/// undocumented tie-break in a hashed, replay-verified core is exactly the kind of
+/// thing that bites two phases later.
+///
+/// Note it reads `generate` rather than [`legal_moves`], which reports a drawn
+/// game as having no moves — going through that would make every draw look like a
+/// loss.
 #[must_use]
 pub fn result(board: &Board) -> Option<MatchResult> {
     if generate(board).is_empty() {
-        Some(MatchResult::win_for(board.to_move.other()))
-    } else {
-        None
+        return Some(MatchResult::win_for(board.to_move.other()));
     }
+    if board.no_progress >= NO_PROGRESS_LIMIT {
+        return Some(MatchResult::Draw);
+    }
+    None
 }
 
 /// The character a square byte renders as: men lowercase, kings uppercase.
@@ -548,6 +589,32 @@ impl Adversary for Checkers {
         legal_moves(pos)
             .into_iter()
             .find(|m| m.from == from && m.to == to)
+    }
+}
+
+impl pond_outcome::Game for Checkers {
+    type Move = Move;
+    const KIND: &'static str = "checkers";
+    const VERSION: u32 = 1;
+
+    fn replay(seed: u64, moves: &[Move]) -> pond_outcome::Replayed {
+        let mut pos = <Checkers as Adversary>::initial(seed);
+        for &mv in moves {
+            // A tampered move is not in `legal_moves`, so it is a no-op and the
+            // line diverges from the honest match — verification then fails. Same
+            // shape as `othello-core`; the core never trusts a recorded move.
+            if legal_moves(&pos).contains(&mv) {
+                pos = apply_move(&pos, mv);
+            }
+        }
+        // `won` = Side A (the opening player) won; the shelf game assigns the
+        // human a side and interprets accordingly. The harness scores on
+        // `result()` directly, not on `won`.
+        let won = matches!(
+            <Checkers as Adversary>::result(&pos),
+            Some(MatchResult::WinA)
+        );
+        pond_outcome::Replayed::new(state_hash(&pos), won)
     }
 }
 
@@ -955,21 +1022,25 @@ mod tests {
     /// bug in this fixture — it is the concrete demonstration of the gap Phase 5's
     /// no-progress rule closes, and until it lands a checkers game can genuinely
     /// fail to terminate.
-    fn seeded_game(seed: u64, cap: usize) -> (usize, Board) {
+    fn seeded_game(seed: u64, cap: usize) -> (Vec<Move>, Board) {
         let mut pos = <Checkers as Adversary>::initial(seed);
         let mut rng = seed ^ 0x9E37_79B9_7F4A_7C15;
-        let mut plies = 0;
+        let mut played = Vec::new();
         while result(&pos).is_none() {
             let moves = legal_moves(&pos);
             assert!(!moves.is_empty(), "a live position has moves");
             rng = rng
                 .wrapping_mul(6_364_136_223_846_793_005)
                 .wrapping_add(1_442_695_040_888_963_407);
-            pos = apply_move(&pos, moves[(rng >> 33) as usize % moves.len()]);
-            plies += 1;
-            assert!(plies <= cap, "the fixture game must terminate within {cap}");
+            let mv = moves[(rng >> 33) as usize % moves.len()];
+            played.push(mv);
+            pos = apply_move(&pos, mv);
+            assert!(
+                played.len() <= cap,
+                "seed {seed} did not terminate within {cap} plies"
+            );
         }
-        (plies, pos)
+        (played, pos)
     }
 
     #[test]
@@ -978,19 +1049,23 @@ mod tests {
         // game that ends. (Termination *in general* is what Phase 5's no-progress
         // draw rule buys; this asserts it for concrete lines.)
         for seed in 0..8 {
-            let (plies, terminal) = seeded_game(seed, 5_000);
-            assert!(plies > 20, "not a two-move stalemate: {plies} plies");
-            assert!(result(&terminal).is_some());
+            let (moves, terminal) = seeded_game(seed, 1_000);
+            assert!(moves.len() > 20, "not a two-move stalemate");
             assert!(
                 legal_moves(&terminal).is_empty(),
                 "terminal means no moves for the side to play"
             );
-            // A game ends by one side running out of moves, so the loser is the
-            // side to play — never a draw, because there is no draw rule yet.
-            assert_eq!(
-                result(&terminal),
-                Some(MatchResult::win_for(terminal.to_move.other()))
-            );
+            // A game ends one of exactly two ways: a side runs out of moves and so
+            // is the loser, or the no-progress counter reaches the draw.
+            match result(&terminal) {
+                Some(MatchResult::Draw) => {
+                    assert!(terminal.no_progress >= NO_PROGRESS_LIMIT);
+                }
+                Some(decisive) => {
+                    assert_eq!(decisive, MatchResult::win_for(terminal.to_move.other()));
+                }
+                None => panic!("the loop only exits on a terminal position"),
+            }
         }
     }
 
@@ -1056,5 +1131,184 @@ mod tests {
             assert_eq!(chain_for(&pos, bogus), None);
             assert_eq!(apply_move(&pos, bogus), pos, "unchanged, including to_move");
         }
+    }
+
+    // ---- Phase 5: the no-progress draw rule --------------------------------
+
+    /// Play the specific move `from -> to` (there is only ever one in these
+    /// fixtures), rather than whichever move happens to be first.
+    fn play_to(pos: &Board, from: u8, to: u8) -> Board {
+        let mv = legal_moves(pos)
+            .into_iter()
+            .find(|m| m.from == from && m.to == to)
+            .expect("the shuffle move must be legal");
+        apply_move(pos, mv)
+    }
+
+    /// Two kings in opposite corners, each stepping back and forth for `plies`.
+    ///
+    /// Phase 0's D4 note is load-bearing here: a *random* king shuffle keeps
+    /// ending decisively, because the kings drift adjacent and mandatory capture
+    /// wins on the spot. Pinning them in opposite corners and oscillating
+    /// deterministically is what makes the fixture actually shuffle.
+    fn king_shuffle(plies: usize) -> Board {
+        let mut pos = fixture(
+            Side::A,
+            &[(0, 1, Piece::king(Side::A)), (7, 6, Piece::king(Side::B))],
+        );
+        let a = [sq(0, 1), sq(1, 0)];
+        let b = [sq(7, 6), sq(6, 7)];
+        for ply in 0..plies {
+            let path = if ply % 2 == 0 { a } else { b };
+            let step = ply / 2;
+            pos = play_to(&pos, path[step % 2], path[(step + 1) % 2]);
+        }
+        pos
+    }
+
+    #[test]
+    fn a_king_shuffle_draws_at_exactly_eighty_plies() {
+        // The unit is the whole risk: "40 moves by each side" and "80 plies" are
+        // the same rule counted two ways, and the off-by-one lives precisely
+        // there. So the fixture names the edges instead of a single point.
+        let live = king_shuffle(79);
+        assert_eq!(live.no_progress, 79);
+        assert_eq!(result(&live), None, "79 plies is not yet a draw");
+        assert!(!legal_moves(&live).is_empty(), "and play continues");
+
+        let drawn = king_shuffle(80);
+        assert_eq!(drawn.no_progress, NO_PROGRESS_LIMIT);
+        assert_eq!(result(&drawn), Some(MatchResult::Draw));
+        assert!(legal_moves(&drawn).is_empty(), "a drawn game is over");
+
+        // Past the threshold it stays drawn: the counter neither wraps nor resets
+        // itself. Without this, a `== LIMIT` test passes the pair above.
+        let mut past = drawn;
+        past.no_progress = NO_PROGRESS_LIMIT + 1;
+        assert_eq!(result(&past), Some(MatchResult::Draw));
+        past.no_progress = u16::MAX;
+        assert_eq!(result(&past), Some(MatchResult::Draw));
+    }
+
+    #[test]
+    fn a_capture_and_a_man_advance_reset_the_counter_but_a_king_move_does_not() {
+        // All three positions sit one ply short of the draw, so the only variable
+        // is the *kind* of move played. That is the entire rule.
+        let mut capture = fixture(
+            Side::A,
+            &[
+                (2, 1, Piece::man(Side::A)),
+                (3, 2, Piece::man(Side::B)),
+                (7, 6, Piece::king(Side::B)),
+            ],
+        );
+        capture.no_progress = NO_PROGRESS_LIMIT - 1;
+        let after = apply_move(&capture, legal_moves(&capture)[0]);
+        assert_eq!(after.no_progress, 0, "a capture is progress");
+        assert_eq!(result(&after), None, "so the game is live past ply 80");
+
+        let mut advance = fixture(
+            Side::A,
+            &[(2, 1, Piece::man(Side::A)), (7, 6, Piece::king(Side::B))],
+        );
+        advance.no_progress = NO_PROGRESS_LIMIT - 1;
+        let after = apply_move(&advance, legal_moves(&advance)[0]);
+        assert_eq!(
+            after.no_progress, 0,
+            "a man only ever moves forward, so any man move is an advance"
+        );
+        assert_eq!(result(&after), None);
+
+        // The other side of the branch, and the case the rule exists for.
+        let mut shuffle = fixture(
+            Side::A,
+            &[(0, 1, Piece::king(Side::A)), (7, 6, Piece::king(Side::B))],
+        );
+        shuffle.no_progress = NO_PROGRESS_LIMIT - 1;
+        let after = apply_move(&shuffle, legal_moves(&shuffle)[0]);
+        assert_eq!(
+            after.no_progress, NO_PROGRESS_LIMIT,
+            "a king move is not progress"
+        );
+        assert_eq!(result(&after), Some(MatchResult::Draw));
+    }
+
+    #[test]
+    fn the_counter_is_hashed_because_it_changes_the_legal_future() {
+        // The assertion that justifies putting the counter in `state_hash` at all:
+        // the same men with the same side to move are *not* the same state if one
+        // is closer to the draw than the other.
+        let near = <Checkers as Adversary>::initial(0);
+        let mut nearer = near;
+        nearer.no_progress = 1;
+        assert_ne!(near, nearer, "the counter is part of the position");
+        assert_ne!(
+            <Checkers as Adversary>::state_hash(&near),
+            <Checkers as Adversary>::state_hash(&nearer),
+            "two boards one ply apart from the draw are different states"
+        );
+    }
+
+    #[test]
+    fn a_full_game_replays_to_a_verifiable_hash() {
+        use pond_outcome::{attest, verify, Outcome};
+
+        let (moves, terminal) = seeded_game(3, 1_000);
+        assert!(result(&terminal).is_some(), "the game reaches a terminal");
+
+        let rec = attest::<Checkers>(3, moves, Outcome::Abandoned, None);
+        assert!(verify::<Checkers>(&rec).ok, "an honest match replays");
+
+        // Tamper the opening move with one that is legal in no position anywhere.
+        // Replay skips it, so the line diverges from the first ply and the
+        // recorded hash cannot be reproduced.
+        let mut bad = rec.clone();
+        bad.moves[0] = Move {
+            from: 0,
+            to: 31,
+            variant: 0,
+        };
+        let check = verify::<Checkers>(&bad);
+        assert!(!check.ok, "a tampered move list fails verify");
+        assert_ne!(check.expected, check.actual);
+    }
+
+    /// Run `games` seeded games, returning `(draws, longest game in plies)`.
+    fn soak(games: u64, cap: usize) -> (usize, usize) {
+        let mut draws = 0;
+        let mut longest = 0;
+        for seed in 0..games {
+            let (moves, terminal) = seeded_game(seed, cap);
+            longest = longest.max(moves.len());
+            if result(&terminal) == Some(MatchResult::Draw) {
+                draws += 1;
+            }
+        }
+        (draws, longest)
+    }
+
+    #[test]
+    fn a_thousand_seeded_games_all_terminate() {
+        // Termination is a *guarantee*, and a guarantee is exactly the property a
+        // handful of fixtures cannot establish. Seeded, so any failure is
+        // reproducible from the seed in the panic message alone.
+        // Measured 2026-08-05 over 10,000 seeded games: every game terminated,
+        // 39 draws, longest 289 plies. The cap is ~3.5x that — tight enough that a
+        // regression breaking the draw rule fails in seconds rather than grinding
+        // through 20k plies a game, loose enough not to flake on a long line.
+        let (draws, longest) = soak(1_000, 1_000);
+        assert!(
+            draws > 0,
+            "the draw rule must actually fire somewhere in 1000 games, else this \
+             soak proves only that decisive games end"
+        );
+        assert!(longest < 1_000, "longest game was {longest} plies");
+    }
+
+    #[test]
+    #[ignore = "10k-game soak: run by hand once per change to the rules; result recorded in the plan"]
+    fn ten_thousand_seeded_games_all_terminate() {
+        let (draws, longest) = soak(10_000, 1_000);
+        println!("10k soak: {draws} draws, longest game {longest} plies");
     }
 }
