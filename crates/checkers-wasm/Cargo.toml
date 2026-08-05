@@ -1,0 +1,22 @@
+[package]
+name = "checkers-wasm"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Browser binding over checkers-core + checkers-solver for the shelf: raw C-ABI + serde-JSON (no wasm-bindgen). Holds one English draughts game, exposes rules (legal moves with their full jump paths / play / board / hash / result / render), the live opponent (difficulty Levels), the engine-grounded tutor (assess/tutor, per-move proven flag), and the verifiable outcome. No pass export — checkers has no pass. Never panics."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+adversary-core = { path = "../adversary-core" }
+checkers-core = { path = "../checkers-core" }
+checkers-solver = { path = "../checkers-solver" }
+pond-outcome = { workspace = true }
+serde = { workspace = true }
+serde_json.workspace = true
+rand_chacha.workspace = true
+
+[lints]
+workspace = true

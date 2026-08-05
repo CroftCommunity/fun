@@ -44,6 +44,7 @@ members = [
     "crates/drop4-wasm",
     "crates/checkers-core",
     "crates/checkers-solver",
+    "crates/checkers-wasm",
     "crates/othello-core",
     "crates/othello-solver",
     "crates/othello-wasm",

@@ -138,6 +138,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "checkers-wasm"
+version = "0.0.0"
+dependencies = [
+ "adversary-core",
+ "checkers-core",
+ "checkers-solver",
+ "pond-outcome",
+ "rand_chacha",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "color-sort-core"
 version = "0.0.0"
 dependencies = [

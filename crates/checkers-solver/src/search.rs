@@ -42,12 +42,33 @@ const WIN: i32 = 1_000_000;
 /// Total pieces at or below which the search spends a deeper budget hunting for a
 /// proof.
 ///
-/// **This is a budget knob, not an exactness switch.** Phase 0's D3 measured that
-/// no piece count makes a full checkers solve affordable — a four-piece endgame is
-/// ~3.8M nodes even with the table — so nothing here ever declares a position
-/// "now solved". It only says *try harder*, and whether a proof was actually found
-/// is reported by [`Scored::exact`] either way.
-pub const TRACTABLE_PIECES: usize = 8;
+/// **A budget knob, not an exactness switch.** Phase 0's D3 measured that no piece
+/// count makes a full checkers solve affordable — a four-piece endgame is ~3.8M
+/// nodes even with the table — so nothing here ever declares a position "now
+/// solved". It only says *try harder*; whether a proof was found is reported by
+/// [`Scored::exact`] either way.
+///
+/// **Set from in-wasm measurement, 2026-08-05** (Phase 11; Node/V8, which is the
+/// same engine the browser runs). Two numbers per setting: the proof rate through
+/// the shipped `tutor_json` path over ~1000 plies of real play, and the worst
+/// single `oracle_best` call over full games.
+///
+/// | setting | proofs at <=4 pieces | proofs overall | worst call |
+/// |---|---|---|---|
+/// | no bonus | 21% | 9% | 341ms |
+/// | **4 (this)** | **40%** | **11%** | **341ms** |
+/// | 8 | 54% | 19% | **2764ms** |
+///
+/// `4` is where the bonus is free: it doubles the proof rate in the endgame that
+/// actually decides games while costing at most 103ms, which is under the 341ms
+/// the **midgame** already costs and which no setting here affects. `8` buys
+/// another eight points of proof rate for eight times the worst-case latency —
+/// two and a half seconds is not a tap.
+///
+/// If Phase 15 finds the graded fraction too thin, the lever is a **separate,
+/// larger budget for the tutor path** rather than a larger one here: a panel
+/// opening can afford what a move cannot.
+pub const TRACTABLE_PIECES: usize = 4;
 
 /// Extra plies granted below [`TRACTABLE_PIECES`].
 const ENDGAME_BONUS: u32 = 4;

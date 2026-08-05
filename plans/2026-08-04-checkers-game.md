@@ -330,6 +330,35 @@ before giving up on proof — not as a threshold that switches on exactness.
   alpha values without depth/bound flags, which is unsound as a real TT and can
   only make it look faster than a correct one.
 
+**Phase 11 — measured in wasm 2026-08-05 (the D3 follow-up the plan predicted):**
+
+D3 measured the search **natively**. Phase 11 measured it **in wasm** (Node/V8 —
+the same engine the browser runs), and the prediction held: the endgame budget was
+set far too generously. Two measurements per setting — the proof rate through the
+shipped `tutor_json` path over ~1000 plies of real play, and the worst single
+`oracle_best` call over full games:
+
+| `TRACTABLE_PIECES` | proofs at <=4 pieces | proofs overall | worst call |
+|---|---|---|---|
+| 0 (no bonus) | 21% | 9% | 341ms |
+| **4 — shipped** | **40%** | **11%** | **341ms** |
+| 8 (as planned) | 54% | 19% | **2764ms** |
+
+**Lowered from 8 to 4.** At 4 the bonus is free: it doubles the proof rate in the
+endgame that actually decides games, while costing at most 103ms — under the 341ms
+the midgame already costs. At 8 it buys another eight points of proof rate for
+eight times the worst-case latency, and two and a half seconds is not a tap.
+
+**The finding the plan did not anticipate: the *midgame* is the latency floor, not
+the endgame.** 13–18 pieces costs ~96ms median / **341ms max** in *every* setting,
+because the endgame bonus does not apply there. No value of `TRACTABLE_PIECES`
+moves that number. The whole risk was framed around an expensive endgame; the
+endgame is now the cheap part.
+
+If Phase 15 finds the graded fraction too thin, the lever is a **separate, larger
+budget for the tutor path** rather than a larger one for the opponent — a panel
+opening can afford what a move cannot.
+
 **Added in Pass 3 — read firsthand:**
 
 - **The two games' `Level` unions are not the same type.** `drop4-wasm.ts:69` is
@@ -1413,18 +1442,18 @@ silent failure the unit tests will not catch).
 **Goal:** The browser-facing binding, which never panics.
 
 **Changes:**
-- [ ] `crates/checkers-wasm/` (new: `Cargo.toml`, `src/lib.rs`) — the Othello
+- [x] `crates/checkers-wasm/` (new: `Cargo.toml`, `src/lib.rs`) — the Othello
       export set (`new_game`, `board_json`, `legal_moves_json`, `current_hash`,
       `result_code`, `render_text`, `play`, `live_move`, `oracle_best`,
       `oracle_move_values_json`, `assess_json`, `tutor_json`, `mark_assistance`,
       `outcome_json`, `out_len`). **No `pass` export** — checkers has no pass; no
       legal move is a loss.
-- [ ] `legal_moves_json` returns **richer** entries than Othello's bare index array:
+- [x] `legal_moves_json` returns **richer** entries than Othello's bare index array:
       `[{code, from, to, path, captures}]`, so the front-end can drive a
       step-through jump chain **without re-implementing rules** (it filters the
       core's chains by the prefix the player has tapped). `GameOracle.legalMoves()`
       maps this to `code`s.
-- [ ] `Cargo.toml` + `tools/build-wasm.sh` — add `checkers-wasm` to `members` and
+- [x] `Cargo.toml` + `tools/build-wasm.sh` — add `checkers-wasm` to `members` and
       the `-p` list (required before any vitest test can load it: `preunit` runs
       `build:wasm`).
 
@@ -2108,6 +2137,56 @@ calibration, documentation-impact coverage) — to be run in a fresh context.
 
 **Confirmed ready:** yes, pending one new unreviewed ADVISORY question (the hybrid
 `llm`/`fallback` telemetry) and the two previously-confirmed PHASE-GATED items.
+
+### Phase 11 execution — 2026-08-05
+
+**Landed:** `crates/checkers-wasm/` — the Othello export set minus `pass`, plus a
+`legal_moves_json` that returns objects with full jump paths. 3 tests; full gate
+exits 0 with zero warnings; artifact **137.6 KB**, in line with Othello (130.3) and
+Drop 4 (134.5).
+
+**Risk (b) confirmed, and `TRACTABLE_PIECES` lowered 8 → 4.** The numbers and the
+reasoning are in Verified Assumptions above and in the constant's own doc comment,
+so they travel with the code. In short: at 8 the worst call was **2764ms**; at 4 it
+is **341ms**, for two points of proof rate. The plan asked for this to be recorded
+whether or not it forced the constant down — it did.
+
+**The finding worth carrying forward: the midgame is the latency floor, not the
+endgame.** 13–18 pieces costs ~341ms worst-case under *every* setting, because the
+bonus does not reach it. The phase's risk was framed entirely around an expensive
+endgame, and after this change the endgame is the cheap part. Anything that wants
+checkers faster has to look at the midgame depth, not at this knob.
+
+**A measurement trap worth naming, because it cost a run.** The first sweep
+sampled only the first N calls per piece-count bucket, which meant it never saw the
+deep-shuffle endgames where the cost actually balloons — it reported 167ms median
+at 5–6 pieces where the unbounded run reported **931ms**. Bounded sampling
+understates a tail by construction; the number that mattered came from playing
+whole games.
+
+**The C-ABI holds one session in a `static mut`, and Rust runs tests in parallel
+threads.** Three tests calling `new_game` interleaved and each saw the others'
+board — the opening reported eight legal moves instead of seven. Othello's binding
+never hit this because it has exactly one test. Fixed with a test-module mutex that
+ignores poisoning, so one failing test reports its own failure instead of turning
+the file red behind it. Any future binding with more than one test needs the same.
+
+**`legal_moves_json` returns objects, as planned, and the reason is load-bearing.**
+Each entry carries `{code, from, to, path, captures, crowns}` so the front-end can
+step a player through a multi-jump by filtering the core's own chains against the
+prefix tapped so far — it never decides legality itself. Phase 13 depends on this.
+
+**Fixture note:** the multi-jump test's first line (9-13, 22-18) produced no
+capture at all — the two men end up three columns apart. The line that works is
+9-13, 22-17, 13x22, taken from Phase 9's native self-play, and every move is
+asserted legal by `play` returning 0 so a mis-chosen fixture fails loudly rather
+than testing nothing.
+
+**Full `npm run unit` (required — this phase writes the shared
+`tools/build-wasm.sh`):** 272 passed, **11 failed**, all of them the known
+pre-existing Node-25 `localStorage.clear is not a function` failures in
+`match3-campaign` and `match3-story`. `.nvmrc` pins Node 22 and CI is green on it.
+Nothing checkers-related failed, and every other game's wasm still builds.
 
 ### Phase 10 execution — 2026-08-05
 
