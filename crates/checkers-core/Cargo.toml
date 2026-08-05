@@ -1,0 +1,19 @@
+[package]
+name = "checkers-core"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Deterministic, headless English draughts (checkers) engine. 32 dark squares, mandatory capture with multi-jump chains, crowning terminates the move, non-flying kings, canonical state hash. Implements the shared Adversary trait so the harness and solver are generic over it, and native==wasm. No floats on the hashed path, no network."
+
+[dependencies]
+adversary-core = { path = "../adversary-core" }
+serde = { workspace = true }
+sha2.workspace = true
+hex.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[lints]
+workspace = true

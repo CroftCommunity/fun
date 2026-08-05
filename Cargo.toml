@@ -41,6 +41,7 @@ members = [
     "crates/drop4-solver",
     "crates/drop4-harness",
     "crates/drop4-wasm",
+    "crates/checkers-core",
     "crates/othello-core",
     "crates/othello-solver",
     "crates/othello-wasm",
@@ -79,6 +80,7 @@ match3-core = { path = "crates/match3-core" }
 solitaire-core = { path = "crates/solitaire-core" }
 pond-docformat = { path = "crates/pond-docformat" }
 pond-outcome = { path = "crates/pond-outcome" }
+checkers-core = { path = "crates/checkers-core" }
 
 # Lint policy for crates that opt in with `[lints] workspace = true`.
 #

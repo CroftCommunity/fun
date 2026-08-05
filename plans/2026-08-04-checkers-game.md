@@ -990,17 +990,17 @@ Phase 7's validation compares against a recorded Report, so there has to be one.
 **Goal:** The rules as code, with the jump-chain move encoding pinned by tests.
 
 **Changes:**
-- [ ] `crates/checkers-core/` (new: `Cargo.toml`, `src/lib.rs`, `src/board.rs`,
+- [x] `crates/checkers-core/` (new: `Cargo.toml`, `src/lib.rs`, `src/board.rs`,
       `src/hash.rs`) — 32-square representation, `Piece {Man, King} × Side`, the
       standard 1–32 numbering (Black 1–12, White 21–32), `state_hash`.
-- [ ] `crates/checkers-core/src/game.rs` — `Move {from, to, variant}` with the
+- [x] `crates/checkers-core/src/game.rs` — `Move {from, to, variant}` with the
       custom `Serialize`/`Deserialize` to one packed integer (out-of-range codes
       rejected at deserialize, per the Othello precedent); `legal_moves` with
       **mandatory capture**, full multi-jump chain generation, **crowning
       terminates the move**, non-flying kings; `apply`; `result` (all captured / no
       legal move); the `Adversary` impl including `render_text` / `move_to_text`
       (`11-15`, `11x18`) / `parse_move`.
-- [ ] `Cargo.toml` — add `crates/checkers-core` to `members` and
+- [x] `Cargo.toml` — add `crates/checkers-core` to `members` and
       `[workspace.dependencies]`.
 
 **Test fixtures (RED first, from D1/D2 and the verified rules).** Each rule gets
@@ -1064,6 +1064,13 @@ a rules engine that passes its own tests can still encode the wrong game.
 ### Phase 5: `checkers-core` — the draw rule + `pond_outcome::Game`
 
 **Goal:** Games terminate, and a match is verifiable by replay.
+
+**Elevated by Phase 4's execution (2026-08-05): this is a correctness phase, not
+a tidiness one.** Non-termination is now *measured*, not hypothetical — a
+first-legal-move line from the opening runs past 200,000 plies without ending,
+because both sides settle into a king shuffle. Until this phase lands, the core
+can produce a game that never finishes, which would hang `runMatch` and break the
+verifiable-outcome property.
 
 **Changes:**
 - [ ] `crates/checkers-core/src/board.rs` + `src/hash.rs` — add the no-progress
@@ -2101,6 +2108,70 @@ calibration, documentation-impact coverage) — to be run in a fresh context.
 
 **Confirmed ready:** yes, pending one new unreviewed ADVISORY question (the hybrid
 `llm`/`fallback` telemetry) and the two previously-confirmed PHASE-GATED items.
+
+### Phase 4 execution — 2026-08-05
+
+**Landed:** `crates/checkers-core/` (`Cargo.toml`, `src/lib.rs`, `src/board.rs`,
+`src/hash.rs`, `src/game.rs`) + the workspace `Cargo.toml` and `Cargo.lock`.
+**20 tests green**; the full gate (`npm run test:rust` — fmt, `test --workspace
+--release`, `clippy --workspace --all-targets -D warnings`) exits 0 with **zero
+warnings**. `Cargo.lock` is **purely additive** (11 insertions, 0 deletions), so
+the shared-state contract held.
+
+**RED evidence, two cycles.** Board/hash first: flipping the dark-square parity
+and emptying `Board::start()` failed 4 of the 6 board tests, which is the
+assertion that the numbering convention is load-bearing rather than decorative.
+Rules second: 11 tests failing on assertions against stub bodies, then green.
+
+**The finding — a checkers game can genuinely fail to terminate.** The wiring
+test was planned as "always play the first legal move". It **does not
+terminate**: measured here past **200,000 plies** without ending, because both
+sides settle into a king shuffle and English draughts as codified has no
+move-count draw rule. This is not a defect in the fixture — it is the concrete
+demonstration of the gap Phase 5's no-progress rule closes, and it upgrades that
+phase from "tidy up the rules" to "the core is not correct without it". The
+wiring test now plays a seeded-LCG line over 8 seeds; the measurement and its
+reasoning are recorded in the test's doc comment so the next reader does not
+re-derive it.
+
+**Validation (the plan asked for Moderate — tests plus an independent read).**
+Both halves done, and both are now tests rather than one-off checks:
+- The opening move list is asserted against the seven textbook moves
+  (9-13, 9-14, 10-14, 10-15, 11-15, 11-16, 12-16). It is the sharpest single
+  fixture in the crate: get the dark-square parity or the numbering direction
+  wrong and this list comes out wrong.
+- The published multi-jump — checkercruncher.com's "11x25 captures on 15 and 22
+  and lands on 25" — is `eleven_takes_twenty_five_over_fifteen_and_twenty_two`,
+  asserting the captures *and* the intermediate landing on 18. It passed first
+  run, which is the independent read succeeding rather than a fixture written to
+  match the code.
+- `render_text` was eyeballed against the real opening: the alternating indent
+  puts square 11's forward diagonals (15 and 16) directly beneath it.
+
+**Decisions taken during execution, each with its reasoning in the code:**
+- **`variant` overflow drops the chain rather than reusing a code.** D2 measured
+  a maximum of 3 chains per `(from, to)` against 16 available, so this is
+  unreachable in play — but the two failure modes are not equally bad. A reused
+  code makes `apply_move` play a *different* legal move than the one recorded,
+  which is a silently wrong game; a dropped chain is a missing option. See
+  `resolved()`.
+- **An illegal move is a no-op, not a panic** — the property Phase 5's tamper
+  story needs (diverge the hash, don't crash on hostile input), so it is tested
+  now rather than assumed then: `an_illegal_move_is_a_no_op_rather_than_a_panic`
+  covers all three shapes (impossible geometry, absent variant, opponent's piece).
+
+**Surface added beyond the plan's list** (small, and each has a caller in view):
+`chain_for` (Phase 5's replay and Phase 13's tap validation both need the path a
+code names), `Chain::is_capture`, `MAX_MOVE_CODE` (the boundary the deserializer
+rejects above, exported so the wasm layer can state the same bound), and
+`Board::empty` (every rules fixture builds from it).
+
+**The Homebrew clippy trap re-confirmed, exactly as `fun/CLAUDE.md` warns.** Bare
+`cargo clippy` — even with cargo resolved through `rustup which` — ran clippy
+**0.1.94** from Homebrew, while the gate ran the pinned **0.1.97**. Only
+`npm run test:rust` is authoritative. Four lints fixed under the pedantic tier
+the new crate opts into with `[lints] workspace = true`: one default-level
+`manual_is_multiple_of`, two `format_push_string`, one `many_single_char_names`.
 
 ### Phase 2a-2c + 3 execution — 2026-08-05 (Part A complete)
 
