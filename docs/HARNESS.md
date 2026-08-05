@@ -109,8 +109,26 @@ Report is localizable. The model downloads once into a persistent `.webllm-cache
 
 The regression anchors. Any change that touches a solver, a band, or the rig
 should reproduce these **exactly** — they are seeded and deterministic — so a
-diff here is a finding, not noise. (Phases 7/8 of the checkers plan compare
-against them after the `adversary-solver` extraction.)
+diff here is a finding, not noise.
+
+```
+npm run baselines
+```
+
+That runs `tests/baselines.test.ts`, which **asserts** every deterministic field
+against the numbers below and prints both Reports. Wall-clock is deliberately not
+asserted — it is the one number in a Report that is not deterministic, and pinning
+it would make the anchor fail on a busy laptop, which is how a regression anchor
+gets muted.
+
+It is **opt-in and not part of `npm run unit`**: the Othello run alone is ~110s,
+because the exact endgame is genuinely expensive, and that does not belong on a
+gate that runs every commit.
+
+**If a number here moves, do not update it to match.** These are the seeded output
+of a deterministic engine, so a change means the engine changed — find out why
+first. (Phases 7/8 of the checkers plan compared against them across the
+`adversary-solver` extraction; both reproduced unchanged.)
 
 ```
 Engine(3) vs Engine(3)                                       [drop4]
