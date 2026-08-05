@@ -179,6 +179,50 @@ how draughts is actually adjudicated and catches king shuffles faster, but it ne
 position history in the state: a heavier hash, a bigger core, and more to get wrong
 in wasm — for a case the no-progress counter already terminates.
 
+### What `exact` means for checkers (decided 2026-08-05, after D3)
+
+Drop 4 and Othello both set their honesty flag by **exhausting** the position:
+Drop 4 is solved outright, Othello switches to a full solve below
+`TRACTABLE_EMPTIES`. Both can, because a move fills a square — depth is bounded
+by the empties remaining, so "few empties" really does mean "small tree".
+
+**Checkers has no such bound.** Kings shuffle, positions repeat, and the tree is
+bounded by the 80-ply no-progress horizon rather than by material. D3 measured
+it: a four-piece endgame is ~3.8M nodes and 1.2s natively *with* a transposition
+table, and no piece count makes a full solve affordable.
+
+So exactness is redefined from *how much was searched* to **what was proven**:
+
+> A move's facts are `exact` when its value came from a **real terminal position**
+> — all opponent pieces captured, no legal move, or the no-progress draw — reached
+> within the search, rather than from a heuristic evaluation at the horizon.
+
+This is the same guarantee the honesty flag already licensed. The flag never
+promised a full solve; it promised that a **win/draw/loss class** claim is
+provable, and a forced mate found at depth 7 proves that class exactly as well as
+exhausting the position does. Heuristic cutoffs stay `exact: false` and the tutor
+hedges, unchanged.
+
+It also keeps checkers **gradeable**. `scorer.ts` grades a move iff the wasm
+reports `exact`; a never-exact game has `scoredMoves == 0` forever, so Phase 15
+would run, pass, and measure nothing. That failure would have been invisible
+without Phase 2c's denominator — which is a decent argument for having built it.
+
+**Two implementation traps, both of which would make `exact` a lie:**
+
+1. **Alpha-beta returns bounds, not values.** At a cut node the score is only a
+   bound, so a terminal-derived score there does not prove the class. The search
+   must track exact-vs-bound and only set `exact` on a true value. This is the
+   difference between an honest flag and a plausible one.
+2. **The transposition table must store bound flags too**, and be keyed on
+   `(board, side_to_move, no_progress)` — the counter changes the legal future, so
+   omitting it returns answers from a different position. (The D3 probe's TT did
+   neither, which is why its timings are optimistic and why it is not the model to
+   copy.)
+
+`TRACTABLE_PIECES` survives, but as a **search-budget knob** — how deep to go
+before giving up on proof — not as a threshold that switches on exactness.
+
 ---
 
 ## Verified Assumptions
@@ -1225,8 +1269,18 @@ per Phase 7's reasoning.
       material + king weighting + mobility + back-rank, integers only (no floats on
       the hashed path).
 - [ ] `crates/checkers-solver/src/search.rs` — negamax + alpha-beta, `Level`
-      (Easy/Medium/Hard/Expert) → depth, `TRACTABLE_PIECES` (D3's measured value)
-      switching to a full exact solve, `move_values`, `best_move`.
+      (Easy/Medium/Hard/Expert) → depth, `move_values`, `best_move`, and:
+  - a **transposition table keyed on `(board, side_to_move, no_progress)`** with
+    **bound flags** (exact / lower / upper). D3 makes this mandatory rather than
+    an optimization — it is the difference between 1/8 and 8/8 solved at four
+    pieces — and the counter belongs in the key because it changes the legal
+    future, exactly as it does in `state_hash`.
+  - an **`exact` flag that means "proven terminal", not "fully solved"** (see
+    Reasoning → "What `exact` means for checkers"). It is set only when a value
+    is a **true value and not an alpha-beta bound**, and traces to a real
+    terminal — all captured, no legal move, or the no-progress draw.
+  - `TRACTABLE_PIECES` stays, re-purposed as a **search-budget knob** (how hard to
+    try for a proof), not a switch that turns exactness on.
 - [ ] `Cargo.toml` — add to `members`.
 
 **Test fixtures (RED first).** Pass 3 put numbers on the two that were qualitative —
@@ -1244,26 +1298,45 @@ per Phase 7's reasoning.
   position with no capture available values its simple moves (the same
   both-branches rule as Phase 4: a search that only ever sees captures passes the
   one-sided version);
-- **`TRACTABLE_PIECES` is a threshold, so test both sides of it:** a position at
-  exactly `TRACTABLE_PIECES` reports `exact == true`, and one at
-  `TRACTABLE_PIECES + 1` reports `exact == false`. Without the second, the constant
-  can be mutated to any value and every test still passes — and the constant is
-  precisely what the honesty flag rests on.
+- **`exact` is a branch, so test both sides of it** (replaces the Pass 3
+  `TRACTABLE_PIECES` boundary test, which D3 invalidated — that constant no longer
+  governs exactness):
+  - a position with a **forced win inside the horizon** reports `exact == true`
+    and the winning class;
+  - an **opening** position reports `exact == false` (its value is a heuristic at
+    the horizon);
+  - **a terminal-derived score at a CUT node does not set `exact`.** This is the
+    trap: alpha-beta returns a bound there, so the class is not proven. A test
+    that only checks "forced win ⇒ exact" passes happily against a search that
+    sets the flag on every terminal it touches, bound or not.
+- **the transposition table returns the same values as a search without it** —
+  run a fixture set twice, TT enabled and disabled, and assert identical values
+  *and* identical `exact` flags. An unsound TT (missing bound flags, or a key
+  without `no_progress`) shows up here and nowhere else.
 
 **Call chain:** `checkers_solver::best_move` → `negamax` → `checkers_core::
 {legal_moves, apply, result}`.
-**Wiring test:** `exact_endgame_agrees_with_an_independent_minimax` — the test that
-makes `exact` an honest claim. Without it, "exact" is an assertion about our own
-code by our own code.
-**Depends on:** Phase 5 (a terminating game — an exact solve of a non-terminating
-game does not halt), Phase 0 (D3).
+**Wiring test:** `proven_terminal_agrees_with_an_independent_minimax` — for every
+position the search flags `exact`, an independent plain minimax (no TT, no
+pruning, the Othello cross-check shape) must agree on the win/draw/loss class.
+That is what makes `exact` an honest claim rather than an assertion about our own
+code by our own code — and with the flag now meaning "proven", the cross-check is
+load-bearing rather than a nicety.
+**Depends on:** Phase 5 (a terminating game — the no-progress rule is what bounds
+the search at all), Phase 0 (D3, whose finding re-planned this phase), and the
+resolved `exact`-semantics question.
 **Read-set:** `crates/othello-solver/src/{search,eval}.rs`, `crates/checkers-core/**`.
 **Write-set:** `crates/checkers-solver/**`, `Cargo.toml`, `Cargo.lock`.
 **Shared-state contract:** Writes `Cargo.lock`, `target/`.
-**Risks:** The exact solve is slower than D3 predicted once real alpha-beta move
-ordering is in play, in either direction. If the measured in-wasm time at Phase 11
-contradicts D3, `TRACTABLE_PIECES` is **lowered** — the honesty flag depends on the
-exact solve actually fitting a tap budget in the browser, not natively.
+**Risks:** (a) **`exact` set on a bound.** The single most likely way to ship a
+dishonest flag, and it will look correct in casual testing because the class is
+usually right anyway. The cut-node fixture above exists for this. (b) **Proofs too
+rare to be useful** — if a real game almost never reaches a proven terminal inside
+the horizon, `scoredMoves` stays near zero and checkers is effectively ungraded.
+Phase 15 asserts `scoredMoves > 0`, but this phase should record *how often* the
+flag fires across a self-play game, so a marginal rate is caught here rather than
+mistaken for success later. (c) In-wasm cost still unmeasured until Phase 11;
+`TRACTABLE_PIECES` is lowered there if the budget knob is set too generously.
 **Done when:**
 1. **Behavioral:** The solver returns a strong move from any position and a provably
    exact value in the endgame.
@@ -1293,8 +1366,9 @@ whose wording is bound to `exact`.
 - [ ] `crates/checkers-solver/Cargo.toml` — depend on `adversary-solver`.
 
 **Test fixtures (RED first):** the opening is capped (`exact == false`) and **never
-grades a Blunder** (the honesty invariant — a heuristic proves no class); an exact
-endgame grades an optimal move `Optimal` and a class-dropping move `Blunder`; the
+grades a Blunder** (the honesty invariant — a heuristic proves no class); a position with a **proven** result (a
+forced win inside the horizon — the redefined `exact`, not a full solve) grades an
+optimal move `Optimal` and a class-dropping move `Blunder`; the
 class floor never admits a class-dropping move even at full sloppiness; Expert is
 deterministic; a multi-capture move carries the right `captures` count.
 
@@ -1551,9 +1625,13 @@ proof. If grading a jump-chain game needs **any** edit to `match-runner`/`scorer
 **Shared-state contract:** The trial entry/driver are shared with Drop 4 and
 Othello — the default (`drop4`) must stay unchanged, verified by running the
 no-argument trial.
-**Risks:** `scoredMoves === 0` (the exact endgame never reached within the games
-played), which would make a `blunders === 0` headline vacuous. The test must assert
-the denominator, exactly as `docs/HARNESS.md` insists for the report.
+**Risks:** `scoredMoves === 0` — and after D3 this is a **live** risk, not a
+theoretical one. Checkers is exact only where the search *proves* a terminal
+(Reasoning → "What `exact` means for checkers"), so if proofs are rare in real
+play the rig grades nothing while still reporting `blunders === 0`. The test
+asserts the denominator, as `docs/HARNESS.md` insists; Phase 9 additionally
+records how often the flag fires, so a marginal rate surfaces there rather than
+being discovered here as a vacuous pass.
 **Done when:**
 1. **Behavioral:** `HARNESS_TRIAL_GAME=checkers npm run harness:trial` emits a real
    checkers Report, and CI grades a checkers tournament — with no change to the rig.
@@ -1666,8 +1744,11 @@ Documentation Impact entry ticked against the actual file, per this phase's Risk
   *Phase 0 D4 is now a confirmation task — build the fixture that reaches the draw —
   rather than an open choice. Phases 4, 5 and 9 build on this.*
 
-- `[RECOMMENDED: BLOCKING — new, from D3 2026-08-05]` **What does `exact` mean for
+- `[CONFIRMED: BLOCKING — RESOLVED 2026-08-05]` **What does `exact` mean for
   checkers, given a full endgame solve is unaffordable?**
+  **Decision: `exact` means the search returned a PROVEN TERMINAL score.** Not
+  "the position was fully solved". Details and the two implementation traps are
+  in Reasoning -> "What `exact` means for checkers". Original framing follows.
   The plan assumed Othello's shape: heuristic early, **exact below a piece-count
   threshold**. D3 shows that does not transfer — Othello's empties strictly
   decrease so depth <= empties, while checkers positions cycle and the tree is
