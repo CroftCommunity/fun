@@ -28,8 +28,13 @@ jobs:
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      # rust-toolchain.toml is the single source of truth for the pinned version;
+      # read it rather than duplicating a number here that could drift from it.
+      - id: rust
+        run: echo "channel=$(sed -n 's/^channel *= *"\(.*\)"/\1/p' rust-toolchain.toml)" >> "$GITHUB_OUTPUT"
+      - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: ${{ steps.rust.outputs.channel }}
           targets: wasm32-unknown-unknown
       - uses: actions/setup-node@v4
         with:
@@ -58,8 +63,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      # Pinned via rust-toolchain.toml, not `@stable`. A floating toolchain can
+      # turn `main` red on code nobody touched, and it let local clippy 0.1.94
+      # disagree with CI's 0.1.97 three round trips running during bring-up.
+      - id: rust
+        run: echo "channel=$(sed -n 's/^channel *= *"\(.*\)"/\1/p' rust-toolchain.toml)" >> "$GITHUB_OUTPUT"
+      - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: ${{ steps.rust.outputs.channel }}
           # Requested explicitly rather than relying on the action's default
           # profile — a missing component is a cheap fix and an expensive round trip.
           components: clippy, rustfmt

@@ -18,7 +18,9 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 fun="$(cd "$here/.." && pwd)"
 
-rustup_bin="$(dirname "$(rustup which --toolchain stable cargo)")"
+# Resolved from the repo root so rustup honours rust-toolchain.toml — the single
+# source of truth for the pinned version, shared with CI and build-wasm.sh.
+rustup_bin="$(cd "$fun" && dirname "$(rustup which cargo)")"
 export PATH="$rustup_bin:$PATH"
 
 cd "$fun"

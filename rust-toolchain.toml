@@ -1,0 +1,21 @@
+# The pinned Rust toolchain — the single source of truth for local and CI.
+#
+# Why pin: this workspace pins every dependency exactly (`=x.y.z`) and commits
+# Cargo.lock, because the cores are determinism-critical and `native == wasm` is
+# a claim we make to users. A floating `stable` contradicts that twice over — it
+# lets a Rust release turn `main` red on code nobody touched, and it lets two
+# machines validate the same determinism claim under two different compilers.
+#
+# It is not hypothetical: during the CI gate's bring-up (2026-08-04) local clippy
+# 0.1.94 passed code CI's 0.1.97 rejected, three round trips in a row, because
+# Homebrew's cargo/clippy shadow rustup's on PATH. Pinning fixes the version half
+# of that; `tools/rust-gate.sh` and `tools/build-wasm.sh` fix the PATH half by
+# resolving cargo through rustup rather than trusting whatever `cargo` resolves to.
+#
+# Bumping is a deliberate commit: change `channel`, run `npm run test:rust`, and
+# fix whatever the newer clippy has learned to see.
+[toolchain]
+channel = "1.97.1"
+components = ["clippy", "rustfmt"]
+targets = ["wasm32-unknown-unknown"]
+profile = "minimal"

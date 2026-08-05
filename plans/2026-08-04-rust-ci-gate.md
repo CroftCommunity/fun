@@ -777,6 +777,18 @@ predict that the local and CI toolchains were different programs. "Measure it"
 was the right instinct; "measure it **with the same binary CI uses**" is the
 sharper version.
 
+**Follow-up landed the same day (2026-08-05): the toolchain is now pinned.**
+`rust-toolchain.toml` (channel `1.97.1`, components `clippy`/`rustfmt`, target
+`wasm32-unknown-unknown`) is the single source of truth; both CI jobs read the
+channel out of it with `sed` rather than duplicating a version string, and
+`tools/rust-gate.sh` + `tools/build-wasm.sh` resolve cargo with `rustup which`
+**from the repo root** so the pin applies to them too (both previously said
+`--toolchain stable`, which floated independently of CI). This closes the second
+half of the divergence bug: pinning fixes the *version*, resolving through rustup
+fixes the *PATH shadowing*. Rationale in the file itself — the workspace pins
+every dependency exactly and commits `Cargo.lock`, so a floating compiler was
+inconsistent with its own determinism discipline.
+
 **Deviations from the plan as written:**
 - **D6** (CI has no `pull_request` trigger — the workflow only runs post-merge to
   `main`) was discovered during D4 and reshaped Phase 1: a scratch-branch push
