@@ -8,6 +8,11 @@ name: Deploy fun.croft.ing
 on:
   push:
     branches: [main]
+  # Without this, every check below runs only AFTER a commit lands on main —
+  # it protects the deploy but not the branch, and a PR reports
+  # `mergeable: MERGEABLE, checks: 0` because nothing ran.
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -15,9 +20,11 @@ permissions:
   pages: write
   id-token: write
 
-# One deploy at a time; a newer push supersedes an in-flight run.
+# One run at a time PER REF; a newer push to the same ref supersedes an
+# in-flight run. Keyed by ref (not a single global group) so a PR run can never
+# cancel an in-flight production deploy.
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -38,7 +45,7 @@ jobs:
           targets: wasm32-unknown-unknown
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       # Build the wasm binding first — the unit suite's verify-orchestration
@@ -50,8 +57,12 @@ jobs:
       - run: npm run unit
       # Static site (build.mjs copies the wasm + daily-pack.json + CNAME into dist/).
       - run: node build.mjs
+      # Publishing plumbing only — skipped on PRs, where there is nothing to
+      # publish and fork tokens are read-only. The gate above still runs.
       - uses: actions/configure-pages@v5
+        if: github.event_name == 'push'
       - uses: actions/upload-pages-artifact@v3
+        if: github.event_name == 'push'
         with:
           path: dist
 
