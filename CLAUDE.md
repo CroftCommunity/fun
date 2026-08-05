@@ -26,12 +26,19 @@ at them and add what's specific to this repo. Git identity: chasemp
     locally via `npm run test:rust` (folded into `npm run test`).
     `--release` on the test command is **load-bearing**, not tuning: in debug the
     suite runs >20 min (bubble-solver's search), in release ~53s.
+  - **The toolchain is pinned in `rust-toolchain.toml`** — the single source of
+    truth, read by `tools/rust-gate.sh`, `tools/build-wasm.sh`, and both CI jobs.
+    The workspace pins every dependency exactly and commits `Cargo.lock`; a
+    floating `stable` contradicted that, letting a Rust release redden `main` on
+    untouched code and letting two machines validate the same `native == wasm`
+    claim under different compilers. Bumping it is a deliberate commit: change
+    `channel`, run `npm run test:rust`, fix what the newer clippy sees.
   - **Run the gate through `npm run test:rust`, not bare `cargo clippy`.**
     Homebrew's cargo/clippy shadow rustup on PATH — the same trap `build-wasm.sh`
-    already documents for `rustc` — and Homebrew's clippy *lags*. During this
-    gate's bring-up local clippy 0.1.94 passed code CI's 0.1.97 rejected, three
-    round trips in a row. `tools/rust-gate.sh` pins rustup's stable toolchain so
-    local and CI agree; the job also prints its versions every run.
+    documents for `rustc` — and Homebrew's clippy *lags*. During this gate's
+    bring-up local clippy 0.1.94 passed code CI's 0.1.97 rejected, three round
+    trips in a row. The scripts resolve cargo via `rustup which` from the repo
+    root so the pin applies; the job prints its versions every run.
   - **Lint level: default clippy workspace-wide, `pedantic` opt-in per crate.**
     New crates opt in with `[lints] workspace = true`, which picks up
     `[workspace.lints.clippy]` in the root `Cargo.toml` — pedantic **minus the cast
