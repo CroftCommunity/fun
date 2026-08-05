@@ -8,6 +8,7 @@
 //
 //   npm run harness:trial
 //   HARNESS_TRIAL_GAMES=4 HARNESS_TRIAL_MODEL=Qwen2.5-0.5B-Instruct-q4f16_1-MLC npm run harness:trial
+//   HARNESS_TRIAL_GAME=othello npm run harness:trial   (default: drop4)
 //
 // A persistent cache dir means the model downloads only once.
 import { spawn } from "node:child_process";
@@ -22,7 +23,10 @@ const PORT = 4180;
 const origin = `http://localhost:${PORT}`;
 const MODEL = process.env.HARNESS_TRIAL_MODEL ?? "Qwen2.5-0.5B-Instruct-q4f16_1-MLC";
 const GAMES = Number(process.env.HARNESS_TRIAL_GAMES ?? "2");
-const LEVEL = process.env.HARNESS_TRIAL_LEVEL ?? "Perfect";
+// Numeric since P8 Phase 2a: the port's level is 0..3 (Easy..top), because the
+// games' own Level unions disagree on the top member ("Perfect" vs "Expert").
+const LEVEL = Number(process.env.HARNESS_TRIAL_LEVEL ?? "3");
+const GAME = process.env.HARNESS_TRIAL_GAME ?? "drop4";
 const cacheDir = join(root, ".webllm-cache"); // persists the model across runs (gitignored)
 
 if (!existsSync(join(dist, "vendor", "harness.js"))) {
@@ -48,7 +52,7 @@ function stamp(msg) {
 const server = spawn("node", [join(root, "tools", "serve.mjs")], { stdio: "ignore" });
 await new Promise((r) => setTimeout(r, 700));
 
-stamp(`mode=hybrid-vs-${LEVEL}  model=${MODEL}  games=${GAMES}  origin=${origin}  (system Chrome, embedded /vendor/harness.js)`);
+stamp(`game=${GAME}  mode=hybrid-vs-L${LEVEL}  model=${MODEL}  games=${GAMES}  origin=${origin}  (system Chrome, embedded /vendor/harness.js)`);
 const context = await chromium.launchPersistentContext(cacheDir, { channel: "chrome", headless: true, args: GPU_ARGS });
 
 let exitCode = 1;
@@ -64,7 +68,7 @@ try {
   await page.goto(`${origin}/`, { waitUntil: "domcontentloaded" });
 
   const result = await page.evaluate(
-    async ({ model, games, level, baseSeed }) => {
+    async ({ model, games, level, baseSeed, game }) => {
       const log = (s) => console.log(`STAGE ${s}`);
       // Stage 1: a real WebGPU adapter must exist (else the model can't load).
       if (!("gpu" in navigator)) return { ok: false, error: "navigator.gpu absent (opaque origin?)" };
@@ -87,6 +91,7 @@ try {
       try {
         const { text, report } = await runHybridTrial({
           model,
+          game,
           games,
           level,
           baseSeed,
@@ -108,7 +113,7 @@ try {
         return { ok: false, error: `trial failed: ${e}` };
       }
     },
-    { model: MODEL, games: GAMES, level: LEVEL, baseSeed: 0 },
+    { model: MODEL, games: GAMES, level: LEVEL, baseSeed: 0, game: GAME },
   );
 
   if (result.ok) {

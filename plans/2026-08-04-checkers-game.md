@@ -1942,6 +1942,54 @@ calibration, documentation-impact coverage) — to be run in a fresh context.
 **Confirmed ready:** yes, pending one new unreviewed ADVISORY question (the hybrid
 `llm`/`fallback` telemetry) and the two previously-confirmed PHASE-GATED items.
 
+### Phase 2a-2c + 3 execution — 2026-08-05 (Part A complete)
+
+**The generality claim is proven, not asserted.** Phase 3's gate —
+`git diff --stat` on `match-runner.ts` / `scorer.ts` / `tournament.ts` across the
+whole phase — is **empty**. Grading a second game, with a move space that
+includes a pass, required exactly two new files
+(`src/games/othello/othello-oracle.ts`, `tests/othello-harness.test.ts`) and zero
+edits to the rig. That was the phase's whole point and the port passed it.
+
+**Recorded CI baselines** (top level, 2 games, seed 0), now in `docs/HARNESS.md`
+as the regression anchors Phases 7/8 compare against:
+
+| | W-D-L | graded / skipped | ms per graded move |
+|---|---|---|---|
+| drop4 | 0-2-0 | 16 / 26 | 501 |
+| othello | 1-0-1 | 10 / 50 | 4374 |
+
+They differ in the ways the *games* differ, which is the check worth making
+before trusting any number: Drop 4 draws twice because Connect Four is solved and
+perfect play draws (a decisive result at level 3 would mean the engine is not
+perfect); Othello is decisive because it is unsolved, so its top level is a deep
+search; and Othello skips 50 of 60 moves and costs ~9x more per graded move,
+because an exact endgame at ≤10 empties grades only a small, expensive tail.
+
+**Deviations from the plan:**
+- **Phase 2a was wider than Pass 3 predicted.** The ruling said the `drop4Oracle`
+  seam would hold 2a to two production files. It did not account for
+  `EnginePlayer`'s constructor changing from `Level` to `OracleLevel`, which
+  ripples to every call site — the scorer/tournament tests and
+  `harness-trial-entry.ts` (one token each). Typecheck was green at the commit,
+  which is what the split was actually for, so the split still did its job.
+  The compiler also confirmed *why* the port exists, in its own words:
+  `Type '0' is not assignable to type 'Level'`.
+- **Phase 3's two-part risk was retired early.** Phase 1 fixed the wasm sentinel
+  decoding in both wrappers, so the forced pass never reached the adapter as a
+  bare `-2`. The adapter still normalizes `"pass"` → `PASS_CODE`, and the test
+  still asserts it, but the failure mode the plan feared was already closed.
+- **`HARNESS_TRIAL_LEVEL` was silently broken by 2a** and is fixed here: the
+  driver passed the string `"Perfect"` into what became a numeric level. Nothing
+  caught it because the trial is off-CI — a reminder that the standalone driver
+  has no gate of its own.
+- **The trial gained a per-game prompt.** `HARNESS_TRIAL_GAME=othello` with Drop
+  4's "You are a Connect-Four opponent … offered columns" prompt would have
+  measured the wrong thing. The prompt lives in the trial entry, not the rig.
+
+**Pre-existing and unrelated:** the 11 Node-25 `match3` failures (see Phase 1
+notes) persist locally; CI on Node 22 is green.
+
 ### Phase 1 execution — 2026-08-05
 
 **Landed:** `src/harness/game-oracle.ts` (the port, carrying D1's ten-row table as

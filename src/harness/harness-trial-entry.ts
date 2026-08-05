@@ -8,11 +8,48 @@
 
 import { drop4Oracle } from "../games/drop4/drop4-oracle.js";
 import { Drop4 } from "../games/drop4/drop4-wasm.js";
+import { othelloOracle } from "../games/othello/othello-oracle.js";
+import { Othello } from "../games/othello/othello-wasm.js";
 import { WebLLMRuntime } from "./ai-runtime.js";
 import { HybridPlayer } from "./hybrid-player.js";
-import type { OracleLevel } from "./game-oracle.js";
-import { EnginePlayer, HybridAiPlayer } from "./match-runner.js";
+import type { GameOracle, OracleLevel } from "./game-oracle.js";
+import { EnginePlayer, HybridAiPlayer, type HybridPromptBuilder } from "./match-runner.js";
 import { renderReport, runTournament, type Report } from "./tournament.js";
+
+/** Which shelf game the trial grades. */
+export type TrialGame = "drop4" | "othello";
+
+/**
+ * Per-game wiring for the trial: how to load the game as a `GameOracle`, and a
+ * prompt that describes *that* game to the model. The rig itself needs none of
+ * this — it is here because a trial that offered Othello cells to a model told
+ * to play Connect Four would be measuring the wrong thing.
+ */
+const GAMES: Record<TrialGame, {
+  load: () => Promise<GameOracle>;
+  prompt: HybridPromptBuilder;
+}> = {
+  drop4: {
+    load: async () => drop4Oracle(await Drop4.load("/drop4.wasm")),
+    prompt: (game, band) => ({
+      system:
+        "You are a Connect-Four opponent. Choose exactly one of the offered columns and reply as JSON {move, reason}.",
+      prompt: `Board (bottom row first):\n${game.renderText()}\nOffered columns: ${band
+        .map((b) => `${b.col} (${b.idea})`)
+        .join(", ")}\nPick one column and say why in one short sentence.`,
+    }),
+  },
+  othello: {
+    load: async () => othelloOracle(await Othello.load("/othello.wasm")),
+    prompt: (game, band) => ({
+      system:
+        "You are an Othello (Reversi) opponent. Choose exactly one of the offered cells and reply as JSON {move, reason}.",
+      prompt: `Board:\n${game.renderText()}\nOffered cells (0-63): ${band
+        .map((b) => `${b.col} (${b.idea})`)
+        .join(", ")}\nPick one cell and say why in one short sentence.`,
+    }),
+  },
+};
 
 /** Options for one hybrid-vs-engine trial run. */
 export interface TrialOptions {
@@ -20,6 +57,8 @@ export interface TrialOptions {
   readonly model: string;
   /** Number of games. */
   readonly games: number;
+  /** Which game to grade (default `drop4`, so the existing invocation is unchanged). */
+  readonly game?: TrialGame;
   /** Engine difficulty for the opponent under measurement (default `Perfect`). */
   readonly level?: OracleLevel;
   /** Base seed. */
@@ -42,12 +81,16 @@ export interface TrialResult {
  * `HybridPlayer` / `WebLLMRuntime` unchanged.
  */
 export async function runHybridTrial(opts: TrialOptions): Promise<TrialResult> {
+  const wiring = GAMES[opts.game ?? "drop4"];
   const runtime = new WebLLMRuntime({ model: opts.model, onProgress: opts.onProgress });
-  const hybrid = new HybridAiPlayer(new HybridPlayer(runtime), { label: `Hybrid(${opts.model})` });
+  const hybrid = new HybridAiPlayer(new HybridPlayer(runtime), {
+    label: `Hybrid(${opts.model})`,
+    buildPrompt: wiring.prompt,
+  });
   const engine = new EnginePlayer(opts.level ?? 3);
 
   const report = await runTournament(
-    async () => drop4Oracle(await Drop4.load("/drop4.wasm")),
+    wiring.load,
     hybrid,
     engine,
     {
