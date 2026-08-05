@@ -68,9 +68,10 @@ pub enum Level {
 }
 
 impl Level {
-    /// The capped search depth for this level.
+    /// The capped search depth for this level. `const` so a caller can pin a
+    /// depth to a level at compile time rather than restating the number.
     #[must_use]
-    pub fn depth(self) -> u32 {
+    pub const fn depth(self) -> u32 {
         match self {
             Level::Easy => 2,
             Level::Medium => 4,

@@ -8,6 +8,7 @@ description = "English draughts (checkers) engine: material/king/mobility/back-r
 
 [dependencies]
 adversary-core = { path = "../adversary-core" }
+adversary-solver = { path = "../adversary-solver" }
 checkers-core = { path = "../checkers-core" }
 rand.workspace = true
 rand_chacha.workspace = true

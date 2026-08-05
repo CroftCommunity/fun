@@ -1360,17 +1360,17 @@ eyeball the move list for obvious nonsense (e.g. declining a free multi-capture)
 whose wording is bound to `exact`.
 
 **Changes:**
-- [ ] `crates/checkers-solver/src/live.rs` — `capped_class` (returns a constant `0`:
+- [x] `crates/checkers-solver/src/live.rs` — `capped_class` (returns a constant `0`:
       checkers is unsolved early, so a heuristic proves no class — the Othello
       shape, not Drop 4's), `live_band(level)`, `choose(...)` delegating to
       `adversary_solver::select_in_band`.
-- [ ] `crates/checkers-solver/src/tutor.rs` — `MoveClass`, `TutorMove`,
+- [x] `crates/checkers-solver/src/tutor.rs` — `MoveClass`, `TutorMove`,
       `TutorReport {moves, best_col, exact}`, `assess(pos)`. Carries a checkers
       one-ply fact — **recommended: `captures` (the number of pieces the move
       takes)**, which is the natural analogue of Othello's `takes_corner` and is
       what a learner actually needs to see. `crowns` is a second candidate; pick
       one in this phase and record why.
-- [ ] `crates/checkers-solver/Cargo.toml` — depend on `adversary-solver`.
+- [x] `crates/checkers-solver/Cargo.toml` — depend on `adversary-solver`.
 
 **Test fixtures (RED first):** the opening is capped (`exact == false`) and **never
 grades a Blunder** (the honesty invariant — a heuristic proves no class); a position with a **proven** result (a
@@ -2108,6 +2108,80 @@ calibration, documentation-impact coverage) — to be run in a fresh context.
 
 **Confirmed ready:** yes, pending one new unreviewed ADVISORY question (the hybrid
 `llm`/`fallback` telemetry) and the two previously-confirmed PHASE-GATED items.
+
+### Phase 10 execution — 2026-08-05
+
+**Landed:** `live.rs` (band) and `tutor.rs` (engine-grounded facts). 21 tests; full
+gate exits 0 with zero warnings.
+
+**Deviation, and the reason matters: `capped_class` is Drop 4's shape, not
+Othello's.** The plan called for a constant `0` on the reasoning that checkers is
+unsolved early so a heuristic proves no class. The reasoning is right and the shape
+is wrong, because of a structural difference the plan predates.
+
+Othello can afford a constant because it has a **position-level** tractability
+switch — below `TRACTABLE_EMPTIES` its `choose` swaps `capped_class` out for
+`i32::signum` and the floor comes alive for the whole endgame. Checkers has no such
+switch: Phase 0 killed it, so exactness here is **per move**. A constant `0` would
+therefore leave `preserve_class` permanently dead at every level in every position —
+Hard and Expert could throw a *proven* win, which is precisely what the class floor
+exists to prevent. So the class comes from the value's magnitude: only a terminal
+can produce one above 500,000, so a horizon judgement classifies `0` (as Othello
+wants) and a terminal-derived value classifies by sign (as Drop 4 wants). One
+function, both behaviours, no switch.
+
+**The one-ply fact is `captures`, as recommended.** Material *is* checkers, a
+learner's first question about a move is what it takes, and a count carries more
+signal than a boolean. `crowns` stays available from `Chain::crowned` if the panel
+later wants it, and would read as zero for most of a game.
+
+**Finding: `MoveClass::Blunder` is effectively unreachable through `assess`, and
+Phase 15 needs to know.** Grading a blunder is a claim that a move *drops the
+win/draw/loss class*, which needs **both** the played move's value and the best
+move's to be proven. A sweep of 300 random-play positions produced **not one** such
+pairing. When the best move is a proven win, the alternatives are almost always
+horizon judgements — and "the search found no win from there within six plies" is
+not "that threw the game".
+
+Two consequences, both deliberate, both now pinned by a test that says so:
+- the shipped tutor will say "there was better" far more often than "that threw
+  it", which is the honest thing for an unsolved game;
+- **a zero-blunder assertion over a checkers tournament is close to vacuous**, so
+  Phase 15 must lean on `scoredMoves` and the class floor rather than on a blunder
+  count. Phase 15's Done-when should be re-read with that in mind before it starts.
+
+The branch itself is covered at the seam by `a_blunder_needs_both_values_proven` —
+the same answer this repo has now reached three times for an unreachable branch
+(`assign_variants`, `table_answer`, `quality`): if no real input gets there, test
+the policy where a test can.
+
+**Three fixtures were wrong on the first pass, all the same way.** Mandatory
+capture collapses most hand-built positions to a *single* legal move, so "the floor
+never admits a class drop" and "the grader distinguishes moves" had nothing to
+distinguish. The position that works is a **king loose against a lone man**: four
+moves, two of which force the capture inside the horizon and two of which wander
+off. Worth remembering when building any checkers fixture that needs a choice.
+
+**Measured, and worth keeping:** all seven opening moves evaluate **identically**
+at depth 6 (value −30, regret 0 for every one). That is a fact about checkers
+openings — famously near-equal, which is why tournament play forces the first three
+moves — rather than a broken grader. The test asserts it *and* asserts that the
+grader finds a worse move in a position that has one, so the two stay
+distinguishable.
+
+**Validation — the native difficulty ladder (20 seeded games each, alternating who
+opens):**
+
+| | W-D-L |
+|---|---|
+| Expert vs Easy | **20-0-0** |
+| Hard vs Easy | **20-0-0** |
+| Expert vs Medium | **20-0-0** |
+| Expert vs Hard | **20-0-0** |
+
+The band differentiates, which is the silent failure this validation exists to
+catch. Expert over Hard is clean because Hard carries 40% sloppiness against
+Expert's zero, on top of two extra plies.
 
 ### Phase 9 execution — 2026-08-05 (a real bug, found by the traps)
 

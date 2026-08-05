@@ -131,6 +131,7 @@ name = "checkers-solver"
 version = "0.0.0"
 dependencies = [
  "adversary-core",
+ "adversary-solver",
  "checkers-core",
  "rand",
  "rand_chacha",
