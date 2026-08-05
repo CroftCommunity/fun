@@ -1,0 +1,16 @@
+[package]
+name = "adversary-solver"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "The class-preserving difficulty band shared by the shelf's adversarial games. One generic band selector over per-move values: a class floor that never drops from winning to drawing to losing (so a hard opponent never throws the game), plus within-class sloppiness that never crosses that floor. Generic over the move type; per-game class functions and level tuning stay in each game's solver. No network, no floats."
+
+[dependencies]
+rand_chacha.workspace = true
+
+[dev-dependencies]
+rand.workspace = true
+
+[lints]
+workspace = true

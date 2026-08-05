@@ -1133,12 +1133,12 @@ RNG so a failure is reproducible from the seed alone.
 **Goal:** One class-preserving band selector, generic over the move type.
 
 **Changes:**
-- [ ] `crates/adversary-solver/` (new: `Cargo.toml`, `src/lib.rs`) — `LiveBand`
+- [x] `crates/adversary-solver/` (new: `Cargo.toml`, `src/lib.rs`) — `LiveBand`
       and `select_in_band<M: Copy>(values: &[(M, i32)], class_of, preserve_class,
       sloppiness_pct, rng) -> Option<M>`, moved verbatim (the two copies are
       already identical apart from `M`). Ships with the union of both existing
       test suites' band tests, generic over a stand-in move type.
-- [ ] `Cargo.toml` — add to `members` and `[workspace.dependencies]`.
+- [x] `Cargo.toml` — add to `members` and `[workspace.dependencies]`.
 
 **Explicitly not extracted** (verified per-game, see Verified Assumptions):
 `capped_class` (Drop 4 classifies a horizon class; Othello returns a constant `0`)
@@ -1190,11 +1190,11 @@ they sit next to the selector. Guarded by the explicit "not extracted" list abov
 **Goal:** Delete the first duplicate; prove the extraction against a shipped game.
 
 **Changes:**
-- [ ] `crates/drop4-solver/src/live.rs` — delete the local `LiveBand` +
+- [x] `crates/drop4-solver/src/live.rs` — delete the local `LiveBand` +
       `select_in_band`; import from `adversary_solver`. `capped_class` and
       `live_band` stay.
-- [ ] `crates/drop4-solver/Cargo.toml` — add the dependency.
-- [ ] `TODO/drop4.md` — mark the shared-selector thread Done.
+- [x] `crates/drop4-solver/Cargo.toml` — add the dependency.
+- [x] `TODO/drop4.md` — mark the shared-selector thread Done.
 
 **Call chain:** `drop4_wasm::live_move` → `drop4_solver::live::choose_capped` →
 `adversary_solver::select_in_band`.
@@ -2108,6 +2108,65 @@ calibration, documentation-impact coverage) — to be run in a fresh context.
 
 **Confirmed ready:** yes, pending one new unreviewed ADVISORY question (the hybrid
 `llm`/`fallback` telemetry) and the two previously-confirmed PHASE-GATED items.
+
+### Phase 6 + 7 execution — 2026-08-05 (committed as one unit, per the Pass 3 ruling)
+
+**Landed:** `crates/adversary-solver/` (9 tests) and `drop4-solver` migrated onto
+it. Committed together because Phase 6's own Done-when makes Phase 7 landing part
+of it — a pure extraction has no entry point to wire to, so the guarantee is that
+the consumer follows.
+
+**The extraction is verbatim, and the evidence is the recorded baseline.** Drop 4's
+engine-vs-engine anchor from `docs/HARNESS.md` reproduces **exactly** across the
+migration:
+
+| | recorded (Phase 3) | after migration |
+|---|---|---|
+| W-D-L | 0-2-0 | **0-2-0** |
+| graded / skipped | 16 / 26 | **16 / 26** |
+| optimal · preserving · blunders | 16 · 0 · 0 | **16 · 0 · 0** |
+| cost | 8018ms | 8233ms *(wall clock, not deterministic)* |
+
+That is the Risk the phase named — "a subtle RNG-consumption change would shift
+every seeded game" — retired by measurement rather than by inspection.
+
+**RED caught two of my own tests being vacuous, which is the mutation-audit lesson
+arriving one hour later.** Against a stub `select_in_band` returning `None`, both
+`the_class_floor_never_admits_a_class_dropping_move` and
+`zero_sloppiness_does_not_consume_the_rng` **passed** — the first because
+`assert_ne!(None, Some(losing_move))` holds trivially, the second because a stub
+that does nothing consumes nothing. Both were rewritten before implementing:
+assert the pick is `Some` *and* in the eligible set, and assert the zero-sloppiness
+call actually returns the tightest move. This is precisely why RED is watched
+rather than assumed.
+
+**Three tests beyond the two suites' union**, each closing something neither game
+tested:
+- **`zero_sloppiness_does_not_consume_the_rng`.** The selector short-circuits
+  before touching the RNG at sloppiness 0. That is load-bearing, not an
+  optimization: drawing and discarding a number would shift every subsequent draw
+  in the match, and the recorded baselines would report it as "the engine changed".
+  Nothing asserted it in either game.
+- **`a_constant_class_function_makes_the_floor_a_no_op`.** Othello's `capped_class`
+  returns `0` for everything, so under it the floor eliminates nobody and
+  sloppiness ranges over the whole move list. Both games' semantics have to fit
+  through this one function, and that is the half easy to break by "improving" the
+  floor.
+- **`the_floor_tracks_the_best_available_class_not_a_fixed_one`.** When nothing
+  wins, the floor holds at the drawn class; when everything loses, it picks the
+  tightest loss rather than returning nothing.
+
+**Fixture change from the two suites' union:** the value spread carries **two**
+winning moves, not one. With a single winner the floor leaves a singleton and the
+sloppiness path has nothing to choose between — so a selector that ignored
+sloppiness entirely would pass. The test now also asserts both winners are actually
+reached.
+
+**Not extracted, as planned:** `capped_class` and `live_band`. The first genuinely
+differs per game; the second is per-game difficulty tuning. `drop4-solver` re-exports
+the two moved items so `drop4_solver::live::{select_in_band, LiveBand}` still
+resolves — the wasm binding and harness import them from there, and an extraction
+should not be visible to callers.
 
 ### Mutation-testing audit of `checkers-core` — 2026-08-05
 

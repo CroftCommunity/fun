@@ -10,6 +10,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "adversary-solver"
+version = "0.0.0"
+dependencies = [
+ "rand",
+ "rand_chacha",
+]
+
+[[package]]
 name = "align-core"
 version = "0.0.0"
 dependencies = [
@@ -213,6 +221,7 @@ name = "drop4-solver"
 version = "0.0.0"
 dependencies = [
  "adversary-core",
+ "adversary-solver",
  "drop4-core",
  "rand",
  "rand_chacha",

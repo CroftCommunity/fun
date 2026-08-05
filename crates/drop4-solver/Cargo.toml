@@ -8,6 +8,7 @@ description = "Perfect Drop 4 (Four-in-a-Row) engine: a bitboard negamax solver 
 
 [dependencies]
 adversary-core = { path = "../adversary-core" }
+adversary-solver = { path = "../adversary-solver" }
 drop4-core = { path = "../drop4-core" }
 rand.workspace = true
 rand_chacha.workspace = true

@@ -10,6 +10,12 @@
 use drop4_core::{apply_move, cell_of, legal_cols, winner, Board, Col, HEIGHT, WIDTH};
 use rand_chacha::rand_core::RngCore;
 
+// The band selector and its knobs now live in `adversary-solver`, shared with
+// every adversarial game on the shelf. Re-exported so `drop4_solver::live::*`
+// keeps naming them — the wasm binding and the harness both import them from
+// here, and the extraction is not supposed to be visible to callers.
+pub use adversary_solver::{select_in_band, LiveBand};
+
 use crate::Level;
 
 /// Centre-first column order — the strongest ordering heuristic for Drop 4.
@@ -200,20 +206,6 @@ pub(crate) fn capped_class(v: i32) -> i32 {
     }
 }
 
-/// The two difficulty knobs, per [`Level`]: how deep the live search looks, the
-/// **class floor** (`preserve_class` = never admit a move that drops the
-/// win/draw/loss class → never throws the game), and **within-class sloppiness**
-/// (percent chance of a random in-class move rather than the tightest).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct LiveBand {
-    /// Bounded search depth for the capped value source.
-    pub depth: u32,
-    /// Keep only moves in the best available class (never throw the game).
-    pub preserve_class: bool,
-    /// Percent chance (0-100) of a random in-class move instead of the tightest.
-    pub sloppiness_pct: u32,
-}
-
 /// The [`LiveBand`] for a [`Level`]: Easy/Medium allow class-dropping moves and
 /// are beatable; Hard/Perfect preserve the class (never throw), Perfect with no
 /// sloppiness (always the tightest in-class move).
@@ -241,39 +233,6 @@ pub fn live_band(level: Level) -> LiveBand {
             sloppiness_pct: 0,
         },
     }
-}
-
-/// Pick a move from a difficulty band over per-move `values`, using `class_of`
-/// to bucket each value's win/draw/loss class. With `preserve_class`, only moves
-/// in the best available class are eligible (so the pick never drops the class —
-/// never throws the game). With probability `sloppiness_pct` a random eligible
-/// move is chosen; otherwise the tightest (highest-value) eligible move. `None`
-/// only if `values` is empty.
-///
-/// This is the shared selector for both the exact path (values from
-/// [`crate::Solver::move_values`], `class_of = i32::signum`) and the fast capped
-/// path ([`move_values_capped`], `class_of = capped_class`).
-pub fn select_in_band(
-    values: &[(Col, i32)],
-    class_of: impl Fn(i32) -> i32,
-    preserve_class: bool,
-    sloppiness_pct: u32,
-    rng: &mut impl RngCore,
-) -> Option<Col> {
-    let best = values.iter().map(|&(_, v)| v).max()?;
-    let best_class = class_of(best);
-    let eligible: Vec<(Col, i32)> = values
-        .iter()
-        .copied()
-        .filter(|&(_, v)| !preserve_class || class_of(v) == best_class)
-        .collect();
-    if eligible.is_empty() {
-        return None; // unreachable: the best move is always eligible
-    }
-    if sloppiness_pct > 0 && rng.next_u32() % 100 < sloppiness_pct {
-        return Some(eligible[(rng.next_u32() as usize) % eligible.len()].0);
-    }
-    eligible.iter().max_by_key(|&&(_, v)| v).map(|&(c, _)| c)
 }
 
 /// A live opponent move at `level`, or `None` if terminal. Fast from any

@@ -37,6 +37,7 @@ members = [
     "crates/solitaire-solver",
     "crates/match3-solver",
     "crates/adversary-core",
+    "crates/adversary-solver",
     "crates/drop4-core",
     "crates/drop4-solver",
     "crates/drop4-harness",
@@ -81,6 +82,7 @@ solitaire-core = { path = "crates/solitaire-core" }
 pond-docformat = { path = "crates/pond-docformat" }
 pond-outcome = { path = "crates/pond-outcome" }
 checkers-core = { path = "crates/checkers-core" }
+adversary-solver = { path = "crates/adversary-solver" }
 
 # Lint policy for crates that opt in with `[lints] workspace = true`.
 #
