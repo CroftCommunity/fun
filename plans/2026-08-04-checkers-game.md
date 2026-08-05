@@ -1942,6 +1942,42 @@ calibration, documentation-impact coverage) — to be run in a fresh context.
 **Confirmed ready:** yes, pending one new unreviewed ADVISORY question (the hybrid
 `llm`/`fallback` telemetry) and the two previously-confirmed PHASE-GATED items.
 
+### Phase 1 execution — 2026-08-05
+
+**Landed:** `src/harness/game-oracle.ts` (the port, carrying D1's ten-row table as
+its doc comment), `src/games/drop4/drop4-oracle.ts`, `tests/game-oracle.test.ts`
+(7 tests, RED before GREEN — the suite could not even collect before the sources
+existed).
+
+**Deviation from the declared write-set, and why.** The port's contract says
+`liveMove` returns `null` once the match is over. Drop 4 did not honour it: the
+test came back `-1`. Root cause is shared by **both** shipped wrappers — the
+cores return `u32` sentinels (`u32::MAX` = no move, `u32::MAX - 1` = pass), but a
+wasm `i32` result reaches JS **signed**, so they arrive as `-1` and `-2` while
+`drop4-wasm.ts:145` and `othello-wasm.ts:158` compared against the *unsigned*
+constants. Those branches were dead code; callers silently got a negative number.
+
+Fixed in both wrappers (`(code >>> 0) === SENTINEL`) plus a new
+`tests/wasm-move-sentinels.test.ts` pinning both games. Justified as in-scope:
+the port cannot be proven against a wrapper that lies about its own signature,
+and papering over it in the adapter would have hidden a shipped defect.
+
+**This is Phase 3's named risk, found two phases early and with a concrete
+mechanism.** The plan predicted "Othello's forced pass could surface as a `null`
+move and abort the match". The real mechanism is worse and more specific: it
+surfaces as the *number* `-2`, which `EnginePlayer` would hand to `play()`, which
+would reject it, which would abort — and `MatchRecord.aborted` alone would not
+have said why. The shipped UIs were shielded (Othello checks `board().mustPass`
+and calls `pass()` before ever consulting `liveMove`), which is why it survived
+unnoticed; the harness has no such shield. Phase 3's adapter work is unchanged,
+but its risk is now retired at the source rather than worked around.
+
+**Pre-existing, unrelated:** 11 tests in `tests/match3-{story,campaign}.test.ts`
+fail locally with `TypeError: localStorage.clear is not a function` under Node
+25.9.0. Confirmed pre-existing by stashing all local work; CI (Node 20) is green
+on the same commit. `fun` pins no Node version — tracked in
+`CroftC/.claude/CI-PATTERN.md`, not fixed here.
+
 ### Phase 0 progress — 2026-08-04
 
 **D1 closed (answer: yes, the port covers both games).** The ten-row method table is

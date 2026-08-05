@@ -154,9 +154,22 @@ export class Othello {
   oracleBest(level: Level): number | "pass" | null {
     return this.decodeMove(this.x.oracle_best(LEVEL_CODE[level]));
   }
+  /**
+   * The core returns `u32` sentinels, but a wasm `i32` result arrives in JS
+   * **signed** — so `MOVE_OVER` reads as `-1` and `MOVE_PASS` as `-2`, and a
+   * plain `code === MOVE_OVER` is dead code. The unsigned coercion is what makes
+   * these comparisons fire.
+   *
+   * The shipped UI is shielded (it checks `board().mustPass` and calls `pass()`
+   * before ever consulting `liveMove`), which is why this survived unnoticed. The
+   * harness is not shielded: `EnginePlayer` calls `liveMove` directly, so without
+   * this a forced pass would surface as the number `-2`, get played as a move,
+   * be rejected, and abort the match.
+   */
   private decodeMove(code: number): number | "pass" | null {
-    if (code === MOVE_OVER) return null;
-    if (code === MOVE_PASS) return "pass";
+    const unsigned = code >>> 0;
+    if (unsigned === MOVE_OVER) return null;
+    if (unsigned === MOVE_PASS) return "pass";
     return code;
   }
   /** The engine value of every legal placement — the source for a difficulty band. */
