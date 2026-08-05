@@ -1,0 +1,16 @@
+[package]
+name = "checkers-solver"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "English draughts (checkers) engine: material/king/mobility/back-rank alpha-beta with a transposition table, the classic opponent (with difficulty levels), and an honest oracle whose `exact` flag means a PROVEN terminal — a real win/draw/loss reached inside the search — rather than a full solve, which no piece count makes affordable. No network, no floats on any compared path (native==wasm move choice)."
+
+[dependencies]
+adversary-core = { path = "../adversary-core" }
+checkers-core = { path = "../checkers-core" }
+rand.workspace = true
+rand_chacha.workspace = true
+
+[lints]
+workspace = true

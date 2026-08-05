@@ -1272,10 +1272,10 @@ per Phase 7's reasoning.
 **Goal:** An Oracle that is heuristic early and **provably exact** in the endgame.
 
 **Changes:**
-- [ ] `crates/checkers-solver/` (new: `Cargo.toml`, `src/lib.rs`, `src/eval.rs`) —
+- [x] `crates/checkers-solver/` (new: `Cargo.toml`, `src/lib.rs`, `src/eval.rs`) —
       material + king weighting + mobility + back-rank, integers only (no floats on
       the hashed path).
-- [ ] `crates/checkers-solver/src/search.rs` — negamax + alpha-beta, `Level`
+- [x] `crates/checkers-solver/src/search.rs` — negamax + alpha-beta, `Level`
       (Easy/Medium/Hard/Expert) → depth, `move_values`, `best_move`, and:
   - a **transposition table keyed on `(board, side_to_move, no_progress)`** with
     **bound flags** (exact / lower / upper). D3 makes this mandatory rather than
@@ -1288,7 +1288,7 @@ per Phase 7's reasoning.
     terminal — all captured, no legal move, or the no-progress draw.
   - `TRACTABLE_PIECES` stays, re-purposed as a **search-budget knob** (how hard to
     try for a proof), not a switch that turns exactness on.
-- [ ] `Cargo.toml` — add to `members`.
+- [x] `Cargo.toml` — add to `members`.
 
 **Test fixtures (RED first).** Pass 3 put numbers on the two that were qualitative —
 "convincingly" and "a time bound" are not assertions:
@@ -2108,6 +2108,90 @@ calibration, documentation-impact coverage) — to be run in a fresh context.
 
 **Confirmed ready:** yes, pending one new unreviewed ADVISORY question (the hybrid
 `llm`/`fallback` telemetry) and the two previously-confirmed PHASE-GATED items.
+
+### Phase 9 execution — 2026-08-05 (a real bug, found by the traps)
+
+**Landed:** `crates/checkers-solver/` — `eval` (material/king/advancement/back-rank/
+mobility, integers only) and `search` (negamax + alpha-beta + transposition table,
+`Level` depths 2/4/6/8, `TRACTABLE_PIECES = 8` granting +4 plies). 11 tests; full
+gate exits 0 with zero warnings.
+
+**The transposition table was unsound, and the plan's own fixture would not have
+caught it.** Every fixture was written first and passed. Then each was checked the
+way the mutation audit taught: introduce the defect deliberately, confirm the test
+goes red. The first run of that matrix:
+
+| trap | caught by the fixture as planned? |
+|---|---|
+| drop `no_progress` from the TT key | **no** |
+| drop the depth gate on hits | **no** |
+| reuse deeper entries (`>=` not `==`) | **no** |
+| ignore the window on an exact hit | **no** |
+| set `exact` on a bound | yes |
+| set `exact` ignoring the principal variation | yes |
+
+Four fixed positions at depth 5 caught **none** of the four table traps — against a
+plan that says an unsound table "shows up here and nowhere else". Chasing that
+found something worse: **the clean build diverged too.** A six-piece endgame at
+depth 8 returned **587 for four different root moves** whose true values were 562,
+562, 586 and 562. The table-free search agreed with a plain minimax; the table did
+not.
+
+The cause is the textbook `entry.depth >= depth` reuse. A deeper stored value is a
+*better* value, not the value a depth-`d` search computes — so the table stops
+being a cache and becomes part of the answer. Fixed by matching depth **strictly**.
+Two things fall out, and both are worth more than the lost hit rate: `Level::depth()`
+means what it says rather than "at least this, more if the search happened to
+transpose"; and terminal scores need no ply re-anchoring, because the same
+remaining depth is the same distance. (I had already written that mate-distance
+normalization — the strict gate made it provably dead code, so it came back out,
+and the reason lives at the gate for whoever tries to relax it.)
+
+**Two traps turned out to be unreachable, so they moved to a seam.** After
+replacing the fixed positions with a seeded sweep (40 positions × 4 counters × 2
+depths), the depth-gate and deeper-reuse traps are caught. The other two are not,
+and a wider hunt — **~6400 searches over 160 seeded positions, ten counters and
+four depths** — could not make either change a single root value:
+
+- **the counter in the key** needs two lines reaching identical cells with the same
+  side to move and different counters, which requires both sides to hold a man
+  *and* a king and to interleave an advance against a king move;
+- **the window clamp on an exact hit** is swallowed by the window itself: a child
+  whose value falls outside it cannot decide its parent's best when the parent
+  completes in-window.
+
+Both are still right, and unreachable-but-wrong is how a table starts answering
+from a different position the day the search around it changes. So `table_answer`
+was extracted — the same fix as `checkers-core`'s `assign_variants` — and tested
+directly, including both edges of the window comparison. **The matrix is now 8 of
+8**, with two traps added that the first pass did not think to try (an off-by-one
+in the window comparison, and a bound carrying a proof).
+
+**Risk (b) measured, and it is fine.** `scorer.ts` grades only where the engine
+reports `exact`, so a game that never proves anything has `scoredMoves == 0`
+forever and Phase 15 would run, pass, and measure nothing. Over a full game:
+
+| level | plies with a proven move |
+|---|---|
+| Medium (depth 4) | 4 / 40 (10%) |
+| **Expert (depth 8)** | **7 / 40 (17.5%)** |
+
+Expert is the level Phase 15 grades at, and 17.5% is **in line with Othello's
+recorded baseline** (10 graded of 60 = 17%). So checkers is gradeable, and the
+redefined `exact` was the right call rather than a face-saving one. The test prints
+the rate so a *marginal* rate stays visible instead of merely non-zero.
+
+**Validation (the plan asked for a native game, eyeballed).** Hard-vs-Hard from the
+opening: 310 plies, ending in the no-progress **Draw at exactly 80**. Opening play
+is recognisable checkers — `9-13 22-17 13x22 26x17 10-14 17x10 6x15 21-17 …`,
+mutual captures and real exchanges — and the engine never once took a shorter
+capture chain when a longer one was available. It finishes at one piece against
+two, which is a known drawn shape rather than a failure to convert. The probe was a
+throwaway; Phase 10 needs a native Easy-vs-Expert series and can carry a proper one.
+
+**Fixture note for whoever edits the sweep:** the discriminating position is at
+**seed 33**. An earlier version swept seeds 0..24 and caught nothing while looking
+thorough. Narrowing the sweep for speed is exactly how this test goes quiet again.
 
 ### Phase 8 execution — 2026-08-05 (Part B's extraction complete)
 
