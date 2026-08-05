@@ -3,6 +3,10 @@
 # web build output + deps
 /dist
 /node_modules
+# cargo-mutants run output (a periodic audit, not a build artifact — the
+# findings belong in the plan's Review Log, not in the tree)
+/mutants.out
+/mutants.out.old
 # Playwright artifacts
 /test-results
 /playwright-report

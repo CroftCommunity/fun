@@ -66,6 +66,10 @@ pub struct Move {
 
 impl Move {
     /// The packed wire code: `from | to << 5 | variant << 10`.
+    ///
+    /// Equivalent-mutant note: the three fields occupy disjoint bit ranges after
+    /// masking, so `|` and `^` compute the same value here. A mutation testing run
+    /// reports both `|` sites as survivors; neither is a gap.
     #[must_use]
     pub fn code(self) -> u16 {
         u16::from(self.from) & SQUARE_MASK
@@ -210,6 +214,8 @@ fn extend_chain(
         if victim.side == piece.side {
             continue;
         }
+        // Equivalent-mutant note: `dr` and `dc` are always ±1, so `2 / dr` equals
+        // `2 * dr`. Both `*` sites survive mutation testing and neither is a gap.
         let Some(land) = square_at(row as isize + 2 * dr, col as isize + 2 * dc) else {
             continue;
         };
@@ -297,28 +303,26 @@ fn generate(board: &Board) -> Vec<Chain> {
     }
 }
 
-/// Each legal move paired with the chain it names. `variant` is assigned by
-/// generation order among the chains sharing a `(from, to)` pair, so it is stable
-/// for a given position — which is all the wire format needs, since a code is
-/// only ever resolved against the position it was played in.
-fn resolved(board: &Board) -> Vec<(Move, Chain)> {
-    // A drawn game is over, so it offers no moves — the same way a side with no
-    // pieces offers none. This is the single choke point for it, and it reads the
-    // counter directly rather than calling `result()`, which would recurse.
-    if board.no_progress >= NO_PROGRESS_LIMIT {
-        return Vec::new();
-    }
+/// Pair each chain with the [`Move`] that names it, assigning `variant` by
+/// generation order among the chains sharing a `(from, to)` pair. Stable for a
+/// given position, which is all the wire format needs — a code is only ever
+/// resolved against the position it was played in.
+fn assign_variants(chains: Vec<Chain>) -> Vec<(Move, Chain)> {
     let mut out: Vec<(Move, Chain)> = Vec::new();
-    for chain in generate(board) {
+    for chain in chains {
         let variant = out
             .iter()
             .filter(|(m, _)| m.from == chain.from && m.to == chain.to)
             .count();
         // Four bits. Phase 0 measured a maximum of 3 chains sharing one
-        // `(from, to)` across 2.25M positions, so this is unreachable in play.
-        // Dropping the overflow is the safe failure: reusing a code would make
+        // `(from, to)` across 2.25M positions, so the overflow is unreachable in
+        // play. Dropping it is the safe failure: reusing a code would make
         // `apply_move` play a *different* legal move than the one recorded, which
         // is a silently wrong game rather than a missing option.
+        //
+        // Split out of `resolved` so the policy is reachable from a test at all —
+        // no constructible position has seventeen chains between one pair of
+        // squares, so a mutation to this branch would otherwise survive unnoticed.
         if variant > MAX_VARIANT as usize {
             continue;
         }
@@ -332,6 +336,16 @@ fn resolved(board: &Board) -> Vec<(Move, Chain)> {
         ));
     }
     out
+}
+
+fn resolved(board: &Board) -> Vec<(Move, Chain)> {
+    // A drawn game is over, so it offers no moves — the same way a side with no
+    // pieces offers none. This is the single choke point for it, and it reads the
+    // counter directly rather than calling `result()`, which would recurse.
+    if board.no_progress >= NO_PROGRESS_LIMIT {
+        return Vec::new();
+    }
+    assign_variants(generate(board))
 }
 
 /// Every legal move in `board`, with its full path. Empty when terminal.
@@ -493,6 +507,9 @@ fn parse_notation(text: &str) -> Option<(u32, u32)> {
         if hops > 0 {
             return Some((first, last));
         }
+        // Equivalent-mutant note: `read_number` always consumes at least the digit
+        // at `scan`, so `cursor > scan` here and the `+ 1` never decides the max.
+        // It stays because it is what makes the loop's progress obvious locally.
         scan = cursor.max(scan + 1);
     }
     None
@@ -1310,5 +1327,181 @@ mod tests {
     fn ten_thousand_seeded_games_all_terminate() {
         let (draws, longest) = soak(10_000, 1_000);
         println!("10k soak: {draws} draws, longest game {longest} plies");
+    }
+
+    // ---- Gaps found by mutation testing (cargo-mutants, 2026-08-05) ----------
+    //
+    // Every test below closes a mutant that survived the suite as first written.
+    // They are grouped rather than scattered so the next mutation run has an
+    // obvious place to add to, and so it is clear these assert *reachability of
+    // existing behaviour*, not new behaviour.
+
+    #[test]
+    fn the_variant_overflow_policy_drops_rather_than_reuses_a_code() {
+        // Unreachable from any real position — Phase 0 measured 3 chains sharing a
+        // `(from, to)` pair against 16 available — so it is tested at the seam
+        // instead. Synthetic chains, all between the same two squares.
+        let chain = |from: u8, to: u8| Chain {
+            from,
+            to,
+            landings: vec![to],
+            captures: Vec::new(),
+            crowned: false,
+        };
+        let crowd: Vec<Chain> = (0..20).map(|_| chain(4, 9)).collect();
+        let resolved = assign_variants(crowd);
+        assert_eq!(
+            resolved.len(),
+            16,
+            "16 codes fit in four bits, the rest drop"
+        );
+        for (i, (mv, _)) in resolved.iter().enumerate() {
+            assert_eq!(mv.variant as usize, i, "variants are dense and ordered");
+            assert_eq!((mv.from, mv.to), (4, 9));
+        }
+        // A dropped chain is the safe failure; a *reused* code is the unsafe one,
+        // because `apply_move` would then play a different move than was recorded.
+        let codes: Vec<u16> = resolved.iter().map(|(m, _)| m.code()).collect();
+        let mut unique = codes.clone();
+        unique.sort_unstable();
+        unique.dedup();
+        assert_eq!(unique.len(), codes.len(), "no two moves share a wire code");
+
+        // Chains between *different* pairs never collide, so they all survive.
+        let spread = assign_variants((0..20).map(|i| chain(i, i + 1)).collect());
+        assert_eq!(spread.len(), 20);
+        assert!(spread.iter().all(|(m, _)| m.variant == 0));
+    }
+
+    #[test]
+    fn is_capture_distinguishes_a_jump_from_a_step() {
+        let jump = fixture(
+            Side::A,
+            &[(2, 1, Piece::man(Side::A)), (3, 2, Piece::man(Side::B))],
+        );
+        assert!(legal_chains(&jump).iter().all(Chain::is_capture));
+
+        let step = fixture(
+            Side::A,
+            &[(2, 1, Piece::man(Side::A)), (7, 6, Piece::man(Side::B))],
+        );
+        assert!(legal_chains(&step).iter().all(|c| !c.is_capture()));
+    }
+
+    #[test]
+    fn the_adversary_impl_delegates_to_the_free_functions() {
+        // The harness and the solver reach this crate through the trait, never
+        // through the free functions. A delegation that returned an empty Vec or a
+        // bare `None` would be invisible to every other test in this file.
+        let live = <Checkers as Adversary>::initial(0);
+        assert_eq!(
+            <Checkers as Adversary>::legal_moves(&live),
+            legal_moves(&live)
+        );
+        assert!(!<Checkers as Adversary>::legal_moves(&live).is_empty());
+        assert_eq!(<Checkers as Adversary>::result(&live), None);
+
+        let over = fixture(Side::A, &[(7, 6, Piece::man(Side::B))]);
+        assert_eq!(
+            <Checkers as Adversary>::result(&over),
+            Some(MatchResult::WinB),
+            "A has nothing to move, so A loses"
+        );
+        assert_eq!(<Checkers as Adversary>::side_to_move(&live), live.to_move);
+    }
+
+    #[test]
+    fn render_text_places_each_piece_on_its_own_square() {
+        // The opening is the readable fixture: a rendering that put the right
+        // glyphs on the wrong squares, or every glyph on every square, still
+        // "contains 11" — which is all the text-bridge test checked.
+        let lines: Vec<String> = <Checkers as Adversary>::render_text(&Board::start())
+            .lines()
+            .map(str::to_string)
+            .collect();
+        assert!(lines[0].contains(" 1:b"), "square 1 holds a black man");
+        assert!(lines[2].contains("11:b"), "square 11 holds a black man");
+        assert!(lines[3].contains("13:."), "square 13 is empty");
+        assert!(lines[4].contains("17:."), "square 17 is empty");
+        assert!(lines[7].contains("32:w"), "square 32 holds a white man");
+        assert!(
+            !lines[3].contains('b') && !lines[3].contains('w'),
+            "row 3 is bare"
+        );
+
+        // Kings render distinctly from men, or the board lies about the position.
+        let kings = fixture(
+            Side::B,
+            &[(0, 1, Piece::king(Side::A)), (7, 6, Piece::king(Side::B))],
+        );
+        let text = <Checkers as Adversary>::render_text(&kings);
+        assert!(text.contains(" 1:B"), "an uncrowned 'b' would be a lie");
+        assert!(text.contains("32:W"));
+        assert!(text.contains("To move: w"), "and it names the side to play");
+    }
+
+    #[test]
+    fn move_text_is_refused_unless_both_squares_are_on_the_board() {
+        // Both-out was already covered; one-out is the branch that distinguishes
+        // `||` from `&&`, and a coerced half-valid move is worse than a refusal.
+        let pos = <Checkers as Adversary>::initial(0);
+        assert_eq!(<Checkers as Adversary>::parse_move(&pos, "11-44"), None);
+        assert_eq!(<Checkers as Adversary>::parse_move(&pos, "44-11"), None);
+        assert_eq!(<Checkers as Adversary>::parse_move(&pos, "0-11"), None);
+    }
+
+    #[test]
+    fn malformed_notation_is_refused_without_panicking() {
+        // Hostile-ish input reaches `parse_move` straight from an LLM, so the
+        // scanner's edges are a robustness question, not a tidiness one: a
+        // trailing separator runs the lookahead off the end of the string, and a
+        // bare number with no separator at position zero is the one case that can
+        // walk the scan index backwards.
+        let pos = <Checkers as Adversary>::initial(0);
+        for bad in [
+            "11-",
+            "11x",
+            "-",
+            "x",
+            "11",
+            "9",
+            "",
+            "----",
+            "11--15",
+            "11-15-",
+            "999999999999999999999-1",
+            "11 15",
+        ] {
+            let _ = <Checkers as Adversary>::parse_move(&pos, bad);
+        }
+        // A bare number names no move, and a trailing separator does not complete
+        // one — neither may be coerced into a legal move.
+        assert_eq!(<Checkers as Adversary>::parse_move(&pos, "11"), None);
+        assert_eq!(<Checkers as Adversary>::parse_move(&pos, "11-"), None);
+        // ...but a well-formed move later in the same string is still found.
+        assert_eq!(
+            <Checkers as Adversary>::parse_move(&pos, "11- no wait, 11-15"),
+            Some(Move {
+                from: 10,
+                to: 14,
+                variant: 0
+            })
+        );
+    }
+
+    #[test]
+    fn move_generation_order_is_fixed() {
+        // `variant` is assigned by generation order, so the order is part of the
+        // wire contract, not an implementation detail — and Phases 7/8 have to
+        // reproduce recorded games move for move.
+        let opening: Vec<String> = legal_moves(&Board::start())
+            .into_iter()
+            .map(<Checkers as Adversary>::move_to_text)
+            .collect();
+        assert_eq!(
+            opening,
+            vec!["9-13", "9-14", "10-14", "10-15", "11-15", "11-16", "12-16"],
+            "squares ascending, and within a square the lower landing first"
+        );
     }
 }

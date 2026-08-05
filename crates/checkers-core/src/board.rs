@@ -115,6 +115,8 @@ pub fn forward(side: Side) -> isize {
 #[must_use]
 pub fn square_at(row: isize, col: isize) -> Option<u8> {
     let on_board = (0..SIZE as isize).contains(&row) && (0..SIZE as isize).contains(&col);
+    // Equivalent-mutant note: `row - col` has the same parity as `row + col`, so
+    // mutating the `+` here cannot change behaviour and no test can catch it.
     if !on_board || (row + col) % 2 == 0 {
         return None;
     }

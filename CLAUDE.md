@@ -47,6 +47,23 @@ at them and add what's specific to this repo. Git identity: chasemp
     narrowing the line above *requires*. Existing crates are grandfathered.
     (This bullet used to claim "`clippy::pedantic` clean" workspace-wide; nothing
     checked it and nothing ever had. It now says what is true.)
+- **Mutation-test the cores.** `cargo mutants --package <crate> -j 4` (installed;
+  run it with the pinned toolchain on PATH, as `tools/rust-gate.sh` does). Expected
+  when a determinism-critical crate goes green and **before calling its phase
+  done** — the game cores are rules engines, encoders and searches, which is
+  exactly where a green suite hides holes. Not a per-commit gate and **not in CI**:
+  a run is minutes, and it is an audit, not a check.
+  - Triage every survivor into **equivalent mutant** or **real gap**, and record
+    which in the plan. Equivalent mutants are common and unkillable — measured on
+    `checkers-core` 2026-08-05, 9 of 26 survivors were provably behaviour-preserving
+    (`(row + col) % 2` → `(row - col) % 2`, `a | b` → `a ^ b` on disjoint bit
+    fields, `2 * dr` → `2 / dr` for `dr = ±1`). Chasing the score rather than
+    reading the survivors buys assertions that pin implementation detail.
+  - The recurring real gaps here are worth knowing in advance: **a trait impl that
+    only delegates** (every test calls the free function, so `impl Adversary`'s
+    `legal_moves` can return `vec![]` undetected), **convenience API with no test
+    caller**, and **`render_text`** (asserting `contains("11")` passes even if every
+    glyph is wrong). See `plans/2026-08-04-checkers-game.md` → Phase 4/5 execution.
 - **Commit at every stable (green) point.** No batching phases. Each commit is a
   working checkpoint. Co-author trailer:
   `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`. Don't push/PR unless

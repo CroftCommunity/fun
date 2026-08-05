@@ -2109,6 +2109,62 @@ calibration, documentation-impact coverage) — to be run in a fresh context.
 **Confirmed ready:** yes, pending one new unreviewed ADVISORY question (the hybrid
 `llm`/`fallback` telemetry) and the two previously-confirmed PHASE-GATED items.
 
+### Mutation-testing audit of `checkers-core` — 2026-08-05
+
+Run after Phase 5 went green, at the owner's direction, and now a standing
+expectation (`fun/CLAUDE.md` → dev practices; the general principle is in
+coding-agents `CLAUDE.md` → Testing Principles). Tool: `cargo mutants --package
+checkers-core -j 4`, ~4 minutes.
+
+| | before | after |
+|---|---|---|
+| caught | 207 | **224** |
+| missed | 24 | **6** |
+| timeout (a hang is a kill) | 2 | 4 |
+| unviable (won't compile) | 28 | 29 |
+
+**All six remaining survivors are provably equivalent mutants — every killable
+mutant is killed.** Each is now annotated at its site so the next triage is
+instant rather than re-derived:
+
+- `square_at`: `(row + col) % 2` → `(row - col) % 2` — same parity.
+- `Move::code` (×2): `|` → `^` — the fields occupy disjoint bit ranges after
+  masking.
+- `extend_chain` (×2): `2 * dr` → `2 / dr` — `dr` is always ±1.
+- `parse_notation`: `cursor.max(scan + 1)` → `cursor.max(scan)` — `read_number`
+  always consumes a digit, so `cursor > scan` and the `+ 1` never decides the max.
+
+**Why this was worth doing: RED-first did not catch these.** Every phase here was
+written test-first and watched fail. RED proves a test fails *once*, against the
+one stub that happened to be written; it says nothing about the bug introduced
+three phases later. Eighteen real gaps survived that discipline, and they fell into
+three patterns worth recognising on sight:
+
+1. **A trait impl that only delegates.** `<Checkers as Adversary>::legal_moves`
+   could `return vec![]` and `::result` could `return None` with the whole suite
+   green, because every test called the free functions directly. The harness and
+   the solver reach this crate *only* through the trait — so the one path that
+   ships was the one path untested.
+2. **A weak assertion on rendered text.** `render_text`'s test asserted
+   `contains("11")`. Replacing the entire glyph function with `Default::default()`
+   — every piece rendered as `\0` — passed. So did `row * 4` → `row + 4`, which
+   puts every square in the wrong place.
+3. **A defensive branch no input can reach.** The `variant > MAX_VARIANT` overflow
+   guard is unreachable by construction (3 chains observed against 16 available),
+   so nothing could test it *in place*. Fixed by extracting `assign_variants` —
+   which is the general answer: if a branch cannot be reached from any real input,
+   move the policy somewhere a test can call it, and treat "unreachable" as a claim
+   that deserves its own test.
+
+Also closed: `Chain::is_capture` (added as convenience API, never called from a
+test), `parse_move`'s `||` range check (only the both-out-of-range case was
+covered, so `||` → `&&` survived), malformed-notation robustness (a trailing
+separator like `"11-"` ran the scanner's lookahead off the end of the string —
+a real panic, one mutation away), and move-generation order (which is part of the
+wire contract, because `variant` is assigned by it).
+
+Seven tests, +12 net over the phase. Suite still 0.66s in debug.
+
 ### Phase 5 execution — 2026-08-05
 
 **Landed:** the no-progress counter on `Board` and in `state_hash`, the draw at
