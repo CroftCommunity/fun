@@ -13,6 +13,7 @@ import { describe, expect, it } from "vitest";
 
 import { Drop4 } from "../src/games/drop4/drop4-wasm.js";
 import { drop4Oracle } from "../src/games/drop4/drop4-oracle.js";
+import type { GameOracle } from "../src/harness/game-oracle.js";
 import { EnginePlayer, runMatch, type MatchRecord } from "../src/harness/match-runner.js";
 import {
   blunderRate,
@@ -23,13 +24,13 @@ import {
 
 const WASM = "target/wasm32-unknown-unknown/release/drop4_wasm.wasm";
 
-async function loadReal(): Promise<Drop4> {
+async function loadReal(): Promise<GameOracle> {
   const bytes = await readFile(WASM);
   const orig = globalThis.fetch;
   globalThis.fetch = (async () =>
     new Response(bytes, { headers: { "content-type": "application/wasm" } })) as typeof fetch;
   try {
-    return await Drop4.load();
+    return drop4Oracle(await Drop4.load());
   } finally {
     globalThis.fetch = orig;
   }
@@ -68,7 +69,7 @@ describe("scorer: gradeSide over the real wasm oracle", () => {
     "grades a perfect endgame with a class floor of zero blunders, skipping early moves",
     async () => {
       const game = await loadReal();
-      const rec = await runMatch(drop4Oracle(game), new EnginePlayer(3), new EnginePlayer(3), 0n);
+      const rec = await runMatch(game, new EnginePlayer(3), new EnginePlayer(3), 0n);
       expect(rec.aborted).toBeFalsy();
 
       const verifier = await loadReal();
@@ -88,7 +89,7 @@ describe("scorer: gradeSide over the real wasm oracle", () => {
     "counts an oracle-identified bad move in the exact region as a blunder",
     async () => {
       const game = await loadReal();
-      const rec = await runMatch(drop4Oracle(game), new EnginePlayer(3), new EnginePlayer(3), 0n);
+      const rec = await runMatch(game, new EnginePlayer(3), new EnginePlayer(3), 0n);
 
       // Replay to the first exact-region A-turn position that offers a blunder,
       // then build a record whose last A move is that oracle-identified blunder.

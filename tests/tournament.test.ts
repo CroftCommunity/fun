@@ -15,6 +15,7 @@ import { Drop4 } from "../src/games/drop4/drop4-wasm.js";
 import { MockRuntime } from "../src/harness/ai-runtime.js";
 import { HybridPlayer } from "../src/harness/hybrid-player.js";
 import { drop4Oracle } from "../src/games/drop4/drop4-oracle.js";
+import type { GameOracle } from "../src/harness/game-oracle.js";
 import { EnginePlayer, HybridAiPlayer } from "../src/harness/match-runner.js";
 import { renderReport, runTournament } from "../src/harness/tournament.js";
 
@@ -26,13 +27,13 @@ function firstEnumMove(schema: unknown): number {
 
 const WASM = "target/wasm32-unknown-unknown/release/drop4_wasm.wasm";
 
-async function loadReal(): Promise<Drop4> {
+async function loadReal(): Promise<GameOracle> {
   const bytes = await readFile(WASM);
   const orig = globalThis.fetch;
   globalThis.fetch = (async () =>
     new Response(bytes, { headers: { "content-type": "application/wasm" } })) as typeof fetch;
   try {
-    return await Drop4.load();
+    return drop4Oracle(await Drop4.load());
   } finally {
     globalThis.fetch = orig;
   }
@@ -69,14 +70,13 @@ describe("tournament: full rig over the real wasm", () => {
       new HybridPlayer(new MockRuntime({ reply: (_p, o) => JSON.stringify({ move: firstEnumMove(o.schema), reason: "ok" }) })),
     );
     const legal = game.legalMoves();
-    const oracle = drop4Oracle(game);
-    expect(legal).toContain(await inBand.chooseMove(oracle));
+    expect(legal).toContain(await inBand.chooseMove(game));
 
     // Mock that returns garbage -> HybridPlayer falls back to the engine's top-of-band.
     const garbage = new HybridAiPlayer(
       new HybridPlayer(new MockRuntime({ reply: () => "not json at all" })),
     );
-    expect(await garbage.chooseMove(oracle)).toBe(bestCol);
+    expect(await garbage.chooseMove(game)).toBe(bestCol);
   });
 
   it(

@@ -2,15 +2,15 @@
 //! `a` vs `b`, **alternating who opens** each game so first-move advantage
 //! doesn't skew the numbers, and grades the player-under-test (`a`) whichever
 //! side it took that game. Aggregates into a `Report` mirroring the Rust
-//! `drop4-harness::Report`.
+//! `drop4-harness::Report`. Game-agnostic: it drives whatever [`GameOracle`]
+//! `gameFactory` hands it.
 //!
 //! This is the top of the pure/imperative split: it composes `runMatch`
 //! (imperative, drives the wasm) with `gradeSide` + `sumScorecards` (pure), over
-//! fresh `Drop4` instances from a `gameFactory` (a fresh binding to play, a fresh
+//! fresh oracles from a `gameFactory` (a fresh binding to play, a fresh
 //! one to grade — the verifier must replay from `initial`).
 
-import type { Drop4, SideCode } from "../games/drop4/drop4-wasm.js";
-import { drop4Oracle } from "../games/drop4/drop4-oracle.js";
+import type { GameOracle, SideCode } from "./game-oracle.js";
 import { runMatch, type MatchRecord, type Player } from "./match-runner.js";
 import { blunderRate, gradeSide, sumScorecards, type Scorecard } from "./scorer.js";
 
@@ -39,11 +39,11 @@ export interface Report {
 
 /**
  * Play `games` matches of `a` vs `b`, alternating the opening side each game, and
- * aggregate `a`'s scorecard. `gameFactory` returns a fresh `Drop4` per call (one
+ * aggregate `a`'s scorecard. `gameFactory` returns a fresh oracle per call (one
  * to play the match, one to grade it). Deterministic for deterministic players.
  */
 export async function runTournament(
-  gameFactory: () => Promise<Drop4>,
+  gameFactory: () => Promise<GameOracle>,
   a: Player,
   b: Player,
   opts: TournamentOptions,
@@ -56,9 +56,7 @@ export async function runTournament(
     const seed = opts.baseSeed + BigInt(i);
 
     const game = await gameFactory();
-    // Phase 2a seam: `runMatch` speaks GameOracle while this module still hands
-    // out `Drop4`. Removed in Phase 2b, when `gameFactory` becomes the port.
-    const record = await runMatch(drop4Oracle(game), playerA, playerB, seed);
+    const record = await runMatch(game, playerA, playerB, seed);
 
     const verifier = await gameFactory();
     const aSide: SideCode = aOpens ? 1 : 2; // the side `a` played this game
