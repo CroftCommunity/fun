@@ -65,6 +65,18 @@ export interface TutorReport {
 export type MoveStatus = "applied" | "illegal" | "over";
 const STATUS: Record<number, MoveStatus> = { 0: "applied", 1: "illegal", 2: "over" };
 
+/**
+ * The core returns `u32::MAX` for "no move — the match is over", but a wasm
+ * `i32` result arrives in JS **signed**, so that sentinel reads as `-1`. The
+ * unsigned coercion is what makes the comparison actually fire: a plain
+ * `col === 0xffff_ffff` is dead code, and the caller silently receives `-1`
+ * where the signature promises `null`.
+ */
+const MOVE_OVER = 0xffff_ffff;
+function decodeMoveCode(code: number): number | null {
+  return (code >>> 0) === MOVE_OVER ? null : code;
+}
+
 /** Opponent difficulty level codes. */
 export type Level = "Easy" | "Medium" | "Hard" | "Perfect";
 const LEVEL_CODE: Record<Level, number> = { Easy: 0, Medium: 1, Hard: 2, Perfect: 3 };
@@ -141,13 +153,11 @@ export class Drop4 {
    * {@link oracleBest}, which is exact but slow from the opening).
    */
   liveMove(level: Level): number | null {
-    const col = this.x.live_move(LEVEL_CODE[level]);
-    return col === 0xffff_ffff ? null : col;
+    return decodeMoveCode(this.x.live_move(LEVEL_CODE[level]));
   }
   /** The exact oracle's move at `level`, or null if the match is over. */
   oracleBest(level: Level): number | null {
-    const col = this.x.oracle_best(LEVEL_CODE[level]);
-    return col === 0xffff_ffff ? null : col;
+    return decodeMoveCode(this.x.oracle_best(LEVEL_CODE[level]));
   }
   /** The exact value of every legal move — the source for a difficulty band. */
   oracleMoveValues(): MoveValue[] {
