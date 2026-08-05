@@ -8,6 +8,7 @@ description = "Othello (Reversi) engine: a positional/mobility alpha-beta heuris
 
 [dependencies]
 adversary-core = { path = "../adversary-core" }
+adversary-solver = { path = "../adversary-solver" }
 othello-core = { path = "../othello-core" }
 rand.workspace = true
 rand_chacha.workspace = true

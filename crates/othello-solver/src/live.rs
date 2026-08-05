@@ -3,13 +3,17 @@
 //! from throwing the game at higher levels and adds beatable sloppiness at lower
 //! ones.
 //!
-//! The selector is the same ~30-line game-agnostic logic Drop 4 uses. Per the
-//! rule-of-three it is **duplicated** here (not extracted to a shared crate)
-//! rather than destabilise shipped Drop 4 for a second consumer; extraction to
-//! an `adversary-solver` crate is a named follow-on once a third game lands.
+//! The selector itself lives in `adversary-solver`, shared with every adversarial
+//! game on the shelf. It was duplicated here under the rule of three until
+//! checkers became the third consumer (2026-08-05); what stays behind is the part
+//! that is genuinely Othello's — `capped_class` and the per-level tuning.
 
 use othello_core::{legal_moves, result, Board, Move};
 use rand_chacha::rand_core::RngCore;
+
+// Re-exported so `othello_solver::live::*` keeps naming them: the wasm binding
+// imports them from here, and the extraction is not meant to be visible.
+pub use adversary_solver::{select_in_band, LiveBand};
 
 use crate::search::{move_values, Level};
 
@@ -21,20 +25,6 @@ use crate::search::{move_values, Level};
 #[must_use]
 pub fn capped_class(_v: i32) -> i32 {
     0
-}
-
-/// The two difficulty knobs per [`Level`]: search depth, a **class floor**
-/// (`preserve_class` = never admit a move that drops the win/draw/loss class →
-/// never throws the game, once the class is known in the exact endgame), and
-/// **within-class sloppiness** (percent chance of a random in-class move).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct LiveBand {
-    /// Bounded search depth (ignored in the exact endgame, which solves fully).
-    pub depth: u32,
-    /// Keep only moves in the best available class (never throw a known game).
-    pub preserve_class: bool,
-    /// Percent chance (0-100) of a random in-class move instead of the tightest.
-    pub sloppiness_pct: u32,
 }
 
 /// The [`LiveBand`] for a [`Level`]: Easy/Medium are shallow, sloppy and
@@ -64,37 +54,6 @@ pub fn live_band(level: Level) -> LiveBand {
             sloppiness_pct: 0,
         },
     }
-}
-
-/// Pick a move from a difficulty band over per-move `values`, bucketing each
-/// value's class with `class_of`. With `preserve_class`, only moves in the best
-/// available class are eligible (so the pick never drops the class). With
-/// probability `sloppiness_pct` a random eligible move is chosen; otherwise the
-/// tightest (highest-value) eligible move. `None` only if `values` is empty.
-///
-/// The shared selector for both the exact path (`class_of = i32::signum`) and
-/// the capped path (`class_of = capped_class`).
-pub fn select_in_band(
-    values: &[(Move, i32)],
-    class_of: impl Fn(i32) -> i32,
-    preserve_class: bool,
-    sloppiness_pct: u32,
-    rng: &mut impl RngCore,
-) -> Option<Move> {
-    let best = values.iter().map(|&(_, v)| v).max()?;
-    let best_class = class_of(best);
-    let eligible: Vec<(Move, i32)> = values
-        .iter()
-        .copied()
-        .filter(|&(_, v)| !preserve_class || class_of(v) == best_class)
-        .collect();
-    if eligible.is_empty() {
-        return None; // unreachable: the best move is always eligible
-    }
-    if sloppiness_pct > 0 && rng.next_u32() % 100 < sloppiness_pct {
-        return Some(eligible[(rng.next_u32() as usize) % eligible.len()].0);
-    }
-    eligible.iter().max_by_key(|&&(_, v)| v).map(|&(m, _)| m)
 }
 
 /// A live opponent move at `level`, or `None` if terminal. Selects within a

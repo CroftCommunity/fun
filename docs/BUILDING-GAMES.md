@@ -554,8 +554,10 @@ line, the result screen.
 **Write new (game-specific):** the Rust `<game>-{core,solver,wasm}` (rules +
 `Adversary` + `pond_outcome::Game`; the solver's Oracle + a class-preserving band
 + `tutor::assess`), and the front-end `<game>-{wasm.ts,outcome.ts,ts,howto.ts}`.
-Duplicate the ~30-line band selector into your solver until a **third** game
-exists (rule of three), then extract a shared `adversary-solver`.
+Use `crates/adversary-solver` for the band selector — it is generic over the move
+type, so a new game supplies only its own `capped_class` and per-level tuning. (It
+was duplicated per game until checkers became the third consumer; the extraction
+landed 2026-08-05.)
 
 **Honesty gate (non-negotiable):** if your game is **not solved from the opening**
 (Othello, chess), the Oracle is *heuristic early, exact only in the deep endgame*.
@@ -585,8 +587,8 @@ Reference implementations: **Drop 4** (solvable), **Othello** (heuristic Oracle)
   `pond_outcome::Game` (replay/verify); moves — passes included — serialize so
   `(seed, moves)` replays exactly (prefer a compact numeric code over a tagged enum).
 - [ ] Solver: an Oracle (exact where tractable, else heuristic depth-capped), a
-  difficulty `Level` → class-preserving **band** (`select_in_band`, duplicated per
-  rule-of-three), and `tutor::assess` → `{value, regret, quality, exact}` per move.
+  difficulty `Level` → class-preserving **band** (`adversary_solver::select_in_band`,
+  shared), and `tutor::assess` → `{value, regret, quality, exact}` per move.
 - [ ] wasm C-ABI adds the opponent (`live_move`) + tutor (`assess_json`/`tutor_json`,
   a superset of the shared `TutorFactMove`) + any special move export (e.g. `pass()`).
 - [ ] Opt-in tutor panel (off by default) with **honesty bound to `exact`**

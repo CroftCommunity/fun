@@ -348,6 +348,7 @@ name = "othello-solver"
 version = "0.0.0"
 dependencies = [
  "adversary-core",
+ "adversary-solver",
  "othello-core",
  "rand",
  "rand_chacha",

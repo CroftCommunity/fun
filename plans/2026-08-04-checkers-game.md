@@ -1231,11 +1231,11 @@ difference here is the Risk above having happened.
 **Goal:** Delete the second duplicate; close `TODO/othello.md`'s extraction thread.
 
 **Changes:**
-- [ ] `crates/othello-solver/src/live.rs` — delete the local `LiveBand` +
+- [x] `crates/othello-solver/src/live.rs` — delete the local `LiveBand` +
       `select_in_band`; import from `adversary_solver`.
-- [ ] `crates/othello-solver/Cargo.toml` — add the dependency.
-- [ ] `TODO/othello.md` — mark the extraction thread Done.
-- [ ] `docs/BUILDING-GAMES.md:544` — strike "Duplicate the ~30-line band selector
+- [x] `crates/othello-solver/Cargo.toml` — add the dependency.
+- [x] `TODO/othello.md` — mark the extraction thread Done.
+- [x] `docs/BUILDING-GAMES.md:544` — strike "Duplicate the ~30-line band selector
       into your solver until a **third** game exists (rule of three), then extract a
       shared `adversary-solver`" and replace it with "use
       `crates/adversary-solver`". *Moved here from Phase 6/17 by Pass 3: Phase 6
@@ -2108,6 +2108,46 @@ calibration, documentation-impact coverage) — to be run in a fresh context.
 
 **Confirmed ready:** yes, pending one new unreviewed ADVISORY question (the hybrid
 `llm`/`fallback` telemetry) and the two previously-confirmed PHASE-GATED items.
+
+### Phase 8 execution — 2026-08-05 (Part B's extraction complete)
+
+**Landed:** `othello-solver` on the shared selector; `TODO/othello.md`'s extraction
+thread closed; `docs/BUILDING-GAMES.md` corrected in both places it told a new game
+to duplicate the selector.
+
+**Both recorded baselines reproduce exactly** — the whole point of doing 7 and 8 as
+measured migrations rather than reviewed ones:
+
+| | recorded (Phase 3) | after both migrations |
+|---|---|---|
+| drop4 W-D-L · graded/skipped · o·p·b | 0-2-0 · 16/26 · 16·0·0 | **identical** |
+| othello W-D-L · graded/skipped · o·p·b | 1-0-1 · 10/50 · 10·0·0 | **identical** |
+
+Only wall-clock moved, which is not deterministic.
+
+**The grep gate as written would have failed on a technicality, and the gate was
+wrong, not the code.** Phase 8 specifies `grep -rn "fn select_in_band" crates/`
+returning exactly one hit. It returns **three** — because both games' band tests
+are *named* `select_in_band_...`, and the pattern has no word boundary. The
+definitions are what the gate meant, and `grep -rn "fn select_in_band(" crates/`
+returns exactly one (`adversary-solver`), as does `pub struct LiveBand`. Recorded
+rather than silently substituted, because a gate that matches test names would keep
+"failing" for every future reader who runs it as written.
+
+**Both games keep their band tests, deliberately.** They now exercise the shared
+selector through each game's re-export with that game's real move type — which is
+the integration half the generic tests in `adversary-solver` cannot cover, and
+which is exactly what Phases 7/8 nominate as their wiring test.
+
+**Follow-on found, not fixed (tracked, out of this phase's write-set).**
+`docs/HARNESS.md` calls the engine-vs-engine baselines regression anchors that
+"any change that touches a solver, a band, or the rig should reproduce **exactly**"
+— but there is no command that reproduces them. `harness:trial` runs
+Hybrid-vs-Engine, not Engine-vs-Engine, and `tests/tournament.test.ts` computes the
+numbers without printing them. Both phases here needed a hand-written throwaway
+probe to do the comparison the plan mandates, and Phases 9/10/15 will need it
+again. A ~40-line opt-in probe (or an env-gated print in the existing tournament
+test) would turn a documented instruction nobody can follow into one command.
 
 ### Phase 6 + 7 execution — 2026-08-05 (committed as one unit, per the Pass 3 ruling)
 

@@ -15,7 +15,8 @@ second adversarial game, reusing the harness + trait a first game established.
   so `?r=` is a plain number array. Replay round-trips forced passes.
 - [x] Phase 2 — `othello-solver`: positional/mobility heuristic + alpha-beta with
   an **exact endgame solve** (cross-checked vs an independent minimax); difficulty
-  band (class floor + sloppiness, selector duplicated per rule-of-three);
+  band (class floor + sloppiness; the selector was duplicated per rule-of-three,
+  and moved to `adversary-solver` 2026-08-05);
   engine-grounded tutor (`takes_corner` fact; capped mode never grades a Blunder).
 - [x] Phase 3 — `othello-wasm`: C-ABI (play/pass/board/tutor/outcome…); tutor view
   is a structural superset of the shared TS `TutorFactMove` so `buildBand` reuses
@@ -30,10 +31,12 @@ second adversarial game, reusing the harness + trait a first game established.
   and the docs (README, BUILDING-GAMES §10, AI-PLAYERS generality note).
 
 ## Open threads / later
-- [ ] **Extract a shared `adversary-solver` crate** once a **third** adversarial
-  game lands (rule of three). The band selector (`select_in_band` / `live_band` /
-  the class-floor × sloppiness knobs) is now duplicated in `drop4-solver` and
-  `othello-solver`; a third consumer justifies extraction.
+- [x] **Extract a shared `adversary-solver` crate** — DONE 2026-08-05, when
+  checkers became the third adversarial game. `select_in_band` + `LiveBand` moved
+  verbatim and generic over the move type; `capped_class` and `live_band` stayed
+  per-game (Othello's `capped_class` returns a constant `0`, Drop 4's classifies a
+  horizon class — they are not the same function). Both shipped games reproduce
+  their recorded harness baselines exactly across the migration.
 - [ ] **"Takes a corner" band enrichment** — the tutor carries `takesCorner`, but
   the hybrid band's `ideaFor` still degrades to quality-based ideas for the LLM.
   A game-supplied idea (or a shared "takes a corner" label) would sharpen the
