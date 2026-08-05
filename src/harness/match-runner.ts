@@ -1,27 +1,29 @@
 //! P6 Phase 1 — the browser match-runner and its `Player` port. This is the
-//! imperative half of the hexagonal harness: it drives a real `drop4-wasm`
-//! instance (the wasm decides legality, win/draw, and the oracle) so it can only
+//! imperative half of the hexagonal harness: it drives a real wasm-backed game
+//! (the wasm decides legality, win/draw, and the oracle) so it can only
 //! run in a page or a wasm-loaded test, never on the pure CI unit path alone.
 //!
 //! It mirrors the Rust `drop4-harness` shape (`Player` / `run_match` /
-//! `MatchRecord`) over the browser substrate: the shipped `Drop4` wasm and the
-//! shipped TS players. No player re-implements rules — `EnginePlayer` delegates
-//! to `Drop4.liveMove`, `GreedyPlayer` reads the wasm's always-exact one-ply
-//! facts (`assess`), and `RandomPlayer` picks a seeded-uniform legal move. The
+//! `MatchRecord`) over the browser substrate, but is **game-agnostic**: it drives
+//! a [`GameOracle`], so the same runner grades any shelf game that ships an
+//! adapter. No player re-implements rules — `EnginePlayer` delegates to
+//! `liveMove`, `GreedyPlayer` reads the wasm's always-exact one-ply facts
+//! (`assess`), and `RandomPlayer` picks a seeded-uniform legal move. The
 //! recorded `(seed, moves)` replays through a fresh binding to the same terminal
 //! hash — a verifiable match regardless of who chose each move.
 
-import type { Drop4, Level } from "../games/drop4/drop4-wasm.js";
+import type { GameOracle, OracleLevel } from "./game-oracle.js";
 import { buildBand, HybridPlayer, type BandMove } from "./hybrid-player.js";
 
 /**
- * A move-chooser over a live `Drop4`. Reads the game state (and, for the engine,
- * the wasm oracle) and returns a legal column, or `null` at a terminal position.
+ * A move-chooser over a live [`GameOracle`]. Reads the game state (and, for the
+ * engine, the wasm oracle) and returns a legal move code, or `null` at a terminal
+ * position.
  * A `Player` MUST NOT mutate the game — the runner owns applying the move.
  */
 export interface Player {
   readonly label: string;
-  chooseMove(game: Drop4): Promise<number | null>;
+  chooseMove(game: GameOracle): Promise<number | null>;
 }
 
 /** A finished (or aborted) match, verifiable by replaying `(seed, moves)`. */
@@ -43,12 +45,12 @@ export interface MatchRecord {
 /** The shipped classic opponent at a difficulty [`Level`] (delegates to the wasm). */
 export class EnginePlayer implements Player {
   readonly label: string;
-  readonly #level: Level;
-  constructor(level: Level) {
+  readonly #level: OracleLevel;
+  constructor(level: OracleLevel) {
     this.#level = level;
     this.label = `Engine(${level})`;
   }
-  chooseMove(game: Drop4): Promise<number | null> {
+  chooseMove(game: GameOracle): Promise<number | null> {
     return Promise.resolve(game.liveMove(this.#level));
   }
 }
@@ -73,24 +75,32 @@ export class RandomPlayer implements Player {
     this.#rand = mulberry32(seed);
     this.label = `Random(${seed})`;
   }
-  chooseMove(game: Drop4): Promise<number | null> {
+  chooseMove(game: GameOracle): Promise<number | null> {
     const legal = game.legalMoves();
     if (legal.length === 0) return Promise.resolve(null);
     return Promise.resolve(legal[Math.floor(this.#rand() * legal.length)]!);
   }
 }
 
-/** Column preference for the one-ply greedy tie-break (centre-out), per the Rust rig. */
-const CENTRE_OUT = [3, 2, 4, 1, 5, 0, 6];
-
 /**
  * One-ply tactical: take an immediate win, else block an immediate threat, else
- * prefer the centre. Uses the wasm's always-exact one-ply facts (`assess`), so it
- * re-implements no rules. Mirrors the Rust `Player::Greedy` baseline.
+ * fall back to a tie-break. Uses the wasm's always-exact one-ply facts
+ * (`assess`), so it re-implements no rules. Mirrors the Rust `Player::Greedy`.
+ *
+ * The tie-break is **injected** rather than baked in: it used to be a
+ * `CENTRE_OUT = [3, 2, 4, 1, 5, 0, 6]` constant, which is a fact about Drop 4's
+ * 7-wide board and has no meaning for a game whose moves are cell indices or
+ * packed jump chains. Callers that want it pass it; everyone else gets
+ * legal-move order.
  */
 export class GreedyPlayer implements Player {
   readonly label = "Greedy";
-  chooseMove(game: Drop4): Promise<number | null> {
+  readonly #preference: readonly number[];
+  /** @param preference Move codes to prefer, best first. Default: legal-move order. */
+  constructor(preference: readonly number[] = []) {
+    this.#preference = preference;
+  }
+  chooseMove(game: GameOracle): Promise<number | null> {
     const legal = game.legalMoves();
     if (legal.length === 0) return Promise.resolve(null);
     const facts = legal.map((col) => ({ col, a: game.assess(col) }));
@@ -98,8 +108,8 @@ export class GreedyPlayer implements Player {
     if (win) return Promise.resolve(win.col);
     const block = facts.find((f) => f.a?.blocksOpponentWin);
     if (block) return Promise.resolve(block.col);
-    const centre = CENTRE_OUT.find((c) => legal.includes(c));
-    return Promise.resolve(centre ?? legal[0]!);
+    const preferred = this.#preference.find((c) => legal.includes(c));
+    return Promise.resolve(preferred ?? legal[0]!);
   }
 }
 
@@ -110,7 +120,7 @@ export interface HybridPromptContext {
 }
 
 /** Builds the model prompt from the live game + the class-preserving band. */
-export type HybridPromptBuilder = (game: Drop4, band: readonly BandMove[]) => HybridPromptContext;
+export type HybridPromptBuilder = (game: GameOracle, band: readonly BandMove[]) => HybridPromptContext;
 
 /** Default Drop 4 prompt: the board text + the offered (safe) columns. */
 const defaultHybridPrompt: HybridPromptBuilder = (game, band) => ({
@@ -137,7 +147,7 @@ export class HybridAiPlayer implements Player {
     this.#buildPrompt = opts?.buildPrompt ?? defaultHybridPrompt;
     this.label = opts?.label ?? "Hybrid";
   }
-  async chooseMove(game: Drop4): Promise<number | null> {
+  async chooseMove(game: GameOracle): Promise<number | null> {
     const report = game.tutor();
     if (report.bestCol === null || report.moves.length === 0) return null;
     const band = buildBand(report.moves);
@@ -155,7 +165,12 @@ export class HybridAiPlayer implements Player {
  * rather than looping forever — the wasm rejects the illegal `play`, so the
  * runner detects the no-op and stops.
  */
-export async function runMatch(game: Drop4, a: Player, b: Player, seed: bigint): Promise<MatchRecord> {
+export async function runMatch(
+  game: GameOracle,
+  a: Player,
+  b: Player,
+  seed: bigint,
+): Promise<MatchRecord> {
   game.newGame(seed);
   const moves: number[] = [];
   const timings: number[] = [];

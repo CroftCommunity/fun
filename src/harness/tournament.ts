@@ -10,6 +10,7 @@
 //! one to grade — the verifier must replay from `initial`).
 
 import type { Drop4, SideCode } from "../games/drop4/drop4-wasm.js";
+import { drop4Oracle } from "../games/drop4/drop4-oracle.js";
 import { runMatch, type MatchRecord, type Player } from "./match-runner.js";
 import { blunderRate, gradeSide, sumScorecards, type Scorecard } from "./scorer.js";
 
@@ -55,7 +56,9 @@ export async function runTournament(
     const seed = opts.baseSeed + BigInt(i);
 
     const game = await gameFactory();
-    const record = await runMatch(game, playerA, playerB, seed);
+    // Phase 2a seam: `runMatch` speaks GameOracle while this module still hands
+    // out `Drop4`. Removed in Phase 2b, when `gameFactory` becomes the port.
+    const record = await runMatch(drop4Oracle(game), playerA, playerB, seed);
 
     const verifier = await gameFactory();
     const aSide: SideCode = aOpens ? 1 : 2; // the side `a` played this game

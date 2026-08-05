@@ -6,9 +6,10 @@
 //!
 //! This entry never ships in `app.js` — it exists only for the off-CI trial.
 
-import { Drop4, type Level } from "../games/drop4/drop4-wasm.js";
+import { Drop4 } from "../games/drop4/drop4-wasm.js";
 import { WebLLMRuntime } from "./ai-runtime.js";
 import { HybridPlayer } from "./hybrid-player.js";
+import type { OracleLevel } from "./game-oracle.js";
 import { EnginePlayer, HybridAiPlayer } from "./match-runner.js";
 import { renderReport, runTournament, type Report } from "./tournament.js";
 
@@ -19,7 +20,7 @@ export interface TrialOptions {
   /** Number of games. */
   readonly games: number;
   /** Engine difficulty for the opponent under measurement (default `Perfect`). */
-  readonly level?: Level;
+  readonly level?: OracleLevel;
   /** Base seed. */
   readonly baseSeed?: number;
   /** Model load-progress text (weights download / shader compile). */
@@ -42,7 +43,7 @@ export interface TrialResult {
 export async function runHybridTrial(opts: TrialOptions): Promise<TrialResult> {
   const runtime = new WebLLMRuntime({ model: opts.model, onProgress: opts.onProgress });
   const hybrid = new HybridAiPlayer(new HybridPlayer(runtime), { label: `Hybrid(${opts.model})` });
-  const engine = new EnginePlayer(opts.level ?? "Perfect");
+  const engine = new EnginePlayer(opts.level ?? 3);
 
   const report = await runTournament(() => Drop4.load("/drop4.wasm"), hybrid, engine, {
     games: opts.games,

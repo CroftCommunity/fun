@@ -14,6 +14,7 @@ import { describe, expect, it } from "vitest";
 import { Drop4 } from "../src/games/drop4/drop4-wasm.js";
 import { MockRuntime } from "../src/harness/ai-runtime.js";
 import { HybridPlayer } from "../src/harness/hybrid-player.js";
+import { drop4Oracle } from "../src/games/drop4/drop4-oracle.js";
 import { EnginePlayer, HybridAiPlayer } from "../src/harness/match-runner.js";
 import { renderReport, runTournament } from "../src/harness/tournament.js";
 
@@ -41,7 +42,7 @@ describe("tournament: full rig over the real wasm", () => {
   it(
     "engine-vs-engine aggregates a consistent Report with a zero-blunder class floor",
     async () => {
-      const report = await runTournament(loadReal, new EnginePlayer("Perfect"), new EnginePlayer("Perfect"), {
+      const report = await runTournament(loadReal, new EnginePlayer(3), new EnginePlayer(3), {
         games: 2,
         baseSeed: 0n,
       });
@@ -68,13 +69,14 @@ describe("tournament: full rig over the real wasm", () => {
       new HybridPlayer(new MockRuntime({ reply: (_p, o) => JSON.stringify({ move: firstEnumMove(o.schema), reason: "ok" }) })),
     );
     const legal = game.legalMoves();
-    expect(legal).toContain(await inBand.chooseMove(game));
+    const oracle = drop4Oracle(game);
+    expect(legal).toContain(await inBand.chooseMove(oracle));
 
     // Mock that returns garbage -> HybridPlayer falls back to the engine's top-of-band.
     const garbage = new HybridAiPlayer(
       new HybridPlayer(new MockRuntime({ reply: () => "not json at all" })),
     );
-    expect(await garbage.chooseMove(game)).toBe(bestCol);
+    expect(await garbage.chooseMove(oracle)).toBe(bestCol);
   });
 
   it(
@@ -84,7 +86,7 @@ describe("tournament: full rig over the real wasm", () => {
         new HybridPlayer(new MockRuntime({ reply: (_p, o) => JSON.stringify({ move: firstEnumMove(o.schema), reason: "best" }) })),
       );
       const seenGames: number[] = [];
-      const report = await runTournament(loadReal, hybrid, new EnginePlayer("Perfect"), {
+      const report = await runTournament(loadReal, hybrid, new EnginePlayer(3), {
         games: 2,
         baseSeed: 0n,
         onGame: (i) => seenGames.push(i), // the trial's per-game progress hook
