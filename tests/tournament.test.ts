@@ -16,7 +16,7 @@ import { MockRuntime } from "../src/harness/ai-runtime.js";
 import { HybridPlayer } from "../src/harness/hybrid-player.js";
 import { drop4Oracle } from "../src/games/drop4/drop4-oracle.js";
 import type { GameOracle } from "../src/harness/game-oracle.js";
-import { EnginePlayer, HybridAiPlayer } from "../src/harness/match-runner.js";
+import { EnginePlayer, HybridAiPlayer, runMatch, type Player } from "../src/harness/match-runner.js";
 import { renderReport, runTournament } from "../src/harness/tournament.js";
 
 /** The first legal move the schema offers (a MockRuntime that always picks in-band). */
@@ -116,6 +116,7 @@ describe("tournament: full rig over the real wasm", () => {
         skippedEarly: 41,
         moveMsTotal: 1234,
       },
+      abortedGames: 0,
     };
     const text = renderReport(report);
     // The Pass 3 honesty gate: "0 blunders" is never shown without its denominator.
@@ -125,4 +126,53 @@ describe("tournament: full rig over the real wasm", () => {
     expect(text).toMatch(/blunder/i);
     expect(text).toMatch(/graded|scored/i);
   });
+});
+
+// P8 Phase 2c — abort observability.
+//
+// `runMatch` collapsed two distinct failures into one boolean, and `Report`
+// carried no abort count at all: a tournament where every match died on move one
+// rendered a perfectly well-formed `W-D-L 0-0-0 / graded moves 0` report,
+// indistinguishable from a legitimately short run. Tolerable while the rig graded
+// one game whose only abort mode was a bug; not tolerable once Othello adds an
+// expected-shaped abort (a forced pass) and checkers adds a third (a packed code
+// that fails to round-trip). Same honesty argument that already put
+// scoredMoves/skippedEarly next to blunders, one level up — at the games
+// denominator.
+describe("abort observability", () => {
+  it("distinguishes a null move from a rejected move, and counts clean games as zero", async () => {
+    const nullMover: Player = { label: "nullMover", chooseMove: async () => null };
+    const rejected: Player = { label: "rejected", chooseMove: async () => 99 };
+
+    const a = await runMatch(await loadReal(), nullMover, new EnginePlayer(0), 1n);
+    expect(a.aborted).toBe(true);
+    expect(a.abortReason).toBe("nullMove");
+
+    const b = await runMatch(await loadReal(), rejected, new EnginePlayer(0), 1n);
+    expect(b.aborted).toBe(true);
+    expect(b.abortReason).toBe("rejectedMove");
+
+    const clean = await runMatch(await loadReal(), new EnginePlayer(0), new EnginePlayer(0), 1n);
+    expect(clean.aborted).toBeFalsy();
+    expect(clean.abortReason).toBe("none");
+  }, 60_000);
+
+  it("reports abortedGames, and renders the count even when it is zero", async () => {
+    const report = await runTournament(loadReal, new EnginePlayer(0), new EnginePlayer(0), {
+      games: 2,
+      baseSeed: 0n,
+    });
+    expect(report.abortedGames).toBe(0);
+    // A line that only appears on failure is a line nobody trusts is there.
+    expect(renderReport(report)).toMatch(/aborted/i);
+  }, 120_000);
+
+  it("counts a tournament of aborted games", async () => {
+    const nullMover: Player = { label: "nullMover", chooseMove: async () => null };
+    const report = await runTournament(loadReal, nullMover, nullMover, {
+      games: 2,
+      baseSeed: 0n,
+    });
+    expect(report.abortedGames).toBe(2);
+  }, 60_000);
 });

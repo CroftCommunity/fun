@@ -26,6 +26,17 @@ export interface Player {
   chooseMove(game: GameOracle): Promise<number | null>;
 }
 
+/**
+ * Why a match stopped early. `"none"` means it reached a terminal result.
+ *
+ * A single `aborted` boolean was enough while the rig graded one game, whose only
+ * abort mode was a bug. It is not enough now: `"nullMove"` is a player declining
+ * to move (for Othello, an unhandled forced pass) while `"rejectedMove"` is the
+ * core refusing a code (for checkers, a packed code that failed to round-trip).
+ * Those are different defects and a boolean cannot tell them apart.
+ */
+export type AbortReason = "none" | "nullMove" | "rejectedMove";
+
 /** A finished (or aborted) match, verifiable by replaying `(seed, moves)`. */
 export interface MatchRecord {
   /** The start seed passed to `newGame`. */
@@ -38,6 +49,8 @@ export interface MatchRecord {
   readonly hash: string;
   /** True if the match ended on an illegal or `null` move, not a terminal result. */
   readonly aborted: boolean;
+  /** Which of the two abort paths ended it — `"none"` when it ran to a result. */
+  readonly abortReason: AbortReason;
   /** Per-move wall time in ms (engine µs vs LLM ~ms/s — the cost metric). */
   readonly timings: number[];
 }
@@ -174,7 +187,7 @@ export async function runMatch(
   game.newGame(seed);
   const moves: number[] = [];
   const timings: number[] = [];
-  let aborted = false;
+  let abortReason: AbortReason = "none";
 
   while (game.board().result === -1) {
     const player = game.board().toMove === 1 ? a : b;
@@ -182,11 +195,11 @@ export async function runMatch(
     const col = await player.chooseMove(game);
     const elapsed = performance.now() - start;
     if (col === null) {
-      aborted = true;
+      abortReason = "nullMove";
       break;
     }
     if (game.play(col) !== "applied") {
-      aborted = true;
+      abortReason = "rejectedMove";
       break;
     }
     moves.push(col);
@@ -198,7 +211,8 @@ export async function runMatch(
     moves,
     result: game.board().result,
     hash: game.currentHash(),
-    aborted,
+    aborted: abortReason !== "none",
+    abortReason,
     timings,
   };
 }
