@@ -7,10 +7,10 @@
 //! = 16, a strict superset of the Rust rig's ≤12; both provably exact). Every
 //! other move is counted `skippedEarly`, never silently blended into the quality
 //! numbers. `foldVerdict` is a pure fold; `gradeSide` replays a `MatchRecord`
-//! through a fresh `Drop4` and folds the oracle's verdict at each of a side's
+//! through a fresh oracle and folds its verdict at each of a side's
 //! moves.
 
-import type { Drop4, MoveQuality, SideCode } from "../games/drop4/drop4-wasm.js";
+import type { GameOracle, MoveQuality, SideCode } from "./game-oracle.js";
 import type { MatchRecord } from "./match-runner.js";
 
 /** A player's aggregate result over a set of games (mirrors the Rust `Scorecard`). */
@@ -89,7 +89,7 @@ function foldResult(card: Scorecard, result: MatchRecord["result"], side: SideCo
  * `side`'s pre-move positions. Returns a one-game `Scorecard` (`games: 1`).
  * Aborted records (no terminal result) contribute no win/draw/loss.
  */
-export function gradeSide(record: MatchRecord, verifier: Drop4, side: SideCode): Scorecard {
+export function gradeSide(record: MatchRecord, verifier: GameOracle, side: SideCode): Scorecard {
   let card: Scorecard = { ...emptyScorecard(), games: 1 };
   if (!record.aborted && record.result !== -1) {
     card = foldResult(card, record.result, side);

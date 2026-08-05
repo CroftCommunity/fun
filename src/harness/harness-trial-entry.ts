@@ -6,6 +6,7 @@
 //!
 //! This entry never ships in `app.js` — it exists only for the off-CI trial.
 
+import { drop4Oracle } from "../games/drop4/drop4-oracle.js";
 import { Drop4 } from "../games/drop4/drop4-wasm.js";
 import { WebLLMRuntime } from "./ai-runtime.js";
 import { HybridPlayer } from "./hybrid-player.js";
@@ -45,7 +46,11 @@ export async function runHybridTrial(opts: TrialOptions): Promise<TrialResult> {
   const hybrid = new HybridAiPlayer(new HybridPlayer(runtime), { label: `Hybrid(${opts.model})` });
   const engine = new EnginePlayer(opts.level ?? 3);
 
-  const report = await runTournament(() => Drop4.load("/drop4.wasm"), hybrid, engine, {
+  const report = await runTournament(
+    async () => drop4Oracle(await Drop4.load("/drop4.wasm")),
+    hybrid,
+    engine,
+    {
     games: opts.games,
     baseSeed: BigInt(opts.baseSeed ?? 0),
     onGame: (i, _record, card) => {
