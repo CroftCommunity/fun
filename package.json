@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "description": "fun.croft.ing — the Croft games pond. A determinism-first, local-first game shelf (Rust cores compiled to wasm, vanilla TS slide-out drawer UI).",
+  "engines": {
+    "node": ">=22 <23"
+  },
   "scripts": {
     "build": "node build.mjs",
     "build:wasm": "bash tools/build-wasm.sh",
