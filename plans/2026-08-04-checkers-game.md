@@ -237,6 +237,55 @@ in wasm — for a case the no-progress counter already terminates.
 - `package.json:7-20` — `preunit` runs `build:wasm` before `unit`, so any wasm a
   vitest test loads must be in `tools/build-wasm.sh`'s `-p` list or CI fails.
 
+**Phase 0 discovery — measured 2026-08-05 (throwaway spike, deleted):**
+
+- **D2 — the `(from, to, variant)` encoding is CONFIRMED, with room to spare.**
+  Over **2,252,803 positions** (3k random games from the opening plus king-heavy
+  endgames seeded with 2-4 kings and 0-2 men per side):
+  - **max landings in any legal chain: 5** (crowning-terminates bounds it),
+  - **max distinct chains sharing one `(from, to)`: 3**,
+  - distribution: 11,785,946 pairs with 1 chain, **39** with 2, **2** with 3.
+
+  So `variant` needs **2 bits**; the plan allocates 4 (16 values). The re-plan
+  trigger was "if the observed variant count exceeds 15" — observed 3. Phase 4
+  proceeds as designed. The worst case is also exactly the ambiguity option (C)
+  was rejected for: a cyclic king capture where `from == to`.
+
+- **D4 — the draw rule behaves, and the fixture is built.** Asserted: a two-king
+  shuffle is **live at ply 79 and Draw at exactly ply 80**; a capture resets the
+  counter to 0; a **man advance** resets it; a **king move does not** (40 -> 41).
+  All four become Phase 5 tests. *Fixture note worth keeping: the first attempt
+  shuffled randomly and kept ending decisively, because the kings drift adjacent
+  and mandatory capture then wins on the spot. The fixture must pin the kings in
+  opposite corners and oscillate deterministically.*
+
+- **D3 — the Othello endgame shape DOES NOT TRANSFER. This re-plans Phase 9.**
+  Naive alpha-beta full solve, node cap 20M, 8 random positions per bucket:
+
+  | total pieces | solved, no TT | solved, with TT | median ms (TT) |
+  |---|---|---|---|
+  | 4 | 1/8 | **8/8** | 1202 |
+  | 6 | 0/8 | 1/8 | 1287 |
+  | 8 | 0/8 | 0/8 | — |
+  | 10 | 0/8 | 0/8 | — |
+
+  Two findings, and the second is the structural one:
+
+  1. **A transposition table is mandatory, not an optimization** — 1/8 to 8/8 at
+     four pieces. It must be keyed on `(board, side_to_move, no_progress)`; the
+     counter belongs in the key for the same reason it belongs in `state_hash`.
+  2. **Piece count does not bound the checkers game tree.** Othello's does: every
+     move fills a square, so depth <= empties and "<=10 empties" is a hard, small
+     bound. Checkers positions *cycle* — kings shuffle — so the tree is bounded by
+     the **80-ply no-progress horizon**, not by material. A four-piece endgame is
+     a ~3.8M-node search. `TRACTABLE_PIECES`, as a piece-count switch into a full
+     solve, is the wrong knob: at 1.2s **native** for the smallest meaningful
+     endgame it is already outside a tap budget, and wasm is slower.
+
+  *The measurement is if anything optimistic:* the probe's TT stores fail-soft
+  alpha values without depth/bound flags, which is unsound as a real TT and can
+  only make it look faster than a correct one.
+
 **Added in Pass 3 — read firsthand:**
 
 - **The two games' `Level` unions are not the same type.** `drop4-wasm.ts:69` is
@@ -507,7 +556,7 @@ surface, and the draw rule's shape.
   - **Disposition:** `keep-as-fixture` — the table becomes the doc comment on
     `GameOracle` and the basis for `docs/HARNESS.md`'s rewrite.
 
-- [ ] **D2: How many bits does the jump-chain `variant` field actually need?**
+- [x] **D2: How many bits does the jump-chain `variant` field actually need?** — **RESOLVED 2026-08-05: 2 bits needed, 4 allocated.** Max 3 chains per `(from,to)` over 2.25M positions; max 5 landings. Encoding confirmed, Phase 4 proceeds. Numbers in Verified Assumptions.
   - **Probe:** A throwaway Rust spike (a `#[test]` in a scratch module, or a
     `examples/` binary) that generates English-draughts positions by random legal
     play over ≥10k games, and for every position records (a) the maximum number of
@@ -523,8 +572,8 @@ surface, and the draw rule's shape.
     spike is deleted. The *generator* may be promoted to a Phase 4 test helper if
     it proves useful (record the decision if so).
 
-- [ ] **D3: At what piece count does an exact endgame solve fit a tap budget in
-      wasm?**
+- [x] **D3: At what piece count does an exact endgame solve fit a tap budget in
+      wasm?** — **RESOLVED 2026-08-05, and the answer invalidates the question.** No piece count does: the tree is bounded by the 80-ply no-progress horizon, not by material, so a 4-piece endgame is ~3.8M nodes / 1.2s native even with a transposition table (which is itself mandatory). See Verified Assumptions and the new BLOCKING open question.
   - **Probe:** Measure the alpha-beta full-solve wall clock at N total pieces for
     N = 4, 6, 8, 10, first natively (`cargo test --release`) and then **in the
     browser** through a scratch wasm export — the Othello D2 lesson is that native
@@ -534,7 +583,7 @@ surface, and the draw rule's shape.
   - **Disposition:** `throwaway` (the scratch export is removed; the constant and
     its measurement land in `checkers-solver`).
 
-- [ ] **D4: Build the draw-rule fixture.** *(The rule itself is decided — 40 moves
+- [x] **D4: Build the draw-rule fixture.** — **RESOLVED 2026-08-05.** Live at ply 79, Draw at exactly 80; capture and man-advance reset, king move does not. Four Phase 5 tests. *(The rule itself is decided — 40 moves
       per side with no capture and no man advanced, counter in the hash. This task
       is confirmation, not a choice.)*
   - **Probe:** Construct a concrete position and move sequence that reaches the
@@ -567,9 +616,10 @@ not just the chosen value. Phase 11 explicitly anticipates contradicting D3's nu
 in wasm; diagnosing that contradiction against a recorded measurement is a minute's
 work, against a remembered one it is a re-run of the whole probe.
 
-**Done when:** D2, D3 and D4 have recorded findings (**D1 and D5 are closed** —
-resolved during planning, see their entries), and the `variant` bit width is
-confirmed by measurement rather than assumption.
+**Done when:** ~~D2, D3 and D4 have recorded findings~~ — **PHASE 0 COMPLETE
+(2026-08-05).** All five probes closed. The `variant` bit width is confirmed by
+measurement (2 needed, 4 allocated). D3 returned a finding that re-plans Phase 9
+rather than a constant, which is what discovery is for.
 
 **Remaining work is the three probes that need code to run:** D2 (a throwaway
 draughts move generator to count chain variants), D3 (in-wasm endgame timing), D4
@@ -1616,8 +1666,37 @@ Documentation Impact entry ticked against the actual file, per this phase's Risk
   *Phase 0 D4 is now a confirmation task — build the fixture that reaches the draw —
   rather than an open choice. Phases 4, 5 and 9 build on this.*
 
+- `[RECOMMENDED: BLOCKING — new, from D3 2026-08-05]` **What does `exact` mean for
+  checkers, given a full endgame solve is unaffordable?**
+  The plan assumed Othello's shape: heuristic early, **exact below a piece-count
+  threshold**. D3 shows that does not transfer — Othello's empties strictly
+  decrease so depth <= empties, while checkers positions cycle and the tree is
+  bounded by the 80-ply draw horizon instead. A 4-piece solve is 1.2s native with
+  a TT; there is no piece count at which a full solve fits a tap budget.
+
+  This matters beyond the tutor: `scorer.ts` grades a move **iff** the wasm reports
+  `exact`, so if checkers is never exact, `scoredMoves` is always 0 and **Phase 15
+  cannot grade checkers at all** — which is most of Part A's payoff for this game.
+
+  **Recommendation: redefine `exact` as "the search returned a *proven terminal*
+  score", not "the position was fully solved".** If alpha-beta reaches a real
+  win/loss/draw terminal within its horizon, the win/draw/loss **class** is proven
+  regardless of depth — and the class is exactly what the honesty flag licenses a
+  claim about ("that threw the game"). A heuristic cutoff yields `exact: false` and
+  the tutor hedges, as now. This keeps the honesty semantics the plan already
+  specifies, keeps `scoredMoves > 0` reachable, and costs no full solve.
+
+  *Alternatives, both worse: (a) drop the exact claim entirely — honest but it
+  makes checkers ungradeable and silently guts Phase 15; (b) ship a precomputed
+  endgame database — what real engines do, but a new artifact to build, embed and
+  size-budget, well beyond this plan.*
+
+  **Blocking because Phases 9, 10 and 15 all build on it**, and because it changes
+  what `TRACTABLE_PIECES` is (a search-budget knob, not an exactness threshold).
+
 - `[CONFIRMED: PHASE-GATED (Phase 4)]` **Is the 14-bit `(from, to, variant)`
-  packing sufficient?** Phase 0 D2 measures the real maximum number of distinct
+  packing sufficient?** *(D2 resolved this 2026-08-05: max 3 variants observed
+  against 16 available. Phase 4 proceeds as designed.)* Phase 0 D2 measures the real maximum number of distinct
   chains sharing a `(from, to)` pair; if it exceeds 15, the encoding must widen or
   change shape. *Measurable before Phase 4 starts, so it gates that phase rather
   than blocking the plan. If D2 comes back over budget, Phase 4 is re-planned before
