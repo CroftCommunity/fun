@@ -35,6 +35,14 @@ export interface Report {
   readonly matchup: string;
   /** Player `a`'s aggregate scorecard across all games (both sides it played). */
   readonly card: Scorecard;
+  /**
+   * How many of `games` ended on an abort rather than a terminal result. Surfaced
+   * next to the games count for the same reason `scoredMoves` sits next to
+   * `blunders`: a headline must not be readable without its denominator. A
+   * tournament where every match aborted on move one otherwise renders as a
+   * clean `W-D-L 0-0-0`.
+   */
+  readonly abortedGames: number;
 }
 
 /**
@@ -49,6 +57,7 @@ export async function runTournament(
   opts: TournamentOptions,
 ): Promise<Report> {
   const cards: Scorecard[] = [];
+  let abortedGames = 0;
   for (let i = 0; i < opts.games; i++) {
     const aOpens = i % 2 === 0;
     const playerA = aOpens ? a : b;
@@ -61,10 +70,11 @@ export async function runTournament(
     const verifier = await gameFactory();
     const aSide: SideCode = aOpens ? 1 : 2; // the side `a` played this game
     const card = gradeSide(record, verifier, aSide);
+    if (record.aborted) abortedGames += 1;
     cards.push(card);
     opts.onGame?.(i, record, card);
   }
-  return { matchup: `${a.label} vs ${b.label}`, card: sumScorecards(cards) };
+  return { matchup: `${a.label} vs ${b.label}`, card: sumScorecards(cards), abortedGames };
 }
 
 /**
@@ -80,7 +90,7 @@ export function renderReport(r: Report): string {
   const msPerScored = c.scoredMoves === 0 ? 0 : c.moveMsTotal / c.scoredMoves;
   return [
     r.matchup,
-    `  games ${c.games} | W-D-L ${c.wins}-${c.draws}-${c.losses} (win rate ${winRate.toFixed(0)}%)`,
+    `  games ${c.games} (${r.abortedGames} aborted) | W-D-L ${c.wins}-${c.draws}-${c.losses} (win rate ${winRate.toFixed(0)}%)`,
     `  graded moves ${c.scoredMoves} (skipped ${c.skippedEarly} early) | optimal ${c.optimal} · preserving ${c.preserving} · blunders ${c.blunders} (blunder rate ${(100 * blunderRate(c)).toFixed(1)}%)`,
     `  cost ${c.moveMsTotal.toFixed(0)}ms total (${msPerScored.toFixed(1)}ms/graded move)`,
   ].join("\n");

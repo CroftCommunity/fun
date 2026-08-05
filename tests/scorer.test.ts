@@ -120,6 +120,7 @@ describe("scorer: gradeSide over the real wasm oracle", () => {
         result: -1,
         hash: "",
         aborted: true,
+        abortReason: "rejectedMove",
         timings: [],
       };
       const verifier = await loadReal();
