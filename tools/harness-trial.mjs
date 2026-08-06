@@ -9,6 +9,7 @@
 //   npm run harness:trial
 //   HARNESS_TRIAL_GAMES=4 HARNESS_TRIAL_MODEL=Qwen2.5-0.5B-Instruct-q4f16_1-MLC npm run harness:trial
 //   HARNESS_TRIAL_GAME=othello npm run harness:trial   (default: drop4)
+//   HARNESS_TRIAL_GAME=checkers npm run harness:trial
 //
 // A persistent cache dir means the model downloads only once.
 import { spawn } from "node:child_process";

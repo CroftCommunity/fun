@@ -961,7 +961,7 @@ wiring test exercises the full path to the rendered text.
       floor holds for a second game), `scoredMoves > 0` (the exact endgame is
       actually reached, so the floor is not vacuous), and `abortedGames === 0`
       (Phase 2c's counter — the games actually finished).
-- [ ] `src/harness/harness-trial-entry.ts` + `tools/harness-trial.mjs` — a game
+- [x] `src/harness/harness-trial-entry.ts` + `tools/harness-trial.mjs` — a game
       parameter (`HARNESS_TRIAL_GAME=drop4|othello`), defaulting to `drop4` so the
       existing invocation is unchanged.
 - [ ] `docs/HARNESS.md` + `TODO/harness.md` — rewritten from Drop-4-specific to the
@@ -1637,8 +1637,8 @@ phase.
 **Goal:** The third game grades through the rig — the payoff for Part A.
 
 **Changes:**
-- [ ] `src/games/checkers/checkers-oracle.ts` (new) — the `GameOracle` adapter.
-- [ ] `tests/checkers-harness.test.ts` (new) — RED first: a top-level self-play
+- [x] `src/games/checkers/checkers-oracle.ts` (new) — the `GameOracle` adapter.
+- [x] `tests/checkers-harness.test.ts` (new) — RED first: a top-level self-play
       checkers tournament over the real wasm, with the same three non-vacuity
       assertions Phase 3 established — `blunders === 0`, `scoredMoves > 0`,
       `abortedGames === 0`. The third one carries the most weight here: checkers is
@@ -2137,6 +2137,57 @@ calibration, documentation-impact coverage) — to be run in a fresh context.
 
 **Confirmed ready:** yes, pending one new unreviewed ADVISORY question (the hybrid
 `llm`/`fallback` telemetry) and the two previously-confirmed PHASE-GATED items.
+
+### Phase 15 execution — 2026-08-06
+
+**Landed:** `src/games/checkers/checkers-oracle.ts`, `tests/checkers-harness.test.ts`
+(3 tests), and `HARNESS_TRIAL_GAME=checkers` in the trial entry + driver. The
+generality claim's gate is met: `git diff --stat src/harness/{match-runner,scorer,
+tournament}.ts` is **empty** for this phase.
+
+**The finding: the hardest move space needed the *least* adaptation.** Othello's
+adapter had to invent a wire code for the pass, route `play(64)` to `pass()`, and
+translate a string sentinel — three normalizations, each of which could have been
+got wrong. Checkers' adapter is a pass-through: there is no pass in draughts, so
+every member is either forwarding or a two-field projection. A move being a
+*path* turns out to be invisible to the rig, because the port asks only that a
+move be a compact numeric code, and a packed `(from, to, variant)` is one exactly
+as a column is.
+
+**The `u8` risk is asserted at the port, not inferred from types.** The first
+test checks that every opening move code is `> 255` and that the port plays one —
+so if any layer narrowed a code it would fail here rather than surfacing as a
+mystery abort.
+
+**Phase 15's own warning was right, and the assertions were chosen accordingly.**
+`blunders === 0` is near-vacuous for checkers (a `Blunder` needs *both* the played
+and the best move proven), so the load-bearing assertions are `scoredMoves > 0`
+and `abortedGames === 0`. Both hold.
+
+**All three trials run for real, and the Reports differ in the ways the games
+differ** (hybrid Qwen2.5-0.5B vs Engine level 3, 2 games each, system Chrome on a
+real Metal adapter):
+
+| game | W-D-L | graded | skipped | blunders | ms/graded move | aborted |
+|---|---|---|---|---|---|---|
+| drop4 | 0-1-1 | 8 | 20 | 0 | 820 | 0 |
+| othello | 0-0-1 | 5 | 40 | 0 | 3619 | **1** |
+| checkers | 0-1-1 | 6 | 99 | 0 | 4412 | 0 |
+
+Checkers' graded fraction is **6 of 105** side-A plies (5.7%), thinner than the
+~11% Phase 11 measured over both sides of engine self-play — consistent, since the
+hybrid's own moves are the graded ones and the games ended before the endgame
+where proofs concentrate. The lever, if it needs one, is still what Phase 11
+named: a larger budget for the *tutor* path, not for the opponent.
+
+**An unrelated observation the phase's own instrumentation surfaced, recorded not
+fixed:** the **Othello** trial reported **1 of 2 games aborted**. Nothing in this
+phase touches Othello, and the checkers and drop4 runs abort zero — so this is a
+live Othello-hybrid defect (most likely the hybrid path meeting a forced-pass
+position, where the band is empty and the player has nothing to return). It is
+exactly the class of failure Phase 2c's abort counter was added to make visible,
+and it was invisible before. Filed for the backlog in Phase 17 rather than fixed
+here: it is outside this phase's write-set and belongs with Othello.
 
 ### Phase 14 execution — 2026-08-06
 

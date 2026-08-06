@@ -6,6 +6,8 @@
 //!
 //! This entry never ships in `app.js` — it exists only for the off-CI trial.
 
+import { checkersOracle } from "../games/checkers/checkers-oracle.js";
+import { Checkers } from "../games/checkers/checkers-wasm.js";
 import { drop4Oracle } from "../games/drop4/drop4-oracle.js";
 import { Drop4 } from "../games/drop4/drop4-wasm.js";
 import { othelloOracle } from "../games/othello/othello-oracle.js";
@@ -17,7 +19,7 @@ import { EnginePlayer, HybridAiPlayer, type HybridPromptBuilder } from "./match-
 import { renderReport, runTournament, type Report } from "./tournament.js";
 
 /** Which shelf game the trial grades. */
-export type TrialGame = "drop4" | "othello";
+export type TrialGame = "drop4" | "othello" | "checkers";
 
 /**
  * Per-game wiring for the trial: how to load the game as a `GameOracle`, and a
@@ -47,6 +49,19 @@ const GAMES: Record<TrialGame, {
       prompt: `Board:\n${game.renderText()}\nOffered cells (0-63): ${band
         .map((b) => `${b.col} (${b.idea})`)
         .join(", ")}\nPick one cell and say why in one short sentence.`,
+    }),
+  },
+  checkers: {
+    load: async () => checkersOracle(await Checkers.load("/checkers.wasm")),
+    prompt: (game, band) => ({
+      system:
+        "You are a checkers (English draughts) opponent. Choose exactly one of the offered move codes and reply as JSON {move, reason}.",
+      // The offered codes are packed `(from, to, variant)` integers, not squares.
+      // The model is never asked to decode them — it picks one of the numbers it
+      // is given, which is what makes the band's never-throw guarantee hold.
+      prompt: `Board:\n${game.renderText()}\nOffered moves (opaque codes): ${band
+        .map((b) => `${b.col} (${b.idea})`)
+        .join(", ")}\nPick one code and say why in one short sentence.`,
     }),
   },
 };
