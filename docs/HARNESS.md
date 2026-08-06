@@ -10,9 +10,12 @@ repeatable numbers measured against the *actual shipped browser players*.
 **It is game-agnostic** (P8 Phase 1–3). The rig drives a `GameOracle` — a
 ten-member port in `src/harness/game-oracle.ts` — so it grades any game that
 ships an adapter. Drop 4, Othello and checkers all do
-(`src/games/<game>/<game>-oracle.ts`); adding one is one file, not a rig change —
+(`src/games/<game>/<game>-oracle.ts`), and **the rig itself never changes** —
 checkers proved that literally, landing with an empty `git diff` on
-`match-runner`/`scorer`/`tournament` (P8 Phase 15). Two contracts every adapter meets:
+`match-runner`/`scorer`/`tournament` (P8 Phase 15). Plugging a game in is four
+files, none of them the rig; see "Adding your game to the rig" below.
+
+Two contracts every adapter meets:
 
 - **A move is the game's compact numeric wire code** — Drop 4 a column, Othello
   `0..63` to place and `64` to pass, checkers a packed `(from, to, variant)`.
@@ -26,6 +29,62 @@ checkers proved that literally, landing with an empty `git diff` on
 
 The full AI rationale lives in `docs/AI-PLAYERS.md`; this doc is the harness's
 own guide.
+
+## Adding your game to the rig
+
+Four files. The rig is not one of them — if you find yourself editing
+`match-runner`/`scorer`/`tournament`, the port is wrong and that is the finding.
+
+**1. The adapter — `src/games/<game>/<game>-oracle.ts`.** Implements the ten
+members of `GameOracle` over your typed wasm wrapper. Copy the closest of the two
+worked examples:
+
+- `checkers-oracle.ts` — a **pure pass-through**, and the shortest. Start here if
+  your wrapper already returns numeric move codes and has no special move.
+- `othello-oracle.ts` — the one with **work to do**: a pass is a string sentinel
+  from `liveMove`, a separate `pass()` method, and a wire code invented for it.
+  Start here if your game has any move that is not "place/move a thing".
+
+  > **The trap that cost a day.** `liveMove` returning `null` means *the match is
+  > over* — never "I have no move to offer". `runMatch` treats a `null` from a
+  > live position as an **abort**, so an adapter that maps Othello's `"pass"` to
+  > `null` silently records aborted matches, grades nothing, and still renders a
+  > well-formed zero-blunder Report. The same shape bit the shared *players* in
+  > August 2026 and cost 1 game in 2 on the Othello trial.
+
+**2. The trial wiring — `src/harness/harness-trial-entry.ts`.** Add your game to
+the `GAMES` map: how to load it as a `GameOracle`, and a **prompt that describes
+your game** to the model. Without this, `HARNESS_TRIAL_GAME=<game>` does not
+exist. The prompt matters: a trial that offers Othello cells to a model told it is
+playing Connect Four measures the wrong thing.
+
+**3. The CI proof — `tests/<game>-harness.test.ts`.** A self-play tournament over
+the real wasm with the three non-vacuity assertions every game asserts:
+
+```ts
+expect(report.card.blunders).toBe(0);          // the class floor holds
+expect(report.card.scoredMoves).toBeGreaterThan(0);  // ...and is not vacuous
+expect(report.abortedGames).toBe(0);           // ...and the games finished
+```
+
+All three, always. The first alone passes for a tournament that graded nothing;
+the first two pass for one where every match aborted on move one.
+
+**4. The regression anchor — `tests/baselines.test.ts`.** Add your game to
+`ANCHORS` with the Report it must reproduce exactly, measured once and recorded
+with the date. Skipping this is easy and quiet: checkers shipped without one, so a
+solver change would have moved its numbers with nothing to notice. Wall-clock is
+deliberately not asserted.
+
+**Optional but cheap: `idea`.** If your tutor facts carry a one-ply fact worth
+narrating (Othello's "takes a corner", checkers' capture count), set `idea` on the
+tutor moves your adapter returns — otherwise the hybrid opponent narrates your
+game with the two Drop-4 booleans and everything reads "stays safe". See
+`docs/BUILDING-GAMES.md` §10.
+
+**What "done" looks like:** `HARNESS_TRIAL_GAME=<game> npm run harness:trial`
+prints a real Report, `npm run unit` grades your game on CI, and
+`npm run baselines` reproduces your recorded numbers.
 
 ## What it measures
 

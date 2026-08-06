@@ -636,7 +636,13 @@ Reference implementations: **Drop 4** (solvable), **Othello** (heuristic Oracle)
   `hybrid-player.ts`/`ai-runtime.ts` **unchanged**; engine stays the default and
   falls back on any LLM failure. Validated by an `ai:trial`-style run, not CI.
 - [ ] CI proves the hybrid plug-in with a `MockRuntime` (no GPU on the gate).
-- [ ] (Optional) measure the shipped players with the browser harness
+- [ ] Plug into the AI-scoring harness — **four files, none of them the rig**:
+  the adapter (`src/games/<game>/<game>-oracle.ts`), the trial wiring
+  (`harness-trial-entry.ts`), the CI proof (`tests/<game>-harness.test.ts`, with
+  all three non-vacuity assertions), and a recorded baseline
+  (`tests/baselines.test.ts`). Step-by-step in `docs/HARNESS.md` → "Adding your
+  game to the rig". Not optional: it is how "the AI never blunders" stops being a
+  claim and starts being a number
   (`docs/HARNESS.md`).
 
 See §10's "Recipe — adding an AI opponent to a new adversarial game" for what

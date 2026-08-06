@@ -4,6 +4,10 @@ A determinism-first, local-first **game shelf**. Each game is built so its outco
 replaying its move list against a state hash, it runs offline with no account and no server, and it is
 a portable artifact addressable at its own URL.
 
+> **Returning after a gap?** `docs/STATE-OF-PLAY.md` is a dated snapshot of what
+> is true, what was learned the hard way, and what is worth doing next — written
+> to be read in one sitting, pointing at the living docs for detail.
+
 ## The shelf and the drawer
 
 `fun.croft.ing` presents games in a **slide-out drawer** over a persistent play area; each game can
