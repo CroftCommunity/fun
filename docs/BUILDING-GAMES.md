@@ -537,6 +537,11 @@ you write vs what you reuse:
 - `crates/adversary-core` — the `Adversary` trait your core implements.
 - `src/harness/ai-runtime.ts` — the `AIRuntime` port + `MockRuntime` (CI) +
   `WebLLMRuntime` (embedded, same-origin, lazy).
+- `src/harness/banter.ts` — `speak(decision, cannedLine)`, the shared filter on
+  what the persona may say. The band constrains the model's *move*; this
+  constrains its *claims*, rejecting any line with a coordinate or a board noun.
+  Do not re-implement it per game (all three did, identically, and all three let
+  a small model narrate the board wrongly).
 - `src/harness/hybrid-player.ts` — `buildBand(tutorFacts)` + `HybridPlayer.pick`.
   Your wasm tutor view must be a **structural superset of `TutorFactMove`**
   (`col`, `value`, `quality`, `immediateWin`, `blocksOpponentWin`) — carry the

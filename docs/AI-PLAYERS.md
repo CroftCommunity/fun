@@ -336,6 +336,26 @@ The seam a new game plugs into: the `Adversary` trait + `pond_outcome::Game` (th
 core), the TS harness (the opponent), and the tutor's `{quality, exact}` interface
 (the coaching) — not shared game logic.
 
+**The persona is constrained too, not just the move.** `HybridPlayer` keeps the
+model inside the class-preserving band, so it cannot play a losing move; nothing
+kept it from *saying* a losing thing. Measured on a 0.5B model: "capturing the
+opponent's king with a move to 8", with no king on the board. The move was safe
+and the sentence was false, which is the cosmetic cousin of an over-claimed
+`exact` — the player is being told something untrue about their own game by
+something that sounds authoritative. `src/harness/banter.ts` is the shared filter
+(all three games use it): a line is rejected if it is empty, an essay, or makes a
+**checkable positional claim** — any digit, or a board noun like row / column /
+square / position / diagonal. Verbs are deliberately allowed, because "I'll be
+king soon" is character and banning it leaves a persona nothing to say.
+
+It is a filter, not a fact-checker: verifying a claim would mean parsing the
+sentence against the board, per game, which is far more machinery than a quip is
+worth. Measured after the change on `/checkers/` over 8 replies, 2 lines were the
+model's own and 6 fell back to the canned line — and two of the two that passed
+were vague ("Capture on move to win the game"). The filter removes the class of
+line that asserts a false board fact; it does not make a small model articulate.
+That is the honest boundary of what this buys.
+
 **Checkers (`/checkers/`, `crates/checkers-*`, landed 2026-08-06) is the third,
 and it is the one that tested the abstractions rather than repeating them.** Drop
 4's move is a column and Othello's is a cell: both a single `u8` naming a

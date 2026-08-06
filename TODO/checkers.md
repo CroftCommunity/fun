@@ -61,11 +61,11 @@ plan. This file is the running worklist of what was deferred.
   means the anchor has stopped measuring anything.
 - [ ] **Persona roster** — Alder is inlined in `checkers.ts`, as Chip is in Drop 4
   and Rowan in Othello. Part of the cross-game roster thread (`TODO/README.md`).
-- [ ] **Banter can assert false board facts.** Observed in the Phase 14 WebGPU run:
-  a 0.5B model ignored "never analysis" and described a capture that did not
-  exist. The move stays engine-safe (the band decides), and `exact` is not
-  involved, so this is cosmetic — but the fix belongs in the **shared** banter
-  filter (`cleanBanter` checks only length, in every game), not per game.
+- [x] ~~**Banter can assert false board facts.**~~ **Done 2026-08-06** in the
+  shared `src/harness/banter.ts`, as the entry said it should be. Re-measured on a
+  real WebGPU run: 2 of 8 lines the model's own, 6 canned, and no line claiming a
+  square or a position. Two that passed are vague rather than false ("Capture on
+  move to win the game") — the rule targets checkable claims, not incoherence.
 - [ ] **Board orientation is fixed** — row 0 (Side A / Black) at the top, both for
   the human and the engine. Conventional digital checkers puts your own men at the
   bottom. A view flip is a second geometry to keep correct; deliberately not done.

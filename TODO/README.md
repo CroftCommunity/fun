@@ -82,11 +82,12 @@ any of these.
   prints the split (only when there is a second path to report). It immediately
   corrected a hand-counted number: checkers' P8 Phase 14 run was read as 50%
   fallback from the *banter*, and the real move-level rate is 0%.
-- **The banter filter only checks length** — `cleanBanter` is copied per game and
-  rejects a line only if it is empty or over 90 characters, so a small model can
-  and does assert false board facts (observed in checkers' P8 Phase 14 WebGPU
-  run). The move is always engine-safe, so this is honesty polish, not safety; if
-  it is worth fixing it belongs in one shared place (`checkers.md`).
+- ~~**The banter filter only checks length**~~ — **done 2026-08-06.**
+  `src/harness/banter.ts` is now the one filter, used by all three games: a line
+  is rejected if it is empty, an essay, or makes a checkable positional claim
+  (any digit, or row/column/square/position/diagonal). Measured after: 2 of 8
+  lines were the model's own, 6 canned. It removes the false-board-fact class; it
+  does not make a small model articulate, and is not a fact-checker.
 - **Self-host the LLM model weights + `model_lib` WASM** — for true offline + to
   close the CDN-served-code vector; ~1 GB, needs a binary host (`drop4.md`,
   `harness.md`).

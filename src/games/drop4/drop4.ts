@@ -13,6 +13,7 @@
 import type { GameModule } from "../../contract.js";
 import { Drop4, type BoardView, type Level, type MoveAssessment } from "./drop4-wasm.js";
 import { WebLLMRuntime } from "../../harness/ai-runtime.js";
+import { speak } from "../../harness/banter.js";
 import { buildBand, HybridPlayer, type BandMove } from "../../harness/hybrid-player.js";
 import {
   decodeRecord,
@@ -418,11 +419,6 @@ export function drop4Module(): GameModule {
 
   // Keep the model's quip only if it's usable (short, non-empty); else fall back
   // to the in-character line for the situation — the small model whiffs often.
-  const cleanBanter = (reason: string, sit: Situation): string => {
-    const r = reason.trim();
-    return r.length > 0 && r.length <= 90 ? r : FALLBACK_LINE[sit];
-  };
-
   const hybridMove = async (): Promise<number | null> => {
     if (!game) return null;
     try {
@@ -441,7 +437,11 @@ export function drop4Module(): GameModule {
       const decision = await hybrid.pick(band, { prompt: hybridPrompt(game, band, sit), system: HYBRID_SYSTEM });
       // The LLM's line if usable, else the in-character fallback (also used when
       // the hybrid itself fell back to the engine move — source === "fallback").
-      aiSay = decision.source === "llm" ? cleanBanter(decision.reason, sit) : FALLBACK_LINE[sit];
+      // The shared filter decides whether the model's own words are fit to
+      // speak (`src/harness/banter.ts`): a line that claims something about the
+      // board can be false, and a persona that sounds authoritative and is wrong
+      // is the cosmetic cousin of an over-claimed `exact`.
+      aiSay = speak(decision, FALLBACK_LINE[sit]).line;
       return decision.move;
     } catch {
       aiSay = null;

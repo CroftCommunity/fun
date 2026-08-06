@@ -16,6 +16,7 @@
 
 import type { GameModule } from "../../contract.js";
 import { WebLLMRuntime } from "../../harness/ai-runtime.js";
+import { speak } from "../../harness/banter.js";
 import { buildBand, HybridPlayer, type BandMove } from "../../harness/hybrid-player.js";
 import {
   checkersLevel,
@@ -455,11 +456,6 @@ export function checkersModule(): GameModule {
     ].join("\n");
   };
 
-  const cleanBanter = (reason: string, sit: Situation): string => {
-    const r = reason.trim();
-    return r.length > 0 && r.length <= 90 ? r : FALLBACK_LINE[sit];
-  };
-
   // The hybrid opponent's move: the engine builds a never-throw band, the LLM
   // picks within it and quips; any failure falls back to the engine. Reuses the
   // shipped buildBand/HybridPlayer unchanged (the generality proof, third game).
@@ -482,7 +478,11 @@ export function checkersModule(): GameModule {
         prompt: hybridPrompt(game, band, sit),
         system: HYBRID_SYSTEM,
       });
-      aiSay = decision.source === "llm" ? cleanBanter(decision.reason, sit) : FALLBACK_LINE[sit];
+      // The shared filter decides whether the model's own words are fit to
+      // speak (`src/harness/banter.ts`): a line that claims something about the
+      // board can be false, and a persona that sounds authoritative and is wrong
+      // is the cosmetic cousin of an over-claimed `exact`.
+      aiSay = speak(decision, FALLBACK_LINE[sit]).line;
       return decision.move;
     } catch {
       aiSay = null;
