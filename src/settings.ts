@@ -254,6 +254,7 @@ export function resolveCheckersLevel(stored: string | null, fallback: CheckersLe
 export type CheckersSide = "black" | "white";
 const CHECKERS_SIDES: readonly CheckersSide[] = ["black", "white"];
 const CHECKERS_SIDE_KEY = "fun-checkers-side";
+const CHECKERS_TUTOR_KEY = "fun-checkers-tutor";
 
 /** Pure resolver: a stored known side wins; otherwise the default. */
 export function resolveCheckersSide(stored: string | null, fallback: CheckersSide): CheckersSide {
@@ -289,6 +290,15 @@ export function setCheckersSide(side: CheckersSide): void {
   } catch {
     // Storage denied (private mode): the choice still applies for the session.
   }
+}
+
+/** Show the engine-grounded tutor panel in checkers — **off by default**
+ *  (opt-in, matching Othello and Drop 4). */
+export function checkersTutorEnabled(): boolean {
+  return read(CHECKERS_TUTOR_KEY, false);
+}
+export function setCheckersTutor(on: boolean): void {
+  write(CHECKERS_TUTOR_KEY, on);
 }
 
 // ---------- bubble aim-control tuning (device-dependent; see the "Aim &

@@ -170,3 +170,76 @@ test("the board fits a narrow phone viewport (no horizontal overflow)", async ({
   });
   expect(fits).toBe(true);
 });
+
+// ---------- Phase 14: the tutor panel + the experimental hybrid opponent ----------
+
+// The tutor panel is opt-in (off by default); enable it via its setting.
+async function enableTutor(page: Page): Promise<void> {
+  await page.addInitScript(() => localStorage.setItem("fun-checkers-tutor", "on"));
+}
+
+test("the tutor panel is off by default and appears when enabled in settings", async ({ page }) => {
+  await page.goto("/checkers/?seed=7");
+  await ready(page);
+  await expect(page.locator(".checkers-tutor")).toHaveCount(0);
+  await page.locator(".checkers-settings summary").click();
+  await page.locator(".checkers-set-tutor").check();
+  await expect(page.locator(".checkers-tutor-explain")).toBeVisible();
+});
+
+test("'Explain my options' lists band moves, each naming a move and an idea", async ({ page }) => {
+  await enableTutor(page);
+  await page.goto("/checkers/?seed=7");
+  await ready(page);
+  await page.locator(".checkers-tutor-explain").click();
+  const items = page.locator(".checkers-tutor-options li");
+  expect(await items.count()).toBeGreaterThanOrEqual(2);
+  // A checkers move is a path, so the label names both ends.
+  await expect(items.first()).toContainText(/row \d, column \d to row \d, column \d/i);
+  // The opening is not proven, and the panel says so rather than implying certainty.
+  await expect(page.locator(".checkers-tutor-note")).toContainText(/not yet certain/i);
+});
+
+test("the experimental local-AI opponent is hidden with no real WebGPU adapter", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "gpu", {
+      configurable: true,
+      value: { requestAdapter: async () => null },
+    });
+  });
+  await page.goto("/checkers/?seed=7");
+  await ready(page);
+  await page.locator(".checkers-settings summary").click();
+  await expect(page.locator(".checkers-ai-toggle-input")).toHaveCount(0);
+});
+
+test("the experimental local-AI toggle appears with a real adapter and discloses the download", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "gpu", {
+      configurable: true,
+      value: { requestAdapter: async () => ({ isFallbackAdapter: false }) },
+    });
+  });
+  await page.goto("/checkers/?seed=7");
+  await ready(page);
+  await page.locator(".checkers-settings summary").click();
+  const toggle = page.locator(".checkers-ai-toggle-input");
+  await expect(toggle).toHaveCount(1);
+  await toggle.check();
+  await expect(page.locator(".checkers-ai-disclosure")).toContainText(/download|one[- ]time|GB|MB/i);
+});
+
+test("the board has no axe violations in light and dark", async ({ page }) => {
+  await enableTutor(page);
+  for (const theme of ["light", "dark"] as const) {
+    await page.addInitScript((t) => localStorage.setItem("fun-theme", t), theme);
+    await page.goto("/checkers/?seed=7");
+    await ready(page);
+    const results = await new AxeBuilder({ page }).include(".checkers-game").analyze();
+    expect(results.violations, `axe violations in ${theme}`).toEqual([]);
+  }
+});

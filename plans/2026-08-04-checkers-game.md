@@ -1583,11 +1583,11 @@ and a phone viewport (the tap-first + centred-play-surface standards,
 **unchanged**.
 
 **Changes:**
-- [ ] `src/games/checkers/checkers.ts` — the opt-in tutor panel (off by default),
+- [x] `src/games/checkers/checkers.ts` — the opt-in tutor panel (off by default),
       wording **bound to `exact`** ("that threw the game" only when exact, "looks
       risky" otherwise), and the WebGPU-gated experimental opponent toggle with the
       up-front download disclosure. A persona in the Chip/Rowan line.
-- [ ] `tests/checkers-tutor.test.ts` (new) — RED first, naming both sides of the
+- [x] `tests/checkers-tutor.test.ts` (new) — RED first, naming both sides of the
       honesty branch (Pass 3): a capped fact (`exact === false`) **never** produces
       "threw the game" and instead hedges, **and** an exact fact of the same quality
       **does** produce the definite wording. A one-sided test passes trivially
@@ -2137,6 +2137,56 @@ calibration, documentation-impact coverage) — to be run in a fresh context.
 
 **Confirmed ready:** yes, pending one new unreviewed ADVISORY question (the hybrid
 `llm`/`fallback` telemetry) and the two previously-confirmed PHASE-GATED items.
+
+### Phase 14 execution — 2026-08-06
+
+**Landed:** the opt-in tutor panel and the WebGPU-gated experimental opponent
+(persona **Alder** 🌲, the Chip/Rowan line) in `src/games/checkers/checkers.ts`,
+plus `tests/checkers-tutor.test.ts` (7 tests) and five more e2e cases. 26 e2e
+tests green on chromium and mobile-webkit.
+
+**`hybrid-player.ts` and `ai-runtime.ts` were not touched** — the reuse claim the
+phase makes is true, and `git diff` on both is empty. The structural-superset risk
+the plan named is now checked where it bites: a test asserts over the **real wasm**
+that every tutor fact carries `immediateWin === false` and
+`blocksOpponentWin === false`, that `buildBand` over those facts is non-empty and
+blunder-free, and that a band move's `col` is a **playable move code** — which is
+the packed path code surviving into the band unchanged.
+
+**The honesty branch is asserted from both sides**, per Pass 3: an `exact` blunder
+produces "threw the game"; a horizon judgement of the *same quality* hedges to
+"looks risky" and never claims the class drop. Forcing the exact branch on
+(`if (true)`) reddens the hedging test, so the fixture bites. `exact` is read
+**per move** (`verdict.exact`), not from the report — checkers has no
+position-level tractability switch, so the report is `exact` only when every move
+in it was proven, and using it for one move's wording would understate certainty.
+
+**The real-WebGPU run happened, and the fallback count the plan asked for is:**
+`llm=4, fallback=4` over 8 replies (system Chrome, `--enable-unsafe-webgpu`,
+Qwen2.5-0.5B-Instruct-q4f16_1-MLC, `/checkers/?seed=7`, first legal move each
+turn). So a 0.5B model picks in-band about half the time here and degrades to the
+engine's top-of-band the rest — exactly the guarantee the design claims, and a
+useful number to have: `HybridAiPlayer.chooseMove` discards `decision.source`, so
+the rig could not have told us. Source was inferred from whether the spoken line
+is one of the four `FALLBACK_LINE` constants verbatim; that is a proxy, not the
+flag itself.
+
+**An honesty wrinkle worth recording, not silently patching.** The prompt says
+"never analysis", and the small model ignores it: two of the four LLM lines were
+pseudo-analysis that misdescribed the board ("capturing the opponent's king with a
+move to 8" — there was no king). The *move* is engine-safe either way, and the
+`exact` flag is not involved, so this is not the defect the phase's validation
+guards against. But a persona asserting false board facts is a shared-harness
+concern (Othello's `cleanBanter` filters only on length, identically), and the
+cheap local fix — rejecting any line that mentions squares or captures — would
+have discarded three of the four model lines and left the persona mostly
+fallback. Left as observed; a shared filter is the right place for it if it is
+worth doing at all.
+
+**The e2e now checks axe in light *and* dark with the tutor panel enabled**,
+closing the "axe clean in both themes" half of Phase 13's validation that the
+single-theme check left open. The panel had to land first for that to mean
+anything.
 
 ### Phase 13 execution — 2026-08-06
 

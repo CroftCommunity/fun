@@ -15,11 +15,15 @@
 //! top, which is where Side A (black) starts and away from which it advances.
 
 import type { GameModule } from "../../contract.js";
+import { WebLLMRuntime } from "../../harness/ai-runtime.js";
+import { buildBand, HybridPlayer, type BandMove } from "../../harness/hybrid-player.js";
 import {
   checkersLevel,
   checkersSide,
+  checkersTutorEnabled,
   setCheckersLevel,
   setCheckersSide,
+  setCheckersTutor,
   type CheckersLevel,
   type CheckersSide,
 } from "../../settings.js";
@@ -30,7 +34,13 @@ import {
   type CheckersEnvelope,
   type VerifyResult,
 } from "./checkers-outcome.js";
-import { Checkers, type BoardView, type LegalMove, type SideCode } from "./checkers-wasm.js";
+import {
+  Checkers,
+  type BoardView,
+  type LegalMove,
+  type MoveAssessment,
+  type SideCode,
+} from "./checkers-wasm.js";
 
 declare global {
   interface Window {
@@ -40,11 +50,24 @@ declare global {
       refresh: () => void;
       seed: bigint;
     };
+    /** Test seam: override the local-AI model id (a smaller/faster model). */
+    __CHECKERS_AI_MODEL?: string;
   }
 }
 
 /** The opponent's identity — honest: it is the shelf's engine. */
 const OPPONENT = { name: "The Engine", avatar: "🤖" } as const;
+
+const LOCAL_AI = "local-ai";
+/** A small, fast model — the local-AI opponent is UX (banter), not strength. */
+const LOCAL_AI_MODEL = "Qwen2.5-0.5B-Instruct-q4f16_1-MLC";
+/** The experimental local-AI opponent's persona (the Chip/Rowan line). */
+const LOCAL_AI_PERSONA = { name: "Alder", avatar: "🌲" } as const;
+const HYBRID_SYSTEM = [
+  "You are Alder, a friendly but competitive draughts opponent.",
+  "You always pick from the offered moves (they are safe by construction).",
+  "You add a short, in-character line of banter — never analysis, never move lists.",
+].join(" ");
 
 const THINK_MS = 420;
 const FANFARE_MS = 1200;
@@ -89,6 +112,44 @@ export function chainStep(
   return { targets, commit: targets.length === 0 && whole ? whole.code : null };
 }
 
+/** The `(from, to)` a packed move code names — the UI reads codes, never builds them. */
+const fromTo = (code: number): [number, number] => [code & 31, (code >> 5) & 31];
+
+/** A short, engine-grounded idea for why a move is reasonable (tutor copy). */
+export const ideaFor = (m: MoveAssessment): string =>
+  m.captures > 1
+    ? `takes ${m.captures} pieces`
+    : m.captures === 1
+      ? "takes a piece"
+      : m.quality === "optimal"
+        ? "your strongest line"
+        : "stays safe";
+
+/**
+ * Coaching for a just-tapped move, or null if it does not warrant a note.
+ *
+ * Honest about certainty: checkers is not solved from the opening, and a move's
+ * value is `exact` only when its line reached a **proven terminal**. Only then
+ * may the tutor say the move *threw* the game. A horizon judgement cannot
+ * establish a class drop at all, so it softens to "looks risky" and fires only
+ * for a move the engine clearly dislikes (a negative value while a positive one
+ * was on offer). Pinned by `tests/checkers-tutor.test.ts` from both sides.
+ */
+export const coachFor = (
+  verdict: MoveAssessment | null,
+  bestCol: number | null,
+  exact: boolean,
+): string | null => {
+  if (!verdict || bestCol === null) return null;
+  const best = moveLabel(bestCol);
+  if (exact) {
+    return verdict.quality === "blunder" ? `That threw the game — ${best} held it.` : null;
+  }
+  return verdict.value < 0 && verdict.bestValue > 0
+    ? `That looks risky — ${best} may be stronger.`
+    : null;
+};
+
 /** The dark-square index at `(row, col)`, or null on a light (unplayable) square. */
 export function squareAt(row: number, col: number): number | null {
   return (row + col) % 2 === 0 ? null : row * 4 + Math.floor(col / 2);
@@ -102,6 +163,12 @@ const isKing = (v: number): boolean => v === 2 || v === 4;
 function pieceCount(cells: readonly number[], side: SideCode): number {
   return cells.filter((v) => ownerOf(v) === side).length;
 }
+
+/** A human-readable move label, e.g. "row 3, column 2 to row 4, column 3". */
+const moveLabel = (code: number): string => {
+  const [from, to] = fromTo(code);
+  return `${squareLabel(from)} to ${squareLabel(to)}`;
+};
 
 /** A human-readable square label, e.g. square 0 -> "row 1, column 2" (1-based). */
 const squareLabel = (sq: number): string => {
@@ -217,9 +284,26 @@ export function checkersModule(): GameModule {
   // The last move played (either side), highlighted so the reply is visible.
   let lastFrom: number | null = null;
   let lastTo: number | null = null;
+  // Engine-grounded coaching for the human's last move, surfaced after the
+  // engine replies (so it does not spoil the reply). Cleared each human turn.
+  let coachMsg: string | null = null;
+  let pendingCoach: string | null = null;
+
+  // --- experimental local-AI opponent (hybrid: engine band + LLM in-band pick) ---
+  // Offered only when a real WebGPU adapter is present; the classic engine is the
+  // default. All LLM code is lazy — no model download unless the toggle is on and
+  // a move is played. Reuses the game-agnostic hybrid harness unchanged.
+  let localAiAvailable = false;
+  let opponentKind: "engine" | typeof LOCAL_AI = "engine";
+  let runtime: WebLLMRuntime | null = null;
+  let hybrid: HybridPlayer | null = null;
+  let aiSay: string | null = null;
+  let lastHumanQuality: "optimal" | "resultPreserving" | "blunder" | null = null;
 
   /** The side value the human plays: 1 (black, opens) or 2 (white). */
   const humanSide = (): SideCode => (side === "black" ? 1 : 2);
+  const opponentIdentity = (): { name: string; avatar: string } =>
+    opponentKind === LOCAL_AI ? LOCAL_AI_PERSONA : OPPONENT;
 
   const statusEl = el("p", { class: "sol-status", role: "status", "aria-live": "polite" });
   const setStatus = (msg: string): void => {
@@ -267,14 +351,22 @@ export function checkersModule(): GameModule {
       return;
     }
     thinking = true;
-    setStatus(`${OPPONENT.name} is thinking…`);
+    setStatus(`${opponentIdentity().name} is thinking…`);
     render();
     window.setTimeout(() => {
-      if (disposed || !game) return;
-      const mv = game.liveMove(level);
-      if (mv !== null) applyMove(mv);
-      thinking = false;
-      step();
+      void (async () => {
+        if (disposed || !game) return;
+        const mv = opponentKind === LOCAL_AI ? await hybridMove() : game.liveMove(level);
+        if (disposed || !game) return;
+        if (mv !== null) applyMove(mv);
+        thinking = false;
+        // Surface any coaching for the human's move now the reply is in.
+        if (pendingCoach !== null) {
+          coachMsg = pendingCoach;
+          pendingCoach = null;
+        }
+        step();
+      })();
     }, THINK_MS);
   };
 
@@ -288,8 +380,22 @@ export function checkersModule(): GameModule {
         prefix = [...prefix, sq];
         const next = chainStep(moves, selected, prefix);
         if (next.commit !== null) {
+          // Assess the move at the *current* position, before it is applied —
+          // this drives the opt-in tutor coach AND the local-AI's reaction.
+          const report = game.tutor();
+          const verdict = report.moves.find((m) => m.col === next.commit) ?? null;
+          lastHumanQuality = verdict?.quality ?? null;
+          const pending = checkersTutorEnabled()
+            ? coachFor(verdict, report.bestCol, verdict?.exact ?? false)
+            : null;
           if (applyMove(next.commit)) {
+            coachMsg = null; // clear last turn's coaching
             setStatus("");
+            if (gameOver()) {
+              coachMsg = pending; // a game-ending blunder is still explained
+            } else {
+              pendingCoach = pending;
+            }
             step();
             return;
           }
@@ -312,6 +418,122 @@ export function checkersModule(): GameModule {
     prefix = [];
     setStatus("");
     render();
+  };
+
+  // What just happened, in one word — drives the persona prompt + the fallback
+  // line, so the banter is reactive, not generic.
+  type Situation = "captured" | "blundered" | "solid" | "neutral";
+  const readSituation = (band: readonly BandMove[]): Situation => {
+    if (band.some((m) => m.idea.startsWith("takes"))) return "captured";
+    if (lastHumanQuality === "blunder") return "blundered";
+    if (lastHumanQuality === "optimal") return "solid";
+    return "neutral";
+  };
+  const SITUATION_HINT: Record<Situation, string> = {
+    captured: "A capture is on offer — take it with a little flourish.",
+    blundered: "The player just slipped — tease taking advantage.",
+    solid: "The player made a solid move — give a little credit, stay competitive.",
+    neutral: "Nothing decisive yet — a light competitive jab.",
+  };
+  const FALLBACK_LINE: Record<Situation, string> = {
+    captured: "Jump's mandatory. Sorry about your man.",
+    blundered: "Ooh, that left a gap — thanks.",
+    solid: "Nice one. I'm just getting started.",
+    neutral: "Your move. I'm not worried yet.",
+  };
+
+  const hybridPrompt = (g: Checkers, band: readonly BandMove[], sit: Situation): string => {
+    const codes = band.map((m) => m.col).join(", ");
+    return [
+      `Board (you play the men you are to move):\n${g.renderText()}`,
+      SITUATION_HINT[sit],
+      `Play ONE of these move codes: ${codes}.`,
+      `Reply ONLY with JSON {"move": <one of ${codes}>, "reason": "<your one-line quip, under 12 words>"}.`,
+    ].join("\n");
+  };
+
+  const cleanBanter = (reason: string, sit: Situation): string => {
+    const r = reason.trim();
+    return r.length > 0 && r.length <= 90 ? r : FALLBACK_LINE[sit];
+  };
+
+  // The hybrid opponent's move: the engine builds a never-throw band, the LLM
+  // picks within it and quips; any failure falls back to the engine. Reuses the
+  // shipped buildBand/HybridPlayer unchanged (the generality proof, third game).
+  const hybridMove = async (): Promise<number | null> => {
+    if (!game) return null;
+    try {
+      if (!runtime || !hybrid) {
+        setStatus(`${LOCAL_AI_PERSONA.name}: warming up the model (one-time download)…`);
+        render();
+        runtime = new WebLLMRuntime({
+          model: window.__CHECKERS_AI_MODEL ?? LOCAL_AI_MODEL,
+          onProgress: (t) => setStatus(`${LOCAL_AI_PERSONA.name}: ${t}`),
+        });
+        hybrid = new HybridPlayer(runtime);
+      }
+      const band = buildBand(game.tutor().moves);
+      if (band.length === 0) return game.liveMove(level); // no band → classic safety
+      const sit = readSituation(band);
+      const decision = await hybrid.pick(band, {
+        prompt: hybridPrompt(game, band, sit),
+        system: HYBRID_SYSTEM,
+      });
+      aiSay = decision.source === "llm" ? cleanBanter(decision.reason, sit) : FALLBACK_LINE[sit];
+      return decision.move;
+    } catch {
+      aiSay = null;
+      return game.liveMove(level); // never break the game on an AI failure
+    }
+  };
+
+  // A real WebGPU adapter is required for the local-AI opponent; probe once on
+  // mount and offer the toggle only if it passes (classic engine otherwise).
+  const probeLocalAi = async (): Promise<void> => {
+    try {
+      const gpu = (
+        navigator as Navigator & {
+          gpu?: { requestAdapter(): Promise<{ isFallbackAdapter?: boolean } | null> };
+        }
+      ).gpu;
+      const adapter = gpu ? await gpu.requestAdapter() : null;
+      localAiAvailable = Boolean(adapter) && adapter?.isFallbackAdapter !== true;
+    } catch {
+      localAiAvailable = false;
+    }
+    if (!disposed && localAiAvailable) render();
+  };
+
+  // --- the tutor panel (engine-grounded coaching; opt-in, no GPU) ---
+  const renderTutorPanel = (): HTMLElement => {
+    const panel = el("section", { class: "checkers-tutor", "aria-label": "Tutor" });
+    const explain = el(
+      "button",
+      { type: "button", class: "checkers-tutor-explain" },
+      "Explain my options",
+    );
+    const note = el("p", { class: "checkers-tutor-note", "aria-live": "polite" });
+    const optionsEl = el("ul", {
+      class: "checkers-tutor-options",
+      "aria-label": "Reasonable moves",
+    });
+    explain.addEventListener("click", () => {
+      if (!game || thinking || ending || gameOver() || !humanToMove()) return;
+      const report = game.tutor();
+      const band = report.moves
+        .filter((m) => m.quality !== "blunder")
+        .sort((a, b) => b.value - a.value);
+      // The report is `exact` only when every move in it was proven; otherwise
+      // the panel says so rather than implying certainty it does not have.
+      note.textContent = report.exact ? "" : "Reading ahead (not yet certain):";
+      optionsEl.replaceChildren(
+        ...band.slice(0, 6).map((m) => el("li", {}, `${moveLabel(m.col)} — ${ideaFor(m)}`)),
+      );
+    });
+    const coach = el("p", { class: "checkers-tutor-coach", role: "status", "aria-live": "polite" });
+    if (coachMsg) coach.textContent = coachMsg;
+    panel.append(explain, note, optionsEl, coach);
+    return panel;
   };
 
   // ---------- rendering ----------
@@ -399,7 +621,11 @@ export function checkersModule(): GameModule {
   const renderTurnbar = (board: BoardView): HTMLElement => {
     const them: SideCode = humanSide() === 1 ? 2 : 1;
     const turn =
-      board.result !== -1 ? "" : board.toMove === humanSide() ? "Your move" : `${OPPONENT.name} to move`;
+      board.result !== -1
+        ? ""
+        : board.toMove === humanSide()
+          ? "Your move"
+          : `${opponentIdentity().name} to move`;
     return el(
       "div",
       { class: "checkers-turnbar" },
@@ -411,7 +637,7 @@ export function checkersModule(): GameModule {
       el(
         "span",
         { class: "checkers-score them" },
-        `${OPPONENT.name} ${OPPONENT.avatar} ${them === 1 ? "●" : "○"} ${pieceCount(board.cells, them)}`,
+        `${opponentIdentity().name} ${opponentIdentity().avatar} ${them === 1 ? "●" : "○"} ${pieceCount(board.cells, them)}`,
       ),
       el("span", { class: "checkers-turn", role: "status", "aria-live": "polite" }, turn),
     );
@@ -454,27 +680,75 @@ export function checkersModule(): GameModule {
       el("label", { class: "checkers-field" }, "You play ", sideSel),
       fresh,
     );
+
+    // Settings: the opt-in tutor, and (only on a real WebGPU adapter) the
+    // experimental local-AI opponent.
+    const toggle = (
+      checked: boolean,
+      label: string,
+      cls: string,
+      onChange: (on: boolean) => void,
+    ): HTMLElement => {
+      const input = el("input", { type: "checkbox", class: cls });
+      if (checked) input.setAttribute("checked", "");
+      input.addEventListener("change", () => onChange((input as HTMLInputElement).checked));
+      return el("label", { class: "checkers-toggle" }, input, ` ${label}`);
+    };
+    const details = el("details", { class: "sol-settings checkers-settings" });
+    details.append(el("summary", {}, "Settings"));
+    details.append(
+      toggle(checkersTutorEnabled(), "Show tutor", "checkers-set-tutor", (on) => {
+        setCheckersTutor(on);
+        render();
+      }),
+    );
+    if (localAiAvailable) {
+      details.append(
+        toggle(
+          opponentKind === LOCAL_AI,
+          "Experimental: local AI opponent",
+          "checkers-ai-toggle-input",
+          (on) => {
+            opponentKind = on ? LOCAL_AI : "engine";
+            aiSay = null;
+            render();
+          },
+        ),
+        el(
+          "p",
+          { class: "checkers-ai-disclosure" },
+          `An in-browser model (${LOCAL_AI_PERSONA.name}) picks within the engine's safe moves and adds banter — a one-time model download on first use; it never plays a losing move (the engine's band decides).`,
+        ),
+      );
+    }
+    bar.append(details);
     return bar;
   };
 
   function render(): void {
     if (disposed || !container || !game) return;
     const board = game.board();
-    container.replaceChildren(
+    const parts: (Node | string)[] = [
+      renderTurnbar(board),
+      renderControls(),
       el(
-        "div",
-        { class: "checkers-game" },
-        renderTurnbar(board),
-        renderControls(),
-        el(
-          "p",
-          { class: "checkers-banner" },
-          "Tap a man, then tap where it goes. Capture is mandatory — when a jump is on offer it is your only move — and a multi-jump is tapped one landing at a time. Reach the far row to be crowned.",
-        ),
-        buildBoard(board, true),
-        statusEl,
+        "p",
+        { class: "checkers-banner" },
+        "Tap a man, then tap where it goes. Capture is mandatory — when a jump is on offer it is your only move — and a multi-jump is tapped one landing at a time. Reach the far row to be crowned.",
       ),
-    );
+      buildBoard(board, true),
+      ...(checkersTutorEnabled() ? [renderTutorPanel()] : []),
+      statusEl,
+    ];
+    // The local-AI opponent's spoken reason for its last move (personality).
+    if (aiSay && opponentKind === LOCAL_AI) {
+      parts.splice(
+        1,
+        0,
+        el("p", { class: "checkers-ai-say", role: "status" }, `${LOCAL_AI_PERSONA.name}: ${aiSay}`),
+      );
+    }
+    container.replaceChildren(el("div", { class: "checkers-game" }, ...parts));
   }
 
   const outcomeLabel = (board: BoardView): string => {
@@ -488,7 +762,7 @@ export function checkersModule(): GameModule {
           ? "You won"
           : code === -1
             ? "Ended early"
-            : `${OPPONENT.name} won`;
+            : `${opponentIdentity().name} won`;
     return code === -1 ? head : `${head} ${you}–${them}`;
   };
 
@@ -540,6 +814,9 @@ export function checkersModule(): GameModule {
     prefix = [];
     lastFrom = null;
     lastTo = null;
+    coachMsg = null;
+    pendingCoach = null;
+    aiSay = null;
     seed = seedOverride ?? randomSeed();
     game.newGame(seed);
     setStatus("");
@@ -608,6 +885,9 @@ export function checkersModule(): GameModule {
         }
         const seedParam = url.searchParams.get("seed");
         await startGame(seedParam !== null ? BigInt(seedParam) : undefined);
+        // Probe WebGPU in the background; if present, the controls re-render with
+        // the experimental local-AI opponent offered (classic engine otherwise).
+        void probeLocalAi();
       })();
     },
     unmount(): void {
@@ -617,6 +897,8 @@ export function checkersModule(): GameModule {
       container = null;
       game = null;
       verifier = null;
+      runtime = null; // release the WebGPU engine (local-AI) if it was created
+      hybrid = null;
     },
   };
 }
