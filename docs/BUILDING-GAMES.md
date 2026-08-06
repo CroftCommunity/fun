@@ -440,9 +440,11 @@ A **two-player adversarial** game (two sides, alternating turns, a win/draw/loss
 result) is still a Tier-1 Croft-native game: it keeps §§2–8 (determinism-first
 core → wasm, verifiable outcome, tap-first core-decides-legality, tokens/WCAG,
 standard settings, how-to, the gate). It adds a **computer opponent**. **Drop 4**
-(`src/games/drop4/`, `crates/drop4-*`) is the reference implementation, and
-**Othello** (`src/games/othello/`, `crates/othello-*`) is the second — the
-generality proof that the trait + harness carry to a different game.
+(`src/games/drop4/`, `crates/drop4-*`) is the reference implementation, **Othello**
+(`src/games/othello/`, `crates/othello-*`) is the second, and **checkers**
+(`src/games/checkers/`, `crates/checkers-*`) is the third — the generality proof
+that the trait + band + tutor + harness carry to a **move that is a path**, not a
+destination square. Landed 2026-08-06 (`plans/2026-08-04-checkers-game.md`).
 
 **Variation — a heuristic Oracle (Othello).** §10's "exact when tractable" assumes
 a solvable game. Othello is **not solved from the opening**, so its Oracle is a
@@ -527,8 +529,9 @@ This section is the shelf-standards anchor.
 
 ### Recipe — adding an AI opponent to a new adversarial game
 
-Othello proved the split generalizes. When you add a second (or third) adversarial
-game, this is what you write vs what you reuse:
+Othello proved the split generalizes, and checkers proved it against a move space
+that is genuinely different. When you add another adversarial game, this is what
+you write vs what you reuse:
 
 **Reuse unchanged (shared code — do not fork):**
 - `crates/adversary-core` — the `Adversary` trait your core implements.
@@ -545,7 +548,9 @@ game, this is what you write vs what you reuse:
   — no rig change. Two contracts: a move is your game's compact **numeric wire
   code** (the same code your `?r=` share carries), and `liveMove` takes a level
   `0..3` (Easy → *your* top level), because the games' own `Level` unions disagree
-  on the top member. Drop 4 and Othello are the two worked examples.
+  on the top member. Drop 4, Othello and checkers are the three worked examples —
+  and the checkers adapter is the smallest of the three (a pure pass-through),
+  which is the point: what the rig asks of a game is only that a move be a number.
 
 **Reuse as a pattern (copy the per-game TS, don't share it):** the tutor panel,
 the WebGPU-availability probe + experimental toggle + disclosure, the AI-banter
@@ -581,11 +586,21 @@ Pin it with a `coachFor`-style unit test.
 ## New-game checklist (adversarial + AI opponent — §10, on top of Tier-1)
 
 For a two-player game vs a computer opponent, add these to the Tier-1 checklist.
-Reference implementations: **Drop 4** (solvable), **Othello** (heuristic Oracle).
+Reference implementations: **Drop 4** (solvable), **Othello** (heuristic Oracle),
+**checkers** (heuristic Oracle, `exact` only where a terminal is *proven*).
 
 - [ ] Core implements `adversary_core::Adversary` (rules) **and**
   `pond_outcome::Game` (replay/verify); moves — passes included — serialize so
   `(seed, moves)` replays exactly (prefer a compact numeric code over a tagged enum).
+  **A move need not be a destination.** Checkers' is a jump *chain* — a piece plus
+  an ordered list of landings — and it still serializes as one number: `(from, to,
+  variant)` packed into 14 bits, where `variant` disambiguates the chains that
+  share an origin and destination (measured: at most 3 across 2.25M positions, so
+  2 bits would do). `(from, to)` alone is **not** enough — a king can reach one
+  square by two capture paths, and a cyclic capture can even end where it began.
+  Keeping the code a plain number is what lets the share format and the harness
+  stay identical across games; the chain detail the UI needs to step a player
+  through a multi-jump rides along on `legal_moves_json`, not on the wire code.
 - [ ] Solver: an Oracle (exact where tractable, else heuristic depth-capped), a
   difficulty `Level` → class-preserving **band** (`adversary_solver::select_in_band`,
   shared), and `tutor::assess` → `{value, regret, quality, exact}` per move.

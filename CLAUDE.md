@@ -102,9 +102,13 @@ at them and add what's specific to this repo. Git identity: chasemp
   `tier2.meta.json` (provenance + posture). Avoid the Emscripten + runtime-untar
   class (the SuperTuxKart cut, `plans/2026-07-31-supertuxkart-wrap.md`).
 
-**Adversarial (two-player) games + AI opponents.** Drop 4 (`/drop4/`) is the
-shelf's first two-player game vs a computer opponent — a Tier-1 build with a
-verifiable outcome. The engine is strength/difficulty, the LLM is UX
+**Adversarial (two-player) games + AI opponents.** Three shipped, in order:
+Drop 4 (`/drop4/`, solvable), Othello (`/othello/`, heuristic Oracle with an exact
+endgame) and checkers (`/checkers/`, heuristic Oracle whose `exact` means *a
+terminal was proven*, and whose move is a jump chain rather than a destination —
+the case that tested the shared trait, band, tutor and harness rather than
+repeating them). Drop 4 was the shelf's first, and all three are Tier-1 builds
+with a verifiable outcome. The engine is strength/difficulty, the LLM is UX
 (legality/personality/explanation/tutoring); the standard lives in
 `docs/BUILDING-GAMES.md` §10 and the full guide in `docs/AI-PLAYERS.md`.
 

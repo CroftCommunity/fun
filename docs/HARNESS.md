@@ -9,8 +9,10 @@ repeatable numbers measured against the *actual shipped browser players*.
 
 **It is game-agnostic** (P8 Phase 1–3). The rig drives a `GameOracle` — a
 ten-member port in `src/harness/game-oracle.ts` — so it grades any game that
-ships an adapter. Drop 4 and Othello both do (`src/games/<game>/<game>-oracle.ts`);
-adding a third is one file, not a rig change. Two contracts every adapter meets:
+ships an adapter. Drop 4, Othello and checkers all do
+(`src/games/<game>/<game>-oracle.ts`); adding one is one file, not a rig change —
+checkers proved that literally, landing with an empty `git diff` on
+`match-runner`/`scorer`/`tournament` (P8 Phase 15). Two contracts every adapter meets:
 
 - **A move is the game's compact numeric wire code** — Drop 4 a column, Othello
   `0..63` to place and `64` to pass, checkers a packed `(from, to, variant)`.
@@ -79,7 +81,7 @@ not hidden.
   wasm-backed game through the `GameOracle` port — it names no game. Exercised in
   vitest with **deterministic** players (`EnginePlayer(3)`, `RandomPlayer(seed)`)
   loading the real wasm via the `globalThis.fetch` shim — the full rig runs on the
-  CI gate, for **both** Drop 4 and Othello.
+  CI gate, for Drop 4, Othello **and** checkers.
 - **The WebGPU hybrid** can't run under vitest (no `navigator.gpu`), so the CI
   test proves the plug-in with a `MockRuntime`, and the *real* Hybrid-vs-Engine
   trial lives in a standalone system-Chrome driver, **off CI**.
@@ -93,6 +95,8 @@ they set a raised per-test timeout and keep N small).
 ```
 npm run harness:trial
 HARNESS_TRIAL_GAMES=4 HARNESS_TRIAL_MODEL=Qwen2.5-0.5B-Instruct-q4f16_1-MLC npm run harness:trial
+HARNESS_TRIAL_GAME=othello npm run harness:trial     # default: drop4
+HARNESS_TRIAL_GAME=checkers npm run harness:trial
 ```
 
 This is a standalone script (not a Playwright project): it serves the built app,
@@ -154,6 +158,28 @@ making before trusting any number here:
   60-move game with an exact endgame at ≤10 empties grades a small tail of it, and
   each exact solve is expensive. `skippedEarly` is the honesty gate doing its job,
   not a defect.
+
+### All three games, side by side
+
+Recorded 2026-08-06 — the same hybrid (`Qwen2.5-0.5B`) vs `Engine(3)`, 2 games
+each, real WebGPU (apple/metal-3). Not baselines (a model is not deterministic);
+a sanity check that the Reports differ in the ways the games do:
+
+| game | W-D-L | graded | skipped | blunders | ms/graded move | aborted |
+|---|---|---|---|---|---|---|
+| drop4 | 0-1-1 | 8 | 20 | 0 | 820 | 0 |
+| othello | 0-0-1 | 5 | 40 | 0 | 3619 | **1** |
+| checkers | 0-1-1 | 6 | 99 | 0 | 4412 | 0 |
+
+Checkers skips the most by far — 99 of 105 plies. That is the honesty gate, not a
+defect: checkers is `exact` only where the search **proves** a terminal, and these
+games ended before the endgame where proofs concentrate.
+
+The Othello row's single **aborted** game is a real finding, not noise: nothing
+else aborts, and an abort means a player returned no move or had one rejected. The
+likely cause is the hybrid meeting a forced pass, where the band is empty. Tracked
+in `TODO/othello.md`. It is exactly what the abort counter was added for — before
+P8 Phase 2c a Report could not tell you this had happened.
 
 ### A hybrid trial run
 

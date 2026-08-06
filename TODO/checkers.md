@@ -1,45 +1,63 @@
-# Checkers (Draughts) — concept, not started
+# Checkers (English draughts) — shipped 2026-08-06
 
-The proposed **third** adversarial game, and the one that triggers the shared
-`adversary-solver` extraction (rule of three: Drop 4, Othello, Checkers). Tier-1
-Croft-native. No plan yet — this file is the scoping note; write a `phase-plan`
-before building.
+`/checkers/` is the shelf's **third** adversarial game and the one that triggered
+the shared `crates/adversary-solver` extraction (rule of three: Drop 4, Othello,
+checkers). Built to `plans/2026-08-04-checkers-game.md`, whose Review Log holds
+the per-phase execution record — including every measurement that contradicted the
+plan. This file is the running worklist of what was deferred.
 
-## Why this next
-- **Exercises the whole adversarial stack a third time**, which is the trigger to
-  extract the duplicated band selector (`select_in_band` / `live_band` / class-floor
-  × sloppiness) from `drop4-solver` + `othello-solver` into a shared
-  `crates/adversary-solver` (see `TODO/othello.md`, `TODO/harness.md`).
-- **A genuinely different move space** — multi-step jumps, forced captures,
-  promotion to king — stresses the `Adversary` trait harder than Othello did
-  (Othello's move was a single square; a checkers move is a piece + a jump chain).
-  Good generality signal: if the trait + harness + hybrid carry to *this*, the
-  abstraction is real.
-- **Reuses the honest-Oracle shape.** 8×8 English draughts is effectively solved
-  (a draw under perfect play), but a full solve is far out of a tap budget, so the
-  Oracle is heuristic (material + king + mobility + back-rank) with an **exact
-  endgame** — the same exact/heuristic honesty flag Othello established.
+## What shipped
 
-## What reuses vs what is new
-- **Reuse unchanged:** `adversary-core`, `ai-runtime.ts`, `hybrid-player.ts` (the
-  tutor view must be a `TutorFactMove` superset — carry `immediateWin`/
-  `blocksOpponentWin` as `false`, add a checkers one-ply fact, e.g. `crowns` or
-  `captures`), and the (generalized) browser harness.
-- **Reuse as a pattern:** the tutor panel, the WebGPU toggle + probe, the result
-  screen, the how-to (copy the Othello TS).
-- **New:** `crates/checkers-{core,solver,wasm}` + `src/games/checkers/*`. The
-  `Move` type is a **jump chain** (start square + ordered landing squares), which
-  must serialize compactly for `?r=` and forbid illegal partial chains — the main
-  new design work vs Othello's single-square placement.
+- `crates/checkers-{core,solver,wasm}` — English draughts on 8×8: mandatory
+  capture, multi-jump chains, crowning (which ends the move), and the standard
+  tournament **no-progress draw** (40 moves a side with no capture and no man
+  advanced) — adopted because codified draughts has no terminating draw rule a
+  deterministic core can use. The counter is part of the hashed state.
+- The move is a **jump chain**, packed as `(from, to, variant)` into a 14-bit
+  code — the shelf's first move code above a `u8`, and the first that is not a
+  destination square. `variant` disambiguates chains sharing an origin and
+  destination (measured max 3 over 2.25M positions).
+- `src/games/checkers/{checkers,checkers-wasm,checkers-outcome,checkers-oracle,
+  checkers-howto}.ts` — playable at `/checkers/`, tutor panel, WebGPU-gated
+  experimental opponent (persona **Alder**), verifiable `?r=` share, guide.
+- Grades through the AI-scoring harness with **no rig change**
+  (`HARNESS_TRIAL_GAME=checkers npm run harness:trial`).
 
-## Open design questions (resolve in the phase-plan)
-- [ ] Ruleset: English draughts (8×8, men move/capture forward, flying kings off?)
-  vs international (10×10, flying kings). Recommend **English 8×8** for v1 (simpler,
-  matches the shelf's board scale, a known near-solved reference for tests).
-- [ ] Forced-capture rule (mandatory capture, and longest-capture variants) — pick
-  one, encode it in `legal_moves`, and make it a D1 discovery fixture like
-  Othello's opening moves.
-- [ ] Multi-jump `Move` encoding + the tutor/band over jump chains (the band is
-  over full moves, so a "move" is a whole chain — confirm `buildBand` still fits).
-- [ ] `TRACTABLE_EMPTIES`-equivalent for the exact endgame (few pieces), measured
-  in wasm (the Othello D2 lesson).
+## Open follow-ups
+
+- [ ] **The graded fraction is thin.** Checkers is `exact` only where the search
+  proves a terminal, so the tutor and the harness grade a small share of plies
+  (Phase 11 measured ~11% over engine self-play; the Phase 15 hybrid trial graded
+  6 of 105). The lever, if it is worth pulling, is a **separate, larger search
+  budget for the tutor path** — a panel opening can afford what a move cannot —
+  **not** a bigger budget for the opponent, and **not** `TRACTABLE_PIECES` (see
+  next item).
+- [ ] **The midgame is the latency floor, not the endgame.** 13–18 pieces costs
+  ~341ms worst-case in wasm under every setting of `TRACTABLE_PIECES`, which is
+  the opposite of what the plan assumed. Anything that wants checkers faster has
+  to look at midgame depth. Do not re-tune the endgame knob for speed.
+- [ ] **`MoveClass::Blunder` is close to unreachable in practice** — it needs *both* the
+  played move's value and the best move's to be proven, and a 300-position sweep
+  produced no such pairing. A zero-blunder assertion over a checkers tournament is
+  therefore close to vacuous; the honest measures are `scoredMoves` and the class
+  floor. Worth revisiting if the tutor budget above changes.
+- [ ] **No recorded harness baseline for checkers.** `tests/baselines.test.ts`
+  asserts the engine-vs-engine Reports for Drop 4 and Othello exactly; checkers
+  ships without one, so a solver change would move its numbers silently. Adding it
+  costs another ~1–2 minutes on the opt-in `npm run baselines` run.
+- [ ] **Persona roster** — Alder is inlined in `checkers.ts`, as Chip is in Drop 4
+  and Rowan in Othello. Part of the cross-game roster thread (`TODO/README.md`).
+- [ ] **Banter can assert false board facts.** Observed in the Phase 14 WebGPU run:
+  a 0.5B model ignored "never analysis" and described a capture that did not
+  exist. The move stays engine-safe (the band decides), and `exact` is not
+  involved, so this is cosmetic — but the fix belongs in the **shared** banter
+  filter (`cleanBanter` checks only length, in every game), not per game.
+- [ ] **Board orientation is fixed** — row 0 (Side A / Black) at the top, both for
+  the human and the engine. Conventional digital checkers puts your own men at the
+  bottom. A view flip is a second geometry to keep correct; deliberately not done.
+
+## Deferred by design (not defects)
+
+- No 10×10 international draughts, no flying kings, no longest-capture rule. v1 is
+  English draughts, chosen in the plan for its known reference material.
+- No opening book and no endgame tablebase.

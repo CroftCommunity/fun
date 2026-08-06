@@ -279,12 +279,15 @@ reproducible experiments.
 
 The Rust harness grades Rust `Player`s; it cannot exercise the *browser*
 `WebLLMRuntime` / `HybridPlayer` (WebGPU only runs in a page). `src/harness/`
-mirrors the rig over the browser substrate — the shipped `drop4-wasm` + the TS
-players — with the pure scorer + wasm-driving runner on the CI gate (deterministic
-players + `MockRuntime`) and the real WebGPU Hybrid-vs-Engine trial behind a
-standalone system-Chrome driver (`npm run harness:trial`, off CI). It grades a
-move **iff the wasm reports it `exact`** (the same honesty gate the tutor uses;
-≤16 empties — a strict, still-provably-exact superset of the Rust rig's ≤12).
+mirrors the rig over the browser substrate — **any** shipped game's wasm, reached
+through the `GameOracle` port, with the TS players — with the pure scorer +
+wasm-driving runner on the CI gate (deterministic players + `MockRuntime`) and the
+real WebGPU Hybrid-vs-Engine trial behind a standalone system-Chrome driver
+(`npm run harness:trial [HARNESS_TRIAL_GAME=drop4|othello|checkers]`, off CI). It
+grades a move **iff the wasm reports it `exact`** — the same honesty gate the
+tutor uses, and each game decides what earns the flag (Drop 4: ≤16 empties, a
+strict still-provably-exact superset of the Rust rig's ≤12; Othello: the exact
+endgame; checkers: a proven terminal).
 The full guide is **`docs/HARNESS.md`**.
 
 First browser-rig numbers (`Qwen2.5-0.5B` hybrid vs the Perfect engine, 2 games,
@@ -300,7 +303,7 @@ This is the same conclusion the Rust rig reached, now measured on the *actual
 shipped browser hybrid*: legality + class-preservation by construction, no skill
 added, slower than the engine.
 
-## Generality: a second game (Othello)
+## Generality: a second game (Othello), then a third (checkers)
 
 Othello (`/othello/`, `crates/othello-*`) is the proof that the adversarial +
 AI machinery generalizes beyond the game it was built with. What reused, and
@@ -332,3 +335,33 @@ bound to the `exact` flag (pinned by the `coachFor` unit test).
 The seam a new game plugs into: the `Adversary` trait + `pond_outcome::Game` (the
 core), the TS harness (the opponent), and the tutor's `{quality, exact}` interface
 (the coaching) — not shared game logic.
+
+**Checkers (`/checkers/`, `crates/checkers-*`, landed 2026-08-06) is the third,
+and it is the one that tested the abstractions rather than repeating them.** Drop
+4's move is a column and Othello's is a cell: both a single `u8` naming a
+destination. Checkers' move is a **jump chain** — a piece plus an ordered list of
+landings, packed as `(from, to, variant)` into a 14-bit code — and legality is
+global rather than local, because capture is mandatory. Every shared piece carried
+without modification: `buildBand`/`HybridPlayer`, `ai-runtime.ts`, the
+`adversary-solver` band selector, the `?r=` replay property, and the scoring rig
+(`git diff --stat` on `match-runner`/`scorer`/`tournament` was empty for the phase
+that added it). The `GameOracle` adapter is a pure pass-through — **smaller** than
+Othello's, which has to normalize a pass — because the port only ever asked that a
+move be a compact number, and a packed path is one.
+
+**Two things checkers changed rather than confirmed:**
+
+- **`exact` was redefined from "how much was searched" to "what was proven."**
+  Drop 4 and Othello can both exhaust a position, because a move fills a square,
+  so depth is bounded by the empties. Checkers positions *cycle* — kings shuffle —
+  so the tree is bounded by the 80-ply no-progress draw, not by material; a
+  four-piece endgame is ~3.8M nodes. So a fact is `exact` when its value came from
+  a **real terminal reached within the search** rather than from a heuristic at
+  the horizon. That is the same guarantee the flag always licensed (a provable
+  win/draw/loss class), and it keeps the game gradeable — a never-exact game
+  reports `scoredMoves == 0` forever and the harness measures nothing.
+- **The honest Oracle shape now has two unsolved-game precedents**, not one. When
+  a future game (chess is the obvious one) needs an Oracle that cannot solve from
+  the opening, Othello shows the endgame-solve variant and checkers shows the
+  proof-of-terminal variant; both bind the tutor's wording to the flag, and both
+  are pinned by a `coachFor` unit test that asserts *both* branches.

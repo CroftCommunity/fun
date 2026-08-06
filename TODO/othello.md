@@ -37,6 +37,17 @@ second adversarial game, reusing the harness + trait a first game established.
   per-game (Othello's `capped_class` returns a constant `0`, Drop 4's classifies a
   horizon class — they are not the same function). Both shipped games reproduce
   their recorded harness baselines exactly across the migration.
+- [ ] **The hybrid trial aborts games** — observed 2026-08-06 (P8 Phase 15): a
+  2-game `HARNESS_TRIAL_GAME=othello` run reported **1 aborted**, while the same
+  run for drop4 and checkers aborted zero. An abort means the player returned no
+  move or had one rejected (`match-runner.ts`); the likely cause is the hybrid
+  meeting a **forced pass**, where `buildBand` has nothing to offer, since
+  `HybridAiPlayer` builds its band from the tutor and a passing position has no
+  legal placement to grade. The classic `EnginePlayer` path handles the pass
+  correctly (`othello-oracle.ts` normalizes it to `PASS_CODE`), so this is
+  hybrid-only. Reproduce, then decide whether the fix belongs in the shared
+  `HybridAiPlayer` (fall through to `liveMove` on an empty band) or in the
+  adapter. Only visible at all because P8 Phase 2c added the abort counter.
 - [ ] **"Takes a corner" band enrichment** — the tutor carries `takesCorner`, but
   the hybrid band's `ideaFor` still degrades to quality-based ideas for the LLM.
   A game-supplied idea (or a shared "takes a corner" label) would sharpen the

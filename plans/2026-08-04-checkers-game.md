@@ -1,6 +1,6 @@
 # P8 — Checkers (English draughts), the harness generalization, and `adversary-solver`
 
-**Status:** planned — **ready for execution** (Pass 1 + Pass 2 + Pass 3 complete)
+**Status:** **complete** — all 18 phases landed (Phase 0 discovery 2026-08-04; Phases 1–11 2026-08-05; Phases 12–17 2026-08-06). Per-phase execution records are in the Review Log below.
 **Standards anchor:** `docs/BUILDING-GAMES.md` §10 + the two new-game checklists
 **Scoping note it supersedes:** `TODO/checkers.md`
 **Related backlogs it closes items in:** `TODO/harness.md`, `TODO/othello.md`, `TODO/drop4.md`
@@ -1724,15 +1724,15 @@ checking the shots match the current UI.
 **Goal:** No stale cross-references (the "docs are getting crusty" failure mode).
 
 **Changes:**
-- [ ] `docs/BUILDING-GAMES.md` §10 (`:433-435`) — checkers as the **third**
+- [x] `docs/BUILDING-GAMES.md` §10 (`:433-435`) — checkers as the **third**
       reference implementation; add a jump-chain note to the move-encoding guidance
       (a move need not be a destination). *The band-selector instruction at `:544`
       is **not** here — Pass 3 moved it to Phase 8, the phase that makes it false.*
-- [ ] `docs/AI-PLAYERS.md` — the generality section becomes three games; note that
+- [x] `docs/AI-PLAYERS.md` — the generality section becomes three games; note that
       the honest-Oracle shape now has two unsolved-game precedents. *The harness
       claim at `:280-283` is **not** here — Pass 3 moved it to Phase 3.*
-- [ ] `README.md`, `fun/CLAUDE.md` — the shelf inventory and adversarial roster.
-- [ ] `TODO/checkers.md` — rewritten from a scoping note into the running worklist;
+- [x] `README.md`, `fun/CLAUDE.md` — the shelf inventory and adversarial roster.
+- [x] `TODO/checkers.md` — rewritten from a scoping note into the running worklist;
       `TODO/README.md` — checkers moves to Shipped, the closed cross-game threads
       struck.
 
@@ -2137,6 +2137,49 @@ calibration, documentation-impact coverage) — to be run in a fresh context.
 
 **Confirmed ready:** yes, pending one new unreviewed ADVISORY question (the hybrid
 `llm`/`fallback` telemetry) and the two previously-confirmed PHASE-GATED items.
+
+### Phase 17 execution — 2026-08-06
+
+**Landed:** `docs/BUILDING-GAMES.md` (§10 reference implementations, the recipe,
+the adversarial checklist, and a new **"a move need not be a destination"** note
+on the move-encoding guidance), `docs/AI-PLAYERS.md` (the generality section is
+now "a second game, then a third", with the two things checkers *changed* rather
+than confirmed), `docs/HARNESS.md`, `README.md`, `fun/CLAUDE.md`,
+`TODO/checkers.md` (scoping note → shipped worklist), `TODO/README.md`, and
+`TODO/othello.md`.
+
+**The grep gate passes, and every surviving hit was read rather than counted.**
+`grep -rn "rule of three\|drop4-wasm\|third adversarial" docs/ TODO/ README.md
+CLAUDE.md | grep -v adversary-solver` leaves eight hits: two are genuine Drop 4
+*examples* in `docs/AI-PLAYERS.md` (`:140`, `:183`, which Pass 3 already ruled
+stay), three are historical done-records in `TODO/drop4.md`, and three are this
+phase's own new, correct sentences.
+
+**Two edits scheduled for earlier phases had not actually happened, and this
+phase caught them by doing the reading rather than the grep.** (a)
+`docs/AI-PLAYERS.md:282` still described `src/harness/` as mirroring the rig over
+"the shipped `drop4-wasm`" and pinned the honesty gate at Drop 4's "≤16 empties" —
+Phase 3's Documentation Impact line, missed. (b) `docs/HARNESS.md` was never given
+the checkers trial that Phase 15's line promised. Both are fixed here. The lesson
+is the one this phase's own Risk names: *rubber-stamping is the failure mode*, and
+a per-line check against the actual file is what finds a line that was ticked but
+not written.
+
+**Two findings from execution are now tracked where the next person will meet
+them**, not left in this plan: the Othello hybrid trial's 1-in-2 aborted games
+(`TODO/othello.md`, with the forced-pass hypothesis and where the fix would go)
+and the shared banter filter that only checks length (`TODO/README.md` cross-game
+threads + `TODO/checkers.md`). A third — checkers has **no recorded harness
+baseline**, unlike Drop 4 and Othello — is filed in `TODO/checkers.md`; it is a
+real gap this build introduced, and naming it is cheaper than pretending the
+baselines file covers three games.
+
+**Full gate, run for this phase:** `npm run test:rust` exits 0 (fmt + workspace
+tests in release + clippy `-D warnings`, on the pinned 1.97.1); `typecheck`,
+`lint` and `build` clean; `npx vitest run` 307 passed / 11 failed, all 11 the
+known Node-25 `localStorage.clear` failures in match3 (`.nvmrc` pins 22);
+`npx playwright test` 414 passed / 1 failed, that one the `match3.spec.ts`
+campaign-beat test that fails on `main` independently of this work.
 
 ### Phase 16 execution — 2026-08-06
 

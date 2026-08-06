@@ -183,6 +183,40 @@ solver,wasm}` and the front-end wrapper were new — implementing the shared
 plugs into the trait + the harness + the tutor's `{quality, exact}` interface.
 Plan: `plans/2026-08-03-othello-game.md`. AI rationale: `docs/AI-PLAYERS.md`.
 
+## Checkers (playable — the third adversarial game, and a move that is a path)
+
+`/checkers/` is English draughts on an 8×8 board against the engine, and the third
+two-player game on the shelf. It is a full Tier-1 build — tap a man, tap where it
+goes, with a **multi-jump tapped one landing at a time**; the engine-grounded
+tutor; the WebGPU-gated experimental local-AI opponent (persona: Alder); and a
+verifiable `?r=` outcome.
+
+What makes it worth a section is the **move**. Drop 4's is a column, Othello's is a
+cell — both a single byte naming a destination. A checkers move is a *jump chain*:
+a piece plus an ordered list of landings, which is why `(from, to)` cannot name it
+(a king can reach one square by two capture paths). It ships as `(from, to,
+variant)` packed into a 14-bit code, so the `?r=` share stays a plain array of
+numbers like every other game's, and the chain detail the UI needs rides alongside
+on `legal_moves_json`. The UI never decides legality: it *filters* the core's own
+chains by the landings you have tapped, and commits only a complete one.
+
+Two rules the guide leads with, because both read as bugs otherwise: **capture is
+mandatory** (when a jump exists it is the only move you are offered), and
+**crowning ends the move** (a man that jumps into the far row is crowned and stops
+there). Checkers as codified has no terminating draw rule a deterministic core can
+use, so it adopts the standard tournament one — a draw after 40 moves each with no
+capture and no man advanced — and the counter is part of the hashed state, because
+two identical boards with different counters have different legal futures.
+
+The generality result, third time: `buildBand`/`HybridPlayer`, `ai-runtime.ts`, the
+shared `adversary-solver` band selector and the whole scoring rig reused
+**unchanged** — checkers' `GameOracle` adapter is a pure pass-through, *smaller*
+than Othello's. Its honesty flag is the third shape: not "solved" and not "solved
+in the endgame" but **proven** — a fact is `exact` when its value came from a real
+terminal reached inside the search, because checkers positions cycle and no piece
+count bounds the tree.
+Plan: `plans/2026-08-04-checkers-game.md`. AI rationale: `docs/AI-PLAYERS.md`.
+
 ## Align (playable — falling-block stacker)
 
 `/align/` is a real-time falling-block stacker (build-fresh; original name,
