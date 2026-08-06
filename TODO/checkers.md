@@ -41,10 +41,12 @@ plan. This file is the running worklist of what was deferred.
   produced no such pairing. A zero-blunder assertion over a checkers tournament is
   therefore close to vacuous; the honest measures are `scoredMoves` and the class
   floor. Worth revisiting if the tutor budget above changes.
-- [ ] **No recorded harness baseline for checkers.** `tests/baselines.test.ts`
-  asserts the engine-vs-engine Reports for Drop 4 and Othello exactly; checkers
-  ships without one, so a solver change would move its numbers silently. Adding it
-  costs another ~1–2 minutes on the opt-in `npm run baselines` run.
+- [x] ~~**No recorded harness baseline for checkers.**~~ **Done 2026-08-06.**
+  `tests/baselines.test.ts` now anchors all three games; checkers records
+  `0-2-0, graded 4, skipped 159` and adds ~16s to the opt-in `npm run baselines`.
+  Both games draw at top-level self-play (the 80-ply no-progress rule), and the
+  graded fraction is 2.5% — the number to watch is `scoredMoves`, since a 0 there
+  means the anchor has stopped measuring anything.
 - [ ] **Persona roster** — Alder is inlined in `checkers.ts`, as Chip is in Drop 4
   and Rowan in Othello. Part of the cross-game roster thread (`TODO/README.md`).
 - [ ] **Banter can assert false board facts.** Observed in the Phase 14 WebGPU run:

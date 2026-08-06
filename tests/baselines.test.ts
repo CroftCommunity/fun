@@ -22,6 +22,8 @@ import { describe, expect, it } from "vitest";
 
 import { drop4Oracle } from "../src/games/drop4/drop4-oracle.js";
 import { Drop4 } from "../src/games/drop4/drop4-wasm.js";
+import { checkersOracle } from "../src/games/checkers/checkers-oracle.js";
+import { Checkers } from "../src/games/checkers/checkers-wasm.js";
 import { othelloOracle } from "../src/games/othello/othello-oracle.js";
 import { Othello } from "../src/games/othello/othello-wasm.js";
 import type { GameOracle } from "../src/harness/game-oracle.js";
@@ -49,14 +51,6 @@ type Baseline = {
   abortedGames: number;
 };
 
-/**
- * Recorded 2026-08-05 on CI-equivalent wasm, top level, 2 games, seed 0.
- * Reproduced unchanged across the `adversary-solver` extraction (Phases 7 and 8).
- *
- * If one of these numbers moves, do not update it to match. Find out why first:
- * these are the seeded output of a deterministic engine, so a change means the
- * engine changed.
- */
 /** Load a wasm module through the CI shim (a `fetch` stub over the built file). */
 async function loadWasm<T>(path: string, load: () => Promise<T>): Promise<T> {
   const bytes = await readFile(path);
@@ -116,6 +110,34 @@ const ANCHORS: readonly Anchor[] = [
       preserving: 0,
       blunders: 0,
       skippedEarly: 50,
+      abortedGames: 0,
+    },
+  },
+  {
+    game: "checkers",
+    load: async () =>
+      checkersOracle(
+        await loadWasm("target/wasm32-unknown-unknown/release/checkers_wasm.wasm", () =>
+          Checkers.load(),
+        ),
+      ),
+    // Recorded 2026-08-06, when checkers shipped (P8 Phase 15 follow-up).
+    // Both games draw: top-level self-play grinds to the 80-ply no-progress rule,
+    // which is the honest terminal for a game neither side can force. The graded
+    // fraction is deliberately tiny — 4 of 163 plies — because checkers is `exact`
+    // only where the search PROVES a terminal, so `skippedEarly` dominating is the
+    // honesty gate working, not a defect. If `scoredMoves` ever reads 0 here, the
+    // anchor has stopped measuring anything and that is the finding.
+    recorded: {
+      games: 2,
+      wins: 0,
+      draws: 2,
+      losses: 0,
+      scoredMoves: 4,
+      optimal: 4,
+      preserving: 0,
+      blunders: 0,
+      skippedEarly: 159,
       abortedGames: 0,
     },
   },

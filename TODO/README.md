@@ -19,12 +19,12 @@ files are the running, checkbox-level worklist.
 - [drop4.md](drop4.md) — **adversarial** (vs the engine); persona roster,
   larger-binary hosting, and the checkers/chess "Later" list (now → next-games).
 - [othello.md](othello.md) — **adversarial** (the generality proof); tune
-  `TRACTABLE_EMPTIES`/depths in wasm, takes-corner band enrichment. **New:** the
-  hybrid trial aborted 1 of 2 games (P8 Phase 15) — likely the hybrid meeting a
-  forced pass, where the band is empty; drop4 and checkers abort zero.
+  `TRACTABLE_EMPTIES`/depths in wasm, takes-corner band enrichment. (The hybrid
+  trial's aborted games — a forced pass with an empty band — were **fixed
+  2026-08-06** in the shared players.)
 - [checkers.md](checkers.md) — **adversarial** (the third game); shipped
-  2026-08-06. Thin graded fraction, the midgame latency floor, and the shared
-  banter-honesty thread.
+  2026-08-06 with a recorded harness baseline. Thin graded fraction, the midgame
+  latency floor, and the shared banter-honesty thread.
 - blockdoku, looseends, color-sort — shipped; no open backlog file yet.
 
 ## Shipped — Tier-2 wrapped (playable)
