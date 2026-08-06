@@ -47,10 +47,14 @@ second adversarial game, reusing the harness + trait a first game established.
   terminal; the fix is game-agnostic and a game without a pass is already terminal
   in that position. Re-run: **0 aborted, 8 graded** (was 5). Only visible at all
   because P8 Phase 2c added the abort counter.
-- [ ] **"Takes a corner" band enrichment** — the tutor carries `takesCorner`, but
-  the hybrid band's `ideaFor` still degrades to quality-based ideas for the LLM.
-  A game-supplied idea (or a shared "takes a corner" label) would sharpen the
-  opponent's banter. ADVISORY; not required.
+- [x] ~~**"Takes a corner" band enrichment**~~ — **done 2026-08-06.**
+  `TutorFactMove` (and the port's `OracleTutorMove`) gained an optional `idea`,
+  and `buildBand` prefers it over the shared `ideaFor`, which only ever knew the
+  two Drop-4 booleans. Othello supplies "takes a corner" on both paths — the UI
+  band and the `othelloOracle` adapter, so the harness's hybrid narrates it too —
+  and checkers supplies its capture count the same way. It is a **label, not a
+  licence**: the band still excludes blunders, so an enthusiastic idea cannot
+  promote an unsafe move (asserted).
 - [ ] **Tune `TRACTABLE_EMPTIES` / Level depths against in-wasm wall-clock.** Set
   conservatively (10 empties; Easy1/Medium3/Hard5/Expert7). If the endgame solve
   or a deep level is slow on a real phone, lower it (the honesty flag depends on

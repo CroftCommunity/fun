@@ -70,6 +70,14 @@ export function checkersOracle(game: Checkers): GameOracle {
           quality: m.quality,
           immediateWin: m.immediateWin,
           blocksOpponentWin: m.blocksOpponentWin,
+          // Checkers' one-ply fact. Phrased here rather than imported from the
+          // game module so the adapter stays free of the DOM-side code.
+          idea:
+            m.captures > 1
+              ? `takes ${m.captures} pieces`
+              : m.captures === 1
+                ? "takes a piece"
+                : undefined,
         })),
         bestCol: t.bestCol,
         exact: t.exact,

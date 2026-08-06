@@ -18,7 +18,7 @@ import { PASS_CODE } from "../src/games/othello/othello-outcome.js";
 import { Othello } from "../src/games/othello/othello-wasm.js";
 import type { GameOracle } from "../src/harness/game-oracle.js";
 import { MockRuntime } from "../src/harness/ai-runtime.js";
-import { HybridPlayer } from "../src/harness/hybrid-player.js";
+import { buildBand, HybridPlayer } from "../src/harness/hybrid-player.js";
 import { EnginePlayer, HybridAiPlayer, runMatch } from "../src/harness/match-runner.js";
 import { renderReport, runTournament } from "../src/harness/tournament.js";
 
@@ -127,4 +127,36 @@ describe("a forced pass does not abort the match (any player)", () => {
       "seed 0 no longer contains a forced pass — the guard was never exercised",
     ).toBeGreaterThan(0);
   }, 120_000);
+});
+
+/**
+ * The adapter carries Othello's one-ply fact into the shared band, so the model
+ * is offered "takes a corner" instead of the generic label. Driven over the real
+ * wasm: a corner has to actually become legal for this to mean anything, so the
+ * test plays until one does and fails loudly if none ever appears.
+ */
+describe("the band carries the game's own idea, not just the generic one", () => {
+  it("labels a corner placement as such over the real wasm", async () => {
+    const oracle = await loadReal();
+    const CORNERS = [0, 7, 56, 63];
+    let sawCorner = false;
+    for (let seed = 0n; seed < 8n && !sawCorner; seed += 1n) {
+      oracle.newGame(seed);
+      while (oracle.board().result === -1) {
+        const band = buildBand(oracle.tutor().moves);
+        const corner = band.find((m) => CORNERS.includes(m.col));
+        if (corner) {
+          expect(corner.idea).toBe("takes a corner");
+          sawCorner = true;
+          break;
+        }
+        // Everything else still gets a non-empty generic idea.
+        expect(band.every((m) => m.idea.length > 0)).toBe(true);
+        const mv = oracle.liveMove(0);
+        if (mv === null) break;
+        oracle.play(mv);
+      }
+    }
+    expect(sawCorner, "no corner ever became legal in 8 games").toBe(true);
+  }, 300_000);
 });

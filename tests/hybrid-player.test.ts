@@ -54,3 +54,47 @@ describe("HybridPlayer.pick", () => {
     expect(d.move).toBe(3);
   });
 });
+
+/**
+ * A game-supplied idea for a band move.
+ *
+ * `ideaFor` only knows the two Drop-4-shaped one-ply facts (`immediateWin`,
+ * `blocksOpponentWin`), so for every *other* game every band move degrades to
+ * "your strongest line" / "stays safe" — Othello's `takesCorner` and checkers'
+ * capture count were computed by the engine and then thrown away before the model
+ * ever saw them. The band is what the LLM picks from and narrates, so the loss
+ * lands exactly where the personality is supposed to come from.
+ */
+describe("buildBand: a game may supply its own idea", () => {
+  const withIdea = (over: Partial<TutorFactMove> & { col: number }): TutorFactMove => ({
+    value: 5,
+    quality: "resultPreserving",
+    immediateWin: false,
+    blocksOpponentWin: false,
+    ...over,
+  });
+
+  it("prefers the game's idea over the generic one", () => {
+    const band = buildBand([withIdea({ col: 19, idea: "takes a corner" })]);
+    expect(band[0]!.idea).toBe("takes a corner");
+  });
+
+  it("falls back to the generic idea when the game supplies none", () => {
+    const band = buildBand([withIdea({ col: 19 }), withIdea({ col: 2, quality: "optimal" })]);
+    expect(band.find((m) => m.col === 19)!.idea).toBe("stays safe");
+    expect(band.find((m) => m.col === 2)!.idea).toBe("your strongest line");
+  });
+
+  it("still lets the shared one-ply facts win where a game has no idea of its own", () => {
+    const band = buildBand([withIdea({ col: 3, immediateWin: true })]);
+    expect(band[0]!.idea).toMatch(/wins now/i);
+  });
+
+  it("never lets an idea smuggle a blunder into the band", () => {
+    const band = buildBand([
+      withIdea({ col: 0, quality: "blunder", idea: "a brilliant sacrifice" }),
+      withIdea({ col: 1 }),
+    ]);
+    expect(band.map((m) => m.col)).toEqual([1]);
+  });
+});

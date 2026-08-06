@@ -545,8 +545,15 @@ you write vs what you reuse:
 - `src/harness/hybrid-player.ts` — `buildBand(tutorFacts)` + `HybridPlayer.pick`.
   Your wasm tutor view must be a **structural superset of `TutorFactMove`**
   (`col`, `value`, `quality`, `immediateWin`, `blocksOpponentWin`) — carry the
-  Drop-4-flavored one-ply facts as `false` if your game has no such notion, and
-  `buildBand` reuses with no change (its ideas degrade to quality-based).
+  Drop-4-flavored one-ply facts as `false` if your game has no such notion.
+  **Supply your game's own `idea`** (optional, on the same shape) if it has a
+  one-ply fact worth narrating: the shared fallback knows only those two
+  booleans, so without it every band move in your game reads "your strongest
+  line" or "stays safe", and the engine's own insight is dropped on the floor
+  right where the personality is meant to come from. Set it in **both** places
+  that build a band — your game module and your `<game>-oracle.ts` — so the UI
+  opponent and the harness's hybrid say the same thing. It is a label, not a
+  licence: the band still excludes blunders.
 - `src/harness/{match-runner,scorer,tournament}.ts` — the scoring rig. It is
   **game-agnostic**: it drives a `GameOracle` (`src/harness/game-oracle.ts`), so
   your game plugs in by shipping one adapter, `src/games/<game>/<game>-oracle.ts`

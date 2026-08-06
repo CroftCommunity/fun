@@ -80,6 +80,12 @@ export interface OracleTutorMove {
   readonly quality: MoveQuality;
   readonly immediateWin: boolean;
   readonly blocksOpponentWin: boolean;
+  /**
+   * The game's own one-line reason, if it has one worth more than the generic
+   * fallback (see `TutorFactMove.idea`). Optional, and supplied by the adapter —
+   * it is the one place that knows both the game's facts and the shared shape.
+   */
+  readonly idea?: string;
 }
 
 /** The current position's whole-position tutor report. */

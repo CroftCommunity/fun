@@ -393,7 +393,12 @@ export function othelloModule(): GameModule {
         });
         hybrid = new HybridPlayer(runtime);
       }
-      const band = buildBand(game.tutor().moves);
+      // Hand the engine's own one-ply fact to the band, so the model is offered
+      // "takes a corner" rather than the generic "stays safe" it would otherwise
+      // narrate. `ideaFor` here is Othello's, not the shared fallback.
+      const band = buildBand(
+        game.tutor().moves.map((m) => ({ ...m, idea: m.takesCorner ? ideaFor(m) : undefined })),
+      );
       if (band.length === 0) return game.liveMove(level as Level); // no band → classic safety
       const sit = readSituation(band);
       const decision = await hybrid.pick(band, { prompt: hybridPrompt(game, band, sit), system: HYBRID_SYSTEM });

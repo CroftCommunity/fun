@@ -18,6 +18,22 @@ export interface TutorFactMove {
   readonly quality: "optimal" | "resultPreserving" | "blunder";
   readonly immediateWin: boolean;
   readonly blocksOpponentWin: boolean;
+  /**
+   * The game's own one-line reason this move is reasonable, if it has one better
+   * than the generic fallback below — Othello's "takes a corner", checkers'
+   * "takes 2 pieces". Optional: a game whose facts are already the shared ones
+   * (Drop 4) omits it and gets the default.
+   *
+   * It exists because the engine computes these facts and [`ideaFor`] then throws
+   * them away: it only knows `immediateWin` / `blocksOpponentWin`, so every band
+   * move in every other game degraded to "your strongest line" or "stays safe".
+   * The band is what the model picks from and narrates, so that loss lands
+   * exactly where the personality is supposed to come from.
+   *
+   * It is a **label, not a licence**: the band still excludes blunders, so an
+   * enthusiastic idea cannot promote an unsafe move.
+   */
+  readonly idea?: string;
 }
 
 /** A candidate move in the difficulty band, with a short engine-grounded idea. */
@@ -51,7 +67,7 @@ export function buildBand(moves: readonly TutorFactMove[]): BandMove[] {
   return moves
     .filter((m) => m.quality !== "blunder")
     .sort((a, b) => b.value - a.value)
-    .map((m) => ({ col: m.col, value: m.value, idea: ideaFor(m) }));
+    .map((m) => ({ col: m.col, value: m.value, idea: m.idea ?? ideaFor(m) }));
 }
 
 interface PickReply {

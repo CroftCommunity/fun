@@ -23,6 +23,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { checkersOracle } from "../src/games/checkers/checkers-oracle.js";
 import { Checkers } from "../src/games/checkers/checkers-wasm.js";
 import type { GameOracle } from "../src/harness/game-oracle.js";
+import { buildBand } from "../src/harness/hybrid-player.js";
 import { EnginePlayer } from "../src/harness/match-runner.js";
 import { renderReport, runTournament } from "../src/harness/tournament.js";
 
@@ -99,4 +100,32 @@ describe("checkers meets the harness (the generality proof, third game)", () => 
     },
     900_000,
   );
+});
+
+/**
+ * The same enrichment for checkers, whose one-ply fact is the capture count.
+ * Capture is mandatory, so a jump is not hard to reach — but the assertion is
+ * still guarded, because a test that never meets a capture proves nothing.
+ */
+describe("the band carries checkers' own idea", () => {
+  it("labels a jump by how much it takes, over the real wasm", async () => {
+    const oracle = await loadReal();
+    let sawJump = false;
+    for (let seed = 0n; seed < 4n && !sawJump; seed += 1n) {
+      oracle.newGame(seed);
+      while (oracle.board().result === -1) {
+        const band = buildBand(oracle.tutor().moves);
+        expect(band.every((m) => m.idea.length > 0)).toBe(true);
+        const jump = band.find((m) => /takes (a piece|\d+ pieces)/.test(m.idea));
+        if (jump) {
+          sawJump = true;
+          break;
+        }
+        const mv = oracle.liveMove(0);
+        if (mv === null) break;
+        oracle.play(mv);
+      }
+    }
+    expect(sawJump, "no capture ever appeared in 4 games").toBe(true);
+  }, 300_000);
 });

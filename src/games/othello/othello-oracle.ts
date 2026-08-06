@@ -80,6 +80,11 @@ export function othelloOracle(game: Othello): GameOracle {
           quality: m.quality,
           immediateWin: m.immediateWin,
           blocksOpponentWin: m.blocksOpponentWin,
+          // Othello's one-ply fact, carried so the harness's hybrid narrates it
+          // too. The shared `ideaFor` knows only the two Drop-4 booleans, and
+          // this adapter is the one place that knows both this game's facts and
+          // the shared shape.
+          idea: m.takesCorner ? "takes a corner" : undefined,
         })),
         bestCol: t.bestCol,
         exact: t.exact,

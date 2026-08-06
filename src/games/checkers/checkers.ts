@@ -471,7 +471,11 @@ export function checkersModule(): GameModule {
         });
         hybrid = new HybridPlayer(runtime);
       }
-      const band = buildBand(game.tutor().moves);
+      // Checkers' one-ply fact is the capture count, so the band offers "takes 2
+      // pieces" rather than the generic label the shared fallback would produce.
+      const band = buildBand(
+        game.tutor().moves.map((m) => ({ ...m, idea: m.captures > 0 ? ideaFor(m) : undefined })),
+      );
       if (band.length === 0) return game.liveMove(level); // no band → classic safety
       const sit = readSituation(band);
       const decision = await hybrid.pick(band, {
