@@ -345,6 +345,109 @@ const SHOTS = [
     },
   },
   {
+    name: "checkers-board",
+    clip: ".checkers-game",
+    async run(page) {
+      await page.goto(`${origin}/checkers/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".checkers-board");
+      await page.waitForFunction(() => Boolean(window.__checkers));
+      // The opening, with a man picked up so the gold destination dots show —
+      // deliberately a QUIET move, since capture is mandatory and a mid-game
+      // position would show the jump instead (that is `checkers-capture`'s job).
+      // Pick the man with two destinations so "dots" is literally true.
+      const from = await page.evaluate(() => {
+        const legal = window.__checkers.game.board().legal;
+        const counts = new Map();
+        for (const m of legal) counts.set(m.from, (counts.get(m.from) ?? 0) + 1);
+        return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+      });
+      await page.click(`.checkers-square[data-sq="${from}"]`);
+      await page.waitForSelector(".checkers-square.target");
+    },
+  },
+  {
+    name: "checkers-capture",
+    clip: ".checkers-game",
+    async run(page) {
+      await page.goto(`${origin}/checkers/?seed=3`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".checkers-board");
+      await page.waitForFunction(() => Boolean(window.__checkers));
+      // Play first-legal plies until the side to move has a jump — capture is
+      // mandatory, so at that point the offered moves ARE the jumps.
+      const from = await page.evaluate(() => {
+        const h = window.__checkers;
+        for (let i = 0; i < 80; i += 1) {
+          const b = h.game.board();
+          if (b.result !== -1 || b.legal.length === 0) break;
+          const jump = b.legal.find((m) => m.captures.length > 0);
+          // Stop on the human's (Side A's) jump, so the board is in the state the
+          // caption describes rather than mid-engine-turn.
+          if (jump && b.toMove === 1) { h.refresh(); return jump.from; }
+          h.game.play(b.legal[0].code);
+        }
+        h.refresh();
+        return null;
+      });
+      if (from === null) throw new Error("guide-shots: no Side-A jump found for checkers-capture");
+      await page.click(`.checkers-square[data-sq="${from}"]`);
+      await page.waitForSelector(".checkers-square.target");
+    },
+  },
+  {
+    name: "checkers-tutor",
+    clip: ".checkers-game",
+    async run(page) {
+      await page.addInitScript(() => localStorage.setItem("fun-checkers-tutor", "on"));
+      await page.goto(`${origin}/checkers/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".checkers-board");
+      await page.waitForFunction(() => Boolean(window.__checkers));
+      await page.evaluate(() => {
+        const h = window.__checkers;
+        // An even number of plies returns Black (the human) to move, mid-game,
+        // so "Explain my options" has options to list.
+        for (let i = 0; i < 6; i += 1) {
+          const b = h.game.board();
+          if (b.result !== -1 || b.legal.length === 0) break;
+          h.game.play(b.legal[0].code);
+        }
+        h.refresh();
+      });
+      await page.click(".checkers-tutor-explain");
+      await page.waitForSelector(".checkers-tutor-options li");
+    },
+  },
+  {
+    name: "checkers-result",
+    clip: ".sol-result",
+    async run(page) {
+      await page.goto(`${origin}/checkers/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".checkers-board");
+      await page.waitForFunction(() => Boolean(window.__checkers));
+      // Play a full first-legal game to a terminal, then open its self-verifying
+      // ?r= link so the result screen shows the final board.
+      const share = await page.evaluate(async () => {
+        const h = window.__checkers;
+        for (let i = 0; i < 400; i += 1) {
+          const b = h.game.board();
+          if (b.result !== -1 || b.legal.length === 0) break;
+          h.game.play(b.legal[0].code);
+        }
+        const env = h.game.outcome(false);
+        const json = new TextEncoder().encode(JSON.stringify(env));
+        const cs = new CompressionStream("deflate-raw");
+        const w = cs.writable.getWriter();
+        void w.write(json);
+        void w.close();
+        const buf = new Uint8Array(await new Response(cs.readable).arrayBuffer());
+        let bin = "";
+        for (const b2 of buf) bin += String.fromCharCode(b2);
+        return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      });
+      await page.goto(`${origin}/checkers/?r=${share}`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".sol-result .checkers-board.checkers-final");
+    },
+  },
+  {
     name: "align-board",
     clip: ".al-game",
     async run(page) {

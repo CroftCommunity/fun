@@ -2397,6 +2397,11 @@ body.fullscreen .play-area {
   --chk-cell: clamp(1.7rem, 9.5vw, 2.6rem);
   display: grid;
   grid-template-columns: repeat(8, var(--chk-cell));
+  /* The grid's columns are fixed, so a block-level board stretches its felt to
+     the container width — invisible inside the centred game column, obvious on
+     the result screen, where the parent is a plain block. */
+  width: fit-content;
+  margin-inline: auto;
   padding: 0.4rem;
   background: var(--chk-dark);
   border-radius: var(--radius);
