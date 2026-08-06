@@ -225,6 +225,12 @@ test("a campaign success surfaces a skippable Biscuit beat; Skip dismisses it", 
   const beat = page.locator(".m3-beat");
   await expect(beat).toBeVisible();
   await expect(beat).toHaveAttribute("aria-live", "polite");
+  // The card fades in (`m3-beat-in`, 0.32s). Scanning mid-animation measures the
+  // *blended* colours, not the shipped ones — which is how this test intermittently
+  // reported a 1.86:1 contrast violation on a button whose settled colours are
+  // --ink on --surface, i.e. 12.9:1.
+  // Wait for the animations themselves rather than sleeping.
+  await beat.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
   // The card is accessible while shown.
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   // Skip is one tap and dismisses it.
