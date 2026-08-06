@@ -20,6 +20,18 @@ import { buildBand, HybridPlayer, type BandMove } from "./hybrid-player.js";
  * engine, the wasm oracle) and returns a legal move code, or `null` at a terminal
  * position.
  * A `Player` MUST NOT mutate the game — the runner owns applying the move.
+ *
+ * **`null` means "the match is over", never "I have nothing to choose".**
+ * `runMatch` treats a `null` from a live position as an abort, so a player that
+ * declines a position it cannot choose *within* silently kills the match and
+ * grades nothing. This is not hypothetical: an Othello forced pass has no legal
+ * placement, so `legalMoves()` is `[]` and the tutor report is empty while the
+ * game is very much live — and the hybrid trial was aborting 1 game in 2 on it
+ * (P8 Phase 15). Every player here therefore falls through to `liveMove`, which
+ * knows about any non-move continuation and returns `null` only at a true
+ * terminal. A game with no such continuation (Drop 4, checkers) is already
+ * terminal in that position, so the fallback returns `null` there and nothing
+ * changes.
  */
 export interface Player {
   readonly label: string;
@@ -90,7 +102,7 @@ export class RandomPlayer implements Player {
   }
   chooseMove(game: GameOracle): Promise<number | null> {
     const legal = game.legalMoves();
-    if (legal.length === 0) return Promise.resolve(null);
+    if (legal.length === 0) return Promise.resolve(game.liveMove(0));
     return Promise.resolve(legal[Math.floor(this.#rand() * legal.length)]!);
   }
 }
@@ -115,7 +127,7 @@ export class GreedyPlayer implements Player {
   }
   chooseMove(game: GameOracle): Promise<number | null> {
     const legal = game.legalMoves();
-    if (legal.length === 0) return Promise.resolve(null);
+    if (legal.length === 0) return Promise.resolve(game.liveMove(0));
     const facts = legal.map((col) => ({ col, a: game.assess(col) }));
     const win = facts.find((f) => f.a?.immediateWin);
     if (win) return Promise.resolve(win.col);
@@ -162,7 +174,9 @@ export class HybridAiPlayer implements Player {
   }
   async chooseMove(game: GameOracle): Promise<number | null> {
     const report = game.tutor();
-    if (report.bestCol === null || report.moves.length === 0) return null;
+    // Nothing to band means nothing to *choose between*, not nothing to play —
+    // see the no-move contract on `Player.chooseMove`.
+    if (report.bestCol === null || report.moves.length === 0) return game.liveMove(0);
     const band = buildBand(report.moves);
     if (band.length === 0) return report.bestCol; // safety: the engine's best move
     const { prompt, system } = this.#buildPrompt(game, band);

@@ -9,11 +9,14 @@ import { readFile } from "node:fs/promises";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { drop4Oracle } from "../src/games/drop4/drop4-oracle.js";
+import { MockRuntime } from "../src/harness/ai-runtime.js";
+import { HybridPlayer } from "../src/harness/hybrid-player.js";
 import { Drop4 } from "../src/games/drop4/drop4-wasm.js";
 import type { GameOracle } from "../src/harness/game-oracle.js";
 import {
   EnginePlayer,
   GreedyPlayer,
+  HybridAiPlayer,
   RandomPlayer,
   runMatch,
   type Player,
@@ -126,5 +129,58 @@ describe("match-runner: Player port + runMatch over the real wasm", () => {
     expect(await new GreedyPlayer([5, 2]).chooseMove(game)).toBe(5);
     // present but none legal -> falls back to legal-move order
     expect(await new GreedyPlayer([99, 42]).chooseMove(game)).toBe(legalOrder);
+  });
+});
+
+/**
+ * A stand-in oracle in a **forced-pass** position: the side to move has no legal
+ * placement, but the game is live and the oracle knows the one continuation (the
+ * pass, as its own numeric code). Only Othello can be in this state today, but
+ * nothing here is Othello-shaped — a `Player` must never decline to move at a
+ * live position, whatever the game.
+ */
+function forcedPassOracle(passCode: number): GameOracle {
+  return {
+    newGame: () => {},
+    board: () => ({ toMove: 1, result: -1 }),
+    legalMoves: () => [],
+    play: () => "applied",
+    currentHash: () => "hash",
+    renderText: () => "board",
+    liveMove: () => passCode,
+    assess: () => null,
+    tutor: () => ({ moves: [], bestCol: null, exact: false }),
+  };
+}
+
+describe("no Player declines to move at a live position (the forced-pass abort)", () => {
+  // `runMatch` treats a null from a live position as an ABORT. A player that
+  // returns null when it has nothing to choose *between* therefore silently kills
+  // the match and grades nothing — which is what the Othello hybrid trial was
+  // doing (1 of 2 games aborted, P8 Phase 15). The fix is the same for every
+  // player: with no move to choose, ask the oracle, which knows about the pass and
+  // returns null only at a true terminal.
+  const PASS = 64;
+
+  it("RandomPlayer defers to the oracle rather than returning null", async () => {
+    expect(await new RandomPlayer(1).chooseMove(forcedPassOracle(PASS))).toBe(PASS);
+  });
+
+  it("GreedyPlayer defers to the oracle rather than returning null", async () => {
+    expect(await new GreedyPlayer([1, 2]).chooseMove(forcedPassOracle(PASS))).toBe(PASS);
+  });
+
+  it("HybridAiPlayer defers to the oracle when the tutor has nothing to band", async () => {
+    const rt = new MockRuntime({ reply: () => JSON.stringify({ move: 0, reason: "x" }) });
+    const hybrid = new HybridAiPlayer(new HybridPlayer(rt));
+    expect(await hybrid.chooseMove(forcedPassOracle(PASS))).toBe(PASS);
+  });
+
+  it("still returns null at a real terminal, so a finished match is not a loop", async () => {
+    const over: GameOracle = { ...forcedPassOracle(PASS), liveMove: () => null };
+    expect(await new RandomPlayer(1).chooseMove(over)).toBeNull();
+    expect(await new GreedyPlayer().chooseMove(over)).toBeNull();
+    const rt = new MockRuntime({ reply: () => "{}" });
+    expect(await new HybridAiPlayer(new HybridPlayer(rt)).chooseMove(over)).toBeNull();
   });
 });

@@ -17,7 +17,9 @@ import { othelloOracle } from "../src/games/othello/othello-oracle.js";
 import { PASS_CODE } from "../src/games/othello/othello-outcome.js";
 import { Othello } from "../src/games/othello/othello-wasm.js";
 import type { GameOracle } from "../src/harness/game-oracle.js";
-import { EnginePlayer } from "../src/harness/match-runner.js";
+import { MockRuntime } from "../src/harness/ai-runtime.js";
+import { HybridPlayer } from "../src/harness/hybrid-player.js";
+import { EnginePlayer, HybridAiPlayer, runMatch } from "../src/harness/match-runner.js";
 import { renderReport, runTournament } from "../src/harness/tournament.js";
 
 const WASM = "target/wasm32-unknown-unknown/release/othello_wasm.wasm";
@@ -87,4 +89,36 @@ describe("othello meets the harness (the generality proof)", () => {
     },
     600_000,
   );
+});
+
+/**
+ * The abort the rig's own counter caught (P8 Phase 15): a 2-game hybrid trial
+ * reported 1 aborted game, while drop4 and checkers aborted none. The cause is
+ * Othello-shaped but the bug was in the shared players — at a forced pass there
+ * is no placement to band, and the player returned `null`, which `runMatch` reads
+ * as an abort.
+ *
+ * This drives the **real** wasm with the **real** `HybridAiPlayer` over a
+ * `MockRuntime` (CI has no GPU), across enough seeds to be sure a forced pass is
+ * in there, and asserts both halves: no match aborts, and a pass really was
+ * played (otherwise the test would pass by never reaching the condition).
+ */
+describe("a forced pass does not abort the match (any player)", () => {
+  // BOTH sides are the hybrid on purpose. With an engine on one side, the forced
+  // pass usually falls to *it* — and `EnginePlayer` never had the bug, so the
+  // match completes and the test passes against the unfixed code. (Measured: it
+  // did. The first version of this test was green with the defect restored.)
+  it("hybrid-vs-hybrid plays through passes over the real wasm", async () => {
+    const rt = new MockRuntime({ reply: () => "not json" }); // always the fallback path
+    const hybrid = (): HybridAiPlayer => new HybridAiPlayer(new HybridPlayer(rt));
+    let passes = 0;
+    for (let seed = 0n; seed < 6n; seed += 1n) {
+      const rec = await runMatch(await loadReal(), hybrid(), hybrid(), seed);
+      expect(rec.abortReason, `seed ${seed} aborted`).toBe("none");
+      expect(rec.aborted).toBe(false);
+      expect(rec.result).not.toBe(-1);
+      passes += rec.moves.filter((m) => m === PASS_CODE).length;
+    }
+    expect(passes, "no forced pass in 6 matches — the guard was never exercised").toBeGreaterThan(0);
+  }, 600_000);
 });
