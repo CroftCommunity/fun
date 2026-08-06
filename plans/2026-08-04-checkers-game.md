@@ -1496,12 +1496,12 @@ that is checked and recorded is worth more than one that is checked and forgotte
 **Goal:** The TS surface the UI and the harness both speak.
 
 **Changes:**
-- [ ] `src/games/checkers/checkers-wasm.ts` (new) — the typed wrapper (the Othello
+- [x] `src/games/checkers/checkers-wasm.ts` (new) — the typed wrapper (the Othello
       shape), including `legalMoveDetails(): LegalMove[]` for the chain-aware UI
       and `legalMoves(): number[]` for the port.
-- [ ] `src/games/checkers/checkers-outcome.ts` (new) — `encodeRecord` /
+- [x] `src/games/checkers/checkers-outcome.ts` (new) — `encodeRecord` /
       `decodeRecord` / `verifyRecord` replaying packed move codes.
-- [ ] `tests/checkers-unit.test.ts` (new) — RED first: over the real
+- [x] `tests/checkers-unit.test.ts` (new) — RED first: over the real
       `checkers.wasm`, a played game's record re-verifies, and a **tampered** record
       fails.
 
@@ -2137,6 +2137,40 @@ calibration, documentation-impact coverage) — to be run in a fresh context.
 
 **Confirmed ready:** yes, pending one new unreviewed ADVISORY question (the hybrid
 `llm`/`fallback` telemetry) and the two previously-confirmed PHASE-GATED items.
+
+### Phase 12 execution — 2026-08-06
+
+**Landed:** `src/games/checkers/{checkers-wasm,checkers-outcome}.ts` and
+`tests/checkers-unit.test.ts` (6 tests). `npm run typecheck` and `npm run lint`
+clean.
+
+**RED first, and it was a real RED.** Both modules were committed to the working
+tree as *stubs* that compile and return plausible-but-wrong values (an empty
+board, `verifyRecord` → `ok: false`) rather than as missing files, so all six
+tests failed on **assertions**, not on a module-resolution error. A compile error
+would not have told us the assertions were the right ones.
+
+**The sentinel trap was handled up front, and both guards were proven to bite.**
+`decodeMove` compares `(code >>> 0) === MOVE_OVER`; reverting it to
+`code === MOVE_OVER` turns the terminal-position test red, and stubbing
+`verifyRecord` to return `ok: true` turns the tamper test red. Neither fixture is
+decorative. There is no pass sentinel to decode — checkers has no pass.
+
+**The `u8` risk is real and the test pins it.** The opening's move codes are all
+above 255 (`from | to << 5` puts even move 9-13 at 392), so the tamper case swaps
+in a different legal opening code and asserts `> 255` explicitly before using it.
+The record's move array round-trips through `encodeShare`/`decodeShare` as plain
+integers — the cross-game wire contract holds for a packed path code.
+
+**`legalMoves()` is derived, not a second export.** It maps
+`legalMoveDetails()` to `code`, so the port and the UI cannot disagree about what
+is legal; the wasm has exactly one legality surface.
+
+**Fixture note:** the jump-chain test asserts `path.length === captures.length`,
+which is the invariant that distinguishes a jump from a simple move (a simple
+move lands once and captures nothing, so the equality would be `1 === 0`). It
+searches up to 8 seeded self-play games for a capture and fails loudly with a
+named message if none appears, rather than silently asserting nothing.
 
 ### Phase 11 execution — 2026-08-05
 
