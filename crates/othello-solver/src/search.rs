@@ -11,12 +11,29 @@ use crate::eval::{heuristic, WEIGHTS};
 
 /// Empties at or below which an exact full solve is cheap enough to be the
 /// oracle — searched to a terminal and scored by disc differential (provably
-/// right). Above it, the search is depth-capped and horizon-approximate.
+/// right). Above it, the search is depth-capped and horizon-approximate. The
+/// decision is the **root's**, made once by [`mode_for`] and carried down.
 ///
-/// Conservative for the browser: the shipped solve runs in wasm (slower than a
-/// native `cargo` measurement), so this is chosen below the native breakpoint.
-/// Phase 3 validates the in-wasm wall-clock; see the plan's D2.
-pub const TRACTABLE_EMPTIES: usize = 10;
+/// **Measured in wasm 2026-08-06** (Node/V8, a real game at Expert, worst single
+/// call), once the interior-switch blowup was fixed — before that fix the number
+/// below was unmeasurable, because the cost sat at
+/// `TRACTABLE_EMPTIES + depth` empties rather than in the exact region at all:
+///
+/// | empties | exact reports | tutor worst | move worst |
+/// |---|---|---|---|
+/// | 10 (previous) | 16.7% | 119ms | 2112ms |
+/// | **12 — shipped** | **20.0%** | **85ms** | 2114ms |
+/// | 14 | 23.3% | 738ms | 2082ms |
+///
+/// 12 is free: three more points of proven-report rate for no measurable latency,
+/// because the worst call is the **midgame** heuristic search (~2.1s at 36
+/// empties), not the endgame. 14 buys another three points but the root solve
+/// starts to show (738ms), and the honesty flag only means something if the panel
+/// answers.
+///
+/// Anything that wants Othello faster has to look at the midgame depth, not here
+/// — the same conclusion checkers reached about its own budget.
+pub const TRACTABLE_EMPTIES: usize = 12;
 
 /// Terminal disc-differentials are scaled so a *proven* endgame result outranks
 /// any horizon heuristic score near the exact/capped boundary.
@@ -69,23 +86,51 @@ fn ordered_moves(board: &Board) -> Vec<Move> {
     moves
 }
 
+/// How a search treats its horizon, decided **once at the root** — see
+/// [`mode_for`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Mode {
+    /// Ignore `depth`; search every line to a real terminal (the endgame oracle).
+    Exact,
+    /// Cut off at `depth == 0` with the heuristic, however few empties remain.
+    Capped,
+}
+
+/// The mode a search starting from a position with `empties` empty cells runs in.
+///
+/// Decided from the **root** position and carried down, which is the whole point:
+/// deciding it per node meant a capped search flipped to a full solve as soon as
+/// its own leaves crossed the boundary, and the cost of that lands at
+/// `TRACTABLE_EMPTIES + depth` empties (19s in wasm at Expert — see
+/// `a_capped_search_does_not_solve_at_its_leaves`).
+fn mode_for(empties: usize) -> Mode {
+    if empties <= TRACTABLE_EMPTIES {
+        Mode::Exact
+    } else {
+        Mode::Capped
+    }
+}
+
+/// The number of empty cells on `board` — the exact/capped boundary's input.
+fn empties_of(board: &Board) -> usize {
+    board.cells.iter().filter(|&&v| v == 0).count()
+}
+
 /// Negamax with alpha-beta. Returns the value from `board.to_move`'s perspective.
-/// In the exact region (empties ≤ [`TRACTABLE_EMPTIES`]) it ignores `depth` and
-/// searches to a terminal; otherwise it cuts off at `depth == 0` with the
-/// heuristic.
-fn negamax(board: &Board, depth: u32, mut alpha: i32, beta: i32) -> i32 {
+/// [`Mode::Exact`] ignores `depth` and searches to a terminal; [`Mode::Capped`]
+/// cuts off at `depth == 0` with the heuristic. The mode is the root's and does
+/// not change as the search descends.
+fn negamax(board: &Board, depth: u32, mut alpha: i32, beta: i32, mode: Mode) -> i32 {
     if result(board).is_some() {
         return terminal_value(board);
     }
-    let empties = board.cells.iter().filter(|&&v| v == 0).count();
-    let exact = empties <= TRACTABLE_EMPTIES;
-    if !exact && depth == 0 {
+    if mode == Mode::Capped && depth == 0 {
         return heuristic(board);
     }
     let next_depth = depth.saturating_sub(1);
     let mut best = i32::MIN + 1;
     for mv in ordered_moves(board) {
-        let score = -negamax(&apply_move(board, mv), next_depth, -beta, -alpha);
+        let score = -negamax(&apply_move(board, mv), next_depth, -beta, -alpha, mode);
         if score > best {
             best = score;
         }
@@ -104,6 +149,8 @@ fn negamax(board: &Board, depth: u32, mut alpha: i32, beta: i32) -> i32 {
 /// Empty if the position is terminal.
 #[must_use]
 pub fn move_values(board: &Board, depth: u32) -> Vec<(Move, i32)> {
+    // The mode is fixed here, from the position the caller actually asked about.
+    let mode = mode_for(empties_of(board));
     legal_moves(board)
         .into_iter()
         .map(|mv| {
@@ -112,6 +159,7 @@ pub fn move_values(board: &Board, depth: u32) -> Vec<(Move, i32)> {
                 depth.saturating_sub(1),
                 i32::MIN + 1,
                 i32::MAX - 1,
+                mode,
             );
             (mv, v)
         })
@@ -149,6 +197,55 @@ mod tests {
             .map(|mv| -ref_exact(&apply_move(board, mv)))
             .max()
             .unwrap()
+    }
+
+    /// A **capped** search must stay capped, even when its own leaves fall into
+    /// the exact region.
+    ///
+    /// `negamax` used to re-decide exactness at every node from that node's
+    /// empty count, so a depth-7 Expert search from 17 empties reached 10 empties
+    /// at its leaves and turned each one into a full solve-to-terminal. Measured
+    /// in wasm 2026-08-06: **19,187ms for a single `live_move`**, with the spike
+    /// sitting exactly at `TRACTABLE_EMPTIES + Expert.depth()`. Lowering the
+    /// constant only moves the spike; the mode has to be decided once, at the
+    /// root, and carried down.
+    #[test]
+    fn a_capped_search_does_not_solve_at_its_leaves() {
+        // A position inside the exact region, so the two modes visibly disagree.
+        let mut pos = <Othello as Adversary>::initial(0);
+        let mut rng = ChaCha20Rng::seed_from_u64(4);
+        while pos.cells.iter().filter(|&&v| v == 0).count() > TRACTABLE_EMPTIES {
+            let l = legal_moves(&pos);
+            pos = apply_move(&pos, l[(rng.next_u32() as usize) % l.len()]);
+            if result(&pos).is_some() {
+                break;
+            }
+        }
+        assert!(
+            result(&pos).is_none(),
+            "the fixture must be a live position"
+        );
+
+        // Capped at depth 0: the heuristic, whatever the empty count says.
+        assert_eq!(
+            negamax(&pos, 0, i32::MIN + 1, i32::MAX - 1, Mode::Capped),
+            heuristic(&pos),
+            "a capped search must cut off at its depth, not solve because the position is small"
+        );
+        // Exact mode ignores depth and searches to a terminal, agreeing with an
+        // independent plain minimax.
+        assert_eq!(
+            negamax(&pos, 0, i32::MIN + 1, i32::MAX - 1, Mode::Exact),
+            ref_exact(&pos),
+            "exact mode still solves"
+        );
+    }
+
+    #[test]
+    fn the_root_decides_the_mode_from_its_own_position() {
+        assert_eq!(mode_for(TRACTABLE_EMPTIES), Mode::Exact);
+        assert_eq!(mode_for(TRACTABLE_EMPTIES - 1), Mode::Exact);
+        assert_eq!(mode_for(TRACTABLE_EMPTIES + 1), Mode::Capped);
     }
 
     #[test]

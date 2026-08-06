@@ -55,10 +55,23 @@ second adversarial game, reusing the harness + trait a first game established.
   and checkers supplies its capture count the same way. It is a **label, not a
   licence**: the band still excludes blunders, so an enthusiastic idea cannot
   promote an unsafe move (asserted).
-- [ ] **Tune `TRACTABLE_EMPTIES` / Level depths against in-wasm wall-clock.** Set
-  conservatively (10 empties; Easy1/Medium3/Hard5/Expert7). If the endgame solve
-  or a deep level is slow on a real phone, lower it (the honesty flag depends on
-  the exact solve fitting a tap budget in-browser, not just natively).
+- [x] ~~**Tune `TRACTABLE_EMPTIES` against in-wasm wall-clock.**~~ **Done
+  2026-08-06 — and it found a bug, not a tuning problem.** Measuring the shipped
+  setting (10) in wasm gave a worst `live_move` at Expert of **19,187ms**, with
+  the spike sitting exactly at 17 empties = `TRACTABLE_EMPTIES + Expert.depth()`.
+  Cause: `negamax` re-decided exact-vs-capped from *each node's* empty count, so a
+  depth-7 capped search reached the boundary at its leaves and turned every one of
+  them into a full solve-to-terminal. Lowering the constant only moved the spike
+  (8 → 15 empties, 3275ms). The mode is now decided once at the root and carried
+  down: **19,187ms → 2,112ms**, tutor worst 1,915ms → 119ms, proof rate unchanged.
+  With the blowup gone the constant could then be *raised* 10 → **12** for free
+  (+3.3pp proven reports, no latency change); 14 was measured too and rejected
+  (the root solve reaches 738ms). The remaining worst call is the **midgame**
+  heuristic (~2.1s at 36 empties) — the same conclusion checkers reached.
+- [ ] **The midgame is Othello's latency floor (~2.1s at Expert).** Not addressed
+  above, because `TRACTABLE_EMPTIES` cannot reach it. Two seconds is a long time
+  to wait for an opponent's move; the lever is the Level depths (Expert = 7) or a
+  time-bounded iterative deepening, neither of which is a constant tweak.
 - [ ] **Persona roster** — shared with Drop 4's tracked follow-on (`TODO/drop4.md`):
   a selectable roster of temperaments managed as external prompt files. Rowan is
   Othello's single persona today.

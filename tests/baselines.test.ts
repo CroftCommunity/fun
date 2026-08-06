@@ -105,16 +105,22 @@ const ANCHORS: readonly Anchor[] = [
           Othello.load(),
         ),
       ),
+    // Re-recorded 2026-08-06 (was 10 graded / 50 skipped) when Othello's search
+    // stopped re-deciding exact-vs-capped at every node and `TRACTABLE_EMPTIES`
+    // rose 10 → 12 on the back of it. Two more moves fall in the exact region, so
+    // two more are graded; W-D-L is unchanged, which is the check that widening
+    // the oracle did not change who wins. The run also got *faster* — the old
+    // interior switch was turning a capped search's leaves into full solves.
     recorded: {
       games: 2,
       wins: 1,
       draws: 0,
       losses: 1,
-      scoredMoves: 10,
-      optimal: 10,
+      scoredMoves: 12,
+      optimal: 12,
       preserving: 0,
       blunders: 0,
-      skippedEarly: 50,
+      skippedEarly: 48,
       abortedGames: 0,
       llmMoves: 0,
       fallbackMoves: 0,
@@ -133,7 +139,9 @@ const ANCHORS: readonly Anchor[] = [
     // budget to the analysis budget: graded 4 → 9, skipped 159 → 154. That is the
     // grader itself changing, which is the one reason a number here may be
     // updated rather than investigated — a deeper oracle proves more, so it
-    // grades more. The run cost roughly doubled (~16s → ~32s) for it.
+    // grades more. It costs wall-clock, which this file deliberately does not
+    // assert (it swings with machine load — measured between 8s and 32s for the
+    // same deterministic result).
     //
     // Both games still draw: top-level self-play grinds to the 80-ply no-progress
     // rule, the honest terminal for a game neither side can force. The graded
