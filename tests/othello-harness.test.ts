@@ -104,21 +104,27 @@ describe("othello meets the harness (the generality proof)", () => {
  * played (otherwise the test would pass by never reaching the condition).
  */
 describe("a forced pass does not abort the match (any player)", () => {
-  // BOTH sides are the hybrid on purpose. With an engine on one side, the forced
-  // pass usually falls to *it* — and `EnginePlayer` never had the bug, so the
-  // match completes and the test passes against the unfixed code. (Measured: it
-  // did. The first version of this test was green with the defect restored.)
-  it("hybrid-vs-hybrid plays through passes over the real wasm", async () => {
+  // BOTH sides are the hybrid on purpose. With an engine on one side the forced
+  // pass usually falls to *it*, and `EnginePlayer` never had the bug — the match
+  // completes and the test passes against the unfixed code. (Measured: the first
+  // version of this test was green with the defect restored.)
+  //
+  // ONE seed, not a sweep. Seed 0 is where the bug reproduced, and every move
+  // here runs Othello's exact endgame solve through the real wasm — a six-seed
+  // sweep took 27s locally and blocked vitest's worker long enough on CI that its
+  // RPC heartbeat timed out and the whole run failed while every test passed. The
+  // pass assertion below is what keeps the single seed honest: if seed 0 ever
+  // stops containing a forced pass, this fails loudly instead of proving nothing.
+  it("hybrid-vs-hybrid plays through a forced pass over the real wasm", async () => {
     const rt = new MockRuntime({ reply: () => "not json" }); // always the fallback path
     const hybrid = (): HybridAiPlayer => new HybridAiPlayer(new HybridPlayer(rt));
-    let passes = 0;
-    for (let seed = 0n; seed < 6n; seed += 1n) {
-      const rec = await runMatch(await loadReal(), hybrid(), hybrid(), seed);
-      expect(rec.abortReason, `seed ${seed} aborted`).toBe("none");
-      expect(rec.aborted).toBe(false);
-      expect(rec.result).not.toBe(-1);
-      passes += rec.moves.filter((m) => m === PASS_CODE).length;
-    }
-    expect(passes, "no forced pass in 6 matches — the guard was never exercised").toBeGreaterThan(0);
-  }, 600_000);
+    const rec = await runMatch(await loadReal(), hybrid(), hybrid(), 0n);
+    expect(rec.abortReason).toBe("none");
+    expect(rec.aborted).toBe(false);
+    expect(rec.result).not.toBe(-1);
+    expect(
+      rec.moves.filter((m) => m === PASS_CODE).length,
+      "seed 0 no longer contains a forced pass — the guard was never exercised",
+    ).toBeGreaterThan(0);
+  }, 120_000);
 });
