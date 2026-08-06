@@ -180,17 +180,34 @@ a sanity check that the Reports differ in the ways the games do:
 |---|---|---|---|---|---|---|
 | drop4 | 0-1-1 | 8 | 20 | 0 | 820 | 0 |
 | othello | 0-0-1 | 5 | 40 | 0 | 3619 | **1** |
-| checkers | 0-1-1 | 6 | 99 | 0 | 4412 | 0 |
+| checkers | 0-0-2 | 5 | 46 | 0 | 3400 | 0 |
 
 Checkers skips the most by far — 99 of 105 plies. That is the honesty gate, not a
 defect: checkers is `exact` only where the search **proves** a terminal, and these
 games ended before the endgame where proofs concentrate.
 
-The Othello row's single **aborted** game is a real finding, not noise: nothing
-else aborts, and an abort means a player returned no move or had one rejected. The
-likely cause is the hybrid meeting a forced pass, where the band is empty. Tracked
-in `TODO/othello.md`. It is exactly what the abort counter was added for — before
-P8 Phase 2c a Report could not tell you this had happened.
+Since 2026-08-06 a hybrid Report also carries **where its moves came from**:
+
+```
+  chosen by model 51 · by engine fallback 0 (fallback rate 0.0%)
+```
+
+That line is the denominator for every claim above it. "0 blunders" from a player
+that fell back on every move is the *engine's* achievement, and until this landed
+the Report could not tell the two apart. It is printed only when there is a second
+path to report, so engine-vs-engine Reports do not grow a line of zeroes.
+
+The 0% above is not a formality: `HybridPlayer.pick` constrains the model's reply
+with a JSON schema whose `move` is an enum of the band, so a well-formed reply is
+in-band **by construction** and the fallback fires only on malformed output, a
+runtime error, or an empty band. A high fallback rate therefore means the model is
+failing to produce parseable JSON at all, which is worth knowing.
+
+The Othello row's single **aborted** game was a real finding, not noise — the
+hybrid meeting a forced pass, where the band is empty and the player returned
+`null`. **Fixed 2026-08-06** in the shared players; the row is kept because it is
+what the abort counter was added for, and before P8 Phase 2c a Report could not
+tell you it had happened.
 
 ### A hybrid trial run
 

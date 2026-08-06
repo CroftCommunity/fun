@@ -36,7 +36,23 @@ import { buildBand, HybridPlayer, type BandMove } from "./hybrid-player.js";
 export interface Player {
   readonly label: string;
   chooseMove(game: GameOracle): Promise<number | null>;
+  /**
+   * Where the move just returned came from, for a player with more than one
+   * path to a move. Optional: a player with a single path (the engine, random,
+   * greedy) has nothing to report and omits it.
+   *
+   * This exists because "the hybrid never blunders" is only meaningful next to
+   * how often the hybrid was actually the *model* — a model that fell back every
+   * move produces the same clean Report as one that never did.
+   */
+  lastSource?(): MoveSource | null;
 }
+
+/**
+ * Which path produced a move: the model's in-band pick, or the engine fallback.
+ * Mirrors `HybridDecision.source`.
+ */
+export type MoveSource = "llm" | "fallback";
 
 /**
  * Why a match stopped early. `"none"` means it reached a terminal result.
@@ -65,6 +81,12 @@ export interface MatchRecord {
   readonly abortReason: AbortReason;
   /** Per-move wall time in ms (engine µs vs LLM ~ms/s — the cost metric). */
   readonly timings: number[];
+  /**
+   * Per-move provenance, index-aligned with `moves`; `null` where the player has
+   * only one path (so "no source" and "the fallback path" stay distinguishable —
+   * collapsing them would make every engine move look like a fallback).
+   */
+  readonly sources: (MoveSource | null)[];
 }
 
 /** The shipped classic opponent at a difficulty [`Level`] (delegates to the wasm). */
@@ -167,6 +189,7 @@ export class HybridAiPlayer implements Player {
   readonly label: string;
   readonly #hybrid: HybridPlayer;
   readonly #buildPrompt: HybridPromptBuilder;
+  #lastSource: MoveSource | null = null;
   constructor(hybrid: HybridPlayer, opts?: { label?: string; buildPrompt?: HybridPromptBuilder }) {
     this.#hybrid = hybrid;
     this.#buildPrompt = opts?.buildPrompt ?? defaultHybridPrompt;
@@ -175,13 +198,24 @@ export class HybridAiPlayer implements Player {
   async chooseMove(game: GameOracle): Promise<number | null> {
     const report = game.tutor();
     // Nothing to band means nothing to *choose between*, not nothing to play —
-    // see the no-move contract on `Player.chooseMove`.
-    if (report.bestCol === null || report.moves.length === 0) return game.liveMove(0);
+    // see the no-move contract on `Player.chooseMove`. The engine chose it, so
+    // it is a fallback: the model was never consulted.
+    if (report.bestCol === null || report.moves.length === 0) {
+      this.#lastSource = "fallback";
+      return game.liveMove(0);
+    }
     const band = buildBand(report.moves);
-    if (band.length === 0) return report.bestCol; // safety: the engine's best move
+    if (band.length === 0) {
+      this.#lastSource = "fallback"; // safety: the engine's best move
+      return report.bestCol;
+    }
     const { prompt, system } = this.#buildPrompt(game, band);
     const decision = await this.#hybrid.pick(band, { prompt, system });
+    this.#lastSource = decision.source;
     return decision.move;
+  }
+  lastSource(): MoveSource | null {
+    return this.#lastSource;
   }
 }
 
@@ -201,6 +235,7 @@ export async function runMatch(
   game.newGame(seed);
   const moves: number[] = [];
   const timings: number[] = [];
+  const sources: (MoveSource | null)[] = [];
   let abortReason: AbortReason = "none";
 
   while (game.board().result === -1) {
@@ -218,6 +253,7 @@ export async function runMatch(
     }
     moves.push(col);
     timings.push(elapsed);
+    sources.push(player.lastSource?.() ?? null);
   }
 
   return {
@@ -228,5 +264,6 @@ export async function runMatch(
     aborted: abortReason !== "none",
     abortReason,
     timings,
+    sources,
   };
 }

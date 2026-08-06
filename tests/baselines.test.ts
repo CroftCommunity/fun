@@ -49,6 +49,9 @@ type Baseline = {
   blunders: number;
   skippedEarly: number;
   abortedGames: number;
+  /** Provenance — 0/0 for engine self-play, which has one path to a move. */
+  llmMoves: number;
+  fallbackMoves: number;
 };
 
 /** Load a wasm module through the CI shim (a `fetch` stub over the built file). */
@@ -90,6 +93,8 @@ const ANCHORS: readonly Anchor[] = [
       blunders: 0,
       skippedEarly: 26,
       abortedGames: 0,
+      llmMoves: 0,
+      fallbackMoves: 0,
     },
   },
   {
@@ -111,6 +116,8 @@ const ANCHORS: readonly Anchor[] = [
       blunders: 0,
       skippedEarly: 50,
       abortedGames: 0,
+      llmMoves: 0,
+      fallbackMoves: 0,
     },
   },
   {
@@ -139,6 +146,8 @@ const ANCHORS: readonly Anchor[] = [
       blunders: 0,
       skippedEarly: 159,
       abortedGames: 0,
+      llmMoves: 0,
+      fallbackMoves: 0,
     },
   },
 ];

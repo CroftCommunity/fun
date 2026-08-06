@@ -122,6 +122,7 @@ describe("scorer: gradeSide over the real wasm oracle", () => {
         aborted: true,
         abortReason: "rejectedMove",
         timings: [],
+        sources: [],
       };
       const verifier = await loadReal();
       const card = gradeSide(injected, verifier, 1);

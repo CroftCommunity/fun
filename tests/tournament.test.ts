@@ -115,6 +115,8 @@ describe("tournament: full rig over the real wasm", () => {
         blunders: 0,
         skippedEarly: 41,
         moveMsTotal: 1234,
+        llmMoves: 0,
+        fallbackMoves: 0,
       },
       abortedGames: 0,
     };
@@ -175,4 +177,70 @@ describe("abort observability", () => {
     });
     expect(report.abortedGames).toBe(2);
   }, 60_000);
+});
+
+/**
+ * P8 follow-up — **move provenance in the Report.**
+ *
+ * `HybridDecision.source` already says whether the LLM picked in-band or the
+ * engine's top-of-band was used, and `HybridAiPlayer` was discarding it. So a
+ * model that fell back on *every* move rendered a Report identical to one that
+ * never fell back — the headline "the hybrid stays in-band, 0 blunders" was true
+ * of both, and only one of them means anything. Checkers' fallback rate had to be
+ * counted by hand off a WebGPU transcript for exactly this reason (P8 Phase 14).
+ *
+ * Both directions are asserted, because a counter wired to a constant would pass
+ * a one-sided test.
+ */
+describe("the Report says where the hybrid's moves came from", () => {
+  const hybridWith = (reply: (p: string, o: { schema?: object }) => string): HybridAiPlayer =>
+    new HybridAiPlayer(new HybridPlayer(new MockRuntime({ reply })), { label: "Hybrid" });
+
+  it(
+    "counts every move as a fallback when the model never returns anything usable",
+    async () => {
+      const report = await runTournament(loadReal, hybridWith(() => "not json"), new EnginePlayer(3), {
+        games: 2,
+        baseSeed: 0n,
+      });
+      expect(report.card.fallbackMoves).toBeGreaterThan(0);
+      expect(report.card.llmMoves).toBe(0);
+      // The counts cover the side's whole game, not just its graded moves —
+      // provenance is not gated on the oracle proving anything.
+      expect(report.card.llmMoves + report.card.fallbackMoves).toBeGreaterThan(
+        report.card.scoredMoves,
+      );
+      expect(renderReport(report)).toMatch(/fallback/i);
+    },
+    120_000,
+  );
+
+  it(
+    "counts every move as the model's when it always picks in-band",
+    async () => {
+      const report = await runTournament(
+        loadReal,
+        hybridWith((_p, o) => JSON.stringify({ move: firstEnumMove(o.schema), reason: "ok" })),
+        new EnginePlayer(3),
+        { games: 2, baseSeed: 0n },
+      );
+      expect(report.card.llmMoves).toBeGreaterThan(0);
+      expect(report.card.fallbackMoves).toBe(0);
+    },
+    120_000,
+  );
+
+  it(
+    "attributes nothing to a plain engine matchup (no second path to report)",
+    async () => {
+      const report = await runTournament(loadReal, new EnginePlayer(3), new EnginePlayer(3), {
+        games: 1,
+        baseSeed: 0n,
+      });
+      expect(report.card.llmMoves).toBe(0);
+      expect(report.card.fallbackMoves).toBe(0);
+      expect(renderReport(report)).not.toMatch(/fallback/i);
+    },
+    120_000,
+  );
 });

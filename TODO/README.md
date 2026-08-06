@@ -77,6 +77,11 @@ any of these.
   persona is inlined per game (Chip in Drop 4, Rowan in Othello, Alder in
   checkers). Broaden to a roster of temperaments managed as external text files,
   one place to add a persona (`drop4.md`, `othello.md`, `checkers.md`).
+- ~~**`HybridDecision.source` never reaches the Report**~~ — **done 2026-08-06.**
+  The `Scorecard` now carries `llmMoves` / `fallbackMoves` and `renderReport`
+  prints the split (only when there is a second path to report). It immediately
+  corrected a hand-counted number: checkers' P8 Phase 14 run was read as 50%
+  fallback from the *banter*, and the real move-level rate is 0%.
 - **The banter filter only checks length** — `cleanBanter` is copied per game and
   rejects a line only if it is empty or over 90 characters, so a small model can
   and does assert false board facts (observed in checkers' P8 Phase 14 WebGPU

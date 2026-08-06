@@ -2296,12 +2296,21 @@ in it was proven, and using it for one move's wording would understate certainty
 **The real-WebGPU run happened, and the fallback count the plan asked for is:**
 `llm=4, fallback=4` over 8 replies (system Chrome, `--enable-unsafe-webgpu`,
 Qwen2.5-0.5B-Instruct-q4f16_1-MLC, `/checkers/?seed=7`, first legal move each
-turn). So a 0.5B model picks in-band about half the time here and degrades to the
-engine's top-of-band the rest — exactly the guarantee the design claims, and a
-useful number to have: `HybridAiPlayer.chooseMove` discards `decision.source`, so
-the rig could not have told us. Source was inferred from whether the spoken line
-is one of the four `FALLBACK_LINE` constants verbatim; that is a proxy, not the
-flag itself.
+turn). Source was inferred from whether the spoken line is one of the four
+`FALLBACK_LINE` constants verbatim — a proxy, not the flag itself.
+
+> **CORRECTION (2026-08-06).** That proxy was measuring the wrong thing, and the
+> "half the time" reading above is wrong. `aiSay` is set from
+> `cleanBanter(decision.reason)`, which **also** substitutes the canned
+> `FALLBACK_LINE` when an *llm* decision's reason is empty or over 90 characters —
+> so a canned line means "the banter was rejected", not "the engine chose the
+> move". With `decision.source` plumbed through the rig (see below), the same
+> model over the same game reports **`chosen by model 51 · by engine fallback 0`**.
+> The move fell back **zero** times, which is what `HybridPlayer.pick` predicts:
+> it constrains the reply with a JSON schema whose `move` is an enum of the band,
+> so a well-formed reply is in-band by construction. This is the argument for
+> plumbing the flag rather than inferring it — the hand-count was not merely
+> imprecise, it was measuring a different quantity.
 
 **An honesty wrinkle worth recording, not silently patching.** The prompt says
 "never analysis", and the small model ignores it: two of the four LLM lines were

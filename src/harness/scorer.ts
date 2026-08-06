@@ -33,6 +33,17 @@ export interface Scorecard {
   skippedEarly: number;
   /** Total wall time (ms) spent choosing this side's moves — the cost metric. */
   moveMsTotal: number;
+  /**
+   * Moves this side played that the **model** chose in-band, and moves that fell
+   * back to the engine's top-of-band. Counted over the side's whole game, not
+   * only its graded moves: provenance is a fact about who chose, and gating it on
+   * the honesty flag would hide the answer in exactly the games (early, unproven)
+   * where the model does most of its choosing.
+   *
+   * Both are 0 for a player with one path, which is every player but the hybrid.
+   */
+  llmMoves: number;
+  fallbackMoves: number;
 }
 
 /** A zeroed scorecard. */
@@ -48,6 +59,8 @@ export function emptyScorecard(): Scorecard {
     blunders: 0,
     skippedEarly: 0,
     moveMsTotal: 0,
+    llmMoves: 0,
+    fallbackMoves: 0,
   };
 }
 
@@ -98,6 +111,9 @@ export function gradeSide(record: MatchRecord, verifier: GameOracle, side: SideC
   record.moves.forEach((col, i) => {
     const board = verifier.board();
     if (board.result === -1 && board.toMove === side) {
+      const source = record.sources[i] ?? null;
+      if (source === "llm") card = { ...card, llmMoves: card.llmMoves + 1 };
+      if (source === "fallback") card = { ...card, fallbackMoves: card.fallbackMoves + 1 };
       const a = verifier.assess(col);
       if (a) {
         card = foldVerdict(card, { quality: a.quality, exact: a.exact });
@@ -123,6 +139,8 @@ export function sumScorecards(cards: readonly Scorecard[]): Scorecard {
       blunders: acc.blunders + c.blunders,
       skippedEarly: acc.skippedEarly + c.skippedEarly,
       moveMsTotal: acc.moveMsTotal + c.moveMsTotal,
+      llmMoves: acc.llmMoves + c.llmMoves,
+      fallbackMoves: acc.fallbackMoves + c.fallbackMoves,
     }),
     emptyScorecard(),
   );

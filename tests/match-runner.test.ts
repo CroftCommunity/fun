@@ -184,3 +184,27 @@ describe("no Player declines to move at a live position (the forced-pass abort)"
     expect(await new HybridAiPlayer(new HybridPlayer(rt)).chooseMove(over)).toBeNull();
   });
 });
+
+describe("runMatch records where each move came from", () => {
+  it("records a source per move for a player that has one, and null otherwise", async () => {
+    const game = await loadReal();
+    // A player with two paths, alternating, so a constant would not pass.
+    let n = 0;
+    const twoPath: Player = {
+      label: "twoPath",
+      chooseMove: async (g) => {
+        n += 1;
+        return g.legalMoves()[0] ?? null;
+      },
+      lastSource: () => (n % 2 === 1 ? "llm" : "fallback"),
+    };
+    const rec = await runMatch(game, twoPath, new EnginePlayer(0), 5n);
+    expect(rec.sources.length).toBe(rec.moves.length);
+    // Side A is `twoPath` (it opens): its moves are indices 0, 2, 4...
+    const aSources = rec.sources.filter((_, i) => i % 2 === 0);
+    expect(aSources).toContain("llm");
+    expect(aSources).toContain("fallback");
+    // The engine has no second path, so it reports nothing.
+    expect(rec.sources.filter((_, i) => i % 2 === 1).every((s) => s === null)).toBe(true);
+  }, 60_000);
+});

@@ -88,10 +88,22 @@ export function renderReport(r: Report): string {
   const c = r.card;
   const winRate = c.games === 0 ? 0 : (100 * c.wins) / c.games;
   const msPerScored = c.scoredMoves === 0 ? 0 : c.moveMsTotal / c.scoredMoves;
+  // Provenance is printed only when there is a second path to report, so an
+  // engine-vs-engine Report does not grow a line of zeroes. When it IS printed it
+  // is the denominator for every claim above it: "0 blunders" from a player that
+  // fell back on every move is the engine's achievement, not the model's.
+  const chosen = c.llmMoves + c.fallbackMoves;
+  const provenance =
+    chosen === 0
+      ? []
+      : [
+          `  chosen by model ${c.llmMoves} · by engine fallback ${c.fallbackMoves} (fallback rate ${((100 * c.fallbackMoves) / chosen).toFixed(1)}%)`,
+        ];
   return [
     r.matchup,
     `  games ${c.games} (${r.abortedGames} aborted) | W-D-L ${c.wins}-${c.draws}-${c.losses} (win rate ${winRate.toFixed(0)}%)`,
     `  graded moves ${c.scoredMoves} (skipped ${c.skippedEarly} early) | optimal ${c.optimal} · preserving ${c.preserving} · blunders ${c.blunders} (blunder rate ${(100 * blunderRate(c)).toFixed(1)}%)`,
+    ...provenance,
     `  cost ${c.moveMsTotal.toFixed(0)}ms total (${msPerScored.toFixed(1)}ms/graded move)`,
   ].join("\n");
 }
