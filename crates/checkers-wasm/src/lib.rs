@@ -31,7 +31,9 @@ use adversary_core::{Adversary, MatchResult, Side};
 use checkers_core::{
     apply_move, legal_chains, legal_moves, result, Board, Checkers, Move, SQUARES,
 };
-use checkers_solver::{assess, best_move, choose, move_values, Level, MoveClass, TutorMove};
+use checkers_solver::{
+    assess, assess_for_move, best_move, choose, move_values, Level, MoveClass, TutorMove,
+};
 use pond_outcome::{attest, Outcome};
 use rand_chacha::rand_core::SeedableRng;
 use rand_chacha::ChaCha20Rng;
@@ -389,7 +391,10 @@ pub extern "C" fn assess_json(code: u32) -> *const u8 {
     let Ok(packed) = u16::try_from(code) else {
         return set_out_str("null");
     };
-    let report = assess(&s.board);
+    // The **coach** budget, not the panel's: this call sits on the tap path (the
+    // UI assesses the tapped move before applying it), so it must stay cheap.
+    // See `checkers_solver::tutor::COACH_DEPTH`.
+    let report = assess_for_move(&s.board);
     match report.moves.iter().find(|m| m.col == packed) {
         Some(m) => set_out_json(&assess_view(m)),
         None => set_out_str("null"),
@@ -406,21 +411,40 @@ struct TutorView {
     exact: bool,
 }
 
-/// The current position's whole-position tutor report: every legal move's
-/// assessment, the best move, and whether the whole report is `exact`. `"null"`
-/// if no game; an empty `moves` for a terminal position. Never panics.
-#[no_mangle]
-pub extern "C" fn tutor_json() -> *const u8 {
-    let Some(s) = session_mut() else {
-        return set_out_str("null");
-    };
-    let report = assess(&s.board);
+fn report_json(report: &checkers_solver::TutorReport) -> *const u8 {
     let view = TutorView {
         moves: report.moves.iter().map(assess_view).collect(),
         best_col: report.best_col,
         exact: report.exact,
     };
     set_out_json(&view)
+}
+
+/// The whole-position report at the **per-move coach** budget — what the UI reads
+/// on a tap to decide whether to say anything about the move just played.
+///
+/// Same shape as [`tutor_json`], deliberately cheaper: this one is on the tap
+/// path, and the panel's depth measured 705ms against this one's 46ms in wasm. A
+/// shallower search hedges more often; it never grades dishonestly, because a
+/// blunder still needs two proofs. `"null"` if no game. Never panics.
+#[no_mangle]
+pub extern "C" fn coach_json() -> *const u8 {
+    let Some(s) = session_mut() else {
+        return set_out_str("null");
+    };
+    report_json(&assess_for_move(&s.board))
+}
+
+/// The current position's whole-position tutor report at the **panel** budget:
+/// every legal move's assessment, the best move, and whether the whole report is
+/// `exact`. This is the deep one — opened deliberately, never on a tap. `"null"`
+/// if no game; an empty `moves` for a terminal position. Never panics.
+#[no_mangle]
+pub extern "C" fn tutor_json() -> *const u8 {
+    let Some(s) = session_mut() else {
+        return set_out_str("null");
+    };
+    report_json(&assess(&s.board))
 }
 
 // --- assistance + outcome ----------
@@ -553,6 +577,19 @@ mod tests {
         // superset fields plus checkers' own one-ply fact.
         let t = json(tutor_json());
         assert_eq!(t["exact"], serde_json::json!(false), "early is capped");
+
+        // The cheap tap-path report is the same shape and the same honesty, just
+        // a shallower search — the UI reads this one on every move, and the panel
+        // reads `tutor_json`. A binding that pointed both at one budget would put
+        // the panel's cost on every tap, which is the bug this split prevents.
+        let c = json(coach_json());
+        assert_eq!(
+            c["moves"].as_array().map(Vec::len),
+            t["moves"].as_array().map(Vec::len),
+            "both reports cover every legal move"
+        );
+        assert_eq!(c["exact"], serde_json::json!(false));
+        assert!(c["bestCol"].is_number());
         assert!(t["bestCol"].is_number(), "there is a best move");
         let first_fact = &t["moves"][0];
         assert_eq!(first_fact["immediateWin"], serde_json::json!(false));

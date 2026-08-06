@@ -564,6 +564,17 @@ type, so a new game supplies only its own `capped_class` and per-level tuning. (
 was duplicated per game until checkers became the third consumer; the extraction
 landed 2026-08-05.)
 
+**Budget the tutor panel separately from the tap path.** The panel is opened
+deliberately, once, and is the only surface allowed to say a move *threw the
+game* — so it can afford a deeper search than a move can, and depth is what buys
+proofs. Checkers measured 2.2% → 4.9% of move values proven by going one ply
+deeper than the strongest opponent. Two traps come with it: the deep call must not
+also serve the per-move coach (the UI assesses a tapped move *before* applying it,
+so one shared budget puts the panel's cost on every tap — checkers exports
+`coach_json` and `tutor_json` for exactly this reason), and a search of that size
+blocks the main thread, so paint the reading state **before** starting it or the
+button looks dead.
+
 **Honesty gate (non-negotiable):** if your game is **not solved from the opening**
 (Othello, chess), the Oracle is *heuristic early, exact only in the deep endgame*.
 Carry an `exact` flag on every tutor fact and **bind the wording to it**: claim a

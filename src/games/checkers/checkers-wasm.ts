@@ -115,6 +115,7 @@ interface Exports {
   oracle_best(level: number): number;
   oracle_move_values_json(): number;
   assess_json(code: number): number;
+  coach_json(): number;
   tutor_json(): number;
   mark_assistance(): void;
   outcome_json(declare: number): number;
@@ -201,9 +202,22 @@ export class Checkers {
   assess(code: number): MoveAssessment | null {
     return JSON.parse(this.read(this.x.assess_json(code))) as MoveAssessment | null;
   }
-  /** The current position's whole-position tutor report. */
+  /**
+   * The whole-position report at the **panel** budget — the deep search that
+   * buys the proofs behind "that threw the game". Opened deliberately; measured
+   * at up to ~700ms, so never call it on a tap. Use {@link coach} there.
+   */
   tutor(): TutorReport {
     return JSON.parse(this.read(this.x.tutor_json())) as TutorReport;
+  }
+  /**
+   * The same report at the **per-move coach** budget — the cheap one (~46ms
+   * worst case), for deciding whether to say anything about the move just
+   * played. It hedges more often than {@link tutor}; it is never less honest,
+   * because grading a blunder still needs two proofs either way.
+   */
+  coach(): TutorReport {
+    return JSON.parse(this.read(this.x.coach_json())) as TutorReport;
   }
   /** Record that a hint was used this match (assistance). */
   markAssistance(): void {

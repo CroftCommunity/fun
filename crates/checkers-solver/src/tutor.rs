@@ -25,9 +25,61 @@ use checkers_core::{legal_chains, legal_moves, Board};
 
 use crate::search::{move_scores, Level};
 
-/// Search depth for tutor facts. Deeper than the live opponent's Medium, because
-/// a tutor is allowed to take longer than a move — and depth is what buys proofs.
-const TUTOR_DEPTH: u32 = Level::Hard.depth();
+/// Search depth for tutor facts — **one ply deeper than the strongest opponent**.
+///
+/// The tutor is opened deliberately, once, and it is the only surface allowed to
+/// say a move threw the game. A move has to answer at tap speed; a panel opening
+/// does not, so the two should not share a budget. Written as `Expert + 1` rather
+/// than a bare number so the relationship the tutor depends on is visible in the
+/// code, and pinned by `the_tutor_searches_deeper_than_the_opponent_ever_does`.
+///
+/// **Measured in wasm 2026-08-06** (Node/V8, through the shipped `tutor_json`,
+/// over real games at Expert; proof rate is the share of move values proven):
+///
+/// | depth | proven moves | median ms | worst ms |
+/// |---|---|---|---|
+/// | 6 (was shipped) | 2.2% | 8 | 46 |
+/// | 8 (= Expert) | 3.9% | 46 | 349 |
+/// | **9 — shipped** | **4.9%** | **85** | **705** |
+/// | 10 | 5.6% | 235 | 2300 |
+/// | 12 | 6.4% | 1024 | 12571 |
+///
+/// 9 more than doubles the proof rate of the depth it replaces while keeping the
+/// worst case under a second. 10 costs three times that latency for another 0.7
+/// points, and 12 is twelve seconds — not a panel, a hang. The curve is the
+/// familiar one: each extra ply multiplies cost and adds a little proof.
+///
+/// The cost is real enough that the panel must not block the paint — see the
+/// `checkers.ts` tutor panel, which shows its reading state before searching.
+const TUTOR_DEPTH: u32 = Level::Expert.depth() + 1;
+
+/// Search depth for the **per-move** coach — the note the UI shows about the move
+/// you just tapped.
+///
+/// This one is on the tap path: the UI assesses the tapped move *before* applying
+/// it, so whatever this costs is added to every move a player makes with the
+/// tutor enabled. That is the opposite of the panel's situation, and the reason
+/// the two do not share a budget. At the panel's depth the same call measured
+/// **705ms** worst case in wasm; here it is **46ms**.
+///
+/// A shallower search does not make the coach dishonest — grading still needs two
+/// proofs for a blunder — it only makes it hedge more often, which is the correct
+/// trade for a surface nobody asked to open.
+const COACH_DEPTH: u32 = Level::Hard.depth();
+
+// The two relationships the surfaces above depend on, checked by the **compiler**
+// rather than by a test — clippy is right that a constant comparison is not an
+// assertion worth running, and a build failure is a stronger guarantee than a red
+// test anyway. The behavioural halves (does the extra depth buy proofs? does the
+// coach still grade honestly?) are tested below, where they belong.
+const _: () = assert!(
+    TUTOR_DEPTH > Level::Expert.depth(),
+    "the tutor panel must search deeper than the strongest opponent"
+);
+const _: () = assert!(
+    COACH_DEPTH < TUTOR_DEPTH,
+    "the per-move coach is on the tap path and must be cheaper than the panel"
+);
 
 /// A move's quality relative to the position's best move.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -102,11 +154,22 @@ fn quality(value: i32, value_exact: bool, best: i32, best_exact: bool) -> MoveCl
     }
 }
 
-/// The engine-grounded [`TutorReport`] for `board`. A terminal position yields an
-/// empty report. Never panics.
+/// The engine-grounded [`TutorReport`] for `board`, searched to [`TUTOR_DEPTH`] —
+/// the **panel** budget. A terminal position yields an empty report. Never panics.
 #[must_use]
 pub fn assess(board: &Board) -> TutorReport {
-    let scored = move_scores(board, TUTOR_DEPTH);
+    assess_at(board, TUTOR_DEPTH)
+}
+
+/// The engine-grounded [`TutorReport`] for `board` at the **per-move coach**
+/// budget ([`COACH_DEPTH`]) — cheap enough to sit on the tap path.
+#[must_use]
+pub fn assess_for_move(board: &Board) -> TutorReport {
+    assess_at(board, COACH_DEPTH)
+}
+
+fn assess_at(board: &Board, depth: u32) -> TutorReport {
+    let scored = move_scores(board, depth);
     // `legal_chains` is index-aligned with `legal_moves`, and `move_scores`
     // preserves that order — so the capture count for entry `i` is chain `i`'s.
     let chains = legal_chains(board);
@@ -173,6 +236,109 @@ mod tests {
         )
     }
 
+    /// The **last** `keep` positions of a self-played game — real play, sampled
+    /// where proofs actually live.
+    ///
+    /// Sampling from the opening instead measures nothing: the first version of
+    /// this fixture took the first 30 plies and both depths proved **zero**
+    /// values, because a proof needs a terminal inside the horizon and the
+    /// midgame has none at any depth this side of absurd. That is the same shape
+    /// as the wasm measurement, where the proof rate came almost entirely from
+    /// long endgames.
+    fn endgame_positions(seed: u64, keep: usize) -> Vec<Board> {
+        use rand_chacha::rand_core::SeedableRng;
+        use rand_chacha::ChaCha20Rng;
+
+        let mut rng = ChaCha20Rng::seed_from_u64(seed);
+        let mut board = <Checkers as Adversary>::initial(seed);
+        let mut out = Vec::new();
+        for _ in 0..400 {
+            if <Checkers as Adversary>::result(&board).is_some() {
+                break;
+            }
+            out.push(board);
+            let Some(mv) = crate::live::choose(&board, Level::Medium, &mut rng) else {
+                break;
+            };
+            board = checkers_core::apply_move(&board, mv);
+        }
+        out.split_off(out.len().saturating_sub(keep))
+    }
+
+    /// How many move values a search at `depth` proves across `positions`.
+    fn proofs_at(positions: &[Board], depth: u32) -> usize {
+        positions
+            .iter()
+            .map(|b| {
+                move_scores(b, depth)
+                    .iter()
+                    .filter(|(_, s)| s.exact)
+                    .count()
+            })
+            .sum()
+    }
+
+    #[test]
+    fn the_per_move_coach_stays_at_tap_speed() {
+        // The panel and the per-move coach are not the same surface, and giving
+        // them one budget was a bug in waiting: the UI assesses the tapped move
+        // *before* applying it, so the panel's depth would land on every tap with
+        // the tutor enabled. Measured in wasm: 705ms worst case at the panel's
+        // depth against 46ms at the coach's. A tap cannot spend that.
+        //
+        // The ordering is a compile-time assertion up top; what matters here is
+        // that the cheaper path still grades the same way — a shallower search means the coach
+        // hedges more often, never that it grades dishonestly. The invariant is
+        // the same one the panel has: no blunder without two proofs.
+        let opening = <Checkers as Adversary>::initial(0);
+        let coached = assess_for_move(&opening);
+        assert_eq!(coached.moves.len(), 7);
+        assert!(!coached.exact, "nothing is proven this early at any depth");
+        assert!(coached
+            .moves
+            .iter()
+            .all(|m| m.quality != MoveClass::Blunder));
+
+        // ...and where a proof IS reachable at the shallower depth, the coach
+        // still finds it, so honest coaching does not vanish with the budget.
+        let proven = assess_for_move(&king_hunts_a_lone_man());
+        assert!(
+            proven.moves.iter().any(|m| m.exact),
+            "the coach still proves what a small position allows"
+        );
+    }
+
+    #[test]
+    fn the_tutor_searches_deeper_than_the_opponent_ever_does() {
+        // The tutor is opened deliberately, once, and it is the only surface that
+        // may claim a move "threw the game" — so it is the one place worth
+        // spending real time hunting for a proof. A move has to answer at tap
+        // speed and cannot. Sharing one budget caps the panel at what a *move*
+        // can afford, which is backwards.
+        //
+        // That the constant *is* deeper is a compile-time assertion up top. What
+        // this test adds is the part a constant cannot state: the extra budget has
+        // to actually buy proofs in real play, or it is only costing latency. Two
+        // seeds, so this is not one lucky line.
+        let positions: Vec<Board> = (1..3)
+            .flat_map(|seed| endgame_positions(seed, 12))
+            .collect();
+        assert!(
+            positions.len() >= 20,
+            "enough positions to be worth counting"
+        );
+        let tutor = proofs_at(&positions, TUTOR_DEPTH);
+        let opponent = proofs_at(&positions, Level::Expert.depth());
+        assert!(
+            opponent > 0,
+            "the fixture must reach positions with proofs at all"
+        );
+        assert!(
+            tutor > opponent,
+            "the tutor's depth proved {tutor} move values where the opponent's proved {opponent} — it is buying nothing"
+        );
+    }
+
     #[test]
     fn opening_is_capped_and_never_grades_a_blunder() {
         // The wiring test, and the invariant the UI's hedged wording rests on: a
@@ -188,17 +354,28 @@ mod tests {
         );
         assert!(report.best_col.is_some());
 
-        // Measured 2026-08-05: all seven opening moves evaluate identically at
-        // this depth, so they are all `Optimal` and every regret is zero. That is
-        // a fact about checkers openings (famously near-equal — it is why
-        // tournament play forces the first three moves) rather than a broken
-        // grader, and the assertion below is what keeps the two distinguishable:
-        // in a position that *does* have a worse move, the grader finds it.
-        assert!(report.moves.iter().all(|m| m.regret == 0));
-        let hunting = assess(&king_hunts_a_lone_man());
+        // This used to assert every opening regret was **zero** — at the old
+        // depth of 6 all seven moves evaluated identically, which is a real fact
+        // about checkers openings (famously near-equal; it is why tournament play
+        // forces the first three moves). At `Expert + 1` the search separates
+        // them: regrets 8/4/1/4/4/0/4, one `Optimal` and six `ResultPreserving`.
+        //
+        // That is the deeper tutor budget doing exactly what it was raised to do,
+        // so the assertion is updated rather than the depth reverted. The
+        // invariant above — no blunder without proof — is untouched, and it is the
+        // part the UI's wording rests on.
         assert!(
-            hunting.moves.iter().any(|m| m.regret > 0),
-            "the grader can tell moves apart when the position can"
+            report.moves.iter().any(|m| m.regret > 0),
+            "the deeper tutor search can tell the opening moves apart"
+        );
+        assert_eq!(
+            report
+                .moves
+                .iter()
+                .filter(|m| m.quality == MoveClass::Optimal)
+                .count(),
+            1,
+            "exactly one opening move is best at this depth"
         );
     }
 
@@ -225,16 +402,20 @@ mod tests {
             .expect("a slower proven win");
         assert_eq!(slower.quality, MoveClass::ResultPreserving);
 
-        // ...and the moves that wander off are *not* proven, so they cannot be
-        // called blunders however bad they look. This is the honesty rule doing
-        // its job, not a gap: the search did not find a win from there inside its
-        // horizon, which is not the same as knowing there isn't one.
-        let wandering: Vec<_> = report.moves.iter().filter(|m| !m.exact).collect();
-        assert_eq!(wandering.len(), 2);
-        assert!(wandering
-            .iter()
-            .all(|m| m.quality == MoveClass::ResultPreserving));
-        assert!(!report.exact, "so the report as a whole is not proven");
+        // At the old depth of 6, two of these four moves wandered outside the
+        // horizon and came back unproven, so the report as a whole was not exact.
+        // At `Expert + 1` the search proves all four — this small a position is
+        // now fully solved, which is the point of the raised budget.
+        assert!(
+            report.moves.iter().all(|m| m.exact),
+            "the deeper budget proves the whole of a position this small"
+        );
+        assert!(report.exact, "so the report as a whole is proven");
+        // The rule that an *unproven* move can never be graded a blunder no longer
+        // has a witness in this fixture, and deliberately is not given a contrived
+        // one: it is pinned directly, and at every combination of proven/unproven,
+        // by `a_blunder_needs_both_values_proven`, and in real play by
+        // `opening_is_capped_and_never_grades_a_blunder` above.
     }
 
     #[test]

@@ -25,13 +25,25 @@ plan. This file is the running worklist of what was deferred.
 
 ## Open follow-ups
 
-- [ ] **The graded fraction is thin.** Checkers is `exact` only where the search
-  proves a terminal, so the tutor and the harness grade a small share of plies
-  (Phase 11 measured ~11% over engine self-play; the Phase 15 hybrid trial graded
-  6 of 105). The lever, if it is worth pulling, is a **separate, larger search
-  budget for the tutor path** — a panel opening can afford what a move cannot —
-  **not** a bigger budget for the opponent, and **not** `TRACTABLE_PIECES` (see
-  next item).
+- [x] ~~**The graded fraction is thin.**~~ **Partly done 2026-08-06** — the
+  *tutor panel* now has its own budget, which is what the plan named as the lever.
+  `TUTOR_DEPTH` is `Expert + 1` (was `Hard`, i.e. shallower than the opponent),
+  measured in wasm: proven move values **2.2% → 4.9%**, worst call 46ms → 724ms.
+  The panel is opened deliberately and now paints a reading state before it
+  searches, so the cost is visible rather than a dead button.
+  - The **tap path is unchanged at 46ms**: it reads a new `coach_json` export at
+    `COACH_DEPTH` (the old depth). Splitting them is the whole point — before, the
+    same call served both, so raising the panel's depth would have put 724ms on
+    every move played with the tutor on. The ordering `COACH < TUTOR` and
+    `TUTOR > Expert` are **compile-time** assertions, not tests.
+  - [ ] **Still open: the harness grades at the coach depth, not an analysis
+    depth.** `assess_json(code)` is what `checkers-oracle.ts` calls, and it is
+    deliberately the cheap tap-path budget — so the recorded baseline is still
+    4 graded of 163 plies, unchanged by this work. It is also *shallower than
+    `oracle_best` plays* (`ORACLE_DEPTH` = Expert), which is incoherent for a
+    surface whose job is grading: the grader should not be weaker than the player
+    it grades. Pre-existing, not introduced here. The fix is a separate deep
+    per-move export for the adapter; the cost is a slower `npm run baselines`.
 - [ ] **The midgame is the latency floor, not the endgame.** 13–18 pieces costs
   ~341ms worst-case in wasm under every setting of `TRACTABLE_PIECES`, which is
   the opposite of what the plan assumed. Anything that wants checkers faster has

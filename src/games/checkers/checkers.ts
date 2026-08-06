@@ -382,7 +382,10 @@ export function checkersModule(): GameModule {
         if (next.commit !== null) {
           // Assess the move at the *current* position, before it is applied —
           // this drives the opt-in tutor coach AND the local-AI's reaction.
-          const report = game.tutor();
+          // `coach()`, not `tutor()`: this is the tap path, and the panel's
+          // deeper budget measured 705ms against this one's 46ms. The panel is
+          // opened deliberately; a move is not.
+          const report = game.coach();
           const verdict = report.moves.find((m) => m.col === next.commit) ?? null;
           lastHumanQuality = verdict?.quality ?? null;
           const pending = checkersTutorEnabled()
@@ -519,16 +522,32 @@ export function checkersModule(): GameModule {
     });
     explain.addEventListener("click", () => {
       if (!game || thinking || ending || gameOver() || !humanToMove()) return;
-      const report = game.tutor();
-      const band = report.moves
-        .filter((m) => m.quality !== "blunder")
-        .sort((a, b) => b.value - a.value);
-      // The report is `exact` only when every move in it was proven; otherwise
-      // the panel says so rather than implying certainty it does not have.
-      note.textContent = report.exact ? "" : "Reading ahead (not yet certain):";
-      optionsEl.replaceChildren(
-        ...band.slice(0, 6).map((m) => el("li", {}, `${moveLabel(m.col)} — ${ideaFor(m)}`)),
-      );
+      // The panel's search is deliberately deeper than any move-time search —
+      // that is what buys the proofs behind "that threw the game" — and it is
+      // synchronous wasm, measured at up to ~700ms worst case. So paint the
+      // reading state FIRST and start the search on the next frame; without the
+      // deferral the button would look dead for that whole time, because the
+      // search blocks the same task that would have painted it.
+      explain.setAttribute("aria-busy", "true");
+      note.textContent = "Reading ahead…";
+      optionsEl.replaceChildren();
+      requestAnimationFrame(() => {
+        window.setTimeout(() => {
+          if (disposed || !game) return;
+          const report = game.tutor();
+          const band = report.moves
+            .filter((m) => m.quality !== "blunder")
+            .sort((a, b) => b.value - a.value);
+          // The report is `exact` only when every move in it was proven;
+          // otherwise the panel says so rather than implying certainty it does
+          // not have.
+          note.textContent = report.exact ? "" : "Reading ahead (not yet certain):";
+          optionsEl.replaceChildren(
+            ...band.slice(0, 6).map((m) => el("li", {}, `${moveLabel(m.col)} — ${ideaFor(m)}`)),
+          );
+          explain.removeAttribute("aria-busy");
+        }, 0);
+      });
     });
     const coach = el("p", { class: "checkers-tutor-coach", role: "status", "aria-live": "polite" });
     if (coachMsg) coach.textContent = coachMsg;

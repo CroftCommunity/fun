@@ -193,6 +193,12 @@ test("'Explain my options' lists band moves, each naming a move and an idea", as
   await ready(page);
   await page.locator(".checkers-tutor-explain").click();
   const items = page.locator(".checkers-tutor-options li");
+  // The panel searches deeper than any move-time search and defers past the
+  // paint so the button does not look dead, so the list arrives a frame later —
+  // wait for it rather than reading a count that is 0 by construction. (The
+  // transient "Reading ahead…" state is deliberately not asserted: whether it is
+  // still on screen when the assertion polls is a race with the search itself.)
+  await expect(items.first()).toBeVisible();
   expect(await items.count()).toBeGreaterThanOrEqual(2);
   // A checkers move is a path, so the label names both ends.
   await expect(items.first()).toContainText(/row \d, column \d to row \d, column \d/i);
