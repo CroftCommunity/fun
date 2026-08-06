@@ -47,6 +47,22 @@ at them and add what's specific to this repo. Git identity: chasemp
     narrowing the line above *requires*. Existing crates are grandfathered.
     (This bullet used to claim "`clippy::pedantic` clean" workspace-wide; nothing
     checked it and nothing ever had. It now says what is true.)
+- **Node is pinned by `.nvmrc` (22) — use a version manager, not the system Node.**
+  The same rule as `rust-toolchain.toml`: the repo pins the toolchain, CI reads
+  the pin (`actions/setup-node` with `node-version-file: .nvmrc`), and a machine
+  running something else is validating a different thing.
+  - Set up once: `brew install fnm`, then `fnm install` in this repo (reads
+    `.nvmrc`), and `eval "$(fnm env --use-on-cd)"` in `~/.zshrc` so `cd`-ing here
+    switches Node automatically.
+  - This is not hypothetical tidiness. Node **25** ships its own placeholder
+    `globalThis.localStorage` — no `clear`, no `key`, no `length` — which outranks
+    the `Storage` vitest's jsdom environment installs, and 11 match-3 tests failed
+    locally for a day while CI was green. `tests/setup/webstorage.ts` repairs it
+    when broken and is inert on 22, but the repair exists because the versions
+    diverged; running the pinned version is the actual fix.
+  - Symptom worth recognising: `dyld: Library not loaded: libllhttp.9.3.dylib`
+    from `node` means a Homebrew upgrade moved a dependency out from under the
+    system Node. Under fnm that cannot happen to the pinned toolchain.
 - **Mutation-test the cores.** `cargo mutants --package <crate> -j 4` (installed;
   run it with the pinned toolchain on PATH, as `tools/rust-gate.sh` does). Expected
   when a determinism-critical crate goes green and **before calling its phase
