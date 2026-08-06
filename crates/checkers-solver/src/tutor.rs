@@ -279,6 +279,38 @@ mod tests {
     }
 
     #[test]
+    fn the_analysis_budget_outranks_every_player() {
+        // The scoring harness grades a played move against the oracle's read of
+        // the position. A grader searching no deeper than the player it grades is
+        // not an oracle — an Expert engine picking the max at its own depth is
+        // "optimal" by construction, so the grade says nothing. The analysis path
+        // must therefore see further than any shipped level, which is the same
+        // budget the panel uses (`assess`), not the tap path's (`assess_for_move`).
+        //
+        // `TUTOR_DEPTH > Level::Expert.depth()` is asserted at compile time; what
+        // is measured here is that the difference is real in play.
+        let positions: Vec<Board> = (1..3)
+            .flat_map(|seed| endgame_positions(seed, 12))
+            .collect();
+        let deep: usize = positions
+            .iter()
+            .map(|b| assess(b).moves.iter().filter(|m| m.exact).count())
+            .sum();
+        let tap: usize = positions
+            .iter()
+            .map(|b| assess_for_move(b).moves.iter().filter(|m| m.exact).count())
+            .sum();
+        assert!(
+            tap > 0,
+            "the fixture must reach positions with proofs at all"
+        );
+        assert!(
+            deep > tap,
+            "the analysis budget proved {deep} where the tap budget proved {tap} — grading gains nothing from it"
+        );
+    }
+
+    #[test]
     fn the_per_move_coach_stays_at_tap_speed() {
         // The panel and the per-move coach are not the same surface, and giving
         // them one budget was a bug in waiting: the UI assesses the tapped move

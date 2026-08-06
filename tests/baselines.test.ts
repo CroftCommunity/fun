@@ -128,11 +128,17 @@ const ANCHORS: readonly Anchor[] = [
           Checkers.load(),
         ),
       ),
-    // Recorded 2026-08-06, when checkers shipped (P8 Phase 15 follow-up).
-    // Both games draw: top-level self-play grinds to the 80-ply no-progress rule,
-    // which is the honest terminal for a game neither side can force. The graded
-    // fraction is deliberately tiny — 4 of 163 plies — because checkers is `exact`
-    // only where the search PROVES a terminal, so `skippedEarly` dominating is the
+    // Recorded 2026-08-06, when checkers shipped (P8 Phase 15 follow-up), and
+    // **re-recorded the same day** when `assess_json` was moved from the tap-path
+    // budget to the analysis budget: graded 4 → 9, skipped 159 → 154. That is the
+    // grader itself changing, which is the one reason a number here may be
+    // updated rather than investigated — a deeper oracle proves more, so it
+    // grades more. The run cost roughly doubled (~16s → ~32s) for it.
+    //
+    // Both games still draw: top-level self-play grinds to the 80-ply no-progress
+    // rule, the honest terminal for a game neither side can force. The graded
+    // fraction is still small — 9 of 163 plies — because checkers is `exact` only
+    // where the search PROVES a terminal, so `skippedEarly` dominating is the
     // honesty gate working, not a defect. If `scoredMoves` ever reads 0 here, the
     // anchor has stopped measuring anything and that is the finding.
     recorded: {
@@ -140,11 +146,11 @@ const ANCHORS: readonly Anchor[] = [
       wins: 0,
       draws: 2,
       losses: 0,
-      scoredMoves: 4,
-      optimal: 4,
+      scoredMoves: 9,
+      optimal: 9,
       preserving: 0,
       blunders: 0,
-      skippedEarly: 159,
+      skippedEarly: 154,
       abortedGames: 0,
       llmMoves: 0,
       fallbackMoves: 0,

@@ -391,10 +391,12 @@ pub extern "C" fn assess_json(code: u32) -> *const u8 {
     let Ok(packed) = u16::try_from(code) else {
         return set_out_str("null");
     };
-    // The **coach** budget, not the panel's: this call sits on the tap path (the
-    // UI assesses the tapped move before applying it), so it must stay cheap.
-    // See `checkers_solver::tutor::COACH_DEPTH`.
-    let report = assess_for_move(&s.board);
+    // The **analysis** budget, deliberately: this export is what the scoring
+    // harness grades through (`checkers-oracle.ts`), and a grader that searches
+    // no deeper than the player it grades is not an oracle — an engine picking
+    // the max at its own depth is "optimal" by construction. The UI's tap path
+    // reads `coach_json` instead, which is the cheap one.
+    let report = assess(&s.board);
     match report.moves.iter().find(|m| m.col == packed) {
         Some(m) => set_out_json(&assess_view(m)),
         None => set_out_str("null"),
@@ -507,6 +509,66 @@ mod tests {
 
     fn json(ptr: *const u8) -> serde_json::Value {
         serde_json::from_slice(&out_slice(ptr)).expect("exports emit valid JSON")
+    }
+
+    /// The scoring harness grades through `assess_json`, so that export must
+    /// speak with the **analysis** budget, not the tap path's. A grader that sees
+    /// less than the panel does — and less than the Expert engine plays — cannot
+    /// call anything a blunder the player could not already see, which makes the
+    /// grade decorative.
+    ///
+    /// Asserted by agreement rather than by reading a constant: for the same move
+    /// in the same position, `assess_json` and `tutor_json` must report the same
+    /// `exact`. Wiring `assess_json` to the cheaper report breaks this the moment
+    /// a proof lands inside the deep horizon and outside the shallow one (it does:
+    /// reverting the wiring fails here on move 466).
+    #[test]
+    fn assess_json_grades_with_the_analysis_budget_not_the_tap_budget() {
+        let _guard = exclusive();
+        new_game(9, 0);
+
+        // Stop as soon as the comparison is non-vacuous rather than playing the
+        // whole game: every ply costs a deep report, and this runs inside
+        // `cargo test --workspace --release`, which is a gate people wait on.
+        let mut agreements = 0;
+        let mut proofs = 0;
+        for _ in 0..400 {
+            if result_code() != -1 || (proofs >= 3 && agreements >= 20) {
+                break;
+            }
+            let report = json(tutor_json());
+            let moves = report["moves"].as_array().cloned().unwrap_or_default();
+            for m in &moves {
+                let proven = m["exact"] == serde_json::json!(true);
+                // Always check the proven ones (that is where the budgets differ)
+                // and a handful of others, rather than every move of every ply.
+                if !proven && agreements >= 20 {
+                    continue;
+                }
+                let code = m["col"].as_u64().expect("a move code");
+                let one = json(assess_json(u32::try_from(code).expect("a 14-bit code")));
+                assert_eq!(
+                    one["exact"], m["exact"],
+                    "assess_json and tutor_json disagree about move {code} being proven"
+                );
+                agreements += 1;
+                if proven {
+                    proofs += 1;
+                }
+            }
+            let mv = live_move(3);
+            if mv == MOVE_OVER || play(mv) != 0 {
+                break;
+            }
+        }
+        assert!(
+            agreements > 20,
+            "the game must be long enough to be worth checking"
+        );
+        assert!(
+            proofs > 0,
+            "no move was ever proven, so agreement is vacuous — the fixture never reached an endgame"
+        );
     }
 
     #[test]

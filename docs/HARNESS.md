@@ -147,8 +147,8 @@ Engine(3) vs Engine(3)                                     [othello]
 
 Engine(3) vs Engine(3)                                    [checkers]
   games 2 (0 aborted) | W-D-L 0-2-0 (win rate 0%)
-  graded moves 4 (skipped 159 early) | optimal 4 · preserving 0 · blunders 0 (blunder rate 0.0%)
-  cost 15043ms total (3760.8ms/graded move)
+  graded moves 9 (skipped 154 early) | optimal 9 · preserving 0 · blunders 0 (blunder rate 0.0%)
+  cost 31900ms total (3544.4ms/graded move)
 ```
 
 The three differ in the ways the *games* differ, which is the sanity check worth
@@ -163,12 +163,16 @@ making before trusting any number here:
   60-move game with an exact endgame at ≤10 empties grades a small tail of it, and
   each exact solve is expensive. `skippedEarly` is the honesty gate doing its job,
   not a defect.
-- **Checkers draws twice and skips almost everything** (159 of 163 plies). Top-level
+- **Checkers draws twice and skips most plies** (154 of 163). Top-level
   self-play grinds to the 80-ply no-progress draw — the honest terminal when neither
   side can force a win — and checkers is `exact` only where the search *proves* a
   terminal, which in a long even game is a handful of plies at the end. A 2.5%
   graded fraction is the thinnest of the three by a wide margin, and it is the
   number to watch: if it ever reaches 0 the anchor has stopped measuring anything.
+  It doubled (4 → 9) on 2026-08-06 when `assess_json` moved from the tap-path
+  budget to the analysis budget — **the grader must outrank the player it
+  grades**, or an engine picking the max at its own depth is "optimal" by
+  construction and the grade says nothing.
 
 ### All three games, side by side
 

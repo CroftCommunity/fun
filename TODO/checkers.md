@@ -36,14 +36,14 @@ plan. This file is the running worklist of what was deferred.
     same call served both, so raising the panel's depth would have put 724ms on
     every move played with the tutor on. The ordering `COACH < TUTOR` and
     `TUTOR > Expert` are **compile-time** assertions, not tests.
-  - [ ] **Still open: the harness grades at the coach depth, not an analysis
-    depth.** `assess_json(code)` is what `checkers-oracle.ts` calls, and it is
-    deliberately the cheap tap-path budget — so the recorded baseline is still
-    4 graded of 163 plies, unchanged by this work. It is also *shallower than
-    `oracle_best` plays* (`ORACLE_DEPTH` = Expert), which is incoherent for a
-    surface whose job is grading: the grader should not be weaker than the player
-    it grades. Pre-existing, not introduced here. The fix is a separate deep
-    per-move export for the adapter; the cost is a slower `npm run baselines`.
+  - [x] ~~**The harness grades at the coach depth, not an analysis depth.**~~
+    **Done 2026-08-06.** `assess_json` now uses the analysis budget (the panel's),
+    so the grader outranks every shipped level instead of sitting a ply below
+    Expert. Recorded baseline moved 4 → 9 graded of 163 plies, and the run cost
+    roughly doubled (~16s → ~32s) — the intended trade. The C-ABI test asserts it
+    by *agreement*: `assess_json` and `tutor_json` must report the same `exact`
+    for the same move, which the old wiring breaks on the first proof that lands
+    between the two horizons.
 - [ ] **The midgame is the latency floor, not the endgame.** 13–18 pieces costs
   ~341ms worst-case in wasm under every setting of `TRACTABLE_PIECES`, which is
   the opposite of what the plan assumed. Anything that wants checkers faster has
