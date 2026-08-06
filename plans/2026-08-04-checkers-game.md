@@ -1535,15 +1535,15 @@ confirm the move array is plain numbers (the cross-game wire contract).
 "no stubs; built means wired" rule is about.**
 
 **Changes:**
-- [ ] `src/games/checkers/checkers.ts` (new) — the `GameModule`: board render,
+- [x] `src/games/checkers/checkers.ts` (new) — the `GameModule`: board render,
       tap-piece → glow legal destinations → tap-destination, **step-through jump
       chains** (the UI filters the core's legal chains by the tapped prefix and
       commits only a complete chain — it never invents a chain), turn bar naming
       both sides, the opponent's move made visible, difficulty picker, side picker,
       result screen + `?r=` share.
-- [ ] `src/registry.ts` — the `checkers` entry, `status: "playable"`.
-- [ ] `build.mjs` — `GAME_PAGES` += `checkers`; the `checkers.wasm` copy block.
-- [ ] `tests/checkers.spec.ts` (new, Playwright) — RED first.
+- [x] `src/registry.ts` — the `checkers` entry, `status: "playable"`.
+- [x] `build.mjs` — `GAME_PAGES` += `checkers`; the `checkers.wasm` copy block.
+- [x] `tests/checkers.spec.ts` (new, Playwright) — RED first.
 
 **Call chain:** `/checkers/index.html` → `app.js` → `chrome.ts` mount →
 `REGISTRY.find("checkers").load()` → `checkersModule.mount()` → `Checkers.load()` →
@@ -2137,6 +2137,70 @@ calibration, documentation-impact coverage) — to be run in a fresh context.
 
 **Confirmed ready:** yes, pending one new unreviewed ADVISORY question (the hybrid
 `llm`/`fallback` telemetry) and the two previously-confirmed PHASE-GATED items.
+
+### Phase 13 execution — 2026-08-06
+
+**Landed:** `src/games/checkers/checkers.ts` (the `GameModule`), the `checkers`
+registry entry, `GAME_PAGES` + the `checkers.wasm` copy in `build.mjs`, checkers
+tokens + styles, the checkers settings resolvers, and `tests/checkers.spec.ts`
+(8 tests × 2 projects, all green on chromium **and** mobile-webkit).
+
+**The step-through chain is a pure function, and that is the phase's main
+finding.** The risk named in the plan — that the UI would re-implement rules in
+TypeScript — is best answered by making the chain rule something a unit test can
+reach. `chainStep(moves, from, prefix)` filters the core's own chains by the
+landings tapped so far and returns `{targets, commit}`; the UI holds only
+`selected` and `prefix`. `tests/checkers-chain.test.ts` (6 tests) drives it off a
+fixture chain list, so a move the fixture does not contain can never be produced.
+This is the same "extract the policy into a function a test can reach" answer the
+Rust phases reached three times; it applies to front-end code identically.
+
+**One case the plan did not name: a complete chain that another chain continues
+through.** `chainStep` prefers the continuation over committing, so a partially
+expressed jump is never silently played as a shorter move. English draughts
+cannot produce it (a jump must continue while one is available, so a legal chain
+is never a strict prefix of another), so this decides an impossible case — it
+decides it by asking rather than by guessing, and says so in the doc comment.
+
+**Two fixtures were verified to bite by breaking the code.** Replacing the
+"can this piece move?" guard (`board.legal.some(m => m.from === sq)`) with "is
+there a piece here?" reddens the opening test (32 selectable squares instead of
+4); zeroing the last-move highlight reddens the reply test. Neither is
+decorative.
+
+**A test assumption that was wrong and had to be corrected against the core:**
+the opening was asserted to offer 7 *selectable squares*. It offers 7 legal
+**moves** from only **4** men — the front rank, whose outer two men have one
+diagonal each and whose inner two have two. The test now asserts both numbers,
+reading the move count from the core.
+
+**Two shared registration points beyond the plan's six, both found by tests
+rather than by reading:** `tests/chrome.test.ts` enumerates every registry id (it
+went red the moment checkers was registered), and `tests/drawer.spec.ts` asserts
+the drawer item count. The drawer count was **already stale before this phase** —
+it said 16 against a 17-entry registry, so that e2e was failing on `main`; it is
+now 18 and correct. Worth recording that the shelf has *eight* registration
+points, two of which are assertions.
+
+**Board geometry mirrors the core rather than reinterpreting it:** square `i` is
+at row `i / 4`, column `2 * (i % 4) + (row even ? 1 : 0)`, row 0 at the top,
+which is where Side A starts and away from which it advances. No board flip for
+the White-playing human — a view transform is a second geometry to get wrong, for
+a convention this board does not need.
+
+**Colour work:** five new tokens per theme (`--chk-dark/light/a/b/legal`), with
+three new contrast pairs added to `tests/tokens.test.ts` so both piece colours and
+the tap-target hint are pinned at the 3:1 graphical floor in light **and** dark.
+The first candidate wood (`#7a4a2b`) failed at 2.4:1 for the black men and was
+rejected by that gate before it could ship.
+
+**Full-suite state after the phase.** `npm run unit`: 293 passed, 12 failed — 11
+are the known Node-25 `localStorage.clear` failures in `match3-campaign` /
+`match3-story` (`.nvmrc` pins 22; green on CI), and the 12th was
+`chrome.test.ts`'s registry list, now updated. Full `npm run e2e`: 401 passed, 4
+failed, of which the two `drawer` failures are fixed here and the two
+`match3.spec.ts` campaign-beat failures **pre-exist on `main`** (verified by
+stashing this phase's changes and re-running) and are unrelated to checkers.
 
 ### Phase 12 execution — 2026-08-06
 

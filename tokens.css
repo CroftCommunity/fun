@@ -85,6 +85,16 @@
   --oth-b: #f6f4ef;           /* white disc                            */
   --oth-legal: #e0a72e;       /* a legal-move hint dot (gold)          */
 
+  /* Checkers: a two-tone board (only the dark squares are playable), the two
+     sides' pieces, and the tap-target hint. Both piece colours clear 3:1 on the
+     dark square — the graphical/UI floor — as does the hint dot. Pinned in
+     tests/tokens.test.ts. */
+  --chk-dark: #9a6a42;        /* the playable dark squares (wood)      */
+  --chk-light: #e8d9b5;       /* the unplayable light squares          */
+  --chk-a: #16181d;           /* Side A's men on --chk-dark   (3.82:1) */
+  --chk-b: #f6f4ef;           /* Side B's men on --chk-dark   (4.23:1) */
+  --chk-legal: #ffd76a;       /* tap-target hint on --chk-dark (3.36:1) */
+
   /* Blockdoku board lines (graphical, not text): a thin cell grid and a heavier
      3×3-box divider that also frames the board, so the nine sub-squares read at a
      glance on the tan cells. */
@@ -213,6 +223,14 @@
   --oth-a: #0c0d10;           /* black disc                            */
   --oth-b: #eceae4;           /* white disc                            */
   --oth-legal: #e0a72e;       /* a legal-move hint dot (gold)          */
+
+  /* Checkers, re-tuned for dark: a deeper wood that still carries both piece
+     colours and the hint dot at ≥3:1. */
+  --chk-dark: #86593c;        /* the playable dark squares (wood)      */
+  --chk-light: #cbb289;       /* the unplayable light squares          */
+  --chk-a: #0c0d10;           /* Side A's men on --chk-dark   (3.25:1) */
+  --chk-b: #eceae4;           /* Side B's men on --chk-dark   (4.98:1) */
+  --chk-legal: #ffd76a;       /* tap-target hint on --chk-dark (4.33:1) */
 
   /* Blockdoku board lines, re-tuned for dark: a subtle grid and a light-moss
      box divider that pops on the near-black cells. */

@@ -84,6 +84,9 @@ const PAIRS: ReadonlyArray<readonly [string, string, number]> = [
   ["t48-max-ink", "t48-max", 3],
   ["d4-x", "d4-slot", 3], // Drop 4 discs must read against the empty slot (UI floor)
   ["d4-o", "d4-slot", 3],
+  ["chk-a", "chk-dark", 3], // checkers men must read on the playable dark square
+  ["chk-b", "chk-dark", 3],
+  ["chk-legal", "chk-dark", 3], // the tap-target hint is a UI indicator
 ];
 
 describe.each(["light", "dark"] as const)("tokens: %s theme clears WCAG AA", (name) => {

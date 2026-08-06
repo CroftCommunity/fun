@@ -11,6 +11,8 @@ import {
   resolveMark,
   resolveNumber,
   resolveOthelloLevel,
+  resolveCheckersLevel,
+  resolveCheckersSide,
 } from "../src/settings.js";
 
 describe("resolveLevel (Drop 4 difficulty)", () => {
@@ -54,6 +56,28 @@ describe("resolveDisc (Othello player colour)", () => {
   it("falls back to the default for null or a garbage value", () => {
     expect(resolveDisc(null, "black")).toBe("black");
     expect(resolveDisc("green", "black")).toBe("black");
+  });
+});
+
+describe("resolveCheckersLevel (checkers difficulty)", () => {
+  it("honours a stored valid level (Expert tops it — checkers is unsolved)", () => {
+    expect(resolveCheckersLevel("Easy", "Medium")).toBe("Easy");
+    expect(resolveCheckersLevel("Expert", "Medium")).toBe("Expert");
+  });
+  it("falls back to the default for null or a garbage value", () => {
+    expect(resolveCheckersLevel(null, "Medium")).toBe("Medium");
+    expect(resolveCheckersLevel("Perfect", "Hard")).toBe("Hard"); // no perfect level
+  });
+});
+
+describe("resolveCheckersSide (which men the human plays)", () => {
+  it("honours a stored valid side", () => {
+    expect(resolveCheckersSide("black", "black")).toBe("black");
+    expect(resolveCheckersSide("white", "black")).toBe("white");
+  });
+  it("falls back to the default for null or a garbage value", () => {
+    expect(resolveCheckersSide(null, "black")).toBe("black");
+    expect(resolveCheckersSide("red", "black")).toBe("black");
   });
 });
 

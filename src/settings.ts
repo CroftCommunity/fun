@@ -237,6 +237,60 @@ export function setOthelloTutor(on: boolean): void {
   write(OTHELLO_TUTOR_KEY, on);
 }
 
+// ---------- checkers ----------
+
+/** Checkers difficulty (opponent strength). **Expert**, not Perfect — checkers
+ *  is not solved from the opening, so no level plays perfectly. */
+export type CheckersLevel = "Easy" | "Medium" | "Hard" | "Expert";
+const CHECKERS_LEVELS: readonly CheckersLevel[] = ["Easy", "Medium", "Hard", "Expert"];
+const CHECKERS_LEVEL_KEY = "fun-checkers-level";
+
+/** Pure resolver: a stored known checkers level wins; otherwise the default. */
+export function resolveCheckersLevel(stored: string | null, fallback: CheckersLevel): CheckersLevel {
+  return CHECKERS_LEVELS.includes(stored as CheckersLevel) ? (stored as CheckersLevel) : fallback;
+}
+
+/** The men the human plays: **black** (Side A, opens) or white. */
+export type CheckersSide = "black" | "white";
+const CHECKERS_SIDES: readonly CheckersSide[] = ["black", "white"];
+const CHECKERS_SIDE_KEY = "fun-checkers-side";
+
+/** Pure resolver: a stored known side wins; otherwise the default. */
+export function resolveCheckersSide(stored: string | null, fallback: CheckersSide): CheckersSide {
+  return CHECKERS_SIDES.includes(stored as CheckersSide) ? (stored as CheckersSide) : fallback;
+}
+
+export function checkersLevel(): CheckersLevel {
+  try {
+    return resolveCheckersLevel(localStorage.getItem(CHECKERS_LEVEL_KEY), "Medium");
+  } catch {
+    return "Medium";
+  }
+}
+export function setCheckersLevel(level: CheckersLevel): void {
+  try {
+    localStorage.setItem(CHECKERS_LEVEL_KEY, level);
+  } catch {
+    // Storage denied (private mode): the choice still applies for the session.
+  }
+}
+
+/** The men the human plays in checkers — **black by default** (the opener). */
+export function checkersSide(): CheckersSide {
+  try {
+    return resolveCheckersSide(localStorage.getItem(CHECKERS_SIDE_KEY), "black");
+  } catch {
+    return "black";
+  }
+}
+export function setCheckersSide(side: CheckersSide): void {
+  try {
+    localStorage.setItem(CHECKERS_SIDE_KEY, side);
+  } catch {
+    // Storage denied (private mode): the choice still applies for the session.
+  }
+}
+
 // ---------- bubble aim-control tuning (device-dependent; see the "Aim &
 // controls" settings sheet) ----------
 

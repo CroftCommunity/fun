@@ -13,7 +13,7 @@ const dist = join(root, "dist");
 
 // Game entry pages: "" is the home/drawer page (no game mounted); the rest carry
 // <body data-game> so the chrome knows what to mount.
-const GAME_PAGES = ["", "placeholder", "solitaire", "match3", "bubble", "wyrdle", "2048", "drop4", "othello", "align", "blockdoku", "looseends", "color-sort", "astray", "hexgl", "clumsybird", "orchard-drop", "cribbage"];
+const GAME_PAGES = ["", "placeholder", "solitaire", "match3", "bubble", "wyrdle", "2048", "drop4", "othello", "checkers", "align", "blockdoku", "looseends", "color-sort", "astray", "hexgl", "clumsybird", "orchard-drop", "cribbage"];
 
 // Tier-2 wrapped games: their vendored bundle ships under src/games/<id>/vendor/
 // and is served at /<id>/vendor/ for the sandboxed iframe to load same-origin.
@@ -133,6 +133,10 @@ else console.warn("note: drop4.wasm not built yet — run `npm run build:wasm` (
 const owasm = join(root, "target/wasm32-unknown-unknown/release/othello_wasm.wasm");
 if (await exists(owasm)) await cp(owasm, join(dist, "othello.wasm"));
 else console.warn("note: othello.wasm not built yet — run `npm run build:wasm` (othello needs it)");
+
+const ckwasm = join(root, "target/wasm32-unknown-unknown/release/checkers_wasm.wasm");
+if (await exists(ckwasm)) await cp(ckwasm, join(dist, "checkers.wasm"));
+else console.warn("note: checkers.wasm not built yet — run `npm run build:wasm` (checkers needs it)");
 
 const alwasm = join(root, "target/wasm32-unknown-unknown/release/align_wasm.wasm");
 if (await exists(alwasm)) await cp(alwasm, join(dist, "align.wasm"));
