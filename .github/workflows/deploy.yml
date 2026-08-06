@@ -59,10 +59,18 @@ jobs:
       - run: node build.mjs
       # Publishing plumbing only — skipped on PRs, where there is nothing to
       # publish and fork tokens are read-only. The gate above still runs.
+      #
+      # The condition is "not a PR", NOT "is a push". It used to be the latter,
+      # which silently broke `workflow_dispatch`: the upload was skipped while the
+      # `deploy` job below (guarded only on the ref) ran anyway and failed with
+      # "No artifacts named github-pages were found". Manual dispatch is the only
+      # way to publish when webhook deliveries are throttled — which is exactly
+      # when it is needed — so the two guards have to agree about what a
+      # publishable run is. Found 2026-08-06 during the Actions outage.
       - uses: actions/configure-pages@v5
-        if: github.event_name == 'push'
+        if: github.event_name != 'pull_request'
       - uses: actions/upload-pages-artifact@v3
-        if: github.event_name == 'push'
+        if: github.event_name != 'pull_request'
         with:
           path: dist
 
