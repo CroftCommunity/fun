@@ -142,14 +142,11 @@ pre-existing" test failures that were neither: Node 25 ships a placeholder
 
 ## 6. Open items, most valuable first
 
-1. ~~**The browser tests do not run in CI.**~~ **Decided 2026-08-07: they stay
-   local**, and the docs now say so instead of implying CI covers them. `npm run
-   gate` runs everything in one command and is the documented pre-push ritual;
-   `npm run test` is the CI-equivalent subset. The risk this accepts is explicit:
-   the 418 e2e tests are gated on a human remembering, so a broken board *can*
-   reach `main` if someone pushes without gating. Revisit if that ever happens —
-   the workflow change is a dozen lines, and (worth knowing) the repo is public,
-   so GitHub-hosted minutes are free; the cost is wall-clock, not money.
+1. ~~**The browser tests do not run in CI.**~~ **Closed 2026-08-07.** They do
+   now, as a third parallel job, and `deploy` needs it — so a broken board cannot
+   publish. It cost no wall clock: `build` is 225s of `npm run unit` against a 17s
+   wasm compile, and the e2e job finishes inside that. `npm run gate` runs the
+   same set locally in 3m44s.
 2. **The midgame is the latency floor** in both Othello (~2.1s) and checkers
    (~341ms) at the top level. No endgame constant reaches it; the levers are the
    per-level depths or time-bounded iterative deepening.

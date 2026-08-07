@@ -30,6 +30,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       # We do not run Playwright here, so skip the browser download.
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
@@ -80,6 +81,7 @@ jobs:
   # `build`: they share no outputs, so wall clock is the max of the two.
   rust:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       # Pinned via rust-toolchain.toml, not `@stable`. A floating toolchain can
@@ -113,13 +115,62 @@ jobs:
       # fixtures and soaks live.
       - run: cargo clippy --workspace --all-targets -- -D warnings
 
+  # The browser gate. Runs in PARALLEL with `build`, which is what makes it
+  # ~free: `build` is 225s of `npm run unit` against a 17s wasm compile, so an
+  # e2e job that finishes inside four minutes adds no wall clock to the run.
+  #
+  # It exists because `npm run unit` cannot see a board. Every game's wiring test
+  # ("built means wired"), every axe check in both themes, and every `?r=` share
+  # round-trip live here — 418 tests that, until 2026-08-07, ran only on whichever
+  # machine the author happened to use.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      # Playwright's `webServer` runs `npm run build:wasm`, so this job needs the
+      # pinned toolchain and the wasm target exactly as `build` does.
+      - id: rust
+        run: echo "channel=$(sed -n 's/^channel *= *"\(.*\)"/\1/p' rust-toolchain.toml)" >> "$GITHUB_OUTPUT"
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ steps.rust.outputs.channel }}
+          targets: wasm32-unknown-unknown
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      # Install deps WITHOUT the browser download, then restore the browsers from
+      # cache — otherwise every run re-downloads ~300MB that changes only when
+      # Playwright's version does.
+      - run: npm ci
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+      - uses: actions/cache@v4
+        id: browsers
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      # `--with-deps` installs the system libraries too; a cache hit still needs
+      # it (the libs are not in the cached directory), but it is seconds.
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run e2e
+      # A failed browser test is unreadable without its trace/screenshots.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
   deploy:
     # A Rust regression blocks publication, not just annotates it.
-    needs: [build, rust]
+    needs: [build, rust, e2e]
     # `workflow_dispatch` can be aimed at any ref; without this guard, dispatching
     # against a scratch branch would publish that branch to production.
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

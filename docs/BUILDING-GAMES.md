@@ -605,11 +605,8 @@ Pin it with a `coachFor`-style unit test.
 - [ ] Standard settings wired (Enable hints on; Declare assistance on; hints-off → "I'm stuck" ends + reports).
 - [ ] "How to play" guide (pure data) + `guide:shots` screenshots + sync tests; header link.
 - [ ] Gate green (`npm run gate` — Rust + typecheck + lint + unit + build + e2e)
-  and deployed. **Know which half CI checks:** the workflow runs the Rust gate and
-  the unit suite, and **not** the Playwright e2e suite. The e2e half — every
-  game's wiring test, the axe checks, the share round-trips — is a **local** gate,
-  so running it before you push is not optional politeness; it is the only time it
-  runs at all.
+  and deployed. CI runs the same three parts as parallel jobs and **`deploy` needs
+  all three**, so a failing wiring test or axe violation blocks publication.
 
 ## New-game checklist (adversarial + AI opponent — §10, on top of Tier-1)
 

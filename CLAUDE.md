@@ -47,19 +47,19 @@ at them and add what's specific to this repo. Git identity: chasemp
     narrowing the line above *requires*. Existing crates are grandfathered.
     (This bullet used to claim "`clippy::pedantic` clean" workspace-wide; nothing
     checked it and nothing ever had. It now says what is true.)
-- **`npm run gate` before you push — the e2e suite runs nowhere else.** CI runs
-  the Rust gate and the unit suite; it does **not** run Playwright. So the 418 e2e
-  tests (every game's wiring test, axe in both themes, the `?r=` share
-  round-trips) are gated on a human remembering, which is why there is one command
-  that runs everything: `npm run gate` = `npm run test` + `npm run e2e`.
-  - This is a deliberate trade, not an oversight: the browser suite would add
-    several minutes to every run, and the repo is small enough that the person
-    pushing is the person who ran it. If that stops being true, put e2e in CI —
-    the workflow change is a dozen lines.
-  - `npm run test` alone is the *CI-equivalent* gate. Use it when you have not
-    touched anything a browser can see; use `gate` otherwise. When in doubt, gate.
-  - Measured 2026-08-07: the whole thing is **3m44s** (of which e2e is ~55s), so
-    "it takes too long" is not the reason to skip it.
+- **`npm run gate` is the whole gate, and CI runs all of it.** `gate` =
+  `npm run test` (Rust + typecheck + lint + unit + build) + `npm run e2e`.
+  Measured 2026-08-07: **3m44s** locally, of which the browser half is ~55s.
+  - CI runs the same three parts as **parallel jobs** (`build`, `rust`, `e2e`),
+    and `deploy` needs all three — so a failing board blocks publication rather
+    than annotating it.
+  - The e2e half was CI-less until 2026-08-07: 418 tests — every game's wiring
+    test, axe in both themes, every `?r=` share round-trip — ran only on whichever
+    machine the author happened to use, while the checklist claimed they gated.
+    Adding them cost no wall clock, because `build` is 225s of `npm run unit`
+    against a 17s wasm compile and the e2e job finishes inside that.
+  - Run `gate` locally anyway before pushing. CI catching it is a slower, more
+    public way to learn the same thing.
 
 - **Node is pinned by `.nvmrc` (22) — use a version manager, not the system Node.**
   The same rule as `rust-toolchain.toml`: the repo pins the toolchain, CI reads
