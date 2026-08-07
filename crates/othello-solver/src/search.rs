@@ -5,7 +5,10 @@
 //! [`TRACTABLE_EMPTIES`] switch is the same honesty boundary the tutor and the
 //! difficulty band use.
 
-use othello_core::{apply_move, legal_moves, result, Board, Move};
+use std::collections::HashMap;
+
+use adversary_core::Side;
+use othello_core::{apply_move, legal_moves, result, Board, Move, CELLS};
 
 use crate::eval::{heuristic, WEIGHTS};
 
@@ -116,21 +119,174 @@ fn empties_of(board: &Board) -> usize {
     board.cells.iter().filter(|&&v| v == 0).count()
 }
 
+/// Which side of the search window a stored value sits on.
+///
+/// Mirrors `checkers-solver`'s. Alpha-beta returns *bounds*, not values, at any
+/// node that cut off or failed low, so a table that stored every result as a
+/// value would answer later queries with numbers no fresh search would produce.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Bound {
+    /// A true value.
+    Exact,
+    /// The real value is at least this (the node cut off).
+    Lower,
+    /// The real value is at most this (the node failed low).
+    Upper,
+}
+
+/// One stored search result.
+#[derive(Debug, Clone, Copy)]
+struct TtEntry {
+    /// The depth this value was searched to. [`Mode::Exact`] searches to a
+    /// terminal regardless of `depth`, so it stores [`u32::MAX`] — such an entry
+    /// satisfies any depth requirement, which is exactly right: it is the whole
+    /// game value, not a horizon estimate.
+    depth: u32,
+    value: i32,
+    bound: Bound,
+}
+
+/// A transposition-table key: the full position.
+///
+/// Othello's `Board` *is* the whole state — 64 cells and the side to move, with
+/// no move counter or repetition history — so unlike checkers (which must key on
+/// the no-progress counter too) there is nothing else to include.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct TtKey {
+    cells: [u8; CELLS],
+    to_move: u8,
+}
+
+impl TtKey {
+    fn of(board: &Board) -> Self {
+        TtKey {
+            cells: board.cells,
+            to_move: match board.to_move {
+                Side::A => 0,
+                Side::B => 1,
+            },
+        }
+    }
+}
+
+/// The transposition table for one top-level search, plus a node counter.
+///
+/// **Per top-level call, not global.** A shared table would make one move's
+/// search depend on which searches ran before it, which is the same class of
+/// nondeterminism this repo refuses elsewhere — and it would make two concurrent
+/// searches interfere.
+#[derive(Debug, Default)]
+pub struct Table {
+    map: HashMap<TtKey, TtEntry>,
+    enabled: bool,
+    nodes: u64,
+}
+
+impl Table {
+    /// A fresh, enabled table.
+    #[must_use]
+    pub fn new() -> Self {
+        Table {
+            map: HashMap::new(),
+            enabled: true,
+            nodes: 0,
+        }
+    }
+
+    /// A table that stores and answers nothing — the reference search, kept so a
+    /// test can assert the table changes only *cost* and never *values*.
+    #[must_use]
+    pub fn disabled() -> Self {
+        Table {
+            map: HashMap::new(),
+            enabled: false,
+            nodes: 0,
+        }
+    }
+
+    /// Nodes visited by the search that used this table. The only non-vacuous way
+    /// to assert that the table is doing anything.
+    #[must_use]
+    pub fn nodes(&self) -> u64 {
+        self.nodes
+    }
+
+    /// Stored positions.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.map.len()
+    }
+
+    /// Whether nothing is stored.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.map.is_empty()
+    }
+}
+
+/// What a stored entry may be used for at this `(depth, alpha, beta)`, if
+/// anything.
+///
+/// A shallower entry cannot answer a deeper question. A `Lower` bound is usable
+/// only when it already beats `beta` (the fresh search would have cut off there
+/// too); an `Upper` bound only when it is at or below `alpha`.
+fn table_answer(entry: TtEntry, depth: u32, alpha: i32, beta: i32) -> Option<i32> {
+    if entry.depth < depth {
+        return None;
+    }
+    match entry.bound {
+        Bound::Exact => Some(entry.value),
+        Bound::Lower if entry.value >= beta => Some(entry.value),
+        Bound::Upper if entry.value <= alpha => Some(entry.value),
+        _ => None,
+    }
+}
+
 /// Negamax with alpha-beta. Returns the value from `board.to_move`'s perspective.
 /// [`Mode::Exact`] ignores `depth` and searches to a terminal; [`Mode::Capped`]
 /// cuts off at `depth == 0` with the heuristic. The mode is the root's and does
 /// not change as the search descends.
-fn negamax(board: &Board, depth: u32, mut alpha: i32, beta: i32, mode: Mode) -> i32 {
+fn negamax(
+    board: &Board,
+    depth: u32,
+    mut alpha: i32,
+    beta: i32,
+    mode: Mode,
+    tt: &mut Table,
+) -> i32 {
+    tt.nodes += 1;
     if result(board).is_some() {
         return terminal_value(board);
     }
     if mode == Mode::Capped && depth == 0 {
         return heuristic(board);
     }
+
+    // In `Exact` mode `depth` is not what was searched — the search runs to a
+    // terminal — so entries are stored and queried at the maximum depth. An exact
+    // entry is the game value and answers any question.
+    let stored_depth = match mode {
+        Mode::Exact => u32::MAX,
+        Mode::Capped => depth,
+    };
+
+    let key = TtKey::of(board);
+    if tt.enabled {
+        if let Some(hit) = tt
+            .map
+            .get(&key)
+            .and_then(|e| table_answer(*e, stored_depth, alpha, beta))
+        {
+            return hit;
+        }
+    }
+
+    let alpha0 = alpha;
     let next_depth = depth.saturating_sub(1);
     let mut best = i32::MIN + 1;
+    let mut cut = false;
     for mv in ordered_moves(board) {
-        let score = -negamax(&apply_move(board, mv), next_depth, -beta, -alpha, mode);
+        let score = -negamax(&apply_move(board, mv), next_depth, -beta, -alpha, mode, tt);
         if score > best {
             best = score;
         }
@@ -138,9 +294,29 @@ fn negamax(board: &Board, depth: u32, mut alpha: i32, beta: i32, mode: Mode) -> 
             alpha = best;
         }
         if alpha >= beta {
+            cut = true;
             break;
         }
     }
+
+    if tt.enabled {
+        let bound = if cut {
+            Bound::Lower
+        } else if best <= alpha0 {
+            Bound::Upper
+        } else {
+            Bound::Exact
+        };
+        tt.map.insert(
+            key,
+            TtEntry {
+                depth: stored_depth,
+                value: best,
+                bound,
+            },
+        );
+    }
+
     best
 }
 
@@ -149,6 +325,19 @@ fn negamax(board: &Board, depth: u32, mut alpha: i32, beta: i32, mode: Mode) -> 
 /// Empty if the position is terminal.
 #[must_use]
 pub fn move_values(board: &Board, depth: u32) -> Vec<(Move, i32)> {
+    move_values_with(board, depth, &mut Table::new())
+}
+
+/// [`move_values`] against a caller-supplied table, so a test can read the node
+/// count and a future iterative-deepening driver can carry one table across
+/// depths. The table is shared across the root moves, which is where most of the
+/// saving is: sibling root moves transpose into each other constantly.
+///
+/// Each root move is searched with a **full window**, so no root value is ever an
+/// alpha-beta bound — the tutor and the difficulty band compare values across
+/// moves, and comparing bounds against values would be meaningless.
+#[must_use]
+pub fn move_values_with(board: &Board, depth: u32, tt: &mut Table) -> Vec<(Move, i32)> {
     // The mode is fixed here, from the position the caller actually asked about.
     let mode = mode_for(empties_of(board));
     legal_moves(board)
@@ -160,6 +349,7 @@ pub fn move_values(board: &Board, depth: u32) -> Vec<(Move, i32)> {
                 i32::MIN + 1,
                 i32::MAX - 1,
                 mode,
+                tt,
             );
             (mv, v)
         })
@@ -228,14 +418,28 @@ mod tests {
 
         // Capped at depth 0: the heuristic, whatever the empty count says.
         assert_eq!(
-            negamax(&pos, 0, i32::MIN + 1, i32::MAX - 1, Mode::Capped),
+            negamax(
+                &pos,
+                0,
+                i32::MIN + 1,
+                i32::MAX - 1,
+                Mode::Capped,
+                &mut Table::new()
+            ),
             heuristic(&pos),
             "a capped search must cut off at its depth, not solve because the position is small"
         );
         // Exact mode ignores depth and searches to a terminal, agreeing with an
         // independent plain minimax.
         assert_eq!(
-            negamax(&pos, 0, i32::MIN + 1, i32::MAX - 1, Mode::Exact),
+            negamax(
+                &pos,
+                0,
+                i32::MIN + 1,
+                i32::MAX - 1,
+                Mode::Exact,
+                &mut Table::new()
+            ),
             ref_exact(&pos),
             "exact mode still solves"
         );
@@ -246,6 +450,124 @@ mod tests {
         assert_eq!(mode_for(TRACTABLE_EMPTIES), Mode::Exact);
         assert_eq!(mode_for(TRACTABLE_EMPTIES - 1), Mode::Exact);
         assert_eq!(mode_for(TRACTABLE_EMPTIES + 1), Mode::Capped);
+    }
+
+    /// Play `plies` of first-legal Othello, to reach a position of a given phase.
+    fn position_after(plies: usize) -> Board {
+        let mut pos = <Othello as Adversary>::initial(0);
+        for _ in 0..plies {
+            if result(&pos).is_some() {
+                break;
+            }
+            pos = apply_move(&pos, legal_moves(&pos)[0]);
+        }
+        pos
+    }
+
+    /// **The safety net, and the strongest regression test available here.** A
+    /// transposition table is a pure speed change: it must alter what the search
+    /// *costs* and never what it *answers*. Asserted across the opening, the
+    /// midgame (where the 2,115ms worst call lives) and the exact endgame, at the
+    /// real Expert depth, because the exact/capped modes store entries under
+    /// different rules and only the endgame exercises the second.
+    #[test]
+    fn the_table_changes_the_cost_and_never_the_values() {
+        for plies in [0, 12, 24, 40, 52] {
+            let pos = position_after(plies);
+            if result(&pos).is_some() {
+                continue;
+            }
+            let depth = Level::Expert.depth();
+            let with = move_values_with(&pos, depth, &mut Table::new());
+            let without = move_values_with(&pos, depth, &mut Table::disabled());
+            assert_eq!(
+                with,
+                without,
+                "the table must not change a single value (after {plies} plies, \
+                 {} empties)",
+                empties_of(&pos)
+            );
+        }
+    }
+
+    /// ...and it must actually *do* something. Without this the test above passes
+    /// for a table that is never read, which is precisely the stub this was
+    /// written against.
+    ///
+    /// The midgame is the case that matters: Phase 0 measured Othello's worst
+    /// single move at 2,115ms with 36 empties, against checkers' 337ms at a ply
+    /// deeper — and the difference between those two searches is this table.
+    /// A realistic midgame position: a seeded-random walk down to `empties`.
+    ///
+    /// **Not** first-legal play, which is what the first version of this test
+    /// used and why it measured nothing. First-legal walks the game into a
+    /// lopsided board with very few legal moves — the depth-7 search there costs
+    /// ~1,200 nodes, against the many millions in the position Phase 0 measured
+    /// at 2,115ms. A fixture that cheap cannot show a search optimization
+    /// working or failing.
+    fn midgame(seed: u64, empties: usize) -> Board {
+        let mut pos = <Othello as Adversary>::initial(0);
+        let mut rng = ChaCha20Rng::seed_from_u64(seed);
+        while empties_of(&pos) > empties && result(&pos).is_none() {
+            let l = legal_moves(&pos);
+            pos = apply_move(&pos, l[(rng.next_u32() as usize) % l.len()]);
+        }
+        pos
+    }
+
+    /// The table must actually save work on the position class that hurts.
+    ///
+    /// **The threshold is a floor under a measurement, not a target.** Measured
+    /// 2026-08-07 at 36 empties, Expert depth 7, release: seed 7 saved 31%
+    /// (761,478 → 529,081 nodes). 20% is set below that so ordinary variation in
+    /// the fixture does not redden the gate, while still failing loudly for a
+    /// table that is never read (0%) — which is the stub this was written
+    /// against.
+    ///
+    /// Worth recording what this number is *not*: Phase 0 guessed the missing
+    /// table was why checkers searches a ply deeper six times faster. At 31% it
+    /// is not. Othello's tree is genuinely wider — checkers' mandatory captures
+    /// narrow its search in a way no table can imitate.
+    ///
+    /// Also measured and then reverted: storing each entry's best move and
+    /// searching it first saved a further **0.4%** (526,877 nodes). Best-move
+    /// ordering pays off across the *iterations of an iterative deepening
+    /// search*, where a shallower pass orders the next deeper one; inside one
+    /// fixed-depth search there are too few re-visits for it to matter. It
+    /// belongs with the deepening driver, not here.
+    #[test]
+    fn the_table_cuts_the_work_the_midgame_search_does() {
+        // 36 empties is where Phase 0 measured the worst single move (2,115ms).
+        for seed in [7, 11, 23] {
+            let pos = midgame(seed, 36);
+            assert!(
+                result(&pos).is_none(),
+                "the fixture must be a live position"
+            );
+            assert!(
+                empties_of(&pos) > TRACTABLE_EMPTIES,
+                "the fixture must be a capped (midgame) search, not an endgame solve"
+            );
+
+            let mut with = Table::new();
+            let mut without = Table::disabled();
+            let a = move_values_with(&pos, Level::Expert.depth(), &mut with);
+            let b = move_values_with(&pos, Level::Expert.depth(), &mut without);
+            assert_eq!(a, b, "and still the same values on seed {seed}");
+
+            assert!(!with.is_empty(), "an enabled table must store something");
+            assert!(
+                without.is_empty(),
+                "a disabled table must store nothing, or it is not a reference"
+            );
+            assert!(
+                with.nodes() * 5 <= without.nodes() * 4,
+                "the table must save at least 20% of midgame nodes on seed {seed} \
+                 (with {}, without {})",
+                with.nodes(),
+                without.nodes()
+            );
+        }
     }
 
     #[test]
