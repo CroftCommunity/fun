@@ -96,6 +96,31 @@ a win, or a draw into a loss); it is the load-bearing metric, because the whole
 hybrid design rests on "the band is class-preserving, so the LLM can never
 blunder."
 
+### What it is **not**: a strength instrument
+
+The rig grades only where the Oracle can be exact — the tractable endgame — and
+honestly reports the rest as `skippedEarly`. That makes it an excellent
+**regression detector** and a poor **strength meter**, and the difference matters
+whenever a change bites somewhere the grader skips.
+
+P9 Phase 3 is the worked example. Drop 4's live search was budgeted, which changes
+how it plays in the **opening**; the anchor grades 15 moves and skips 26 early, so
+it reported `15/15 optimal, 0 blunders` — entirely true, and entirely silent about
+the change. Othello is worse: 12 graded, 48 skipped.
+
+So when a change alters how a player *plays* rather than whether it is legal:
+
+- use the baselines to confirm you did not break anything (a moved number is still
+  a finding, and `preserving` must never drop);
+- but measure strength by **playing the new engine against the old one** over
+  varied openings, with a never-bites control row and the sample size stated. The
+  protocol and its traps are in `docs/AI-PLAYERS.md` → "Measuring the strength
+  cost"; the rigs are the `#[ignore]`d `budget_sweep.rs` tests in `drop4-solver`
+  and `othello-solver`.
+
+Reading `optimal` as "the engine is still as strong" is the mistake, and it is an
+easy one because the number is genuinely true.
+
 ## The vocabulary
 
 Mirrors the Rust `drop4-harness` so the two rigs' numbers are comparable.

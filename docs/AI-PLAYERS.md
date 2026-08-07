@@ -157,6 +157,128 @@ because a full solve from the opening is minutes (`drop4-solver::live` +
   *horizon-bounded* earlier. A provably-perfect-from-move-1 level would need an
   opening book or a full solve (a follow-up, not shipped).
 
+## Search cost — bounding a move without lying about it
+
+Difficulty decides how *good* the opponent is. This decides how *long* it takes,
+and the two are separate problems with separate mistakes available. Everything
+below is measured across all three adversarial games (P9,
+`plans/2026-08-07-midgame-latency-floor.md` and `-othello-midgame.md`); the
+numbers are in the plans' Review Logs and beside each constant.
+
+### Bound work in **nodes**, never in milliseconds
+
+`adversary_solver::NodeBudget` counts search nodes. It is not a stopwatch, and it
+must not become one, for three reasons that are all load-bearing here:
+
+1. `tests/baselines.test.ts` re-runs the engines and asserts **exact** Reports. A
+   wall-clock bound puts machine speed into `wins`/`optimal`/`blunders` — the
+   fields the regression anchor exists to pin.
+2. A level with no sloppiness must play the same game from the same seed.
+   `select_in_band` refuses to *draw* an unused random number for this reason; a
+   clock breaks it far more coarsely.
+3. The wasm modules are freestanding `extern "C"` with **no host imports**. A
+   clock means asking the host the time, and `native == wasm` stops being a claim
+   a test can check.
+
+The honest cost: a node budget bounds *work*, not latency. Slow hardware is still
+slow — predictably rather than pathologically. Nodes are a proxy for time, so
+**calibrate the proxy by measurement per game** and record the table beside the
+constant. `bubble-solver`, `color-sort-solver` and `match3-solver` already took
+`node_budget` for the same reason; the adversarial games were the outliers.
+
+### Measure the distribution before choosing a mechanism
+
+The shape of the problem decides the fix, and all three games looked different:
+
+```
+  checkers   ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▂▃   0% over 400ms  → a tail. Nothing to fix.
+  drop 4     ▁▁▁▁▁▁▁▂▄▆███     20% over 400ms  → a tail, in the OPENING.
+  othello    ▃▄▅▆▇███████▇▆    38% over 400ms  → a plateau. Median already 262ms.
+```
+
+A worst-case number alone would have hidden all of this. Record median, p95,
+worst, **and the fraction over your target**, per level — and take the numbers at
+*every* level, not just the top one. Othello's endgame stall was invisible for
+months because every previous measurement had been taken at Expert, where a
+bigger cost sat on top of it.
+
+### When iterative deepening pays, and when it is a tax
+
+`adversary_solver::deepen` searches `1..=max_depth` and keeps the last iteration
+that **finished**. It is not free, and whether it pays is a property of the game:
+
+| | checkers | Othello |
+|---|---|---|
+| deepening vs direct search | **+14% nodes (tax)** | **−41% nodes (win)** |
+| existing move ordering | capture length — and capture is *mandatory*, so it is already near-optimal | a static corner/edge weight table — a weak guess |
+| budget bite rate | 0% of moves | 28–38% of moves |
+| outcome | **reverted, ships nothing** | shipped, free speed |
+
+> **The rule: deepening pays where the budget actually bites often, or where the
+> static move ordering is poor. Where neither holds it is a tax on every move for
+> a guardrail that never fires.**
+
+Both halves matter, and they are separable. Re-searching the shallow depths costs
+something; it is repaid by (a) the deep search you *skip* when the budget bites,
+and (b) the better move ordering each pass hands the next. A game whose moves are
+forced or already well-ordered — mandatory captures, a strong static heuristic —
+gets little of (b).
+
+Corollary worth stating because it cost a revert to learn: **best-move ordering in
+the transposition table is worth almost nothing on its own** (measured: 0.4%), and
+is what makes deepening viable (measured: the difference between +41% and −41%).
+It belongs with the driver, never before it.
+
+### Rules that hold regardless
+
+- **Never return a partial iteration.** A budget that simply stops a fixed-depth
+  search leaves some moves valued deep and the rest not at all — and the
+  difficulty band compares values *across* moves, so it would then be choosing by
+  whichever move the search happened to reach. Discard the incomplete iteration
+  whole; every value returned must come from one depth.
+- **Never store a truncated search in the transposition table.** Its value is not
+  a bound on anything, and it will outlive the search that produced it. Latch
+  exhaustion and refuse every store from that moment on — that covers each
+  truncated node *and every ancestor of one*. (Subtrees that finished *before* the
+  overrun are genuine and may stay: the property is soundness, not emptiness.)
+- **The honesty flag follows the search, not the position.** Othello derived
+  `exact` from the empty count, which was sound only while a position in the exact
+  region was guaranteed a completed solve. Under a budget it becomes a lie: a
+  class floor built on `i32::signum` would claim a *known* win/draw/loss from
+  heuristic numbers. See `Valued` in `othello-solver::search`.
+- **Do not budget the analysis oracle or the tutor.** A panel opening can afford
+  what a tap cannot, and budgeting the grader re-opens the P8 defect where
+  "optimal" became true by construction. The oracle must outrank the player it
+  grades.
+- **A named level depth is a ceiling, not a promise.** Once deepening is in, say
+  so where a reader tunes levels — and report the depth actually reached.
+
+### Measuring the strength cost — the protocol
+
+If a budget bites, it changes how the opponent plays, and that has to be measured
+rather than assumed. Every clause below exists because its absence produced a
+wrong number in P9 Phase 3:
+
+1. **Randomise the openings.** Both `Drop4::initial(seed)` and
+   `Othello::initial(seed)` return the *same* board for every seed, and at zero
+   sloppiness neither player draws from the RNG — so without random opening plies
+   every game with the same first player is bit-identical, and "8 games" is two.
+   This produced a confident, entirely false report of a 0W-4D-4L collapse.
+2. **Include a never-bites control row** — a budget so large it cannot fire, i.e.
+   the unbudgeted engine playing *itself*. Whatever it scores is your noise floor,
+   and it will **not** be an even split, because random openings are not
+   symmetric between seats. Drop 4's control was 14W-5D-11L. Without this row the
+   table cannot be read.
+3. **Alternate seats** across seeds.
+4. **State the sample size next to the claim.** "No measurable cost at 30 games"
+   is honest. "No cost" is not.
+5. **Do not use the harness baseline for this.** It grades only the tractable
+   endgame and skips the early game, so it cannot see a change that bites in the
+   opening or midgame. It is a regression detector, not a strength instrument.
+
+The reusable rigs are `crates/drop4-solver/tests/budget_sweep.rs` and
+`crates/othello-solver/tests/budget_sweep.rs`, both `#[ignore]`d.
+
 ## Tutoring / explanation — correct by construction
 
 The strongest LLM role. The engine supplies the ground truth; the LLM only

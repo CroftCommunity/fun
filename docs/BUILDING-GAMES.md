@@ -587,6 +587,25 @@ so one shared budget puts the panel's cost on every tap — checkers exports
 blocks the main thread, so paint the reading state **before** starting it or the
 button looks dead.
 
+**Bound the search in nodes, and measure before you pick a mechanism.** The full
+guide is `docs/AI-PLAYERS.md` → "Search cost — bounding a move without lying about
+it"; the parts you cannot afford to rediscover:
+
+- Use `adversary_solver::NodeBudget`, never a clock. A wall-clock bound puts
+  machine speed into the numbers `tests/baselines.test.ts` asserts, and the wasm
+  modules have no host import to ask the time with.
+- **Measure median, p95, worst and the fraction over your target, at *every*
+  level** — not the worst case at the top level. Othello's endgame stall hid for
+  months behind a bigger midgame cost that only existed at Expert.
+- `adversary_solver::deepen` (iterative deepening) is **not automatically worth
+  adopting**. It pays where the budget bites often, or where your static move
+  ordering is poor. Measured: Othello −41% nodes (weak static ordering, 38% bite
+  rate) against checkers +14% (mandatory captures already order well, 0% bite
+  rate) — checkers ships none of it. Measure your game rather than copying either.
+- Never return a partial iteration, never store a truncated search in the
+  transposition table, and never let the `exact` flag be derived from the position
+  when a budget can cut the search short.
+
 **Honesty gate (non-negotiable):** if your game is **not solved from the opening**
 (Othello, chess), the Oracle is *heuristic early, exact only in the deep endgame*.
 Carry an `exact` flag on every tutor fact and **bind the wording to it**: claim a
