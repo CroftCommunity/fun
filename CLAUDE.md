@@ -56,8 +56,13 @@ at them and add what's specific to this repo. Git identity: chasemp
   - The e2e half was CI-less until 2026-08-07: 418 tests — every game's wiring
     test, axe in both themes, every `?r=` share round-trip — ran only on whichever
     machine the author happened to use, while the checklist claimed they gated.
-    Adding them cost no wall clock, because `build` is 225s of `npm run unit`
-    against a 17s wasm compile and the e2e job finishes inside that.
+  - **Measured, because the estimate was wrong.** I predicted a parallel job would
+    add no wall clock (`build` is 225s of `npm run unit`, so there looked to be
+    room underneath it). It added about a minute: a GitHub runner gives Playwright
+    **2 workers** where a laptop gives 7, so the suite takes **4.5 min** on CI
+    against ~55s locally, which makes `e2e` the longest job (5.9m vs `build`'s
+    5.6m) and the run 6.2m against 5.3m before. Worth it, but it is the critical
+    path now — if the suite grows, that is where it shows up.
   - Run `gate` locally anyway before pushing. CI catching it is a slower, more
     public way to learn the same thing.
 

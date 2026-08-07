@@ -142,10 +142,12 @@ pre-existing" test failures that were neither: Node 25 ships a placeholder
 
 ## 6. Open items, most valuable first
 
-1. ~~**The browser tests do not run in CI.**~~ **Closed 2026-08-07.** They do
-   now, as a third parallel job, and `deploy` needs it — so a broken board cannot
-   publish. It cost no wall clock: `build` is 225s of `npm run unit` against a 17s
-   wasm compile, and the e2e job finishes inside that. `npm run gate` runs the
+1. ~~**The browser tests do not run in CI.**~~ **Closed 2026-08-07.** They run as
+   a third parallel job and `deploy` needs it, so a broken board cannot publish.
+   Verified non-vacuous: the job log reads "Running 418 tests using 2 workers →
+   415 passed". Cost about a minute of wall clock (6.2m vs 5.3m) — a runner gives
+   Playwright 2 workers where a laptop gives 7, so the suite takes 4.5 min there
+   against ~55s here, and `e2e` is now the longest job. `npm run gate` runs the
    same set locally in 3m44s.
 2. **The midgame is the latency floor** in both Othello (~2.1s) and checkers
    (~341ms) at the top level. No endgame constant reaches it; the levers are the
