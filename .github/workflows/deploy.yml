@@ -152,8 +152,29 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       # `--with-deps` installs the system libraries too; a cache hit still needs
-      # it (the libs are not in the cached directory), but it is seconds.
-      - run: npx playwright install --with-deps chromium webkit
+      # it (the libs are not in the cached directory, and the runner is fresh
+      # every run), but it is seconds.
+      #
+      # Retried, because that apt step is the one part of this gate that depends
+      # on a third party staying up. Run 31211892961 (2026-08-07) stalled 4.5
+      # minutes mid-download on `libflite1` from azure.archive.ubuntu.com and took
+      # the job's 30-minute timeout with it — reddening a run whose `rust` and
+      # `build` jobs had already passed. Nothing in the diff went near it.
+      #
+      # `timeout 300` is what makes this work: the failure mode is a *stall*, not
+      # an error, so a bare retry loop would sit in the same hung download until
+      # the job timeout. Bound each attempt, then retry.
+      - name: Install Playwright browsers + system deps (retried)
+        run: |
+          for attempt in 1 2 3; do
+            if timeout 300 npx playwright install --with-deps chromium webkit; then
+              exit 0
+            fi
+            echo "::warning::playwright install attempt $attempt failed or stalled; retrying"
+            sleep 10
+          done
+          echo "::error::playwright install failed three times — suspect an apt/CDN outage, not this commit"
+          exit 1
       - run: npm run e2e
       # A failed browser test is unreadable without its trace/screenshots.
       - uses: actions/upload-artifact@v4
