@@ -255,6 +255,69 @@ checkers is missing the driver and helpfully add it back.
 
 ## Review Log
 
-_(Per phase: what was measured, what was expected, what was found, and any claim
-in this plan that turned out to be wrong. Phases 0–3 of the parent plan produced
-four such corrections; assume this one will too.)_
+### Phases B0–B1 — deepening the midgame (2026-08-07)
+
+**The plan's central premise was wrong, in the good direction.** It said Othello
+was "the one that cannot be fixed for free" and that its job was to price a
+strength/latency trade. Deepening turned out to be a **speed win at identical
+values**, and most of the gap closed before any budget existed.
+
+| midgame nodes, 36 empties, Expert | |
+|---|---|
+| direct search | 526,877 |
+| deepening, no best-move ordering | 746,143 (**+41% tax**) |
+| deepening + best-move ordering | **311,902 (−41%)** |
+
+In wasm, Othello Expert:
+
+| | before B0 | after B1 |
+|---|---|---|
+| worst | 1,901ms | **753ms** |
+| median | 234ms | 180ms |
+| p95 | 1,243ms | 667ms |
+| >800ms | 24% | **0%** |
+| >400ms | 38% | 28% |
+
+All three baselines reproduce exactly — the values did not change, only their
+cost. Othello's own baseline run fell from 48.5s to 31.4s.
+
+#### Why this is the opposite of checkers, and the same rule
+
+Phase 3 measured deepening on checkers as a 14% tax and reverted it. Here it is a
+41% saving. The difference is entirely **how good the existing move ordering
+was**:
+
+- Checkers orders by capture length, and mandatory capture does most of the work
+  already. A shallow pass has little to add, so re-searching `1..n-1` is close to
+  pure overhead.
+- Othello orders by a static corner/edge weight table, which is a weak guess. A
+  shallow pass's actual best move is far better, and the improved cutoffs more
+  than repay the re-search.
+
+So the rule from Phase 3 stands and gains a second clause: deepening pays where
+the budget bites often **or where the static move ordering is poor**. Othello has
+both; checkers has neither.
+
+#### The Phase 1 revert was right, and this does not contradict it
+
+Best-move ordering measured 0.4% in Phase 1 and was reverted as speculative code.
+That measurement was correct: inside one fixed-depth search there are almost no
+re-visits to order. Deepening is what *creates* the re-visits. The ordering
+belonged with the driver, which is exactly where the Phase 1 note said to put it.
+
+#### What this does to Phase B3's options
+
+The framing in B3 was written against a 1,901ms worst case. It is now 753ms, and
+"bound it loosely (~800ms)" has effectively been achieved **for free**. The live
+question is narrower than the plan anticipated:
+
+- **Do nothing more.** 753ms worst, 0% over 800ms, no strength cost anywhere.
+- **Bound at ~400ms.** Would still bite 28% of moves and now has to justify
+  itself against a much better baseline than the one that motivated it.
+
+B2's table is still worth having, because "is the remaining 28% worth buying" is
+a real question — but it is now a question about polish rather than about a
+defect.
+
+_(B2 onward: to be filled in. Phases 0–3 of the parent produced four corrections
+and this phase produced a fifth; assume more.)_
