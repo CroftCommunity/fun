@@ -322,7 +322,41 @@ consequences of that, both handled rather than hidden:
   never reads `depth` itself), but it must be said out loud rather than left as a
   field someone later assumes is doing something.
 
-### Phase 3a: the build-time opening book
+### Phase 3a: the build-time opening book — **DROPPED 2026-08-07, before execution**
+
+Phase 0 finding 2 said a baked book was viable and better. Checking it against
+the shelf's actual pack convention says otherwise, so it is dropped rather than
+built. The measurement stands; the conclusion drawn from it was too narrow.
+
+What the check found: **every baked pack on the shelf is a JSON
+`pond_docformat` envelope**, and they are 1.7 KB (bubble) to 15.5 KB
+(color-sort). The book needs per-move values, not just a best move, because the
+difficulty band buckets classes across moves and the tutor reports all of them —
+that is 49,152 values over 2,325 positions, about **64 KB binary and ~150 KB as
+JSON numbers**. So adopting it means either 4–10× the largest existing pack
+inside the wasm, or leaving the envelope convention for a bespoke binary format.
+
+What it buys, measured precisely: exactness over the **first four plies only**
+(`TRACTABLE_EDGES = 20` means the live exact solve takes over at 4 edges drawn).
+And no box can be captured, or even reach three sides, inside four plies — so the
+engine cannot lose material there. The cost of *not* having the book is a
+theoretical parity edge, not a visible blunder.
+
+Symmetry reduction would shrink it ~8× (the lattice has 8 dihedral symmetries,
+2,325 → ~330 positions), which would make the size fine. That is real work with a
+real trap — mapping a canonical best move back through the transform — for the
+same four plies. Not worth it now; recorded in `TODO/dots.md` as the thing to do
+**if** Phase 10's harness shows the opening is actually costing games.
+
+So dots becomes **Othello-shaped after all**, which is also the better outcome for
+the §10 checklist: `exact` genuinely varies, the tutor's hedging branch is
+reachable by a real input, and the honesty gate is non-vacuous rather than a
+formality. The three consequences Phase 0 drew from "exact everywhere" are
+withdrawn — difficulty *is* a depth knob above 20 free edges, and `LiveBand.depth`
+is live, not inert.
+
+<details>
+<summary>Original Phase 3a text, kept because the measurement is still the record</summary>
 
 **Goal:** 49 KB of exact per-move values for the first four plies, regenerable
 byte-identically.
@@ -363,6 +397,8 @@ looks authoritative. The byte-identical regeneration test is the guard.
 2. **Verification:** `npm run test:rust` including the seam and regeneration tests.
 
 **Validation:** Broad — this is the phase where an error is invisible and durable.
+
+</details>
 
 ### Phase 1: `dots-core` — rules, hash, verifiable outcome
 
@@ -464,9 +500,15 @@ exactly what this catches. `edges: u32` and the u32 LE dims are chosen to avoid 
   entries, Phase 0 finding 3), exact for every position with ≤ 20 free edges,
   budgeted with `adversary_solver::NodeBudget` as a backstop, **never returning a
   partial iteration** and never storing a truncated search in the table.
-- [ ] **No heuristic eval** — Phase 0 finding 2 replaced it with the Phase 3a
-  book. Move ordering still matters for the budget backstop: capturing moves
-  first, then edges that do not create a third side.
+- [ ] A **heuristic depth-capped** path above `TRACTABLE_EDGES` (Phase 3a dropped,
+  so this is back): eval = box margin, plus credit for boxes already at three
+  sides (the mover claims those), with per-level depth. Move ordering: capturing
+  moves first, then edges that do not create a third side.
+- [ ] Cross-check the exact search against the Phase 0 spike, which is an
+  independently written implementation of the same recurrence: an unlimited-budget
+  solve of the empty board must return **−3**, and a 1×1 board's must return −1.
+  Two implementations agreeing on a non-obvious value is stronger evidence than
+  either one's unit tests.
 - [ ] `class_of(final_margin)` = sign; `capped_class` per the game's own judgement
   (kept out of `adversary-solver`, per that crate's stated boundary).
 - [ ] `live_move(level)` over `LiveBand` per level — Easy/Medium/Hard/Perfect,

@@ -229,6 +229,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "dots-solver"
+version = "0.0.0"
+dependencies = [
+ "adversary-core",
+ "adversary-solver",
+ "dots-core",
+ "rand",
+ "rand_chacha",
+]
+
+[[package]]
 name = "drop4-core"
 version = "0.0.0"
 dependencies = [

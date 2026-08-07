@@ -1,0 +1,17 @@
+[package]
+name = "dots-solver"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Dots and Boxes engine: an exact box-margin solver below a measured free-edge threshold, a depth-capped search above it, the shared class-preserving difficulty band, and an engine-grounded tutor whose claims are bound to a proven-exact flag."
+
+[lints]
+workspace = true
+
+[dependencies]
+adversary-core = { path = "../adversary-core" }
+adversary-solver = { path = "../adversary-solver" }
+dots-core = { path = "../dots-core" }
+rand = { workspace = true }
+rand_chacha = { workspace = true }
