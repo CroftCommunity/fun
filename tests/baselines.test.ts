@@ -82,13 +82,32 @@ const ANCHORS: readonly Anchor[] = [
       drop4Oracle(
         await loadWasm("target/wasm32-unknown-unknown/release/drop4_wasm.wasm", () => Drop4.load()),
       ),
+    // Re-recorded 2026-08-07 (was 0-2-0, 16 graded / 16 optimal) when the live
+    // capped search became iterative deepening under a 250,000-node budget (P9
+    // Phase 3). The engine changed, which is the one legitimate reason to move a
+    // number here — Drop 4's capped path had never been measured and was costing
+    // 914ms on its worst move, with 20% of moves over 400ms. It is now 158ms and
+    // 0%.
+    //
+    // What did **not** change is the part that matters: every graded move is
+    // still optimal and there are no blunders, so the shallower search never
+    // dropped a class the oracle could see. W-D-L moved from two draws to one
+    // win and one loss, which is a different result rather than a worse one —
+    // both seats run the same engine.
+    //
+    // Read the grading scope honestly: the anchor grades only the tractable
+    // endgame (26 moves skipped early) and this change bites in the *opening*,
+    // so these counts are not where the strength question is settled. That is
+    // done by `the_budgeted_opponent_is_not_materially_weaker_than_the_
+    // unbudgeted_one` in `drop4-solver`, which plays budgeted against unbudgeted
+    // over varied openings.
     recorded: {
       games: 2,
-      wins: 0,
-      draws: 2,
-      losses: 0,
-      scoredMoves: 16,
-      optimal: 16,
+      wins: 1,
+      draws: 0,
+      losses: 1,
+      scoredMoves: 15,
+      optimal: 15,
       preserving: 0,
       blunders: 0,
       skippedEarly: 26,

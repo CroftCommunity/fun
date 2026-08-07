@@ -76,7 +76,15 @@ describe("scorer: gradeSide over the real wasm oracle", () => {
       const cardA = gradeSide(rec, verifier, 1);
 
       expect(cardA.games).toBe(1);
-      expect(cardA.draws).toBe(1); // Perfect-vs-Perfect fills the board -> draw
+      // The game reaches *a* result, not a specific one. It asserted a draw
+      // until 2026-08-07, which was an observed property of the old Drop 4
+      // engine rather than a designed guarantee — Drop 4's "Perfect" is a
+      // depth-capped heuristic, not the exact solver, so nothing made a draw
+      // inevitable. Iterative deepening under a node budget (P9 Phase 3) made
+      // the same matchup decisive. What this test is actually for is the two
+      // assertions below it: the grader reaches the exact region, and a
+      // class-floored engine never blunders there.
+      expect(cardA.wins + cardA.draws + cardA.losses).toBe(cardA.games);
       expect(cardA.scoredMoves).toBeGreaterThan(0); // reached the exact endgame region
       expect(cardA.skippedEarly).toBeGreaterThan(0); // early moves honestly skipped
       expect(cardA.optimal + cardA.preserving + cardA.blunders).toBe(cardA.scoredMoves);

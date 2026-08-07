@@ -152,11 +152,145 @@ impl NodeBudget {
     }
 }
 
+/// The result of a deepening search: what the last **complete** iteration
+/// returned, and how deep that iteration was.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Deepened<T> {
+    /// The last complete iteration's result.
+    pub result: T,
+    /// The depth that iteration searched to. Reported because it is the honest
+    /// answer to "how strong was this move?" — a caller that promised depth 8 and
+    /// got depth 5 should be able to tell.
+    pub depth: u32,
+}
+
+/// Search `1..=max_depth`, keeping the last iteration that **finished**.
+///
+/// `search(d)` returns `None` when it ran out of budget partway. That result is
+/// discarded entirely and the previous depth's stands.
+///
+/// **Why discarding is the whole point.** A budget that simply stopped a
+/// fixed-depth search would leave some moves valued at the full depth and the
+/// rest not valued at all, and the difficulty band compares values *across*
+/// moves — it would then be choosing by which move the search happened to reach,
+/// which is to say at random. Iterative deepening is what gives the budget
+/// something safe to do when it bites: every value in the returned set comes from
+/// one depth.
+///
+/// Returns `None` only when even depth 1 could not finish. A caller must size its
+/// budget so that cannot happen in practice; the games do, by construction.
+///
+/// Takes no RNG and consumes none — the difficulty band draws *after* the values
+/// exist, and a deepening search that moved the stream would change every
+/// subsequent draw in the match.
+pub fn deepen<T>(max_depth: u32, mut search: impl FnMut(u32) -> Option<T>) -> Option<Deepened<T>> {
+    let mut best = None;
+    for depth in 1..=max_depth {
+        match search(depth) {
+            Some(result) => best = Some(Deepened { result, depth }),
+            None => break,
+        }
+    }
+    best
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use rand_chacha::rand_core::SeedableRng;
     use rand_chacha::ChaCha20Rng;
+
+    /// A search that finishes every depth up to `fails_at` and aborts there,
+    /// tagging each value with the depth that produced it.
+    fn staged(fails_at: u32) -> impl FnMut(u32) -> Option<Vec<(u32, u32)>> {
+        move |d: u32| {
+            if d >= fails_at {
+                None
+            } else {
+                Some(vec![(1, d), (2, d), (3, d)])
+            }
+        }
+    }
+
+    #[test]
+    fn deepening_reaches_max_depth_when_the_budget_holds() {
+        let got = deepen(6, staged(u32::MAX)).expect("a search that never aborts returns a result");
+        assert_eq!(got.depth, 6, "it must not stop early");
+        assert!(
+            got.result.iter().all(|&(_, d)| d == 6),
+            "every value must come from the deepest completed iteration"
+        );
+    }
+
+    #[test]
+    fn an_abort_returns_the_previous_depth_untouched() {
+        // Aborts at 4, so depth 3 is the last complete iteration.
+        let got = deepen(9, staged(4)).expect("depths 1-3 completed");
+        assert_eq!(got.depth, 3);
+        assert!(
+            got.result.iter().all(|&(_, d)| d == 3),
+            "the aborted iteration's values must not leak in"
+        );
+    }
+
+    /// The property the driver exists for: one returned set, one depth. A search
+    /// that merged a partial deep iteration into a complete shallow one would
+    /// hand the difficulty band values it cannot compare.
+    #[test]
+    fn a_returned_set_never_mixes_depths() {
+        for fails_at in 2..8 {
+            let got = deepen(7, staged(fails_at)).expect("depth 1 always completes here");
+            let depths: Vec<u32> = got.result.iter().map(|&(_, d)| d).collect();
+            assert!(
+                depths.iter().all(|&d| d == depths[0]),
+                "mixed depths {depths:?} at fails_at={fails_at}"
+            );
+            assert_eq!(
+                depths[0], got.depth,
+                "and the reported depth must be theirs"
+            );
+        }
+    }
+
+    #[test]
+    fn a_budget_too_small_for_depth_one_returns_nothing() {
+        // No safe answer exists, and inventing one is worse than saying so. The
+        // caller decides; this crate does not guess.
+        assert_eq!(deepen(5, staged(1)), None);
+    }
+
+    #[test]
+    fn a_zero_max_depth_searches_nothing() {
+        assert_eq!(deepen(0, staged(u32::MAX)), None);
+    }
+
+    /// Each depth is searched once, in increasing order, and nothing runs after
+    /// an abort. Without this, a driver that re-ran depths or kept going past a
+    /// failure would still satisfy every assertion above.
+    #[test]
+    fn depths_run_once_each_in_order_and_stop_at_the_abort() {
+        let mut seen = Vec::new();
+        let got = deepen(9, |d| {
+            seen.push(d);
+            if d >= 5 {
+                None
+            } else {
+                Some(d)
+            }
+        });
+        assert_eq!(
+            got,
+            Some(Deepened {
+                result: 4,
+                depth: 4
+            })
+        );
+        assert_eq!(
+            seen,
+            vec![1, 2, 3, 4, 5],
+            "1..=4 completed, 5 aborted, and nothing was tried after it"
+        );
+    }
 
     #[test]
     fn a_budget_allows_exactly_what_it_was_given() {

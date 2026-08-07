@@ -51,7 +51,14 @@ describe("tournament: full rig over the real wasm", () => {
 
       expect(c.games).toBe(2);
       expect(c.wins + c.draws + c.losses).toBe(c.games); // consistent W/D/L
-      expect(c.draws).toBe(2); // Perfect-vs-Perfect draws both games (both completed)
+      // Asserted `draws === 2` until 2026-08-07. That was an observed property
+      // of the old Drop 4 engine, not a designed one — "Perfect" is a
+      // depth-capped heuristic rather than the exact solver, so two of them
+      // drawing was a happenstance of the horizon they shared. P9 Phase 3's
+      // budgeted deepening made the matchup decisive. The property this test
+      // exists for is that every game *completes* and none is aborted, which
+      // the line above and the one below pin without over-specifying the result.
+      expect(c.games - report.abortedGames).toBe(c.games);
       expect(c.scoredMoves).toBeGreaterThan(0); // reached the exact endgame
       expect(c.skippedEarly).toBeGreaterThan(0); // early moves honestly skipped
       expect(c.optimal + c.preserving + c.blunders).toBe(c.scoredMoves);

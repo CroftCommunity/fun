@@ -697,6 +697,92 @@ node and every ancestor of one. Soundness, not emptiness, is the property.
 the search actually did. That closes the hazard recorded above before a budget
 could turn it into a live lie.
 
+### Phase 3 — the `deepen()` driver; checkers **rejected** it, Drop 4 took it (2026-08-07)
+
+`deepen()` landed in `adversary-solver`: run `1..=max_depth`, keep the last
+iteration that *finished*, discard any that overran. Mutation audit: 30 mutants,
+22 caught, 7 unviable, the same 1 pre-existing survivor — all five driver mutants
+caught.
+
+#### Checkers does not need this, and adopting it made it worse
+
+The plan said checkers should go first as "the case where the mechanism is
+provably free". Measured, it is not free and there is nothing to buy:
+
+| checkers Expert | worst | median | >400ms |
+|---|---|---|---|
+| before | 337ms | 42ms | **0%** |
+| deepening, no move ordering | 494ms | 65ms | 0% |
+| deepening + TT best-move ordering | 377ms | 46ms | 0% |
+
+Deepening costs 14% more nodes than the direct search even with best-move
+ordering (50,841 vs 44,398 at the opening), because re-searching depths 1..n-1 is
+only repaid when the budget actually bites — and checkers' budget never bites.
+**Zero percent of its moves exceed 400ms either way.** That is a 12% tax on every
+move for a guardrail with nothing to guard.
+
+So checkers was **reverted in full** — no budget, no deepening, no best-move
+ordering. Its worst move stays 337ms, which is inside the target. This is the
+plan's premise refuted by its own instrument, and the right answer is to ship
+nothing rather than ship ceremony.
+
+Kept from the attempt, because it is the finding: **iterative deepening is a net
+loss without best-move ordering, and a smaller net loss with it.** It pays only
+where the budget bites often enough to recover the re-search. That is a rule for
+choosing consumers, and it is why Othello is worth doing and checkers is not.
+
+#### Drop 4 took it, and it is the biggest single win so far
+
+| Drop 4 Perfect | worst | median | >400ms | >200ms |
+|---|---|---|---|---|
+| before | 914ms | 29ms | 20% | 36% |
+| after (250,000 nodes) | **158ms** | 20ms | **0%** | **0%** |
+
+Drop 4's expensive region is its **opening**, not its midgame — the widest part
+of the tree at depth 10, before any column fills. It had never been measured.
+
+**The strength question, and how it was nearly answered wrongly.** The harness
+anchor cannot settle it: the anchor grades only the tractable endgame (26 moves
+skipped early) and this change bites in the opening. So budgeted Perfect was
+played directly against unbudgeted Perfect. The first run reported **0W-4D-4L**,
+a collapse — and it was an artifact. Drop 4's `initial(seed)` is the same empty
+board for every seed, and at zero sloppiness neither player draws from the RNG,
+so all eight "games" were **two distinct games** repeated four times. That is
+also why the first budget sweep looked non-monotonic: every row was two samples.
+
+With random opening plies and 30 games:
+
+| budget | opening depth (of 10) | W-D-L vs unbudgeted |
+|---|---|---|
+| 100,000 | 8 | 14W-4D-12L |
+| **250,000 — shipped** | 9 | 12W-3D-15L |
+| 500,000 | 9 | 12W-4D-14L |
+| 1,000,000 | 10 | 13W-4D-13L |
+| **4,000,000 — control, never bites** | 10 | **14W-5D-11L** |
+
+The control row is what makes the table readable: a budget too large to bite is
+the unbudgeted engine playing *itself*, and it scores 14-5-11 rather than evenly,
+because random openings are not symmetric between the seats. Every real budget
+lands inside that noise. **No measurable strength cost at this sample size** —
+stated with the sample size attached, because 30 games cannot resolve a small
+difference and should not be read as if it could.
+
+The sweep is kept as `crates/drop4-solver/tests/budget_sweep.rs` (`#[ignore]`d),
+so the calibration is reproducible rather than a number in a commit message.
+
+A test of mine also needed fixing: the first strength test asserted
+`wins + draws >= 3`, a bar I invented, and it passed on the 0W-4D-4L collapse. A
+test green on the regression it exists to catch is worse than no test.
+
+#### Three recorded numbers moved, all for the same reason
+
+`tests/baselines.test.ts` (Drop 4: 0-2-0/16 graded → 1-0-1/15 graded, still
+15/15 optimal and 0 blunders), plus two unit tests that asserted
+"Perfect-vs-Perfect draws". That was an observed property of the old engine, not
+a designed one — Drop 4's Perfect is a depth-capped heuristic, not the exact
+solver, so nothing made a draw inevitable. Both now assert what they were
+actually for: that every game completes and none is aborted.
+
 **Mutation audit** (`cargo mutants --package adversary-solver`): 25 mutants, 21
 caught, 3 unviable, **1 missed** — `< → <=` on the sloppiness threshold in the
 pre-existing `select_in_band`. A 1-in-100 behavioural difference, and the

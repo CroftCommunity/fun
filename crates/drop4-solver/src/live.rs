@@ -14,6 +14,7 @@ use rand_chacha::rand_core::RngCore;
 // every adversarial game on the shelf. Re-exported so `drop4_solver::live::*`
 // keeps naming them — the wasm binding and the harness both import them from
 // here, and the extraction is not supposed to be visible to callers.
+use adversary_solver::{deepen, Deepened, NodeBudget};
 pub use adversary_solver::{select_in_band, LiveBand};
 
 use crate::Level;
@@ -97,7 +98,18 @@ pub fn heuristic(board: &Board) -> i32 {
     score
 }
 
-fn negamax_capped(board: &Board, depth: u32, mut alpha: i32, beta: i32) -> i32 {
+fn negamax_capped(
+    board: &Board,
+    depth: u32,
+    mut alpha: i32,
+    beta: i32,
+    budget: &mut NodeBudget,
+) -> i32 {
+    // Over the allowance. A placeholder that never reaches a caller: the
+    // deepening driver discards the whole iteration it belongs to.
+    if !budget.charge() {
+        return heuristic(board);
+    }
     if winner(board).is_some() {
         return -WIN; // the side to move is already lost (opponent has four)
     }
@@ -117,7 +129,7 @@ fn negamax_capped(board: &Board, depth: u32, mut alpha: i32, beta: i32) -> i32 {
     for oc in ORDER {
         let c = Col(oc);
         if legal.contains(&c) {
-            let score = -negamax_capped(&apply_move(board, c), depth - 1, -beta, -alpha);
+            let score = -negamax_capped(&apply_move(board, c), depth - 1, -beta, -alpha, budget);
             if score > best {
                 best = score;
             }
@@ -125,6 +137,9 @@ fn negamax_capped(board: &Board, depth: u32, mut alpha: i32, beta: i32) -> i32 {
                 alpha = best;
             }
             if alpha >= beta {
+                break;
+            }
+            if budget.is_exhausted() {
                 break;
             }
         }
@@ -156,6 +171,7 @@ pub fn best_move_capped(board: &Board, max_depth: u32) -> Option<Col> {
                 max_depth.saturating_sub(1),
                 i32::MIN + 1,
                 i32::MAX - 1,
+                &mut NodeBudget::unlimited(),
             );
             if score > best {
                 best = score;
@@ -172,6 +188,58 @@ pub fn best_move_capped(board: &Board, max_depth: u32) -> Option<Col> {
 /// otherwise the depth-`max_depth` negamax score. Empty if the board is terminal.
 #[must_use]
 pub fn move_values_capped(board: &Board, max_depth: u32) -> Vec<(Col, i32)> {
+    move_values_capped_with(board, max_depth, &mut NodeBudget::unlimited())
+}
+
+/// The node allowance for one **live opponent** move.
+///
+/// Phase 0 measured Drop 4's capped path — never measured before — at a worst
+/// single move of **914ms**, with 20% of moves over 400ms. Unlike Othello and
+/// checkers the cost is in the **opening**, not the midgame: the widest part of
+/// the tree at Perfect's depth 10, before any column fills up.
+///
+/// Calibrated 2026-08-07; the measurements are in the plan's Review Log.
+///
+/// **Not applied to the exact solver.** Below `TRACTABLE_EMPTIES` the wasm
+/// binding uses the real `Solver`, whose values are proven and whose class floor
+/// is `i32::signum`. Budgeting that would put the same honesty hole in Drop 4
+/// that Phase 2 just closed in Othello.
+pub const LIVE_NODE_BUDGET: u64 = 250_000;
+
+/// [`move_values_capped`] under a budget; `None` if it ran out partway.
+fn move_values_capped_checked(
+    board: &Board,
+    max_depth: u32,
+    budget: &mut NodeBudget,
+) -> Option<Vec<(Col, i32)>> {
+    let values = move_values_capped_with(board, max_depth, budget);
+    if budget.is_exhausted() {
+        return None;
+    }
+    Some(values)
+}
+
+/// Live-opponent values by **iterative deepening** under `budget`: the deepest
+/// complete search that fits, up to `max_depth`.
+///
+/// The depth a level names becomes a ceiling rather than a promise. Drop 4's
+/// expensive positions are its openings, which is also where a shallower search
+/// costs least — the opening is the part of connect-four where most moves are
+/// nearly equivalent.
+#[must_use]
+pub fn move_values_capped_deepened(
+    board: &Board,
+    max_depth: u32,
+    budget: &mut NodeBudget,
+) -> Option<Deepened<Vec<(Col, i32)>>> {
+    deepen(max_depth, |d| move_values_capped_checked(board, d, budget))
+}
+
+fn move_values_capped_with(
+    board: &Board,
+    max_depth: u32,
+    budget: &mut NodeBudget,
+) -> Vec<(Col, i32)> {
     legal_cols(board)
         .into_iter()
         .map(|c| {
@@ -186,6 +254,7 @@ pub fn move_values_capped(board: &Board, max_depth: u32) -> Vec<(Col, i32)> {
                     max_depth.saturating_sub(1),
                     i32::MIN + 1,
                     i32::MAX - 1,
+                    budget,
                 )
             };
             (c, v)
@@ -253,7 +322,14 @@ pub fn choose_capped(board: &Board, level: Level, rng: &mut impl RngCore) -> Opt
         }
     }
     let band = live_band(level);
-    let values = move_values_capped(board, band.depth);
+    // Iterative deepening under a node budget. Phase 0 measured this path at
+    // 914ms worst with 20% of moves over 400ms — the widest part of the tree at
+    // Perfect's depth 10. The named depth is now a ceiling: cheap positions get
+    // it in full, expensive ones get the deepest search that fit.
+    let values =
+        move_values_capped_deepened(board, band.depth, &mut NodeBudget::of(LIVE_NODE_BUDGET))
+            .map(|d| d.result)
+            .unwrap_or_else(|| move_values_capped(board, 1));
     select_in_band(
         &values,
         capped_class,
@@ -270,6 +346,147 @@ mod tests {
     use drop4_core::Drop4;
     use rand_chacha::rand_core::SeedableRng;
     use rand_chacha::ChaCha20Rng;
+
+    /// **The migration safety net.** With a budget it never reaches, deepening
+    /// must return exactly what the direct search returned, at the full depth.
+    /// If this fails the change is a strength change, not a latency fix.
+    #[test]
+    fn deepening_with_budget_to_spare_equals_the_direct_search() {
+        for cols in [
+            &[][..],
+            &[3][..],
+            &[3, 3, 4][..],
+            &[3, 3, 4, 4, 2, 2][..],
+            &[0, 1, 2, 3, 4, 5, 6, 3][..],
+        ] {
+            let board = play(cols);
+            let depth = live_band(Level::Perfect).depth;
+            let got = move_values_capped_deepened(&board, depth, &mut NodeBudget::of(u64::MAX / 2))
+                .expect("a budget this large always completes depth 1");
+            assert_eq!(
+                got.depth, depth,
+                "an unbitten budget reaches the full depth"
+            );
+            assert_eq!(
+                got.result,
+                move_values_capped(&board, depth),
+                "and produces the direct search's values after {cols:?}"
+            );
+        }
+    }
+
+    /// A budget that bites returns a shallower **complete** search — every legal
+    /// move valued at one depth — never a partial deep one. The difficulty band
+    /// compares values across moves, so a mixed-depth set would have it choosing
+    /// by which move the search happened to reach.
+    #[test]
+    fn a_bitten_budget_returns_a_shallower_complete_search() {
+        let board = play(&[3]);
+        let depth = live_band(Level::Perfect).depth;
+        let got = move_values_capped_deepened(&board, depth, &mut NodeBudget::of(3_000))
+            .expect("3,000 nodes is far more than depth 1 needs");
+        assert!(
+            got.depth < depth,
+            "the fixture must actually bite (reached {} of {depth})",
+            got.depth
+        );
+        assert_eq!(
+            got.result,
+            move_values_capped(&board, got.depth),
+            "the kept iteration equals a direct search at the depth it reached"
+        );
+        assert_eq!(
+            got.result.len(),
+            legal_cols(&board).len(),
+            "and values every legal move, not just the ones it got to"
+        );
+    }
+
+    /// **What the budget actually costs in strength.**
+    ///
+    /// The harness baseline cannot answer this: it grades only the tractable
+    /// endgame, and the budget bites in the *opening*, which the grader skips.
+    /// So the budgeted opponent is played directly against the unbudgeted one it
+    /// replaced, alternating who moves first.
+    ///
+    /// **The openings must be diversified or this measures nothing.** Drop 4's
+    /// `initial(seed)` is the same empty board for every seed, and at zero
+    /// sloppiness neither side draws from the RNG — so without the random opening
+    /// plies below, every game with the same first player is bit-identical and
+    /// "16 games" is really two. The first version of this test had exactly that
+    /// bug and reported a 0W-4D-4L "collapse" that was four copies of one loss.
+    ///
+    /// The bar is "does not lose more than twice as often as it wins". A
+    /// shallower search in a Drop 4 opening is a small loss of strength by
+    /// construction; the claim under test is that Perfect does not become a
+    /// losing player. Measured 2026-08-07 over 30 games: 12W-3D-15L, against a
+    /// control (a budget so large it never bites, i.e. the unbudgeted player
+    /// against itself) of 14W-5D-11L — indistinguishable at this sample size.
+    #[test]
+    fn the_budgeted_opponent_is_not_materially_weaker_than_the_unbudgeted_one() {
+        let depth = live_band(Level::Perfect).depth;
+        let (mut budgeted_wins, mut unbudgeted_wins, mut draws) = (0, 0, 0);
+
+        for seed in 0..16u64 {
+            let budgeted_is_a = seed % 2 == 0;
+            let mut rng = ChaCha20Rng::seed_from_u64(seed);
+            let mut board = <Drop4 as Adversary>::initial(seed);
+
+            for _ in 0..4 + (seed % 3) as usize {
+                if winner(&board).is_some() || legal_cols(&board).is_empty() {
+                    break;
+                }
+                let l = legal_cols(&board);
+                let i = (rng.next_u32() as usize) % l.len();
+                board = apply_move(&board, l[i]);
+            }
+
+            while winner(&board).is_none() && !legal_cols(&board).is_empty() {
+                let a_to_move = board.to_move == Side::A;
+                let use_budget = a_to_move == budgeted_is_a;
+                let values = if use_budget {
+                    move_values_capped_deepened(
+                        &board,
+                        depth,
+                        &mut NodeBudget::of(LIVE_NODE_BUDGET),
+                    )
+                    .map(|d| d.result)
+                    .expect("the budget always completes depth 1")
+                } else {
+                    move_values_capped(&board, depth)
+                };
+                // No sloppiness on either side: this compares searches, not luck.
+                let col = select_in_band(&values, capped_class, true, 0, &mut rng)
+                    .expect("a live position always has a move");
+                board = apply_move(&board, col);
+            }
+
+            match winner(&board) {
+                None => draws += 1,
+                Some(side) => {
+                    if (side == Side::A) == budgeted_is_a {
+                        budgeted_wins += 1;
+                    } else {
+                        unbudgeted_wins += 1;
+                    }
+                }
+            }
+        }
+
+        assert_eq!(
+            budgeted_wins + unbudgeted_wins + draws,
+            16,
+            "every game must reach a result"
+        );
+        // Not "wins as often" — the seats are not symmetric under random
+        // openings, and the control scores unevenly too. This fails on a real
+        // collapse and tolerates the noise this sample size genuinely has.
+        assert!(
+            budgeted_wins * 2 >= unbudgeted_wins,
+            "the budgeted opponent collapsed: {budgeted_wins}W {draws}D {unbudgeted_wins}L \
+             out of 16 against the search it replaced"
+        );
+    }
 
     fn play(cols: &[u8]) -> Board {
         let mut pos = <Drop4 as Adversary>::initial(0);
