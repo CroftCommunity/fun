@@ -1,5 +1,8 @@
 # Rust build output
 /target
+# discovery spikes are standalone cargo projects, so their build output is not
+# covered by the root-anchored rule above
+spike/*/target/
 # web build output + deps
 /dist
 /node_modules
