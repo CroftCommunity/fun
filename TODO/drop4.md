@@ -157,6 +157,25 @@ Authoritative plan: `plans/2026-07-31-drop4-ai-harness.md`. Standards:
   Pages — needs a different binary host. Tracked as an open thread (decision +
   host TBD). See `plans/2026-08-03-drop4-ai-tutor-layer.md` (Phase 0 D2 caveat).
 
+- [x] ~~**The capped live path had never been measured.**~~ **Done 2026-08-07**
+  (P9 Phase 3). It was the slowest of the three games after Othello: **914ms worst
+  with 20% of moves over 400ms**, and — unlike Othello and checkers — the cost was
+  in the **opening**, the widest part of the tree at Perfect's depth 10, before
+  any column fills. Now **158ms, 0% over 400ms**, via iterative deepening under
+  `LIVE_NODE_BUDGET` (250,000 nodes).
+  - Strength was measured directly, because the harness anchor **cannot** settle
+    it: the anchor grades only the tractable endgame and this bites in the
+    opening. Budgeted Perfect vs unbudgeted Perfect over 30 varied-opening games
+    sits inside the noise of a never-bites control.
+  - The trap that nearly produced a false "collapse" finding, worth knowing before
+    writing any such test: `Drop4::initial(seed)` returns the **same empty board
+    for every seed**, and at zero sloppiness neither player draws from the RNG —
+    so without random opening plies, "8 games" is 2 games repeated four times.
+    Rig: `crates/drop4-solver/tests/budget_sweep.rs`.
+  - The exact solver (≤ `TRACTABLE_EMPTIES`) is deliberately **not** budgeted: its
+    class floor is `i32::signum` over proven values, and budgeting it would open
+    the honesty hole P9 Phase 2 closed in Othello.
+
 ## Later — next adversarial games (moved to the shelf slate)
 
 The next adversarial games are tracked in the shelf-wide slate, not here, so they

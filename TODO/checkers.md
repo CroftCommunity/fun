@@ -44,10 +44,24 @@ plan. This file is the running worklist of what was deferred.
     by *agreement*: `assess_json` and `tutor_json` must report the same `exact`
     for the same move, which the old wiring breaks on the first proof that lands
     between the two horizons.
-- [ ] **The midgame is the latency floor, not the endgame.** 13–18 pieces costs
-  ~341ms worst-case in wasm under every setting of `TRACTABLE_PIECES`, which is
-  the opposite of what the plan assumed. Anything that wants checkers faster has
-  to look at midgame depth. Do not re-tune the endgame knob for speed.
+- [x] ~~**The midgame is the latency floor, not the endgame.**~~ **Investigated
+  and closed 2026-08-07 with no change** (P9 Phase 3). 13–18 pieces costs ~337ms
+  worst-case under every setting of `TRACTABLE_PIECES`; do not re-tune the endgame
+  knob for speed. But **checkers needs nothing here**, and this is the entry that
+  says so:
+  - **0% of checkers' moves exceed 400ms.** It is a true tail, not a plateau —
+    unlike Othello (38% over 400ms) and Drop 4 (20%).
+  - Iterative deepening under a node budget was built for checkers first, on the
+    assumption it would be "provably free". It is a **12% tax**: 337ms → 494ms
+    without best-move ordering, 377ms with it, because re-searching depths
+    `1..n-1` is only repaid when the budget bites — and checkers' never does.
+    Mandatory capture already orders its moves near-optimally, so a shallow pass
+    has nothing to teach the next one.
+  - **It was reverted in full.** If you are reading this because you noticed
+    checkers lacks the `deepen` driver its two sibling games use: that is
+    deliberate and measured. Re-adopting it needs a measurement showing checkers'
+    distribution has changed, not a consistency argument. Full reasoning:
+    `docs/AI-PLAYERS.md` → "When iterative deepening pays, and when it is a tax".
 - [ ] **`MoveClass::Blunder` is close to unreachable in practice** — it needs *both* the
   played move's value and the best move's to be proven, and a 300-position sweep
   produced no such pairing. A zero-blunder assertion over a checkers tournament is

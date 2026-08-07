@@ -68,10 +68,29 @@ second adversarial game, reusing the harness + trait a first game established.
   (+3.3pp proven reports, no latency change); 14 was measured too and rejected
   (the root solve reaches 738ms). The remaining worst call is the **midgame**
   heuristic (~2.1s at 36 empties) — the same conclusion checkers reached.
-- [ ] **The midgame is Othello's latency floor (~2.1s at Expert).** Not addressed
-  above, because `TRACTABLE_EMPTIES` cannot reach it. Two seconds is a long time
-  to wait for an opponent's move; the lever is the Level depths (Expert = 7) or a
-  time-bounded iterative deepening, neither of which is a constant tweak.
+- [x] ~~**The midgame is Othello's latency floor (~2.1s at Expert).**~~ **Done
+  2026-08-07** (P9, `plans/2026-08-07-othello-midgame.md`). **2,115ms → 753ms,
+  and it cost nothing** — the values are byte-identical and all three baselines
+  reproduce exactly.
+  - A **transposition table** (Othello never had one; checkers has had one since
+    it shipped) — 31% fewer nodes, 18% less wall clock.
+  - **Iterative deepening with best-move ordering** carried between passes — a
+    further 41% fewer nodes. Othello's static `WEIGHTS` ordering is a weak guess
+    that a shallow pass easily beats, which is exactly why checkers saw the
+    *opposite* (a 14% tax) and ships none of it.
+  - **No node budget was set.** At 753ms with 0% of moves over 800ms, buying the
+    remaining 28%-over-400ms costs strength a 40-game rig cannot price. Sweep and
+    reasoning: the plan's Review Log, Phase B2. The machinery is plumbed and
+    tested (`crates/othello-solver/tests/budget_sweep.rs`), so it is a one-line
+    change if revisited — but fix the measurement first (400+ games, or a
+    reference stronger than the same engine).
+- [x] ~~**The endgame solve stalls the low levels.**~~ **Done 2026-08-07** (P9
+  Phase 2). `Mode::Exact` ignored `depth`, so Easy paid Expert's bill: 510–580ms
+  worst on a level whose median move is **0.1ms**. Now budgeted, with a
+  whole-result fallback to a capped search and — the part that matters —
+  `live::choose` reading the honesty flag from **what the search did** rather than
+  from the empty count, which would otherwise have become a lie the moment a
+  budget could cut the solve short.
 - [ ] **Persona roster** — shared with Drop 4's tracked follow-on (`TODO/drop4.md`):
   a selectable roster of temperaments managed as external prompt files. Rowan is
   Othello's single persona today.

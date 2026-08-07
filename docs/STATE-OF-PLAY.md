@@ -1,3 +1,62 @@
+# State of play — 2026-08-06, with a 2026-08-07 addendum
+
+> ## Addendum — 2026-08-07: the latency floor, closed
+>
+> Open item 1 below ("the browser tests do not run in CI") closed on the 7th, and
+> so did open item 2 — **the midgame latency floor**, which was the biggest thing
+> on this list. Every adversarial game's worst move is now under a second:
+>
+> | worst single `live_move`, wasm | before | after |
+> |---|---|---|
+> | Othello Expert | 2,115ms | **753ms** |
+> | Drop 4 Perfect | 914ms (never previously measured) | **158ms** |
+> | checkers Expert | 337ms | 337ms — measured, needs nothing |
+>
+> **Almost none of it cost strength.** Othello's 60% came from a transposition
+> table plus iterative deepening with best-move ordering, all returning
+> byte-identical values; all three baselines reproduce exactly. Only Drop 4 has a
+> node budget that actually restricts the search, and its strength cost is inside
+> the noise of a control at 30 games.
+>
+> Four things this snapshot's §6 said that turned out to be wrong, kept because
+> that is the useful part:
+>
+> 1. **"Time-bounded iterative deepening"** — it must be **node**-bounded. A clock
+>    would put machine speed into the numbers `tests/baselines.test.ts` asserts,
+>    and the wasm modules have no host import to ask the time with.
+> 2. **"Written once for all three games"** — written once, adopted by *two*.
+>    Deepening pays where the budget bites often, or where the static move
+>    ordering is poor. Checkers has neither (0% of its moves exceed 400ms;
+>    mandatory capture already orders them) and **ships none of it**, measured at
+>    a 12% tax. Othello has both and got 41% for free.
+> 3. **"The midgame is the floor"** — for Othello and checkers. Drop 4's was its
+>    **opening**, a path nobody had ever measured.
+> 4. **Othello's endgame was stalling the low levels the whole time.** `Mode::Exact`
+>    ignored `depth`, so Easy paid Expert's bill — 510–580ms on a level whose
+>    median move is 0.1ms. It hid because **every prior measurement was taken at
+>    Expert**, where the midgame sat on top of it. Measure every level.
+>
+> A deliberate non-decision: **no midgame budget was set for Othello.** At 753ms
+> with nothing over 800ms, buying the last 28%-over-400ms would spend strength a
+> 40-game rig is not sensitive enough to price, and accepting an unmeasured loss
+> on a null result is bad reasoning. The machinery is plumbed and tested if it is
+> revisited — but fix the measurement first.
+>
+> The theme, again, is instrumentation. Plans:
+> `plans/2026-08-07-midgame-latency-floor.md` and `-othello-midgame.md`. The
+> durable rules moved out of the plans into `docs/AI-PLAYERS.md` → "Search cost",
+> `docs/HARNESS.md` → "What it is not: a strength instrument", and
+> `docs/BUILDING-GAMES.md` §10 — because a plan is not where game four's author
+> will look.
+>
+> One caution this round earned: **the harness is a regression detector, not a
+> strength meter.** It grades only the tractable endgame, so a change biting in
+> the opening reports "15/15 optimal, 0 blunders" — entirely true and entirely
+> silent. Reading `optimal` as "still as strong" is the easy mistake precisely
+> because the number is honest.
+>
+> The original text below is unchanged.
+
 # State of play — 2026-08-06
 
 A **dated snapshot**, not a living document. It exists so someone returning after
