@@ -142,11 +142,14 @@ pre-existing" test failures that were neither: Node 25 ships a placeholder
 
 ## 6. Open items, most valuable first
 
-1. **The browser tests do not run in CI.** 418 Playwright tests — every game's
-   wiring test, every axe check, every share round-trip — run only on a
-   developer's machine, while `docs/BUILDING-GAMES.md` defines done as "gate green
-   (unit + e2e + Rust)". This is the one gap where something broken can ship
-   green. Needs a browser cache step; expect +3-6 min.
+1. ~~**The browser tests do not run in CI.**~~ **Decided 2026-08-07: they stay
+   local**, and the docs now say so instead of implying CI covers them. `npm run
+   gate` runs everything in one command and is the documented pre-push ritual;
+   `npm run test` is the CI-equivalent subset. The risk this accepts is explicit:
+   the 418 e2e tests are gated on a human remembering, so a broken board *can*
+   reach `main` if someone pushes without gating. Revisit if that ever happens —
+   the workflow change is a dozen lines, and (worth knowing) the repo is public,
+   so GitHub-hosted minutes are free; the cost is wall-clock, not money.
 2. **The midgame is the latency floor** in both Othello (~2.1s) and checkers
    (~341ms) at the top level. No endgame constant reaches it; the levers are the
    per-level depths or time-bounded iterative deepening.
@@ -157,7 +160,24 @@ pre-existing" test failures that were neither: Node 25 ships a placeholder
 5. Per-game backlogs in `TODO/<game>.md`; next-game candidates (chess, digger,
    logic puzzles, cribbage) in `TODO/README.md`.
 
-## 7. Unverified as of this snapshot
+## 7. Verified after this snapshot was written
+
+Everything above **was** unverified when written — GitHub Actions was in a major
+outage, webhook deliveries were throttled, and pushes were not triggering runs. It
+has since been gated and deployed: run `31128884288` on `7c734a1` went
+`rust: success / build: success / deploy: success`, and a smoke test against the
+live site plays checkers through the deployed wasm with no console errors.
+
+Getting there found one more defect, in the workflow itself: the publishing steps
+were guarded `if: github.event_name == 'push'` while the `deploy` job was guarded
+only on the ref, so a **manual dispatch could never publish** — it skipped the
+artifact upload and then failed looking for it. Manual dispatch is the fallback
+for precisely the situation we were in, and it had never been exercised. Fixed.
+
+The original text of this section is kept below, because "what I believed at the
+time, and how it turned out" is the useful part.
+
+### As written on 2026-08-06
 
 GitHub Actions and Pages were in a **major outage** (incident opened 15:22 UTC).
 Consequences, all pending a re-run rather than a fix:
