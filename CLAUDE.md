@@ -107,9 +107,12 @@ at them and add what's specific to this repo. Git identity: chasemp
     caller**, and **`render_text`** (asserting `contains("11")` passes even if every
     glyph is wrong). See `plans/2026-08-04-checkers-game.md` → Phase 4/5 execution.
 - **Commit at every stable (green) point.** No batching phases. Each commit is a
-  working checkpoint. Co-author trailer:
-  `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`. Don't push/PR unless
-  asked.
+  working checkpoint. Co-author trailer, naming **the model that actually wrote
+  the commit** — currently
+  `Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>`. The name
+  is attribution, so it tracks the model rather than this line: a newer model
+  updates it here as part of its first commit rather than signing a predecessor's
+  name. (Was pinned to Opus 4.8 until 2026-08-07.) Don't push/PR unless asked.
 - **No stubs; built means wired means tested.** A game isn't done until it's
   reachable from its `/<id>/` URL through the drawer registry, with a wiring
   test that goes through the entry point (BUILDING-GAMES §8).
