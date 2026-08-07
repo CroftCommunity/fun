@@ -8,7 +8,7 @@
 use std::collections::HashMap;
 
 use adversary_core::Side;
-use adversary_solver::NodeBudget;
+use adversary_solver::{deepen, Deepened, NodeBudget};
 use othello_core::{apply_move, legal_moves, result, Board, Move, CELLS};
 
 use crate::eval::{heuristic, WEIGHTS};
@@ -120,6 +120,19 @@ fn empties_of(board: &Board) -> usize {
     board.cells.iter().filter(|&&v| v == 0).count()
 }
 
+/// [`ordered_moves`] with a previously-found best move hoisted to the front.
+/// Purely an ordering hint — the move set is unchanged, so the search visits the
+/// same positions and returns the same values, just finding cutoffs sooner.
+fn ordered_with(board: &Board, first: Option<Move>) -> Vec<Move> {
+    let mut moves = ordered_moves(board);
+    if let Some(f) = first {
+        if let Some(i) = moves.iter().position(|&m| m == f) {
+            moves.swap(0, i);
+        }
+    }
+    moves
+}
+
 /// Which side of the search window a stored value sits on.
 ///
 /// Mirrors `checkers-solver`'s. Alpha-beta returns *bounds*, not values, at any
@@ -145,6 +158,21 @@ struct TtEntry {
     depth: u32,
     value: i32,
     bound: Bound,
+    /// The move that produced `value` — an **ordering hint**, never part of the
+    /// answer. This is what pays for iterative deepening: each pass leaves its
+    /// best move here and the next pass searches it first, finding its cutoff on
+    /// the first child instead of halfway down the list.
+    ///
+    /// Measured and reverted in Phase 1 at **0.4%**, because inside one
+    /// fixed-depth search there are too few re-visits for it to matter. It is
+    /// here now because deepening creates exactly those re-visits: without it the
+    /// midgame deepening tax is 41%, with it far less (see
+    /// `deepening_costs_no_more_than_the_direct_midgame_search`).
+    ///
+    /// Safe to trust from an entry too shallow to *answer* with: the move set is
+    /// unchanged, so a stale hint costs one mis-ordered child and can never
+    /// change a value.
+    best: Option<Move>,
 }
 
 /// A transposition-table key: the full position.
@@ -280,21 +308,22 @@ fn negamax(
     };
 
     let key = TtKey::of(board);
+    let mut tt_move = None;
     if tt.enabled {
-        if let Some(hit) = tt
-            .map
-            .get(&key)
-            .and_then(|e| table_answer(*e, stored_depth, alpha, beta))
-        {
-            return hit;
+        if let Some(entry) = tt.map.get(&key).copied() {
+            if let Some(hit) = table_answer(entry, stored_depth, alpha, beta) {
+                return hit;
+            }
+            tt_move = entry.best;
         }
     }
 
     let alpha0 = alpha;
     let next_depth = depth.saturating_sub(1);
     let mut best = i32::MIN + 1;
+    let mut best_move = None;
     let mut cut = false;
-    for mv in ordered_moves(board) {
+    for mv in ordered_with(board, tt_move) {
         let score = -negamax(
             &apply_move(board, mv),
             next_depth,
@@ -306,6 +335,7 @@ fn negamax(
         );
         if score > best {
             best = score;
+            best_move = Some(mv);
         }
         if best > alpha {
             alpha = best;
@@ -338,6 +368,7 @@ fn negamax(
                 depth: stored_depth,
                 value: best,
                 bound,
+                best: best_move,
             },
         );
     }
@@ -407,12 +438,52 @@ pub fn move_values_honest(board: &Board, depth: u32, budget: &mut NodeBudget) ->
             };
         }
     }
+    // The midgame, by iterative deepening. **Unbudgeted for now**: with best-move
+    // ordering carried between passes this is 41% *cheaper* than the direct
+    // search to the same depth (311,902 nodes against 526,877 at 36 empties,
+    // Expert), so it is a pure speed win with byte-identical values. The budget
+    // that would trade strength for latency is a separate, owner-facing decision
+    // — see `plans/2026-08-07-othello-midgame.md` Phases B2/B3.
     let mut tt = Table::new();
     let mut unbounded = NodeBudget::unlimited();
+    let values = capped_values_deepened(board, depth, &mut tt, &mut unbounded)
+        .map(|d| d.result)
+        .unwrap_or_else(|| search_all(board, depth, Mode::Capped, &mut tt, &mut unbounded));
     Valued {
-        values: search_all(board, depth, Mode::Capped, &mut tt, &mut unbounded),
+        values,
         exact: false,
     }
+}
+
+/// Value every legal move at a fixed capped `depth`, or `None` if the budget ran
+/// out partway — the per-iteration step the deepening driver discards on abort.
+fn capped_scores_checked(
+    board: &Board,
+    depth: u32,
+    tt: &mut Table,
+    budget: &mut NodeBudget,
+) -> Option<Vec<(Move, i32)>> {
+    let values = search_all(board, depth, Mode::Capped, tt, budget);
+    if budget.is_exhausted() {
+        return None;
+    }
+    Some(values)
+}
+
+/// The **midgame** (capped) values by iterative deepening under `budget`: the
+/// deepest complete search that fits, up to `max_depth`.
+///
+/// Only the capped path deepens. The exact endgame solve is not a depth-bounded
+/// search at all — it runs to a terminal — and it has its own budget and its own
+/// whole-result fallback from Phase 2, which this must not disturb.
+#[must_use]
+pub fn capped_values_deepened(
+    board: &Board,
+    max_depth: u32,
+    tt: &mut Table,
+    budget: &mut NodeBudget,
+) -> Option<Deepened<Vec<(Move, i32)>>> {
+    deepen(max_depth, |d| capped_scores_checked(board, d, tt, budget))
 }
 
 /// [`move_values`] against a caller-supplied table, so a test can read the node
@@ -780,6 +851,100 @@ mod tests {
             &mut NodeBudget::unlimited(),
         );
         assert_eq!(reused, fresh, "a reused table must not change the answer");
+    }
+
+    /// **Deepening must not cost more than the search it replaces** — and on
+    /// Othello it costs considerably less.
+    ///
+    /// Re-searching depths 1..n-1 is only repaid if each pass makes the next
+    /// cheaper, which needs the table to hand back its **best move** so the next
+    /// pass searches it first. Phase 3 measured the same test on checkers: 74,508
+    /// nodes against a direct search's 45,027 without ordering, 50,841 with. That
+    /// 14% residual tax is what condemned checkers, whose budget never fires.
+    /// Othello's fires on 38% of moves, so it can afford a tax — but not an
+    /// unbounded one, and not one nobody is watching.
+    ///
+    /// Measured 2026-08-07 at 36 empties, Expert: **311,902 nodes against the
+    /// direct search's 526,877 — 41% fewer**. Othello's static `WEIGHTS`
+    /// ordering is weak enough that the dynamic ordering a shallow pass provides
+    /// more than repays re-searching it. Checkers saw the opposite (a 14% tax)
+    /// because mandatory captures already order its moves well.
+    ///
+    /// The allowance stays a loose 25% *over* the direct search rather than
+    /// asserting the win: the point is to catch a regression to a tax, not to
+    /// pin a speedup that will drift with the evaluation function.
+    #[test]
+    fn deepening_costs_no_more_than_the_direct_midgame_search() {
+        for seed in [7, 11, 23] {
+            let pos = midgame(seed, 36);
+            let depth = Level::Expert.depth();
+
+            let mut deepening = Table::new();
+            let got = capped_values_deepened(
+                &pos,
+                depth,
+                &mut deepening,
+                &mut NodeBudget::of(u64::MAX / 2),
+            )
+            .expect("a budget this large always completes depth 1");
+            assert_eq!(
+                got.depth, depth,
+                "an unbitten budget reaches the full depth"
+            );
+
+            let mut direct = Table::new();
+            let reference = search_all(
+                &pos,
+                depth,
+                Mode::Capped,
+                &mut direct,
+                &mut NodeBudget::unlimited(),
+            );
+            assert_eq!(
+                got.result, reference,
+                "and must produce the direct search's values (seed {seed})"
+            );
+
+            assert!(
+                deepening.nodes() * 4 <= direct.nodes() * 5,
+                "deepening cost {} nodes against the direct search's {} on seed {seed}",
+                deepening.nodes(),
+                direct.nodes()
+            );
+        }
+    }
+
+    /// A budget that bites returns a shallower **complete** search — every legal
+    /// move at one depth — and reports the depth it actually reached.
+    #[test]
+    fn a_bitten_midgame_budget_returns_a_shallower_complete_search() {
+        let pos = midgame(7, 36);
+        let depth = Level::Expert.depth();
+        let mut tt = Table::new();
+        let got = capped_values_deepened(&pos, depth, &mut tt, &mut NodeBudget::of(20_000))
+            .expect("20,000 nodes is far more than depth 1 needs");
+
+        assert!(
+            got.depth < depth,
+            "the fixture must actually bite (reached {} of {depth})",
+            got.depth
+        );
+        assert_eq!(
+            got.result,
+            search_all(
+                &pos,
+                got.depth,
+                Mode::Capped,
+                &mut Table::new(),
+                &mut NodeBudget::unlimited()
+            ),
+            "the kept iteration equals a direct search at the depth it reached"
+        );
+        assert_eq!(
+            got.result.len(),
+            legal_moves(&pos).len(),
+            "and values every legal move, not the ones it got to"
+        );
     }
 
     #[test]
