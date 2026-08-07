@@ -21,6 +21,27 @@
 //! 3. **Alternating seats** across seeds.
 //! 4. **The sample size travels with the claim.** These game counts cannot
 //!    resolve a small difference and must not be reported as if they could.
+//!
+//! ## Recorded 2026-08-07 — 40 games per row (~14 minutes each)
+//!
+//! ```text
+//! budget       depth min/avg   W-D-L vs unbudgeted Expert
+//!     50000    5/6            17W-1D-22L   (43%)
+//!    100000    6/6            22W-2D-16L   (55%)
+//!    200000    7/7            18W-1D-21L   (45%)
+//!   (none)     7/7            20W-1D-19L   (50%)  <- control
+//! ```
+//!
+//! Every row sits within one standard deviation of the control. For n=40 that
+//! band is ±7.9 percentage points (42–58%), so this rig can report "no collapse"
+//! and nothing finer; resolving a 5-point difference would take roughly 400 games
+//! per row. **No budget was adopted** on the strength of this — see
+//! `plans/2026-08-07-othello-midgame.md` Phase B2.
+//!
+//! The `depth min/avg` column is sampled from **one** game, not the 40 played.
+//! That is why 200000 reads 7/7 "never bites" and yet does not exactly reproduce
+//! the control: it bites in positions the single sample missed. Indicative, not a
+//! census.
 
 use adversary_core::{Adversary, Side};
 use adversary_solver::NodeBudget;
@@ -31,26 +52,6 @@ use rand_chacha::rand_core::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 
 const GAMES: u64 = 40;
-
-/// Recorded 2026-08-07, 40 games each (the run takes ~14 minutes per row):
-///
-/// ```text
-/// budget       depth min/avg   W-D-L vs unbudgeted Expert
-///     50000    5/6            17W-1D-22L   (43%)
-///    100000    6/6            22W-2D-16L   (55%)
-///    200000    7/7            18W-1D-21L   (45%)
-///   (none)     7/7            20W-1D-19L   (50%)  <- control
-/// ```
-///
-/// Every row sits within one standard deviation of the control. For n=40 that
-/// band is +/-7.9 percentage points, i.e. 42-58% -- so this rig can report
-/// "no collapse" and nothing finer. Resolving a 5-point difference would take
-/// roughly 400 games per row.
-///
-/// Note the `depth min/avg` column is sampled from **one** game, not the 40
-/// played. That is why 200000 reads 7/7 "never bites" yet does not exactly
-/// reproduce the control: it bites in positions the single sample missed.
-/// Treat the column as indicative, not as a census.
 
 fn empties(board: &Board) -> usize {
     board.cells.iter().filter(|&&v| v == 0).count()
@@ -141,7 +142,10 @@ fn depths_reached(budget_nodes: u64) -> (u32, u32) {
         let l = legal_moves(&board);
         board = apply_move(&board, l[(rng.next_u32() as usize) % l.len()]);
     }
-    (worst, if n == 0 { depth } else { sum / n })
+    // `checked_div` rather than a zero test: clippy::manual_checked_div, and it
+    // says the intent better — "the average, or the full depth if nothing was
+    // sampled" (which happens only if the walk never leaves the exact region).
+    (worst, sum.checked_div(n).unwrap_or(depth))
 }
 
 #[test]
