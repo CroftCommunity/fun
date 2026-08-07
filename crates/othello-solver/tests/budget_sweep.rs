@@ -32,6 +32,26 @@ use rand_chacha::ChaCha20Rng;
 
 const GAMES: u64 = 40;
 
+/// Recorded 2026-08-07, 40 games each (the run takes ~14 minutes per row):
+///
+/// ```text
+/// budget       depth min/avg   W-D-L vs unbudgeted Expert
+///     50000    5/6            17W-1D-22L   (43%)
+///    100000    6/6            22W-2D-16L   (55%)
+///    200000    7/7            18W-1D-21L   (45%)
+///   (none)     7/7            20W-1D-19L   (50%)  <- control
+/// ```
+///
+/// Every row sits within one standard deviation of the control. For n=40 that
+/// band is +/-7.9 percentage points, i.e. 42-58% -- so this rig can report
+/// "no collapse" and nothing finer. Resolving a 5-point difference would take
+/// roughly 400 games per row.
+///
+/// Note the `depth min/avg` column is sampled from **one** game, not the 40
+/// played. That is why 200000 reads 7/7 "never bites" yet does not exactly
+/// reproduce the control: it bites in positions the single sample missed.
+/// Treat the column as indicative, not as a census.
+
 fn empties(board: &Board) -> usize {
     board.cells.iter().filter(|&&v| v == 0).count()
 }
@@ -72,7 +92,11 @@ fn head_to_head(budget_nodes: Option<u64>) -> (u32, u32, u32) {
 
         while result(&board).is_none() {
             let use_budget = (board.to_move == Side::A) == budgeted_is_a;
-            let mv = pick(&board, if use_budget { budget_nodes } else { None }, &mut rng);
+            let mv = pick(
+                &board,
+                if use_budget { budget_nodes } else { None },
+                &mut rng,
+            );
             board = apply_move(&board, mv);
         }
 
@@ -129,7 +153,7 @@ fn sweep() {
     );
     println!("budget       depth min/avg   W-D-L vs unbudgeted Expert");
 
-    for nodes in [50_000u64, 100_000, 200_000, 400_000, 800_000] {
+    for nodes in [50_000u64, 100_000, 200_000] {
         let (w, d, l) = head_to_head(Some(nodes));
         let (worst, avg) = depths_reached(nodes);
         println!("{nodes:>9}    {worst}/{avg}            {w}W-{d}D-{l}L");

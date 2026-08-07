@@ -319,5 +319,60 @@ B2's table is still worth having, because "is the remaining 28% worth buying" is
 a real question — but it is now a question about polish rather than about a
 defect.
 
-_(B2 onward: to be filled in. Phases 0–3 of the parent produced four corrections
-and this phase produced a fifth; assume more.)_
+### Phase B2 — the sweep, and the recommendation (2026-08-07)
+
+40 varied-opening games per row, Expert, class floor on, no sloppiness:
+
+| budget | midgame depth min/avg (of 7) | W-D-L vs unbudgeted | win % |
+|---|---|---|---|
+| 50,000 | 5 / 6 | 17W-1D-22L | 43% |
+| 100,000 | 6 / 6 | 22W-2D-16L | 55% |
+| 200,000 | 7 / 7 | 18W-1D-21L | 45% |
+| **(none) — control** | 7 / 7 | **20W-1D-19L** | **50%** |
+
+**Every row is within one standard deviation of the control.** For n=40 that band
+is ±7.9 points (42–58%), so the rig can report "no collapse" and nothing finer.
+Resolving a 5-point difference would need roughly 400 games per row. The claim
+this table supports is *"no measurable strength cost at 40 games"* — not "no
+cost", and the distinction is the whole point of stating the sample size.
+
+Two limitations worth recording rather than smoothing over:
+
+- **The `depth min/avg` column is sampled from one game, not the forty played.**
+  That is why 200,000 reads "7/7, never bites" and yet does not exactly reproduce
+  the control (18-21 against 20-19): it does bite, in positions the single sample
+  missed. Read the column as indicative, not as a census. It also means 400,000
+  and 800,000 were dropped as redundant on the strength of a sampling artifact —
+  defensible, since they can only bite less than 200,000 does, but it was luckier
+  reasoning than it looked at the time.
+- **Two runs were killed mid-sweep**, and one earlier run was piped through a
+  `grep` for compile errors that discarded the table it had spent an hour
+  producing. The rows above are stitched from a partial run plus a re-run of the
+  control alone.
+
+#### Recommendation: **stop here** (B3 option "do nothing and write it down")
+
+The trade was worth pricing when the worst move was 1,901ms. After B0–B1 it is
+753ms with 0% of moves over 800ms and no strength cost anywhere, because the
+values did not change at all. Buying the remaining 28%-over-400ms would mean
+spending strength that a 40-game rig is **not sensitive enough to price**, to save
+roughly a third of a second on the top difficulty of a turn-based board game.
+
+That is a bad trade on the merits, and a worse one on the evidence: the honest
+summary of this table is "we could not detect the cost", which is not the same as
+"there is no cost". Accepting a real-but-unmeasured strength loss on the strength
+of a null result is exactly the reasoning this plan's own protocol section warns
+against.
+
+**No `MIDGAME_NODE_BUDGET` constant is added.** The deepening machinery stays —
+it is what produced the free 41% — and the budget parameter stays plumbed and
+tested (`a_bitten_midgame_budget_returns_a_shallower_complete_search`), so a
+future decision to bound it is a one-line change with the measurement rig already
+in place.
+
+#### If this is revisited
+
+The lever is not a bigger sweep first. It is a **better measurement**: 400+ games
+per row, or a stronger reference opponent than "the same engine", so the rig can
+see something smaller than a collapse. Only then is the 400ms question worth
+re-asking.
