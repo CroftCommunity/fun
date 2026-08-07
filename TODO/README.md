@@ -73,6 +73,29 @@ any of these.
   The class-preserving band selector lives in `crates/adversary-solver`, generic
   over the move type; Drop 4, Othello and checkers all consume it, and a new game
   supplies only its own `capped_class` and per-level tuning.
+- **The midgame is the latency floor in every adversarial game.** Two independent
+  investigations landed on the same answer, which is what makes it a cross-game
+  thread rather than two tuning tickets: after each game's *endgame* cost was
+  fixed, the worst single move is a **midgame heuristic search**, and no endgame
+  constant reaches it.
+  - Measured in wasm (Node/V8, top level, worst single `live_move`): **Othello
+    ~2.1s at 36 empties**; **checkers ~341ms at 13–18 pieces**. Othello's number
+    is the one a player would notice.
+  - Both were found only after removing a *different* pathology in the same
+    place — Othello's search was re-deciding exact-vs-capped at every node (19.2s
+    worst case before, `TRACTABLE_EMPTIES + depth`), and checkers' endgame bonus
+    was set eight times too generously. Expect the same order: fix the pathology,
+    then the honest floor appears underneath it.
+  - **The levers, none of them a constant tweak:** lower the top `Level` depths
+    (Othello Expert = 7, checkers Expert = 8) and lose strength; or add
+    **time-bounded iterative deepening**, which keeps strength where the position
+    is cheap and bounds the tail where it is not. The second is the real answer
+    and is a solver change in `adversary-solver`-adjacent code, so it would be
+    written once and adopted by all three games.
+  - **Do not** re-tune `TRACTABLE_EMPTIES` / `TRACTABLE_PIECES` for speed: both
+    are now measured at their knee, and both sit *below* the midgame cost.
+    Per-game detail and the full tables: `othello.md`, `checkers.md`, and the
+    constants' own doc comments.
 - **Selectable persona roster from external prompt files** — the hybrid opponent's
   persona is inlined per game (Chip in Drop 4, Rowan in Othello, Alder in
   checkers). Broaden to a roster of temperaments managed as external text files,

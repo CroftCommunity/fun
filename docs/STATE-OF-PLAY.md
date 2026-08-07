@@ -151,7 +151,10 @@ pre-existing" test failures that were neither: Node 25 ships a placeholder
    same set locally in 3m44s.
 2. **The midgame is the latency floor** in both Othello (~2.1s) and checkers
    (~341ms) at the top level. No endgame constant reaches it; the levers are the
-   per-level depths or time-bounded iterative deepening.
+   per-level depths (lose strength) or **time-bounded iterative deepening** (keep
+   it, bound the tail) — the latter written once for all three games. Full
+   entry, with the measurements and the two pathologies that hid it, is the
+   cross-game thread in `TODO/README.md`.
 3. **Persona roster** — Chip, Rowan and Alder are inlined in three game modules.
    The tracked design is external prompt files with one place to add a persona.
 4. **No job timeouts in CI** — a hung job can burn six hours, and we have already
