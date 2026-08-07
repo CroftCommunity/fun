@@ -1,0 +1,22 @@
+[package]
+name = "dots-wasm"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Browser binding over dots-core + dots-solver for the shelf: raw C-ABI + serde-JSON (no wasm-bindgen). Holds one Dots and Boxes game, exposes rules (legal/play/board/hash/result/render), the live opponent (difficulty Levels), the engine-grounded tutor split into a cheap per-tap coach and a deeper panel, and the verifiable outcome. Reports keptTurn, because a capture grants another move. Never panics."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[lints]
+workspace = true
+
+[dependencies]
+adversary-core = { path = "../adversary-core" }
+dots-core = { path = "../dots-core" }
+dots-solver = { path = "../dots-solver" }
+pond-outcome = { workspace = true }
+serde = { workspace = true }
+serde_json.workspace = true
+rand_chacha.workspace = true

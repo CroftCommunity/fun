@@ -40,6 +40,7 @@ members = [
     "crates/adversary-solver",
     "crates/dots-core",
     "crates/dots-solver",
+    "crates/dots-wasm",
     "crates/drop4-core",
     "crates/drop4-solver",
     "crates/drop4-harness",

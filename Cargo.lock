@@ -240,6 +240,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "dots-wasm"
+version = "0.0.0"
+dependencies = [
+ "adversary-core",
+ "dots-core",
+ "dots-solver",
+ "pond-outcome",
+ "rand_chacha",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "drop4-core"
 version = "0.0.0"
 dependencies = [
