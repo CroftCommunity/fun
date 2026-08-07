@@ -73,6 +73,13 @@ at them and add what's specific to this repo. Git identity: chasemp
   - Set up once: `brew install fnm`, then `fnm install` in this repo (reads
     `.nvmrc`), and `eval "$(fnm env --use-on-cd)"` in `~/.zshrc` so `cd`-ing here
     switches Node automatically.
+  - **The pin is enforced, not just declared.** `.npmrc` sets
+    `engine-strict=true`, so `npm ci` **refuses** a wrong Node (`EBADENGINE …
+    fun-croft-ing@0.1.0`) instead of printing a warning that scrolls past. That
+    is the piece missing on 2026-08-06: this repo already had `.nvmrc` *and*
+    `engines`, and neither stopped a full day on Node 25. Verified both
+    directions — exits 0 on 22, refuses on 24. Full reasoning lives in the
+    workspace standard, `croft-pwa/docs/CI.md` §6.
   - This is not hypothetical tidiness. Node **25** ships its own placeholder
     `globalThis.localStorage` — no `clear`, no `key`, no `length` — which outranks
     the `Storage` vitest's jsdom environment installs, and 11 match-3 tests failed
