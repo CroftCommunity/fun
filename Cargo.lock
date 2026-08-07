@@ -217,6 +217,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "dots-core"
+version = "0.0.0"
+dependencies = [
+ "adversary-core",
+ "hex",
+ "pond-docformat",
+ "pond-outcome",
+ "serde",
+ "sha2",
+]
+
+[[package]]
 name = "drop4-core"
 version = "0.0.0"
 dependencies = [
