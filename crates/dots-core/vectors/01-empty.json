@@ -1,0 +1,7 @@
+{
+  "name": "empty",
+  "note": "The opening lattice, before any edge is drawn.",
+  "seed": 0,
+  "moves": [],
+  "final_state_hash": "d936e0ed1e855da2c5e97ac257433e0603ea6e11b7bddff19e4dcd830a0dc103"
+}

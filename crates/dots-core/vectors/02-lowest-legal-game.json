@@ -1,0 +1,7 @@
+{
+  "name": "lowest-legal-game",
+  "note": "A full game where each side always draws the lowest-numbered free edge. Deterministic, exercises captures and the extra turn, and ends with every edge drawn.",
+  "seed": 0,
+  "moves": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23],
+  "final_state_hash": "9ad7189c5c14e5360e1c69d78d49380ef27db54a9678dc6c9416003716a7613a"
+}

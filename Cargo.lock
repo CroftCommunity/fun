@@ -668,6 +668,7 @@ dependencies = [
 name = "xbuild"
 version = "0.0.0"
 dependencies = [
+ "dots-core",
  "solitaire-core",
 ]
 

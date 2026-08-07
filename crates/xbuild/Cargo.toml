@@ -10,4 +10,5 @@ description = "Native+wasm cross-build determinism harness (master-plan Phase 2)
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+dots-core = { path = "../dots-core" }
 solitaire-core = { workspace = true }

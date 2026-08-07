@@ -10,6 +10,7 @@
 //! static 64-byte buffer; the host reads 64 bytes at that pointer. `hash_len`
 //! reports the length.
 
+use dots_core::{apply_move, legal_edges, state_hash as dots_state_hash, Board, Edge};
 use solitaire_core::{state_hash, GameState, Move};
 
 /// Length in bytes of the hex hash the buffer holds.
@@ -37,6 +38,48 @@ pub extern "C" fn draw_cycle_hash(seed_lo: u32, seed_hi: u32) -> *const u8 {
     }
     write_hash(&state_hash(&game))
 }
+
+/// Dots and Boxes: the state hash after replaying the first `len` bytes of the
+/// input buffer as edge moves (vectors `dots-core/vectors/*.json`).
+///
+/// Dots is the first **adversarial** game enrolled here. Its move list has to
+/// cross the boundary, so the host writes edge bytes into the buffer at
+/// [`dots_in_ptr`] and passes the count -- there is no allocator in a
+/// freestanding wasm module to pass a slice through.
+#[no_mangle]
+pub extern "C" fn dots_replay_hash(len: u32) -> *const u8 {
+    let n = (len as usize).min(IN_CAP);
+    // SAFETY: single-threaded wasm; the host fills IN before this call and does
+    // not touch it during. Raw pointers avoid the `static_mut_refs` lint.
+    let moves: [u8; IN_CAP] = unsafe { *core::ptr::addr_of!(IN) };
+    let mut pos = Board::empty();
+    for &e in &moves[..n] {
+        let mv = Edge(e);
+        // Replay skips anything illegal, exactly as `pond_outcome::verify` does,
+        // so wasm and native agree on tampered lists too.
+        if legal_edges(&pos).contains(&mv) {
+            pos = apply_move(&pos, mv);
+        }
+    }
+    write_hash(&dots_state_hash(&pos))
+}
+
+/// Pointer to the move-input buffer the host writes edge bytes into.
+#[no_mangle]
+pub extern "C" fn dots_in_ptr() -> *const u8 {
+    // Taking the address of a `static mut` is safe; only reading through it is
+    // not (see `dots_replay_hash`).
+    core::ptr::addr_of!(IN).cast::<u8>()
+}
+
+/// Capacity of the move-input buffer (a 3x3 game is at most 24 moves).
+#[no_mangle]
+pub extern "C" fn dots_in_cap() -> u32 {
+    IN_CAP as u32
+}
+
+const IN_CAP: usize = 64;
+static mut IN: [u8; IN_CAP] = [0; IN_CAP];
 
 static mut BUF: [u8; 64] = [0; 64];
 
