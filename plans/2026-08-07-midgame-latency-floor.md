@@ -526,21 +526,44 @@ is a strength/latency trade, and it has to be argued and measured as one. The
 plan cannot both promise ~400ms and promise no strength change. Which of the two
 gives is an owner decision, informed by Finding 3.
 
-#### Finding 2 — Othello's Easy is slower than its Medium, and that is the worst player-facing defect here
+#### Finding 2 — the exact endgame solve costs the same at every level, so it lands hardest on Easy
 
-Othello's per-level curve is **non-monotonic**: Easy 965ms, Medium 314ms. Every
-other game's curve is clean and monotonic.
+> **Corrected 2026-08-07, after Phase 1.** As first written this finding claimed
+> Othello's per-level curve was *non-monotonic* — Easy 965ms against Medium's
+> 314ms — and called that the headline. It is not: those were one seed each, and
+> each level plays a different game into a different endgame. Re-measured over
+> **six** seeds per level the worst calls are Easy 556ms, Medium 577ms, Hard
+> 513ms — flat, all at 12 empties. The non-monotonicity was sampling noise.
+>
+> The underlying defect is real and is stated correctly below. What the
+> correction removes is a causal story that was never measured; what it leaves is
+> a cleaner version of the same problem. Recorded rather than quietly edited,
+> because "the number I expected, from one sample" is the exact failure this
+> plan's Phase 0 notes already caught once.
 
-Cause: at levels 0–2 Othello's worst call is at **12 empties** — `TRACTABLE_EMPTIES`
-— not in the midgame. `Mode::Exact` **ignores `depth` and searches to a terminal**,
-so the endgame solve costs the same at Easy (depth 1) as at Expert (depth 7). At
-Expert the 2.1s midgame hides it. At Easy nothing hides it.
+At levels 0–2 Othello's worst call is at **12 empties** — `TRACTABLE_EMPTIES` —
+not in the midgame. `Mode::Exact` **ignores `depth` and searches to a terminal**,
+so the endgame solve costs the same at Easy (depth 1) as at Expert (depth 7): a
+level-independent ~510–580ms worst call over six seeds, and up to 965ms on an
+unlucky position.
 
-The beginner setting therefore has the second-worst latency in the game, on the
-level whose players are least likely to tolerate a pause and most likely to be on
-a weak device. `TRACTABLE_EMPTIES`'s doc comment records "move worst 2114ms" and
-attributes it to the midgame — true at Expert, and the reason this was missed:
-**every previous measurement was taken at Expert.**
+At Expert the 2.1s midgame hides it completely. At Easy nothing hides it, and the
+contrast is what makes it a defect rather than a cost:
+
+| Othello Easy | value |
+|---|---|
+| median move | **0.1ms** |
+| worst move | **556ms** |
+
+An opponent advertised as shallow and beatable is instant for essentially every
+move of the game and then freezes for half a second in the endgame — on the level
+whose players are least likely to tolerate a pause and most likely to be on a weak
+device. The strength is not the problem (Easy's band has no class floor and 60%
+sloppiness, so it still plays loosely); the *stall* is.
+
+`TRACTABLE_EMPTIES`'s doc comment records "move worst 2114ms" and attributes it to
+the midgame. True at Expert, and the reason this was missed: **every previous
+measurement was taken at Expert.**
 
 This is a second, independent problem from the one the plan was written for. It is
 not addressed by iterative deepening on the capped path, because the exact solve
@@ -602,3 +625,84 @@ in Othello by a different door.
 
 So any budget on the exact path must make the flag follow the **search**, not the
 empty count. Folded into Phase 2.
+
+### Phase 1 — Othello's transposition table (2026-08-07)
+
+| | nodes | wasm worst move |
+|---|---|---|
+| before | 761,478 | 2,115ms |
+| after | 529,081 | 1,743ms |
+| saved | **31%** | **18%** |
+
+Free speed, no value changed (asserted directly against `Table::disabled()`).
+Node saving exceeds time saving because the table costs a 64-byte hash per node.
+
+**Finding 3 was wrong in magnitude.** It guessed the missing table explained why
+checkers searches a ply deeper six times faster. At 31% it does not. Othello's
+tree is genuinely wider — checkers' mandatory captures narrow its search in a way
+no table imitates. The plateau survives: 38% of Othello's moves still exceed
+400ms, so the strength/latency trade in Finding 1 is still owed.
+
+Measured and reverted: storing each entry's best move and searching it first
+bought a further **0.4%**. Best-move ordering pays across the *iterations* of a
+deepening search, not inside one fixed-depth search. It belongs with the driver,
+and speculative code with no test demanding it does not belong here — so it was
+taken back out and noted for the later phase.
+
+A fixture defect worth recording: the first midgame fixture used first-legal
+play, which walks Othello into a lopsided board whose depth-7 search costs ~1,200
+nodes against the real position's 761,478. It "passed" while measuring nothing.
+The fixture is now a seeded random walk.
+
+### Phase 2 — the exact endgame solve, budgeted and honest (2026-08-07)
+
+`NodeBudget` landed in `adversary-solver`; Othello's exact solve now runs under
+`LIVE_EXACT_NODE_BUDGET` (200,000) and falls back to a **whole** capped search
+when it overruns, reporting `exact: false`.
+
+Worst single `live_move` in wasm, 3 seeds:
+
+| level | before | after |
+|---|---|---|
+| Easy | 556ms | **210ms** |
+| Medium | 577ms | **201ms** |
+| Hard | 513ms | 236ms |
+| Expert | ~1,900ms | ~1,900ms (unchanged — the midgame, not this phase) |
+
+At Hard the worst call moved from 12 empties to 32: the endgame stall is gone and
+the midgame is now the maximum, which is the shape the remaining phases address.
+
+**All three baselines reproduced exactly.** The table changes no values by
+construction, and the budget changed no *graded* move in the anchor games. Worth
+tempering: Othello's anchor grades only 12 moves (48 skipped early), so this is a
+thin sample, not a strength proof. The strength question is properly answered by
+the harness trial, not by these two games.
+
+Three properties now pinned by test, all of which were latent hazards:
+
+1. A solve that fits is bit-identical to the unbudgeted one and reports `exact`.
+2. A solve that overruns falls back to **the whole capped search** — never
+   partial exact values mixed with horizon ones, which the difficulty band would
+   have compared against each other.
+3. An overrun search stores nothing unsound in the table, and a later full search
+   reusing that table agrees with one from a fresh table.
+
+Property 3's first version asserted the table was *empty* after an overrun and
+failed: an aborted search legitimately keeps the 29 subtrees it finished before
+the budget ran out. The latching exhaustion flag is what guarantees soundness —
+nothing is stored from the moment of overrun onward, covering every truncated
+node and every ancestor of one. Soundness, not emptiness, is the property.
+
+`live::choose` no longer derives the honesty flag from `empties`; it reads what
+the search actually did. That closes the hazard recorded above before a budget
+could turn it into a live lie.
+
+**Mutation audit** (`cargo mutants --package adversary-solver`): 25 mutants, 21
+caught, 3 unviable, **1 missed** — `< → <=` on the sloppiness threshold in the
+pre-existing `select_in_band`. A 1-in-100 behavioural difference, and the
+important property (0 sloppiness never randomises) is protected by the
+`sloppiness_pct > 0` short-circuit and is tested. Closing it would require
+asserting exact RNG draw counts at a threshold boundary — pinning implementation
+detail, which is the anti-pattern the repo's own guidance warns about. Recorded
+as a real gap, deliberately not closed. All eight `NodeBudget` mutants were
+caught.

@@ -13,9 +13,9 @@ use rand_chacha::rand_core::RngCore;
 
 // Re-exported so `othello_solver::live::*` keeps naming them: the wasm binding
 // imports them from here, and the extraction is not meant to be visible.
-pub use adversary_solver::{select_in_band, LiveBand};
+pub use adversary_solver::{select_in_band, LiveBand, NodeBudget};
 
-use crate::search::{move_values, Level};
+use crate::search::{move_values_honest, Level, LIVE_EXACT_NODE_BUDGET};
 
 /// The win/draw/loss class of a value. **Exact** values (endgame disc
 /// differentials) classify by [`i32::signum`]. **Capped** (heuristic, early)
@@ -64,13 +64,25 @@ pub fn choose(board: &Board, level: Level, rng: &mut impl RngCore) -> Option<Mov
     if result(board).is_some() || legal_moves(board).is_empty() {
         return None;
     }
-    let empties = board.cells.iter().filter(|&&v| v == 0).count();
-    let exact = empties <= crate::search::TRACTABLE_EMPTIES;
     let band = live_band(level);
-    let values = move_values(board, band.depth);
-    let class_of: fn(i32) -> i32 = if exact { i32::signum } else { capped_class };
+    // The class floor follows **the search**, not the position. It used to read
+    // `empties <= TRACTABLE_EMPTIES`, which was sound only while a position in
+    // the exact region was guaranteed a completed solve. Now that the solve is
+    // budgeted, "few empties" no longer implies "proven", and an `i32::signum`
+    // floor over heuristic values would claim to preserve a class nothing had
+    // established.
+    let searched = move_values_honest(
+        board,
+        band.depth,
+        &mut NodeBudget::of(LIVE_EXACT_NODE_BUDGET),
+    );
+    let class_of: fn(i32) -> i32 = if searched.exact {
+        i32::signum
+    } else {
+        capped_class
+    };
     select_in_band(
-        &values,
+        &searched.values,
         class_of,
         band.preserve_class,
         band.sloppiness_pct,

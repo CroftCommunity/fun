@@ -81,11 +81,140 @@ pub fn select_in_band<M: Copy>(
     eligible.iter().max_by_key(|&&(_, v)| v).map(|&(m, _)| m)
 }
 
+/// A deterministic work allowance for one top-level search.
+///
+/// **Nodes, not milliseconds, and that is the whole design.** A wall-clock bound
+/// would make the move a search returns a function of how fast the machine is,
+/// and three things here are built on that not being true: `tests/baselines.test.ts`
+/// re-runs the engines and asserts exact Reports; a level with no sloppiness must
+/// play the same game from the same seed (see
+/// `zero_sloppiness_does_not_consume_the_rng`); and the wasm modules are
+/// freestanding, with no host import to ask for the time. A node count is the
+/// same number on a laptop, on a phone, in CI and in wasm.
+///
+/// The honest cost: this bounds *work*, not *latency*. Slow hardware at a fixed
+/// budget is still slow — it is predictably slow rather than pathologically slow.
+/// Nodes are a proxy for time and the proxy needs calibrating per game by
+/// measurement, which is why each consumer records its budget's measurements
+/// beside the constant.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NodeBudget {
+    remaining: u64,
+    unlimited: bool,
+    exhausted: bool,
+}
+
+impl NodeBudget {
+    /// A budget of `nodes` search nodes.
+    #[must_use]
+    pub fn of(nodes: u64) -> Self {
+        NodeBudget {
+            remaining: nodes,
+            unlimited: false,
+            exhausted: false,
+        }
+    }
+
+    /// No limit — spelled out rather than written as `of(u64::MAX)` at every call
+    /// site, because "this path is deliberately unbounded" is a decision a reader
+    /// should see stated. The analysis oracle and the tutor are the intended
+    /// users: a panel opening can afford what a tap cannot.
+    #[must_use]
+    pub fn unlimited() -> Self {
+        NodeBudget {
+            remaining: 0,
+            unlimited: true,
+            exhausted: false,
+        }
+    }
+
+    /// Charge one node. Returns `false` once the allowance is gone, and keeps
+    /// returning `false` — a search that overran does not get to continue because
+    /// its next node happened to be cheap.
+    pub fn charge(&mut self) -> bool {
+        if self.unlimited {
+            return true;
+        }
+        if self.remaining == 0 {
+            self.exhausted = true;
+            return false;
+        }
+        self.remaining -= 1;
+        true
+    }
+
+    /// Whether this budget ever ran out. **Latching**: the caller reads it after
+    /// a search to decide whether the result may be used at all, so it must
+    /// report "this search overran" and not "the last charge happened to fail".
+    #[must_use]
+    pub fn is_exhausted(&self) -> bool {
+        self.exhausted
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use rand_chacha::rand_core::SeedableRng;
     use rand_chacha::ChaCha20Rng;
+
+    #[test]
+    fn a_budget_allows_exactly_what_it_was_given() {
+        let mut b = NodeBudget::of(3);
+        assert!(b.charge(), "1 of 3");
+        assert!(b.charge(), "2 of 3");
+        assert!(b.charge(), "3 of 3");
+        assert!(!b.charge(), "the fourth node is over the allowance");
+    }
+
+    #[test]
+    fn exhaustion_latches_and_is_not_merely_the_last_answer() {
+        // Load-bearing: the caller reads `is_exhausted` *after* the search to
+        // decide whether the whole result is usable. A flag that reported only
+        // the most recent charge would let an overrun be forgotten, and a
+        // partially-searched move list would be handed to the difficulty band as
+        // if it were complete.
+        let mut b = NodeBudget::of(1);
+        assert!(!b.is_exhausted(), "nothing has overrun yet");
+        assert!(b.charge());
+        assert!(
+            !b.is_exhausted(),
+            "spending the last node is not overrunning"
+        );
+        assert!(!b.charge());
+        assert!(b.is_exhausted());
+        assert!(!b.charge(), "and it stays refused");
+        assert!(b.is_exhausted(), "and it stays reported");
+    }
+
+    #[test]
+    fn a_zero_budget_refuses_immediately() {
+        let mut b = NodeBudget::of(0);
+        assert!(!b.charge());
+        assert!(b.is_exhausted());
+    }
+
+    #[test]
+    fn an_unlimited_budget_never_refuses_and_never_reports_exhaustion() {
+        let mut b = NodeBudget::unlimited();
+        for _ in 0..10_000 {
+            assert!(b.charge());
+        }
+        assert!(!b.is_exhausted());
+    }
+
+    #[test]
+    fn budgets_are_independent() {
+        // One per top-level call. If two searches could share a counter, one
+        // move's cost would depend on which searches ran before it — the same
+        // nondeterminism this crate refuses everywhere else.
+        let mut a = NodeBudget::of(1);
+        let mut b = NodeBudget::of(1);
+        assert!(a.charge());
+        assert!(!a.charge());
+        assert!(b.charge(), "b has its own allowance");
+        assert!(!b.is_exhausted() || a.is_exhausted());
+    }
 
     /// A stand-in move type. Deliberately **not** any game's move: this crate's
     /// whole claim is that selection does not care, and testing it against a real

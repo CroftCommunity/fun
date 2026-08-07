@@ -8,6 +8,7 @@
 use std::collections::HashMap;
 
 use adversary_core::Side;
+use adversary_solver::NodeBudget;
 use othello_core::{apply_move, legal_moves, result, Board, Move, CELLS};
 
 use crate::eval::{heuristic, WEIGHTS};
@@ -253,8 +254,16 @@ fn negamax(
     beta: i32,
     mode: Mode,
     tt: &mut Table,
+    budget: &mut NodeBudget,
 ) -> i32 {
     tt.nodes += 1;
+    // Over the allowance. The value returned here is a placeholder and must never
+    // reach a caller: every entry point checks `budget.is_exhausted()` and
+    // discards the entire result. Returning the heuristic rather than a sentinel
+    // keeps the arithmetic above it well-formed while the stack unwinds.
+    if !budget.charge() {
+        return heuristic(board);
+    }
     if result(board).is_some() {
         return terminal_value(board);
     }
@@ -286,7 +295,15 @@ fn negamax(
     let mut best = i32::MIN + 1;
     let mut cut = false;
     for mv in ordered_moves(board) {
-        let score = -negamax(&apply_move(board, mv), next_depth, -beta, -alpha, mode, tt);
+        let score = -negamax(
+            &apply_move(board, mv),
+            next_depth,
+            -beta,
+            -alpha,
+            mode,
+            tt,
+            budget,
+        );
         if score > best {
             best = score;
         }
@@ -297,9 +314,17 @@ fn negamax(
             cut = true;
             break;
         }
+        if budget.is_exhausted() {
+            break;
+        }
     }
 
-    if tt.enabled {
+    // **Never store the result of a truncated search.** An aborted subtree's
+    // value is not a bound on anything; writing it would outlive the search that
+    // produced it and be read later as if a real search had produced it. The
+    // table would then answer with a number no fresh search would return, which
+    // is the failure `checkers-solver`'s module docs exist to prevent.
+    if tt.enabled && !budget.is_exhausted() {
         let bound = if cut {
             Bound::Lower
         } else if best <= alpha0 {
@@ -328,6 +353,68 @@ pub fn move_values(board: &Board, depth: u32) -> Vec<(Move, i32)> {
     move_values_with(board, depth, &mut Table::new())
 }
 
+/// Per-move values plus **whether the search that produced them proved
+/// anything**.
+///
+/// The flag has to travel with the values. Before this existed,
+/// [`crate::live::choose`] derived it from the empty count alone — sound only for
+/// as long as a position at or below [`TRACTABLE_EMPTIES`] was guaranteed to get
+/// a completed solve. The moment a budget can cut that solve short, "few empties"
+/// stops implying "proven", and a class floor built on `i32::signum` would be
+/// claiming a *known* win/draw/loss from *heuristic* numbers.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Valued {
+    /// Per-move values, side-to-move perspective, higher is better.
+    pub values: Vec<(Move, i32)>,
+    /// `true` only when these are exact endgame values from a solve that ran to
+    /// completion. Never "probably".
+    pub exact: bool,
+}
+
+/// The budget for a **live opponent's** exact endgame solve.
+///
+/// Phase 0 measured that solve as level-independent — `Mode::Exact` ignores
+/// `depth`, so Easy pays exactly what Expert pays — at 510–580ms worst over six
+/// seeds and up to 965ms on an unlucky position. On Easy, whose median move is
+/// **0.1ms**, that is the whole game's latency budget spent in one stall by an
+/// opponent advertised as shallow.
+///
+/// Calibrated 2026-08-07; see the plan's Review Log for the node/ms table. When
+/// the solve does not fit, the search falls back to a capped one and says so,
+/// which costs proof rate in a few endgames and never costs correctness.
+///
+/// **Deliberately not applied to the analysis oracle or the tutor.** A panel
+/// opening can afford what a tap cannot, and the oracle must stay stronger than
+/// the player it grades — budgeting it would re-open the P8 defect where
+/// "optimal" became true by construction.
+pub const LIVE_EXACT_NODE_BUDGET: u64 = 200_000;
+
+/// Values for a live opponent move: the exact endgame solve if it fits inside
+/// `budget`, otherwise a capped search, with `exact` reporting which happened.
+///
+/// The fallback is whole-result, never partial: a solve that overruns is thrown
+/// away and redone capped, because a half-solved move list mixes proven values
+/// with horizon estimates and the difficulty band compares values *across* moves.
+#[must_use]
+pub fn move_values_honest(board: &Board, depth: u32, budget: &mut NodeBudget) -> Valued {
+    if mode_for(empties_of(board)) == Mode::Exact {
+        let mut tt = Table::new();
+        let values = search_all(board, depth, Mode::Exact, &mut tt, budget);
+        if !budget.is_exhausted() {
+            return Valued {
+                values,
+                exact: true,
+            };
+        }
+    }
+    let mut tt = Table::new();
+    let mut unbounded = NodeBudget::unlimited();
+    Valued {
+        values: search_all(board, depth, Mode::Capped, &mut tt, &mut unbounded),
+        exact: false,
+    }
+}
+
 /// [`move_values`] against a caller-supplied table, so a test can read the node
 /// count and a future iterative-deepening driver can carry one table across
 /// depths. The table is shared across the root moves, which is where most of the
@@ -340,6 +427,17 @@ pub fn move_values(board: &Board, depth: u32) -> Vec<(Move, i32)> {
 pub fn move_values_with(board: &Board, depth: u32, tt: &mut Table) -> Vec<(Move, i32)> {
     // The mode is fixed here, from the position the caller actually asked about.
     let mode = mode_for(empties_of(board));
+    search_all(board, depth, mode, tt, &mut NodeBudget::unlimited())
+}
+
+/// Value every legal move at a fixed `mode`, sharing one table and one budget.
+fn search_all(
+    board: &Board,
+    depth: u32,
+    mode: Mode,
+    tt: &mut Table,
+    budget: &mut NodeBudget,
+) -> Vec<(Move, i32)> {
     legal_moves(board)
         .into_iter()
         .map(|mv| {
@@ -350,6 +448,7 @@ pub fn move_values_with(board: &Board, depth: u32, tt: &mut Table) -> Vec<(Move,
                 i32::MAX - 1,
                 mode,
                 tt,
+                budget,
             );
             (mv, v)
         })
@@ -424,7 +523,8 @@ mod tests {
                 i32::MIN + 1,
                 i32::MAX - 1,
                 Mode::Capped,
-                &mut Table::new()
+                &mut Table::new(),
+                &mut NodeBudget::unlimited()
             ),
             heuristic(&pos),
             "a capped search must cut off at its depth, not solve because the position is small"
@@ -438,7 +538,8 @@ mod tests {
                 i32::MIN + 1,
                 i32::MAX - 1,
                 Mode::Exact,
-                &mut Table::new()
+                &mut Table::new(),
+                &mut NodeBudget::unlimited()
             ),
             ref_exact(&pos),
             "exact mode still solves"
@@ -568,6 +669,117 @@ mod tests {
                 without.nodes()
             );
         }
+    }
+
+    /// A live endgame position inside the exact region.
+    fn endgame(seed: u64) -> Board {
+        let pos = midgame(seed, TRACTABLE_EMPTIES);
+        assert!(result(&pos).is_none(), "the fixture must be live");
+        assert!(empties_of(&pos) <= TRACTABLE_EMPTIES);
+        pos
+    }
+
+    /// A budget large enough for the solve leaves the answer exactly as it was.
+    #[test]
+    fn a_solve_that_fits_is_unchanged_and_says_it_is_exact() {
+        for seed in [7, 11, 23] {
+            let pos = endgame(seed);
+            let got = move_values_honest(&pos, 0, &mut NodeBudget::unlimited());
+            assert!(got.exact, "an unbounded solve in the exact region is exact");
+            assert_eq!(
+                got.values,
+                move_values(&pos, 0),
+                "and matches the unbudgeted search on seed {seed}"
+            );
+        }
+    }
+
+    /// **The honesty property.** A solve that does not fit must not be reported
+    /// as exact, and must not leak the partial values it had computed — it falls
+    /// back to a whole capped search.
+    ///
+    /// Before `Valued` existed, `live::choose` derived this flag from the empty
+    /// count alone. Under a budget that is a lie: the position is still in the
+    /// exact region, so the old code would have applied an `i32::signum` class
+    /// floor to numbers that are horizon heuristics. The floor would have claimed
+    /// to preserve a *known* win/draw/loss it had never proven.
+    #[test]
+    fn a_solve_that_does_not_fit_falls_back_whole_and_admits_it() {
+        for seed in [7, 11, 23] {
+            let pos = endgame(seed);
+            // One node: enough to enter the search and not to finish it.
+            let mut tiny = NodeBudget::of(1);
+            let got = move_values_honest(&pos, Level::Easy.depth(), &mut tiny);
+
+            assert!(
+                !got.exact,
+                "an aborted solve must never be reported as exact (seed {seed})"
+            );
+            // Not "some values" — *the* capped values. A partial exact result
+            // would mix proven numbers with horizon ones, and the band compares
+            // values across moves.
+            let mut tt = Table::new();
+            let capped = search_all(
+                &pos,
+                Level::Easy.depth(),
+                Mode::Capped,
+                &mut tt,
+                &mut NodeBudget::unlimited(),
+            );
+            assert_eq!(
+                got.values, capped,
+                "the fallback must be a whole capped search (seed {seed})"
+            );
+            assert_eq!(
+                got.values.len(),
+                legal_moves(&pos).len(),
+                "and must value every legal move"
+            );
+        }
+    }
+
+    /// An aborted search must leave nothing **unsound** behind in the table.
+    ///
+    /// A truncated subtree's value is not a bound on anything. Stored, it would
+    /// outlive the search that produced it and later be read as if a real search
+    /// had produced it — the table would answer with a number no fresh search
+    /// would return.
+    ///
+    /// Note what is *not* claimed: that the table is empty. This test first
+    /// asserted that and was wrong — an overrun search legitimately stores the
+    /// subtrees it finished **before** the budget ran out, and 29 of them here
+    /// are real values. What the latching exhaustion flag guarantees is that
+    /// nothing is stored from the moment of overrun onward, which covers every
+    /// truncated node and every ancestor of one. Soundness, not emptiness, is
+    /// the property — so the reuse assertion below is the test, not a follow-up
+    /// to it.
+    #[test]
+    fn an_aborted_search_stores_nothing_unsound_and_poisons_no_later_search() {
+        let pos = endgame(7);
+
+        let mut poisoned = Table::new();
+        let mut tiny = NodeBudget::of(50);
+        let _ = search_all(&pos, 0, Mode::Exact, &mut poisoned, &mut tiny);
+        assert!(tiny.is_exhausted(), "the fixture must actually overrun");
+
+        // A full search reusing the overrun search's table must agree with one
+        // from a fresh table. If any truncated value had been stored, this is
+        // where it would surface.
+        let reused = search_all(
+            &pos,
+            0,
+            Mode::Exact,
+            &mut poisoned,
+            &mut NodeBudget::unlimited(),
+        );
+        let fresh = search_all(
+            &pos,
+            0,
+            Mode::Exact,
+            &mut Table::new(),
+            &mut NodeBudget::unlimited(),
+        );
+        assert_eq!(reused, fresh, "a reused table must not change the answer");
     }
 
     #[test]
