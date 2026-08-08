@@ -25,6 +25,10 @@ files are the running, checkbox-level worklist.
 - [checkers.md](checkers.md) — **adversarial** (the third game); shipped
   2026-08-06 with a recorded harness baseline. Thin graded fraction, the midgame
   latency floor, and the shared banter-honesty thread.
+- [dots.md](dots.md) — **adversarial** (the fourth game); shipped 2026-08-07. The
+  first with a move that does **not** pass the turn and a band value that is a
+  margin — neither of which needed a change to anything shared. Open: the live
+  WebGPU trial has never been run.
 - blockdoku, looseends, color-sort — shipped; no open backlog file yet.
 
 ## Shipped — Tier-2 wrapped (playable)
@@ -43,11 +47,23 @@ files are the running, checkbox-level worklist.
 ## Next games (proposed, ordered)
 
 Checkers (the third adversarial game) shipped 2026-08-06 and took the
-`adversary-solver` extraction with it, so the rule-of-three trigger is spent. More
-adversarial games still exercise the shared trait + harness + hybrid + tutor
-stack, but the abstraction now has a real generality proof behind it and the next
-build no longer has to be one. Write a `phase-plan` (three passes) before starting
-any of these.
+`adversary-solver` extraction with it, so the rule-of-three trigger is spent. Dots
+and Boxes followed on 2026-08-07 as the first game built to *use* the abstraction
+rather than to prove it — and needed no change to any shared file. More
+adversarial games still exercise the stack, but the next build no longer has to be
+one. Write a `phase-plan` (three passes) before starting any of these.
+
+**The candidate catalogs live in `discovery`, and this list is a subset of them.**
+Read them before proposing a game, rather than treating the five below as the
+field:
+
+- `discovery/alpha/thinking/app/ponds/games-pond-authoritative-list.md` — the
+  ranked pick-list (Dots and Boxes was entry 6, "the most underrated pick").
+- `discovery/alpha/thinking/app/ponds/client-side-static-game-candidates.md` — the
+  Tier-2 wrap inventory plus the inclusion filter.
+- `discovery/alpha/thinking/app/ponds/p2p-games-pond-launch-set.md` — the
+  candidate hunt for the P2P-gated set (cribbage's cohort), which is a different
+  question from what is buildable today.
 
 1. **Chess** — Tier-1 adversarial, **heavy**. Needs a vetted move-gen (castling,
    en passant, promotion, checkmate/stalemate/draws) + a **Stockfish-WASM** Oracle

@@ -1,7 +1,7 @@
 # Dots and Boxes — the fourth adversarial game
 
-status: **Pass 1 + Pass 2 complete.** Executing: Phases 1–12 are in (Phase 3a
-dropped; Phase 4 run late, after Phase 8). Next: Phase 13.
+status: **Pass 1 + Pass 2 complete.** Executing: Phases 1–13 are in (Phase 3a
+dropped; Phase 4 run late, after Phase 8). Next: Phase 14.
 
 owner decisions (2026-08-07): **3×3 boxes** (4×4 dots, 24 edges, 9 boxes) and the
 **full §10 checklist** including the experimental WebGPU hybrid.
@@ -1190,6 +1190,23 @@ schedule slips, this phase does not get dropped.
 2. **Verification:** `npm run unit` (doc-referencing tests) green.
 
 **Validation:** Narrow.
+
+### Phase 13 execution notes (2026-08-07)
+
+Every named file edited. The one worth calling out is the **prose correction**:
+`crates/adversary-core/src/lib.rs`, `src/harness/match-runner.ts` and
+`docs/BUILDING-GAMES.md` all described a match record as an *alternating* move
+list. The code was right and had always been right — `side_to_move` took the
+position, `runMatch` re-read the board — but three comments asserted a property
+this game breaks, and a comment that is wrong is worse than no comment because it
+is believed.
+
+`docs/BUILDING-GAMES.md` §10 gains three variations (the extra turn, the
+margin-valued band, an honesty flag that is mostly true) and `docs/AI-PLAYERS.md`
+gains the fourth-game generality note plus the measured rows in the latency and
+deepening tables. `TODO/dots.md` is new; `TODO/README.md` lists it and — the gap
+this phase was told to close — now **points at the three discovery catalogs**
+instead of implying its own five-item list is the field.
 
 ### Phase 14: gate and deploy
 

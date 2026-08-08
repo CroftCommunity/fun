@@ -6,8 +6,10 @@
 //! written **once**, generically, and each game plugs in by implementing
 //! [`Adversary`] rather than re-writing the runner.
 //!
-//! A finished match is `(seed, moves)` — the alternating move list of **both**
-//! sides — which replays through the core to a stable [`Adversary::state_hash`]
+//! A finished match is `(seed, moves)` — one move list holding **both** sides'
+//! moves in play order, which is **not** necessarily alternating: Dots and Boxes
+//! grants the mover another move when they close a box, so `side_to_move` is a
+//! function of the position and never of the move index — which replays through the core to a stable [`Adversary::state_hash`]
 //! and a [`MatchResult`]. That is the same verifiable-outcome property the
 //! single-player cores have (`pond_outcome`), so a two-player record verifies by
 //! replay with no special handling. No floats on the hashed path; integer

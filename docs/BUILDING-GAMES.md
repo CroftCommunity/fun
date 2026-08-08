@@ -436,15 +436,47 @@ governing plans are `plans/2026-07-31-drop4-ai-harness.md` and
 > against the wasm's exact oracle — the browser mirror of `drop4-harness`. Full
 > guide: `docs/HARNESS.md`.
 
-A **two-player adversarial** game (two sides, alternating turns, a win/draw/loss
+A **two-player adversarial** game (two sides taking turns, a win/draw/loss
 result) is still a Tier-1 Croft-native game: it keeps §§2–8 (determinism-first
 core → wasm, verifiable outcome, tap-first core-decides-legality, tokens/WCAG,
 standard settings, how-to, the gate). It adds a **computer opponent**. **Drop 4**
 (`src/games/drop4/`, `crates/drop4-*`) is the reference implementation, **Othello**
-(`src/games/othello/`, `crates/othello-*`) is the second, and **checkers**
+(`src/games/othello/`, `crates/othello-*`) is the second, **checkers**
 (`src/games/checkers/`, `crates/checkers-*`) is the third — the generality proof
 that the trait + band + tutor + harness carry to a **move that is a path**, not a
-destination square. Landed 2026-08-06 (`plans/2026-08-04-checkers-game.md`).
+destination square (landed 2026-08-06, `plans/2026-08-04-checkers-game.md`) — and
+**Dots and Boxes** (`src/games/dots/`, `crates/dots-*`) is the fourth, which broke
+two assumptions nobody had written down (landed 2026-08-07,
+`plans/2026-08-07-dots-and-boxes.md`).
+
+**Variation — a move that does not pass the turn (Dots and Boxes).** Closing the
+fourth side of a box claims it and the mover **moves again**. So `side_to_move` is
+a function of the *position*, never of the move index, and a match record is one
+list of both sides' moves in play order that is **not** alternating. Nothing
+shared had to change for this — `Adversary::side_to_move` already took the
+position, `runMatch` already re-read `toMove` from the live board each iteration,
+and `gradeSide` already re-derived whose move it was during replay — but the
+*prose* in three places said "alternating" and was wrong the moment this game
+existed. If your game has an extra-turn rule, the code is ready for it; read the
+turn from the board and never from parity.
+
+**Variation — a band value that is a margin (Dots and Boxes).** Drop 4, Othello
+and checkers all produce a value the band buckets into three classes. Here the
+natural value is a **box differential**, and the class is its *sign* — `class_of`
+is `value.signum()`. The shared `select_in_band` never looks at what a value
+means, so a margin drops straight in; what a value's class means stays the game's
+own judgement, which is why `class_of` and `live_band` deliberately live in the
+game's solver and not in `adversary-solver`. On an odd box count **no draw is
+reachable at all**, which is worth asserting as a property rather than papering
+over.
+
+**Variation — an honesty flag that is mostly `true` (Dots and Boxes).** 3×3 is
+small enough to solve outright from four plies in, so `exact` holds for nearly the
+whole game and the scoring rig grades **83% of a side's moves** — against
+checkers' 9 of 163, where `exact` means a terminal was proven. Same rig, same
+honesty gate, opposite denominators. A near-empty `scoredMoves` is not a failure
+and a near-full one is not a triumph; what matters is that the number is reported
+either way, because a class floor over an empty denominator asserts nothing.
 
 **Variation — a heuristic Oracle (Othello).** §10's "exact when tractable" assumes
 a solvable game. Othello is **not solved from the opening**, so its Oracle is a
@@ -463,7 +495,8 @@ What is the same, and what is new:
   / `side_to_move` / `legal_moves` / `apply` / `result` / `state_hash` + a text
   bridge. Each game core implements it *and* `pond_outcome::Game`.
 - **Verifiable outcome carries over.** A match records **both** sides' moves in
-  one alternating list, so replaying `(seed, moves)` reproduces the final board
+  one list in play order (alternating in most games; see the extra-turn variation
+  above), so replaying `(seed, moves)` reproduces the final board
   regardless of who chose each move — the `?r=` share re-verifies exactly as for
   a single-player game. (Drop 4: the record is A-centric — `Won` = the opening
   human won; the human-facing screen derives a draw-aware label from the live

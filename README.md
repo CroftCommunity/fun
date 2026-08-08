@@ -221,6 +221,36 @@ terminal reached inside the search, because checkers positions cycle and no piec
 count bounds the tree.
 Plan: `plans/2026-08-04-checkers-game.md`. AI rationale: `docs/AI-PLAYERS.md`.
 
+## Dots and Boxes (playable — the fourth adversarial game, and a turn that does not pass)
+
+`/dots/` is the folk game on a 4×4 lattice of dots against the engine: tap a line
+between two dots, and whoever draws the fourth side of a box claims it. Full
+Tier-1 build — opt-in tutor, hints that declare themselves as assistance, a
+WebGPU-gated experimental local-AI opponent (persona: Bramble), and a verifiable
+`?r=` outcome.
+
+What makes it worth a section is the **turn**. Every other game on the shelf
+alternates strictly — even Othello's pass is a turn transfer. Here, closing a box
+gives you another move, so whose turn it is is a fact about the *board* and never
+about the move count, and a match record is one list of both sides' moves that is
+not alternating. Nothing shared had to change to carry that: the trait already
+took the position, the scoring rig already re-read the side from the live board.
+The prose in three files said "alternating" and was simply wrong — that was the
+whole cost.
+
+Two more firsts. The engine's value is a **box margin** rather than a win/draw/loss
+class, and the class is its sign; nine boxes cannot split, so **no draw is
+reachable** at this size. And 3×3 is **solved** — a second-player win, 6–3, with
+perfect play — so the difficulty picker's top level is honestly named *Perfect*,
+and the game seats you second by default, because opening against a perfect
+opponent is a lost position before anyone has moved.
+
+The game underneath the rules is not really about taking boxes: it is about
+running out of safe lines **second**. A perfect engine will decline the last two
+boxes of a chain to force you to open the next one, which looks like a blunder and
+is the opposite.
+Plan: `plans/2026-08-07-dots-and-boxes.md`. AI rationale: `docs/AI-PLAYERS.md`.
+
 ## Align (playable — falling-block stacker)
 
 `/align/` is a real-time falling-block stacker (build-fresh; original name,

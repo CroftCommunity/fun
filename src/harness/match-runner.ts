@@ -69,7 +69,12 @@ export type AbortReason = "none" | "nullMove" | "rejectedMove";
 export interface MatchRecord {
   /** The start seed passed to `newGame`. */
   readonly seed: bigint;
-  /** Alternating moves; index 0 is side A's first move. Only applied moves. */
+  /**
+   * Both sides' moves in play order; index 0 is side A's first. **Not
+   * necessarily alternating** — Dots and Boxes lets a capture keep the turn, so
+   * whose move index `i` was is read from the replayed board, never from `i`.
+   * Only applied moves.
+   */
   readonly moves: number[];
   /** Terminal result (-1 ongoing/aborted, 0 draw, 1 A won, 2 B won). */
   readonly result: -1 | 0 | 1 | 2;

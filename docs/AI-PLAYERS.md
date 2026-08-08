@@ -194,7 +194,16 @@ The shape of the problem decides the fix, and all three games looked different:
   checkers   ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▂▃   0% over 400ms  → a tail. Nothing to fix.
   drop 4     ▁▁▁▁▁▁▁▂▄▆███     20% over 400ms  → a tail, in the OPENING.
   othello    ▃▄▅▆▇███████▇▆    38% over 400ms  → a plateau. Median already 262ms.
+  dots       ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▂   0% over 400ms  → one spike, at a known position.
 ```
+
+Dots and Boxes (measured 2026-08-07, wasm/Node, 5 seeds × 4 levels) is the
+easiest shape there is, and it is worth knowing why: its worst move is the
+**same move at every level** — the first exact solve, at exactly
+`TRACTABLE_EDGES` free edges, where the memo table is cold — at 66-68 ms against
+a median of 0.0-0.3 ms. The exact path ignores level, so Easy costs what Perfect
+costs. A per-level table was still taken, because "we measured the top level and
+it was fine" is exactly how Othello's stall survived.
 
 A worst-case number alone would have hidden all of this. Record median, p95,
 worst, **and the fraction over your target**, per level — and take the numbers at
@@ -207,12 +216,21 @@ bigger cost sat on top of it.
 `adversary_solver::deepen` searches `1..=max_depth` and keeps the last iteration
 that **finished**. It is not free, and whether it pays is a property of the game:
 
-| | checkers | Othello |
-|---|---|---|
-| deepening vs direct search | **+14% nodes (tax)** | **−41% nodes (win)** |
-| existing move ordering | capture length — and capture is *mandatory*, so it is already near-optimal | a static corner/edge weight table — a weak guess |
-| budget bite rate | 0% of moves | 28–38% of moves |
-| outcome | **reverted, ships nothing** | shipped, free speed |
+| | checkers | Othello | dots |
+|---|---|---|---|
+| deepening vs direct search | **+14% nodes (tax)** | **−41% nodes (win)** | **not applicable** |
+| existing move ordering | capture length — and capture is *mandatory*, so it is already near-optimal | a static corner/edge weight table — a weak guess | captures first, and no capture is possible where the capped path runs |
+| budget bite rate | 0% of moves | 28–38% of moves | 0% of moves |
+| outcome | **reverted, ships nothing** | shipped, free speed | **rejected — every iteration returns the same values** |
+
+Dots is the third answer, and a different kind of one. Its capped search only ever
+runs in the first four plies, where no box can reach three sides — so measured at
+depths 1, 2, 4, 6 and 8, at every position it can reach, the set of distinct move
+values is `{0}`: one value. Depth 8 spends 200-340 ms to return what depth 1
+returns in 0.0 ms. Deepening keeps the best *complete* iteration when a budget
+truncates a search; when every iteration is identical there is no better one to
+keep. **Check that the search has something to find before asking how to search
+it better.**
 
 > **The rule: deepening pays where the budget actually bites often, or where the
 > static move ordering is poor. Where neither holds it is a tax on every move for
@@ -424,6 +442,40 @@ real WebGPU / apple metal-3):
 This is the same conclusion the Rust rig reached, now measured on the *actual
 shipped browser hybrid*: legality + class-preservation by construction, no skill
 added, slower than the engine.
+
+## Generality: a fourth game (Dots and Boxes)
+
+Checkers spent the rule-of-three trigger, so dots was built to *use* the
+abstraction rather than to prove it. Two things about the game were candidates for
+a seam, and neither turned out to be one:
+
+- **A move need not pass the turn.** Closing a box grants the mover another move.
+  `Adversary::side_to_move` already took the position, `runMatch` already picked
+  the player from the live board on every iteration, and `gradeSide` already
+  re-derived whose move it was during replay. Nothing shared changed. What *was*
+  wrong was the **prose** — three places said a match record is an "alternating"
+  move list, which stopped being true the moment this game existed.
+- **The value is a box margin, not a class.** `class_of` is `value.signum()`, and
+  `select_in_band` never looks at what a value means. A margin drops straight in.
+
+What that leaves is a measured statement about the shared code: the fourth game's
+`GameOracle` adapter is the **thinnest on the shelf** (an edge index is already a
+wire code), and `buildBand` / `HybridPlayer` / `WebLLMRuntime` / `speak` were
+reused with no edit at all.
+
+One thing was *simpler* than in the three games before it. Every other game
+phrases its band's `idea` in TypeScript — "takes a corner", "takes 2 pieces". This
+game's reason is computed in Rust and carried through both the tutor and the
+oracle, so the UI opponent and the harness hybrid say the same sentence because it
+**is** the same sentence, not because two files agree. That is the better default
+for the next game.
+
+**The honesty flag's third shape: mostly true.** Drop 4 is exact-when-tractable,
+Othello exact-only-in-the-endgame, checkers exact-only-where-a-terminal-is-proven.
+3×3 dots is *solved* from four plies in, so `exact` holds nearly everywhere and the
+rig grades **83% of a side's moves** against checkers' 9 of 163. The number to
+report is the same either way — a class floor over an empty denominator asserts
+nothing, and a full denominator is not a strength claim.
 
 ## Generality: a second game (Othello), then a third (checkers)
 
