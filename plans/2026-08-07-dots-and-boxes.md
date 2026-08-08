@@ -1,7 +1,7 @@
 # Dots and Boxes — the fourth adversarial game
 
-status: **Pass 1 + Pass 2 complete.** Executing: Phases 1–9 are in (Phase 3a
-dropped; Phase 4 run late, after Phase 8). Next: Phase 10.
+status: **Pass 1 + Pass 2 complete.** Executing: Phases 1–10 are in (Phase 3a
+dropped; Phase 4 run late, after Phase 8). Next: Phase 11.
 
 owner decisions (2026-08-07): **3×3 boxes** (4×4 dots, 24 edges, 9 boxes) and the
 **full §10 checklist** including the experimental WebGPU hybrid.
@@ -985,6 +985,33 @@ early reports silence. Say what fraction of moves were graded, every time.
 2. **Verification:** `npm run unit` (the harness test) + `npm run baselines`.
 
 **Validation:** Broad.
+
+### Phase 10 execution notes (2026-08-07)
+
+The rig needed **no edit** — `git diff` touches no file under `src/harness/`
+except the trial entry's per-game wiring. The adapter is the thinnest on the
+shelf: an edge index is already the wire code, so every member is a pass-through
+or a two-field projection.
+
+The two shapes this game was supposed to stress turned out not to reach the rig
+at all, and that is the result rather than an anticlimax. `runMatch` reads
+`toMove` from the live board each iteration, so a capture's extra move needs
+nothing; and the scorer grades on `quality`, so a margin-valued search is
+invisible to it. Both are now asserted through the port rather than assumed.
+
+**Measured, 4 games, top level vs top level:** 40 graded moves, 8 skipped early,
+0 blunders, 6.2 ms per graded move. **83% of a side's moves are graded** — the
+inverse of checkers' 9-of-163, and for a stateable reason: dots is *solved* from
+four edges in, so `exact` is true almost everywhere, while checkers' `exact`
+means a terminal was proven. Same rig, same honesty gate, opposite denominators.
+Easy vs top over the same seeds: 28 graded, 2 blunders (7.1%), and Easy loses
+every game — so the rig can tell the levels apart, which is the comparison a
+class floor alone would not give.
+
+**The baseline anchor reads 1-0-1, and that is a forced result, not a balanced
+one.** 3×3 is a second-player win, so whoever opens loses; the rig alternates who
+opens each game, so two forced losses render as one win and one loss. A draw
+would be the finding — nine boxes cannot split.
 
 ### Phase 11: the experimental hybrid opponent
 

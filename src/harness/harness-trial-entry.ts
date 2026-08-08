@@ -8,6 +8,8 @@
 
 import { checkersOracle } from "../games/checkers/checkers-oracle.js";
 import { Checkers } from "../games/checkers/checkers-wasm.js";
+import { dotsOracle } from "../games/dots/dots-oracle.js";
+import { Dots } from "../games/dots/dots-wasm.js";
 import { drop4Oracle } from "../games/drop4/drop4-oracle.js";
 import { Drop4 } from "../games/drop4/drop4-wasm.js";
 import { othelloOracle } from "../games/othello/othello-oracle.js";
@@ -19,7 +21,7 @@ import { EnginePlayer, HybridAiPlayer, type HybridPromptBuilder } from "./match-
 import { renderReport, runTournament, type Report } from "./tournament.js";
 
 /** Which shelf game the trial grades. */
-export type TrialGame = "drop4" | "othello" | "checkers";
+export type TrialGame = "drop4" | "othello" | "checkers" | "dots";
 
 /**
  * Per-game wiring for the trial: how to load the game as a `GameOracle`, and a
@@ -62,6 +64,19 @@ const GAMES: Record<TrialGame, {
       prompt: `Board:\n${game.renderText()}\nOffered moves (opaque codes): ${band
         .map((b) => `${b.col} (${b.idea})`)
         .join(", ")}\nPick one code and say why in one short sentence.`,
+    }),
+  },
+  dots: {
+    load: async () => dotsOracle(await Dots.load("/dots.wasm")),
+    prompt: (game, band) => ({
+      system:
+        "You are a Dots and Boxes opponent. Choose exactly one of the offered edge numbers and reply as JSON {move, reason}.",
+      // The rendered board prints each undrawn edge's own number, so unlike
+      // checkers' opaque codes the offered numbers are readable straight off the
+      // picture — the model can see where the edge it is picking actually is.
+      prompt: `Board (free edges show their number):\n${game.renderText()}\nOffered edges: ${band
+        .map((b) => `${b.col} (${b.idea})`)
+        .join(", ")}\nPick one edge number and say why in one short sentence.`,
     }),
   },
 };

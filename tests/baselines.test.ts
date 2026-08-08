@@ -24,6 +24,8 @@ import { drop4Oracle } from "../src/games/drop4/drop4-oracle.js";
 import { Drop4 } from "../src/games/drop4/drop4-wasm.js";
 import { checkersOracle } from "../src/games/checkers/checkers-oracle.js";
 import { Checkers } from "../src/games/checkers/checkers-wasm.js";
+import { dotsOracle } from "../src/games/dots/dots-oracle.js";
+import { Dots } from "../src/games/dots/dots-wasm.js";
 import { othelloOracle } from "../src/games/othello/othello-oracle.js";
 import { Othello } from "../src/games/othello/othello-wasm.js";
 import type { GameOracle } from "../src/harness/game-oracle.js";
@@ -178,6 +180,41 @@ const ANCHORS: readonly Anchor[] = [
       preserving: 0,
       blunders: 0,
       skippedEarly: 154,
+      abortedGames: 0,
+      llmMoves: 0,
+      fallbackMoves: 0,
+    },
+  },
+  {
+    game: "dots",
+    load: async () =>
+      dotsOracle(
+        await loadWasm("target/wasm32-unknown-unknown/release/dots_wasm.wasm", () => Dots.load()),
+      ),
+    // Recorded 2026-08-07, when Dots and Boxes shipped (Phase 10).
+    //
+    // The graded fraction here is the **opposite** of checkers', and for a
+    // reason worth keeping next to the numbers: 3x3 dots is solved once four
+    // edges are drawn, so 20 of a side's 24 plies over two games are proven and
+    // graded, and only the first four (two per game) are skipped as unproven.
+    // Checkers grades 9 of 163 because its `exact` means a terminal was proven.
+    // Same rig, same honesty gate, opposite denominators.
+    //
+    // 1-0-1 is not two evenly matched engines: 3x3 is a second-player win with
+    // perfect play, so **whoever opens loses**, every time. The rig alternates
+    // who opens each game (`tournament.ts`), so the same forced result reads as
+    // one win and one loss on the card. A draw here would be the finding — nine
+    // boxes cannot split — and so would a win for the side that opened.
+    recorded: {
+      games: 2,
+      wins: 1,
+      draws: 0,
+      losses: 1,
+      scoredMoves: 20,
+      optimal: 20,
+      preserving: 0,
+      blunders: 0,
+      skippedEarly: 4,
       abortedGames: 0,
       llmMoves: 0,
       fallbackMoves: 0,
