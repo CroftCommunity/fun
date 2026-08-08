@@ -742,6 +742,28 @@ the 360 px overflow assertion; `tests/tokens.test.ts` recomputes the new ratios.
 
 **Validation:** Moderate.
 
+### Phase 7 execution notes (2026-08-07)
+
+The identity is **graph paper**: a paper surface with an ink lattice, one
+saturated colour per side carrying both that side's drawn edges and its claimed
+boxes, and a hint colour that belongs to neither. Five tokens per theme in
+`tokens.css` with their ratios recorded; `tests/tokens.test.ts` recomputes four
+pairs per theme. axe runs on the board in **both** themes, and the claimed-box
+mark is asserted, so the two sides differ by shape as well as hue.
+
+Two decisions the screenshots made, neither of which a test would have:
+
+- **The hint may not wear a player's colour** (carried over from Phase 6, and the
+  reason `--dots-hint` exists as its own token rather than reusing `--accent`).
+- **The last-move ring is an offset outline, not a glow.** A filled 3 px glow in
+  a third colour covers the thin bar it is marking — and the point of marking the
+  opponent's edge is to see *whose* it was. Ink outline, 2 px offset, side colour
+  still visible inside.
+
+The theme inverts cleanly because the box mark is painted in the **paper**
+colour: paper is light and the fills dark in light mode, and the reverse in dark,
+so one token pair covers the mark's contrast in both.
+
 ### Phase 8: standard settings, hints, and the tutor panel
 
 **Goal:** The shared assistance model, and a coach that cannot lie.

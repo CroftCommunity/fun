@@ -3577,11 +3577,11 @@ body.fullscreen .le-stage {
   color: var(--ink-muted);
 }
 .dots-board {
-  --dots-dot: 26px;
-  --dots-seg: clamp(2.2rem, 13vw, 3.2rem);
+  --dots-node: 26px;
+  --dots-span: clamp(2.2rem, 13vw, 3.2rem);
   display: grid;
   padding: 0.55rem;
-  background: var(--felt);
+  background: var(--dots-paper);
   border-radius: var(--radius);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%), 0 2px 8px rgb(0 0 0 / 22%);
 }
@@ -3596,8 +3596,8 @@ body.fullscreen .le-stage {
   width: 34%;
   height: 34%;
   border-radius: 50%;
-  background: var(--felt-ink);
-  opacity: 0.85;
+  background: var(--dots-ink);
+  opacity: 0.9;
 }
 .dots-box {
   width: 100%;
@@ -3607,13 +3607,13 @@ body.fullscreen .le-stage {
   border-radius: 3px;
   font-size: 0.9rem;
   line-height: 1;
-  color: var(--ink);
+  color: var(--dots-paper);
 }
 .dots-box.a {
-  background: var(--accent);
+  background: var(--dots-a);
 }
 .dots-box.b {
-  background: var(--felt-ink);
+  background: var(--dots-b);
 }
 /* An edge: the whole grid cell is the target; the line lives inside it. */
 .dots-edge {
@@ -3630,8 +3630,8 @@ body.fullscreen .le-stage {
 .dots-edge::after {
   content: "";
   border-radius: 3px;
-  background: var(--felt-ink);
-  opacity: 0.1;
+  background: var(--dots-ink);
+  opacity: 0.16;
 }
 .dots-edge.h::after {
   width: 100%;
@@ -3648,13 +3648,14 @@ body.fullscreen .le-stage {
   cursor: pointer;
 }
 .dots-edge.legal::after {
-  background: var(--felt-ink);
-  opacity: 0.3;
+  background: var(--dots-hint);
+  opacity: 0.75;
 }
 .dots-edge.legal:hover::after,
 .dots-edge.legal:focus-visible::after {
-  background: var(--accent);
-  opacity: 0.95;
+  background: var(--dots-hint);
+  opacity: 1;
+  transform: scale(1.06);
 }
 .dots-edge.legal:focus-visible {
   outline: 3px solid var(--focus);
@@ -3672,14 +3673,17 @@ body.fullscreen .le-stage {
   width: 8px;
 }
 .dots-edge.drawn.a::after {
-  background: var(--accent);
+  background: var(--dots-a);
 }
 .dots-edge.drawn.b::after {
-  background: var(--felt-ink);
+  background: var(--dots-b);
 }
-/* The most recent edge — ringed, so the opponent's move is visible. */
+/* The most recent edge — ringed, so the opponent's move is visible. The ring is
+   ink and offset rather than a filled glow: a glow in a third colour covers the
+   thin bar it is marking, and the whole point is to see WHOSE edge it was. */
 .dots-edge.just-drawn::after {
-  box-shadow: 0 0 0 3px var(--active);
+  outline: 2px solid var(--dots-ink);
+  outline-offset: 2px;
 }
 .dots-status {
   margin: 0;
@@ -3700,7 +3704,7 @@ body.fullscreen .le-stage {
   color: var(--active);
 }
 .dots-board.dots-final {
-  --dots-dot: 18px;
-  --dots-seg: clamp(1.4rem, 8vw, 2rem);
+  --dots-node: 18px;
+  --dots-span: clamp(1.4rem, 8vw, 2rem);
   margin: 0.3rem auto 0.6rem;
 }

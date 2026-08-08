@@ -87,6 +87,13 @@ const PAIRS: ReadonlyArray<readonly [string, string, number]> = [
   ["chk-a", "chk-dark", 3], // checkers men must read on the playable dark square
   ["chk-b", "chk-dark", 3],
   ["chk-legal", "chk-dark", 3], // the tap-target hint is a UI indicator
+  // Dots and Boxes: the two sides' edges and box fills read against the paper,
+  // and the box mark reads against the fill. The mark is painted in the paper
+  // colour, which inverts with the theme, so one pair per side covers both.
+  ["dots-a", "dots-paper", 4.5],
+  ["dots-b", "dots-paper", 4.5],
+  ["dots-ink", "dots-paper", 3], // the lattice dots are a UI element
+  ["dots-hint", "dots-paper", 3], // the legal-edge hint is a UI indicator
 ];
 
 describe.each(["light", "dark"] as const)("tokens: %s theme clears WCAG AA", (name) => {

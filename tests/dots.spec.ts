@@ -6,6 +6,7 @@
 //! shows the final board and a re-verifying `?r=` share; the difficulty picker
 //! persists.
 
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
 async function ready(page: Page): Promise<void> {
@@ -124,6 +125,36 @@ test("a full game plays to a result; the final board shows; the share re-verifie
   await expect(shared.locator(".sol-verify-badge.ok")).toBeVisible();
   await expect(shared.locator(".dots-board.dots-final")).toBeVisible();
   await shared.close();
+});
+
+// Identity + accessibility (Phase 7). The board is scenery plus 24 controls, so
+// it is exactly the shape axe catches unlabelled targets in — and it must clear
+// the bar in both themes, not just the one the author happens to run.
+for (const theme of ["light", "dark"] as const) {
+  test(`no axe violations on the board (${theme})`, async ({ page }) => {
+    await page.addInitScript((t) => localStorage.setItem("fun-theme", t), theme);
+    await page.goto("/dots/?seed=7");
+    await ready(page);
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+    const results = await new AxeBuilder({ page }).include(".dots-game").analyze();
+    expect(results.violations).toEqual([]);
+  });
+}
+
+test("a claimed box carries a mark, so the sides differ by more than colour", async ({ page }) => {
+  await page.goto("/dots/?seed=7");
+  await ready(page);
+  // Drive the core to a claimed box, then check the rendered box carries its
+  // side's glyph and an accessible name — colour alone is not a signal.
+  await page.evaluate(() => {
+    const g = window.__dots!.game;
+    for (const e of [0, 3, 12, 13]) g.play(e);
+    window.__dots!.refresh();
+  });
+  const box = page.locator(".dots-box.a, .dots-box.b").first();
+  await expect(box).toHaveCount(1);
+  await expect(box.locator(".dots-mark")).toHaveText(/[▲●]/);
+  await expect(box).toHaveAttribute("aria-label", /claimed by/i);
 });
 
 test("the board fits a narrow phone viewport (no horizontal overflow)", async ({ page }) => {

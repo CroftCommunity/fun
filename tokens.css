@@ -95,6 +95,19 @@
   --chk-b: #f6f4ef;           /* Side B's men on --chk-dark   (4.23:1) */
   --chk-legal: #ffd76a;       /* tap-target hint on --chk-dark (3.36:1) */
 
+  /* Dots and Boxes — the "graph paper" identity: a warm paper surface with an
+     ink lattice, and one saturated colour per side used for both that side's
+     drawn edges and its claimed boxes. The box mark (▲ / ●) is painted in the
+     paper colour, so the two sides are told apart by shape as well as hue. The
+     legal-edge hint is deliberately neither side's colour — a hint wearing a
+     player's colour reads as an edge somebody already drew. Pinned in
+     tests/tokens.test.ts. */
+  --dots-paper: #f4ecd8;      /* the board surface (paper)             */
+  --dots-ink: #6b6350;        /* the lattice dots  on paper  (5.06:1)  */
+  --dots-a: #26418f;          /* Side A: edges + boxes       (7.98:1)  */
+  --dots-b: #9b3016;          /* Side B: edges + boxes       (6.31:1)  */
+  --dots-hint: #8a7a4a;       /* a drawable edge (neither side) (3.59:1) */
+
   /* Blockdoku board lines (graphical, not text): a thin cell grid and a heavier
      3×3-box divider that also frames the board, so the nine sub-squares read at a
      glance on the tan cells. */
@@ -231,6 +244,15 @@
   --chk-a: #0c0d10;           /* Side A's men on --chk-dark   (3.25:1) */
   --chk-b: #eceae4;           /* Side B's men on --chk-dark   (4.98:1) */
   --chk-legal: #ffd76a;       /* tap-target hint on --chk-dark (4.33:1) */
+
+  /* Dots and Boxes, re-tuned for dark: the paper becomes slate and both sides
+     lighten, so the same rule holds — the mark stays the paper colour and now
+     reads dark on a light fill. */
+  --dots-paper: #232830;      /* the board surface (slate)             */
+  --dots-ink: #9aa3ad;        /* the lattice dots  on slate  (5.80:1)  */
+  --dots-a: #8fb0ff;          /* Side A: edges + boxes       (6.93:1)  */
+  --dots-b: #ff9d78;          /* Side B: edges + boxes       (7.30:1)  */
+  --dots-hint: #d8c07a;       /* a drawable edge (neither side) (8.28:1) */
 
   /* Blockdoku board lines, re-tuned for dark: a subtle grid and a light-moss
      box divider that pops on the near-black cells. */
