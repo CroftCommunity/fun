@@ -24,8 +24,9 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { dotsOracle } from "../src/games/dots/dots-oracle.js";
 import { Dots } from "../src/games/dots/dots-wasm.js";
 import type { GameOracle } from "../src/harness/game-oracle.js";
-import { buildBand } from "../src/harness/hybrid-player.js";
-import { EnginePlayer } from "../src/harness/match-runner.js";
+import { buildBand, HybridPlayer } from "../src/harness/hybrid-player.js";
+import { MockRuntime } from "../src/harness/ai-runtime.js";
+import { EnginePlayer, HybridAiPlayer } from "../src/harness/match-runner.js";
 import { renderReport, runTournament } from "../src/harness/tournament.js";
 
 const WASM = "target/wasm32-unknown-unknown/release/dots_wasm.wasm";
@@ -145,4 +146,84 @@ describe("the band carries the game's own idea", () => {
     }
     expect(sawCapture, "no capture ever appeared in 4 games").toBe(true);
   }, 300_000);
+});
+
+/**
+ * Phase 11 — the experimental hybrid opponent's CI proof.
+ *
+ * The live WebGPU run is the owner's to make (`HARNESS_TRIAL_GAME=dots npm run
+ * harness:trial` on system Chrome); nothing here downloads a model. What is
+ * provable on CI is the guarantee that actually matters: **whatever the model
+ * says, the move played is one the engine offered** — and every failure mode
+ * lands on the engine's own top-of-band choice rather than breaking the game.
+ */
+describe("the hybrid opponent never leaves the engine's band", () => {
+  const bandOf = (oracle: GameOracle): number[] => buildBand(oracle.tutor().moves).map((m) => m.col);
+
+  it("an in-band pick is played; garbage, out-of-band and a throw all fall back", async () => {
+    const oracle = await loadReal();
+    oracle.newGame(0n);
+    // Play on until the band is a **strict subset** of the legal edges. Early on
+    // nothing is a blunder, so a band of everything would make "stayed in band"
+    // vacuous — the fallback could return any move and pass.
+    for (let ply = 0; ply < 20; ply += 1) {
+      if (bandOf(oracle).length < oracle.legalMoves().length) break;
+      const mv = oracle.liveMove(3);
+      if (mv === null) break;
+      oracle.play(mv);
+    }
+    const band = bandOf(oracle);
+    const best = band[0]!;
+    expect(band.length).toBeGreaterThan(1);
+    expect(band.length).toBeLessThan(oracle.legalMoves().length);
+
+    const pickWith = async (reply: (p: string, o: { schema?: unknown }) => string): Promise<number> => {
+      const player = new HybridPlayer(new MockRuntime({ reply: reply as never }));
+      const decision = await player.pick(buildBand(oracle.tutor().moves), {
+        prompt: "pick one",
+        system: "test",
+      });
+      return decision.move;
+    };
+
+    // A model that picks the last offered edge: honoured, because it is in band.
+    const last = band[band.length - 1]!;
+    expect(await pickWith(() => JSON.stringify({ move: last, reason: "ok" }))).toBe(last);
+    // Garbage, an out-of-band edge, and a thrown error all land on the engine's
+    // top-of-band move — never on an illegal one, and never on an exception.
+    expect(await pickWith(() => "not json at all")).toBe(best);
+    expect(
+      await pickWith(() => JSON.stringify({ move: 99, reason: "off the board" })),
+    ).toBe(best);
+    expect(
+      await pickWith(() => {
+        throw new Error("model exploded");
+      }),
+    ).toBe(best);
+  }, 120_000);
+
+  it("stays in band for a whole game, so a hybrid seat never blunders", async () => {
+    const hybrid = new HybridAiPlayer(
+      new HybridPlayer(
+        new MockRuntime({
+          // Always the LAST offered edge — the weakest in-band choice, so the
+          // class floor is being tested rather than the band's ordering.
+          reply: (_p, o) => {
+            const values = ((o.schema as { properties?: { move?: { enum?: number[] } } })
+              .properties?.move?.enum ?? [0]) as number[];
+            return JSON.stringify({ move: values[values.length - 1], reason: "last" });
+          },
+        }),
+      ),
+    );
+    const report = await runTournament(loadReal, hybrid, new EnginePlayer(3), {
+      games: 2,
+      baseSeed: 0n,
+    });
+    expect(report.abortedGames).toBe(0);
+    expect(report.card.scoredMoves).toBeGreaterThan(0);
+    expect(report.card.blunders).toBe(0);
+    // Provenance: the moves came from the model, not from a silent fallback.
+    expect(report.card.llmMoves).toBeGreaterThan(0);
+  }, 900_000);
 });

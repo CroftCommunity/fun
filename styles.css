@@ -3747,3 +3747,16 @@ body.fullscreen .le-stage {
   align-items: center;
   gap: 0.35rem;
 }
+/* The experimental local-AI opponent's spoken line + its disclosure. */
+.dots-ai-say {
+  margin: 0;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+.dots-ai-disclosure {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  color: var(--ink-muted);
+  max-width: 26rem;
+}

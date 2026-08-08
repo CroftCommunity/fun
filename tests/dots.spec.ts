@@ -208,6 +208,41 @@ test("'Explain my options' lists band edges, each with the engine's own reason",
   expect(await items.count()).toBeGreaterThanOrEqual(2);
 });
 
+test("the experimental local-AI opponent is hidden with no real WebGPU adapter", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "gpu", {
+      configurable: true,
+      value: { requestAdapter: async () => null },
+    });
+  });
+  await page.goto("/dots/?seed=7");
+  await ready(page);
+  await page.locator(".dots-settings summary").click();
+  await expect(page.locator(".dots-ai-toggle-input")).toHaveCount(0);
+});
+
+test("the experimental local-AI toggle appears with a real adapter and discloses the download", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "gpu", {
+      configurable: true,
+      value: { requestAdapter: async () => ({ isFallbackAdapter: false }) },
+    });
+  });
+  await page.goto("/dots/?seed=7");
+  await ready(page);
+  await page.locator(".dots-settings summary").click();
+  const toggle = page.locator(".dots-ai-toggle-input");
+  await expect(toggle).toHaveCount(1);
+  await toggle.check();
+  await expect(page.locator(".dots-ai-disclosure")).toContainText(/download|one[- ]time|GB|MB/i);
+  // And it discloses the guarantee, not just the cost.
+  await expect(page.locator(".dots-ai-disclosure")).toContainText(/never plays a losing move/i);
+});
+
 test("the board fits a narrow phone viewport (no horizontal overflow)", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 720 });
   await page.goto("/dots/?seed=7");

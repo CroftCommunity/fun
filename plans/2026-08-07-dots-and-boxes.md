@@ -1,7 +1,7 @@
 # Dots and Boxes — the fourth adversarial game
 
-status: **Pass 1 + Pass 2 complete.** Executing: Phases 1–10 are in (Phase 3a
-dropped; Phase 4 run late, after Phase 8). Next: Phase 11.
+status: **Pass 1 + Pass 2 complete.** Executing: Phases 1–11 are in (Phase 3a
+dropped; Phase 4 run late, after Phase 8). Next: Phase 12.
 
 owner decisions (2026-08-07): **3×3 boxes** (4×4 dots, 24 edges, 9 boxes) and the
 **full §10 checklist** including the experimental WebGPU hybrid.
@@ -1057,6 +1057,32 @@ verified.
    labelled as owner-run.
 
 **Validation:** Moderate on CI, and explicitly incomplete until the live trial runs.
+
+### Phase 11 execution notes (2026-08-07)
+
+Bramble 🌾 joins Chip, Rowan and Alder. The shared `buildBand` / `HybridPlayer` /
+`WebLLMRuntime` / `speak` are reused **unchanged** — the fourth game to do so.
+
+One thing was genuinely simpler here than in the three before it: **the band's
+`idea` needed no phrasing in TypeScript.** Othello's adapter writes "takes a
+corner", checkers' writes "takes 2 pieces"; this game's reason is computed in
+Rust (`idea_for`) and carried through both the tutor and the oracle, so the UI
+opponent and the harness hybrid say the same sentence because it is *the same
+sentence*, not because two files agree.
+
+**What is proven on CI, and what is not.** The mock-runtime tests hold the
+guarantee that matters — an in-band pick is honoured, and garbage, an
+out-of-band edge and a thrown error all fall back to the engine's top-of-band
+move — and a full mock game grades 0 blunders with a non-zero `llmMoves`, so the
+moves came from the model rather than from a silent fallback. The band in that
+test is first driven to a **strict subset** of the legal edges, because early on
+nothing is a blunder and "stayed in band" over a band of everything asserts
+nothing.
+
+**The live WebGPU run has not been made.** `HARNESS_TRIAL_GAME=dots npm run
+harness:trial` needs system Chrome and a model download; that is the owner's
+machine, not this one. The toggle's presence and its disclosure are E2E-tested
+against a faked adapter, which proves the gating, not the model.
 
 ### Phase 12: measure the latency, at every level
 

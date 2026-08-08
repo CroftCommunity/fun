@@ -16,6 +16,9 @@
 //! finished match is a verifiable `pond-outcome` record, shareable via `?r=`.
 
 import type { GameModule } from "../../contract.js";
+import { WebLLMRuntime } from "../../harness/ai-runtime.js";
+import { speak } from "../../harness/banter.js";
+import { buildBand, HybridPlayer, type BandMove } from "../../harness/hybrid-player.js";
 import {
   declareAssistanceEnabled,
   dotsLevel,
@@ -55,11 +58,24 @@ declare global {
       refresh: () => void;
       seed: bigint;
     };
+    /** Test seam: override the local-AI model id (a smaller/faster model). */
+    __DOTS_AI_MODEL?: string;
   }
 }
 
 /** The opponent's identity — honest: it is the shelf's engine. */
 const OPPONENT = { name: "The Engine", avatar: "🤖" } as const;
+
+const LOCAL_AI = "local-ai";
+/** A small, fast model — the local-AI opponent is UX (banter), not strength. */
+const LOCAL_AI_MODEL = "Qwen2.5-0.5B-Instruct-q4f16_1-MLC";
+/** The experimental local-AI opponent's persona (the Chip/Rowan/Alder line). */
+const LOCAL_AI_PERSONA = { name: "Bramble", avatar: "🌾" } as const;
+const HYBRID_SYSTEM = [
+  "You are Bramble, a friendly but competitive Dots and Boxes opponent.",
+  "You always pick from the offered edges (they are safe by construction).",
+  "You add a short, in-character line of banter — never analysis, never move lists.",
+].join(" ");
 
 const THINK_MS = 420;
 const FANFARE_MS = 1200;
@@ -230,6 +246,20 @@ export function dotsModule(): GameModule {
   /** Set when the player ends the match themselves — the honest report. */
   let endedEarly: string | null = null;
 
+  // --- experimental local-AI opponent (hybrid: engine band + LLM in-band pick) ---
+  // Offered only when a real WebGPU adapter is present; the classic engine is the
+  // default. All LLM code is lazy — no model download unless the toggle is on and
+  // a move is played. Reuses the game-agnostic hybrid harness unchanged.
+  let localAiAvailable = false;
+  let opponentKind: "engine" | typeof LOCAL_AI = "engine";
+  let runtime: WebLLMRuntime | null = null;
+  let hybrid: HybridPlayer | null = null;
+  let aiSay: string | null = null;
+  let lastHumanQuality: "optimal" | "resultPreserving" | "blunder" | null = null;
+
+  const opponentIdentity = (): { name: string; avatar: string } =>
+    opponentKind === LOCAL_AI ? LOCAL_AI_PERSONA : OPPONENT;
+
   /** The side value the human plays: 1 (opens) or 2 (replies). */
   const humanSide = (): SideCode => (seat === "first" ? 1 : 2);
   const engineSide = (): SideCode => (humanSide() === 1 ? 2 : 1);
@@ -267,17 +297,19 @@ export function dotsModule(): GameModule {
       return;
     }
     thinking = true;
-    setStatus(`${OPPONENT.name} is thinking…`);
+    setStatus(`${opponentIdentity().name} is thinking…`);
     render();
     window.setTimeout(() => {
+      void (async () => {
       if (disposed || !game) return;
-      const mv = game.liveMove(level as Level);
+      const mv = opponentKind === LOCAL_AI ? await hybridMove() : game.liveMove(level as Level);
+      if (disposed || !game) return;
       if (mv !== null) game.play(mv);
       const b = game.board();
       thinking = false;
       setStatus(
         b.keptTurn && b.result === -1
-          ? `${OPPONENT.name} closed a box — it goes again.`
+          ? `${opponentIdentity().name} closed a box — it goes again.`
           : "",
       );
       // The reply is in, so the coaching for the human's move can surface.
@@ -286,6 +318,7 @@ export function dotsModule(): GameModule {
         pendingCoach = null;
       }
       step();
+      })();
     }, THINK_MS);
   };
 
@@ -297,9 +330,13 @@ export function dotsModule(): GameModule {
     // Assess the tapped edge at the position it was tapped in — after the move
     // the facts are about a different board. The cheap per-tap export, not the
     // panel's: the panel's budget must not land on every tap.
-    const verdict = dotsTutorEnabled() ? game.assess(edge) : null;
+    // The verdict drives the coach (when the tutor is on) and the local-AI
+    // opponent's reaction, so it is read whenever either could use it.
+    const wantVerdict = dotsTutorEnabled() || opponentKind === LOCAL_AI;
+    const verdict = wantVerdict ? game.assess(edge) : null;
+    lastHumanQuality = verdict?.quality ?? null;
     const pending =
-      verdict && verdict.quality !== "optimal"
+      dotsTutorEnabled() && verdict && verdict.quality !== "optimal"
         ? coachFor(verdict, game.coach().bestCol, dims.rows, dims.cols)
         : null;
     if (game.play(edge) !== "applied") return;
@@ -330,6 +367,93 @@ export function dotsModule(): GameModule {
     const left = game.board().legal.length;
     endedEarly = `Ended early — ${left} edges were still undrawn.`;
     finish();
+  };
+
+  // --- the experimental local-AI opponent ---
+  // What just happened, in one word — drives the persona prompt and the fallback
+  // line, so the banter is reactive rather than generic.
+  type Situation = "closing" | "giving" | "blundered" | "neutral";
+  const readSituation = (band: readonly BandMove[]): Situation => {
+    if (band.some((m) => m.idea.startsWith("closes"))) return "closing";
+    if (lastHumanQuality === "blunder") return "blundered";
+    if (band.every((m) => m.idea.startsWith("hands over"))) return "giving";
+    return "neutral";
+  };
+  const SITUATION_HINT: Record<Situation, string> = {
+    closing: "A box is there for the taking — claim it with a little flourish.",
+    giving: "Every line on offer hands something over — be rueful about it.",
+    blundered: "The player just slipped — tease taking advantage.",
+    neutral: "Nothing decisive yet — a light competitive jab.",
+  };
+  const FALLBACK_LINE: Record<Situation, string> = {
+    closing: "That one's mine. And I go again.",
+    giving: "Fine. Take it — I'll take the next three.",
+    blundered: "Ooh, thank you for that.",
+    neutral: "Your move. I'm not worried yet.",
+  };
+
+  const hybridPrompt = (g: Dots, band: readonly BandMove[], sit: Situation): string => {
+    const edges = band.map((m) => m.col).join(", ");
+    return [
+      `Board (free edges show their own number):\n${g.renderText()}`,
+      SITUATION_HINT[sit],
+      `Draw ONE of these edges: ${edges}.`,
+      `Reply ONLY with JSON {"move": <one of ${edges}>, "reason": "<your one-line quip, under 12 words>"}.`,
+    ].join("\n");
+  };
+
+  // The engine builds a never-throw band, the LLM picks within it and quips, and
+  // any failure falls back to the engine. `buildBand`/`HybridPlayer` are the
+  // shipped shared ones, unchanged — the fourth game to reuse them as-is.
+  const hybridMove = async (): Promise<number | null> => {
+    if (!game) return null;
+    try {
+      if (!runtime || !hybrid) {
+        setStatus(`${LOCAL_AI_PERSONA.name}: warming up the model (one-time download)…`);
+        render();
+        runtime = new WebLLMRuntime({
+          model: window.__DOTS_AI_MODEL ?? LOCAL_AI_MODEL,
+          onProgress: (t) => setStatus(`${LOCAL_AI_PERSONA.name}: ${t}`),
+        });
+        hybrid = new HybridPlayer(runtime);
+      }
+      // This game's `idea` comes from the engine itself (Rust), so unlike the
+      // other three the band needs no phrasing here — the same sentence the
+      // tutor and the harness adapter carry.
+      const band = buildBand(game.tutor().moves);
+      if (band.length === 0) return game.liveMove(level as Level); // no band → classic safety
+      const sit = readSituation(band);
+      const decision = await hybrid.pick(band, {
+        prompt: hybridPrompt(game, band, sit),
+        system: HYBRID_SYSTEM,
+      });
+      // The shared filter decides whether the model's own words are fit to speak
+      // (`src/harness/banter.ts`): a line that claims something about the board
+      // can be false, and a persona that sounds authoritative and is wrong is the
+      // cosmetic cousin of an over-claimed `exact`.
+      aiSay = speak(decision, FALLBACK_LINE[sit]).line;
+      return decision.move;
+    } catch {
+      aiSay = null;
+      return game.liveMove(level as Level); // never break the game on an AI failure
+    }
+  };
+
+  // A real WebGPU adapter is required; probe once on mount and offer the toggle
+  // only if it passes (the classic engine otherwise).
+  const probeLocalAi = async (): Promise<void> => {
+    try {
+      const gpu = (
+        navigator as Navigator & {
+          gpu?: { requestAdapter(): Promise<{ isFallbackAdapter?: boolean } | null> };
+        }
+      ).gpu;
+      const adapter = gpu ? await gpu.requestAdapter() : null;
+      localAiAvailable = Boolean(adapter) && adapter?.isFallbackAdapter !== true;
+    } catch {
+      localAiAvailable = false;
+    }
+    if (!disposed && localAiAvailable) render();
   };
 
   const buildBoard = (board: BoardView, interactive: boolean): HTMLElement => {
@@ -409,7 +533,7 @@ export function dotsModule(): GameModule {
         ? ""
         : board.toMove === humanSide()
           ? "Your move"
-          : `${OPPONENT.name} to move`;
+          : `${opponentIdentity().name} to move`;
     return el(
       "div",
       { class: "dots-turnbar" },
@@ -421,7 +545,7 @@ export function dotsModule(): GameModule {
       el(
         "span",
         { class: "dots-score them" },
-        `${OPPONENT.name} ${OPPONENT.avatar} ${MARK[engineSide()]} ${theirBoxes(board)}`,
+        `${opponentIdentity().name} ${opponentIdentity().avatar} ${MARK[engineSide()]} ${theirBoxes(board)}`,
       ),
       el("span", { class: "dots-turn", role: "status", "aria-live": "polite" }, turn),
     );
@@ -495,6 +619,25 @@ export function dotsModule(): GameModule {
         render();
       }),
     );
+    if (localAiAvailable) {
+      details.append(
+        toggle(
+          opponentKind === LOCAL_AI,
+          "Experimental: local AI opponent",
+          "dots-ai-toggle-input",
+          (on) => {
+            opponentKind = on ? LOCAL_AI : "engine";
+            aiSay = null;
+            render();
+          },
+        ),
+        el(
+          "p",
+          { class: "dots-ai-disclosure" },
+          `An in-browser model (${LOCAL_AI_PERSONA.name}) picks within the engine's safe edges and adds banter — a one-time model download on first use; it never plays a losing move (the engine's band decides).`,
+        ),
+      );
+    }
 
     bar.append(
       el("label", { class: "dots-field" }, "Difficulty ", levelSel),
@@ -551,6 +694,10 @@ export function dotsModule(): GameModule {
         "div",
         { class: "dots-game" },
         renderTurnbar(board),
+        // The local-AI opponent's spoken reason for its last move (personality).
+        ...(aiSay && opponentKind === LOCAL_AI
+          ? [el("p", { class: "dots-ai-say", role: "status" }, `${LOCAL_AI_PERSONA.name}: ${aiSay}`)]
+          : []),
         renderControls(),
         el(
           "p",
@@ -571,7 +718,7 @@ export function dotsModule(): GameModule {
     // reached — the record says `Abandoned`, and the screen should agree.
     if (board.result === -1) return endedEarly ?? "Ended early";
     if (board.result === 0) return `A draw ${you}–${them}`;
-    return you > them ? `You won ${you}–${them}` : `${OPPONENT.name} won ${them}–${you}`;
+    return you > them ? `You won ${you}–${them}` : `${opponentIdentity().name} won ${them}–${you}`;
   };
 
   const finish = (): void => {
@@ -622,6 +769,8 @@ export function dotsModule(): GameModule {
     coachMsg = null;
     pendingCoach = null;
     endedEarly = null;
+    aiSay = null;
+    lastHumanQuality = null;
     seed = seedOverride ?? randomSeed();
     game.newGame(seed);
     setStatus("");
@@ -697,6 +846,9 @@ export function dotsModule(): GameModule {
         }
         const seedParam = url.searchParams.get("seed");
         await startGame(seedParam !== null ? BigInt(seedParam) : undefined);
+        // Probe WebGPU in the background; if present the controls re-render with
+        // the experimental local-AI opponent offered (classic engine otherwise).
+        void probeLocalAi();
       })();
     },
     unmount(): void {
@@ -706,6 +858,8 @@ export function dotsModule(): GameModule {
       container = null;
       game = null;
       verifier = null;
+      runtime = null; // release the WebGPU engine (local-AI) if it was created
+      hybrid = null;
     },
   };
 }
