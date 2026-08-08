@@ -17,10 +17,16 @@
 
 import type { GameModule } from "../../contract.js";
 import {
+  declareAssistanceEnabled,
   dotsLevel,
   dotsSeat,
+  dotsTutorEnabled,
+  hintsEnabled,
+  setDeclareAssistance,
   setDotsLevel,
   setDotsSeat,
+  setDotsTutor,
+  setHintsEnabled,
   type DotsLevel,
   type DotsSeat,
 } from "../../settings.js";
@@ -32,7 +38,14 @@ import {
   type DotsEnvelope,
   type VerifyResult,
 } from "./dots-outcome.js";
-import { Dots, type BoardView, type Level, type SideCode } from "./dots-wasm.js";
+import {
+  Dots,
+  type BoardView,
+  type EdgeVerdict,
+  type Level,
+  type SideCode,
+  type TutorReport,
+} from "./dots-wasm.js";
 
 declare global {
   interface Window {
@@ -80,6 +93,42 @@ export function edgeLabel(edge: number, rows: number, cols: number): string {
   const v = edge - hEdges;
   const r = Math.floor(v / (cols + 1));
   return `vertical edge, row ${r + 1}, column ${(v % (cols + 1)) + 1}`;
+}
+
+/**
+ * What the coach may say about a move the player just made, or `null` when
+ * there is nothing honest to add.
+ *
+ * The sentence itself is the **engine's** (`coach_line` in `dots-solver`, bound
+ * to `exact` in Rust so a depth-capped verdict cannot be worded as a proof).
+ * This adds only the pointer to a better edge — and hedges that pointer the same
+ * way: a search that proved nothing cannot claim the other edge held the game.
+ */
+export function coachFor(
+  verdict: EdgeVerdict | null,
+  bestEdge: number | null,
+  rows: number,
+  cols: number,
+): string | null {
+  if (!verdict || verdict.quality === "optimal") return null;
+  if (bestEdge === null) return verdict.line;
+  const where = `The ${edgeLabel(bestEdge, rows, cols)}`;
+  return verdict.exact
+    ? `${verdict.line} ${where} held it.`
+    : `${verdict.line} ${where} may be stronger.`;
+}
+
+/**
+ * A hint: which edge the engine likes, **why** it likes it, and the fact that
+ * taking it counts as assistance. A hint that only pointed would teach nothing,
+ * and one that did not declare its cost would quietly weaken the record.
+ */
+export function hintLine(report: TutorReport, rows: number, cols: number): string | null {
+  const best = report.bestCol;
+  if (best === null) return null;
+  const fact = report.moves.find((m) => m.col === best);
+  const why = fact ? ` — ${fact.idea}` : "";
+  return `Hint: the ${edgeLabel(best, rows, cols)}${why}. (A hint counts as assistance.)`;
 }
 
 // ---------- the result screen (pure DOM) ----------
@@ -174,6 +223,12 @@ export function dotsModule(): GameModule {
   let seed = 0n;
   let level: DotsLevel = dotsLevel();
   let seat: DotsSeat = dotsSeat();
+  // Engine-grounded coaching for the human's last move, surfaced once the
+  // engine has replied (so it does not spoil the reply). Cleared each turn.
+  let coachMsg: string | null = null;
+  let pendingCoach: string | null = null;
+  /** Set when the player ends the match themselves — the honest report. */
+  let endedEarly: string | null = null;
 
   /** The side value the human plays: 1 (opens) or 2 (replies). */
   const humanSide = (): SideCode => (seat === "first" ? 1 : 2);
@@ -225,6 +280,11 @@ export function dotsModule(): GameModule {
           ? `${OPPONENT.name} closed a box — it goes again.`
           : "",
       );
+      // The reply is in, so the coaching for the human's move can surface.
+      if (pendingCoach !== null && b.toMove === humanSide()) {
+        coachMsg = pendingCoach;
+        pendingCoach = null;
+      }
       step();
     }, THINK_MS);
   };
@@ -232,14 +292,44 @@ export function dotsModule(): GameModule {
   const playEdge = (edge: number): void => {
     if (!game || thinking || ending || gameOver() || !humanToMove()) return;
     if (!game.board().legal.includes(edge)) return; // the core decides legality
+    const dims = game.board();
+    coachMsg = null; // clear last turn's coaching
+    // Assess the tapped edge at the position it was tapped in — after the move
+    // the facts are about a different board. The cheap per-tap export, not the
+    // panel's: the panel's budget must not land on every tap.
+    const verdict = dotsTutorEnabled() ? game.assess(edge) : null;
+    const pending =
+      verdict && verdict.quality !== "optimal"
+        ? coachFor(verdict, game.coach().bestCol, dims.rows, dims.cols)
+        : null;
     if (game.play(edge) !== "applied") return;
     const b = game.board();
-    setStatus(
-      b.keptTurn && b.result === -1
-        ? "You closed a box — your turn again."
-        : "",
-    );
+    setStatus(b.keptTurn && b.result === -1 ? "You closed a box — your turn again." : "");
+    // Hold the coaching until the engine has replied, so it does not sit on
+    // screen spoiling a move that has not happened yet.
+    if (b.result !== -1 || b.toMove === humanSide()) coachMsg = pending;
+    else pendingCoach = pending;
     step();
+  };
+
+  // --- assistance ---
+
+  const showHint = (): void => {
+    if (!game || thinking || ending || gameOver() || !humanToMove()) return;
+    const b = game.board();
+    const said = hintLine(game.coach(), b.rows, b.cols);
+    if (!said) return;
+    game.markAssistance(); // the binding holds the flag; the record carries it
+    setStatus(said);
+    render();
+  };
+
+  /** Hints off: the control ends the match, and says what was left on the board. */
+  const endNow = (): void => {
+    if (!game || ending) return;
+    const left = game.board().legal.length;
+    endedEarly = `Ended early — ${left} edges were still undrawn.`;
+    finish();
   };
 
   const buildBoard = (board: BoardView, interactive: boolean): HTMLElement => {
@@ -369,12 +459,88 @@ export function dotsModule(): GameModule {
     const fresh = el("button", { type: "button", class: "sol-fresh" }, "New game");
     fresh.addEventListener("click", () => void startGame());
 
+    // The shared assistance control: a hint while hints are on, and otherwise
+    // the honest way out — ending the match rather than pretending it finished.
+    const hints = hintsEnabled();
+    const action = el(
+      "button",
+      { type: "button", class: hints ? "dots-hint" : "dots-stuck" },
+      hints ? "Hint" : "I’m done",
+    );
+    action.addEventListener("click", hints ? showHint : endNow);
+
+    const toggle = (
+      checked: boolean,
+      label: string,
+      cls: string,
+      onChange: (on: boolean) => void,
+    ): HTMLElement => {
+      const input = el("input", { type: "checkbox", class: cls });
+      (input as HTMLInputElement).checked = checked;
+      input.addEventListener("change", () => onChange((input as HTMLInputElement).checked));
+      return el("label", { class: "dots-toggle" }, input, ` ${label}`);
+    };
+    const details = el("details", { class: "sol-settings dots-settings" });
+    details.append(
+      el("summary", {}, "Settings"),
+      toggle(hints, "Enable hints", "dots-set-hints", (on) => {
+        setHintsEnabled(on);
+        render(); // relabel the action control (Hint ↔ I'm done)
+      }),
+      toggle(declareAssistanceEnabled(), "Declare assistance used", "dots-set-assist", (on) => {
+        setDeclareAssistance(on);
+      }),
+      toggle(dotsTutorEnabled(), "Show tutor", "dots-set-tutor", (on) => {
+        setDotsTutor(on);
+        render();
+      }),
+    );
+
     bar.append(
       el("label", { class: "dots-field" }, "Difficulty ", levelSel),
       el("label", { class: "dots-field" }, "You play ", seatSel),
       fresh,
+      action,
+      details,
     );
     return bar;
+  };
+
+  // --- the tutor panel (engine-grounded coaching; opt-in, no GPU) ---
+  const renderTutorPanel = (): HTMLElement => {
+    const panel = el("section", { class: "dots-tutor", "aria-label": "Tutor" });
+    const explain = el(
+      "button",
+      { type: "button", class: "dots-tutor-explain" },
+      "Explain my options",
+    );
+    const note = el("p", { class: "dots-tutor-note", "aria-live": "polite" });
+    const optionsEl = el("ul", { class: "dots-tutor-options", "aria-label": "Reasonable edges" });
+    explain.addEventListener("click", () => {
+      if (!game || thinking || ending || gameOver() || !humanToMove()) return;
+      // Paint the reading state BEFORE the deep search starts. The panel's
+      // search blocks the main thread, so without this the button looks dead
+      // for as long as it runs — the lesson checkers learned the hard way.
+      note.textContent = "Reading ahead…";
+      const g = game;
+      const b = g.board();
+      window.setTimeout(() => {
+        const report = g.tutor();
+        const band = report.moves
+          .filter((m) => m.quality !== "blunder")
+          .sort((x, y) => y.value - x.value);
+        note.textContent = report.exact ? "Solved from here:" : "Reading ahead (not yet certain):";
+        optionsEl.replaceChildren(
+          ...band
+            .slice(0, 6)
+            .map((m) => el("li", {}, `${edgeLabel(m.col, b.rows, b.cols)} — ${m.idea}`)),
+        );
+      }, 0);
+    });
+    const coach = el("p", { class: "dots-tutor-coach", role: "status", "aria-live": "polite" });
+    if (coachMsg) coach.textContent = coachMsg;
+    panel.append(explain, note, optionsEl, coach);
+    return panel;
   };
 
   function render(): void {
@@ -392,6 +558,7 @@ export function dotsModule(): GameModule {
           "Tap an edge. Draw the fourth side of a box to claim it — and go again. Most boxes wins.",
         ),
         buildBoard(board, true),
+        ...(dotsTutorEnabled() ? [renderTutorPanel()] : []),
         statusEl,
       ),
     );
@@ -400,7 +567,9 @@ export function dotsModule(): GameModule {
   const outcomeLabel = (board: BoardView): string => {
     const you = yourBoxes(board);
     const them = theirBoxes(board);
-    if (board.result === -1) return "Ended early";
+    // An unfinished match reports what was left rather than a score nobody
+    // reached — the record says `Abandoned`, and the screen should agree.
+    if (board.result === -1) return endedEarly ?? "Ended early";
     if (board.result === 0) return `A draw ${you}–${them}`;
     return you > them ? `You won ${you}–${them}` : `${OPPONENT.name} won ${them}–${you}`;
   };
@@ -427,7 +596,7 @@ export function dotsModule(): GameModule {
 
   const presentResult = async (): Promise<void> => {
     if (!container || !game) return;
-    const env = game.outcome(false) as DotsEnvelope;
+    const env = game.outcome(declareAssistanceEnabled()) as DotsEnvelope;
     const board = game.board();
     const label = outcomeLabel(board);
     container.replaceChildren(
@@ -450,6 +619,9 @@ export function dotsModule(): GameModule {
     if (!game || disposed) return;
     thinking = false;
     ending = false;
+    coachMsg = null;
+    pendingCoach = null;
+    endedEarly = null;
     seed = seedOverride ?? randomSeed();
     game.newGame(seed);
     setStatus("");

@@ -157,6 +157,57 @@ test("a claimed box carries a mark, so the sides differ by more than colour", as
   await expect(box).toHaveAttribute("aria-label", /claimed by/i);
 });
 
+// Assistance + the tutor (Phase 8). Hints are on by default and cost the
+// record's "unassisted" claim; the tutor panel is opt-in and may never word a
+// depth-capped verdict as a proof.
+
+test("a hint names an edge, explains it, and says it counts as assistance", async ({ page }) => {
+  await page.goto("/dots/?seed=7");
+  await ready(page);
+  await waitHumanOrOver(page);
+  await page.locator(".dots-hint").click();
+  const status = page.locator(".dots-status");
+  await expect(status).toContainText(/Hint: the (horizontal|vertical) edge, row \d, column \d/);
+  await expect(status).toContainText(/assistance/i);
+});
+
+test("with hints off the control ends the game and reports what was left", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("fun-hints", "off"));
+  await page.goto("/dots/?seed=7");
+  await ready(page);
+  await waitHumanOrOver(page);
+  await expect(page.locator(".dots-hint")).toHaveCount(0);
+  await page.locator(".dots-stuck").click();
+  const result = page.locator(".sol-result");
+  await expect(result).toBeVisible();
+  await expect(result).toContainText(/ended early/i);
+  await expect(result).toContainText(/edges were still undrawn/i);
+  // An abandoned record is still a verifiable one — it just claims less.
+  await expect(result.locator(".sol-verify-badge.ok")).toBeVisible();
+});
+
+test("the tutor panel is off by default and appears when enabled in settings", async ({ page }) => {
+  await page.goto("/dots/?seed=7");
+  await ready(page);
+  await expect(page.locator(".dots-tutor")).toHaveCount(0);
+  await page.locator(".dots-settings summary").click();
+  await page.locator(".dots-set-tutor").check();
+  await expect(page.locator(".dots-tutor-explain")).toBeVisible();
+});
+
+test("'Explain my options' lists band edges, each with the engine's own reason", async ({
+  page,
+}) => {
+  await page.addInitScript(() => localStorage.setItem("fun-dots-tutor", "on"));
+  await page.goto("/dots/?seed=7");
+  await ready(page);
+  await waitHumanOrOver(page);
+  await page.locator(".dots-tutor-explain").click();
+  const items = page.locator(".dots-tutor-options li");
+  await expect(items.first()).toContainText(/(horizontal|vertical) edge, row \d, column \d — /);
+  expect(await items.count()).toBeGreaterThanOrEqual(2);
+});
+
 test("the board fits a narrow phone viewport (no horizontal overflow)", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 720 });
   await page.goto("/dots/?seed=7");

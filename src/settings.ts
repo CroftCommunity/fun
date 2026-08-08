@@ -318,6 +318,7 @@ export function resolveDotsLevel(stored: string | null, fallback: DotsLevel): Do
 export type DotsSeat = "first" | "second";
 const DOTS_SEATS: readonly DotsSeat[] = ["first", "second"];
 const DOTS_SEAT_KEY = "fun-dots-seat";
+const DOTS_TUTOR_KEY = "fun-dots-tutor";
 
 /** Pure resolver: a stored known seat wins; otherwise the default. */
 export function resolveDotsSeat(stored: string | null, fallback: DotsSeat): DotsSeat {
@@ -348,6 +349,15 @@ export function dotsSeat(): DotsSeat {
     return "second";
   }
 }
+/** Show the engine-grounded tutor panel in Dots — **off by default** (opt-in,
+ *  matching Othello, checkers and Drop 4). */
+export function dotsTutorEnabled(): boolean {
+  return read(DOTS_TUTOR_KEY, false);
+}
+export function setDotsTutor(on: boolean): void {
+  write(DOTS_TUTOR_KEY, on);
+}
+
 export function setDotsSeat(seat: DotsSeat): void {
   try {
     localStorage.setItem(DOTS_SEAT_KEY, seat);
