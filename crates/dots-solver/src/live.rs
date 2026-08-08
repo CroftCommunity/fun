@@ -50,11 +50,21 @@ impl Level {
 /// The band knobs for `level`.
 ///
 /// `depth` only has an effect above `TRACTABLE_EDGES` — the first four plies —
-/// and it is **nearly inert even there**, because no box can reach three sides
-/// before three edges are drawn and none can be captured before four. There is
-/// simply nothing material for a deeper look to find, so the values come back
-/// near-flat at any depth. Measured: depths of 6 and 8 cost seconds a move and
-/// changed no decision. The strength difference between levels is carried by the
+/// and it is **provably inert there**, not merely near-flat. Measured at every
+/// position the capped path can run in (24, 23, 22 and 21 free edges) at depths
+/// 1, 2, 4, 6 and 8: the value of *every* move is **0 at every depth** — one
+/// distinct value in the whole set. No box can reach three sides before three
+/// edges are drawn or be captured before four, so there is nothing for a deeper
+/// look to find, and depth 8 costs 200-340 ms to return the same flat landscape
+/// depth 1 returns in 0.0 ms (Phase 12, 2026-08-07).
+///
+/// That is also the measurement that **rejects iterative deepening** here.
+/// `adversary_solver::deepen` exists to keep the best *complete* iteration when a
+/// budget cuts a search short; when every iteration returns identical values there
+/// is no better iteration to keep, so it could only spend time. It paid +14% on
+/// checkers and −41% on Othello; here it is not applicable at all.
+///
+/// The strength difference between levels is therefore carried entirely by the
 /// class floor and the sloppiness, and below the threshold every level reads the
 /// same exact values.
 #[must_use]

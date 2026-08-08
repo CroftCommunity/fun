@@ -1,7 +1,7 @@
 # Dots and Boxes — the fourth adversarial game
 
-status: **Pass 1 + Pass 2 complete.** Executing: Phases 1–11 are in (Phase 3a
-dropped; Phase 4 run late, after Phase 8). Next: Phase 12.
+status: **Pass 1 + Pass 2 complete.** Executing: Phases 1–12 are in (Phase 3a
+dropped; Phase 4 run late, after Phase 8). Next: Phase 13.
 
 owner decisions (2026-08-07): **3×3 boxes** (4×4 dots, 24 edges, 9 boxes) and the
 **full §10 checklist** including the experimental WebGPU hybrid.
@@ -1120,6 +1120,38 @@ latency; the same discipline applies to ours.
 2. **Verification:** the recorded per-level table, reproduced by re-running.
 
 **Validation:** Broad — this phase *is* validation.
+
+### Phase 12 execution notes (2026-08-07)
+
+Probe: self-play through the **built wasm in Node/V8** (the engine the browser
+runs), 5 seeds × 4 levels, timing every `live_move` and recording the position
+size it was made at. Machine: darwin/arm64, Node 22.23.2.
+
+| level | n | median | p95 | worst | >400 ms | worst at |
+|---|---|---|---|---|---|---|
+| Easy | 120 | 0.0 ms | 31.8 ms | **66.8 ms** | 0% | 20 free edges |
+| Medium | 120 | 0.1 ms | 31.8 ms | **68.0 ms** | 0% | 20 free edges |
+| Hard | 120 | 0.3 ms | 31.3 ms | **66.4 ms** | 0% | 20 free edges |
+| Perfect | 120 | 0.3 ms | 30.9 ms | **65.6 ms** | 0% | 20 free edges |
+
+**Every level's worst move is the same move**, and it is the first exact solve —
+the position with exactly `TRACTABLE_EDGES = 20` free edges, where the memo table
+is cold. Everything after it is smaller and warmer. That is the game's latency
+high-water mark, it is the same at Easy as at Perfect (the exact path ignores
+level), and at ~67 ms it is an order of magnitude inside the 400 ms target. This
+game does not have the problem P9 was about.
+
+**Deepening is rejected, on measurement.** `move_values_capped` was run at every
+position the capped path can reach (24, 23, 22, 21 free edges) at depths 1, 2, 4,
+6 and 8. The set of distinct move values at every depth, at every position, is
+`{0}` — one value. Depth 8 spends 200-340 ms to return exactly what depth 1
+returns in 0.0 ms. `deepen` keeps the best *complete* iteration when a budget cuts
+a search short; when every iteration is identical there is no better iteration to
+keep. It paid +14% on checkers and −41% on Othello; here it is not applicable.
+
+Both numbers are recorded in the doc comments of the constants they justify —
+`TRACTABLE_EDGES` for the latency table, `live_band` for the depth inertness — so
+they travel with the code rather than only with this plan.
 
 ### Phase 13: documentation
 

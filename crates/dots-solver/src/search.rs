@@ -40,6 +40,13 @@ use dots_core::{completed_boxes, legal_edges, Board, Edge, EDGES};
 /// **Not a speed knob.** Like Othello's `TRACTABLE_EMPTIES` and checkers'
 /// `TRACTABLE_PIECES`, this sits at its measured knee. Lowering it to buy latency
 /// spends proof coverage, which is the one thing the tutor's honesty rests on.
+///
+/// **Measured in wasm, Node/V8, 5 seeds × every level (Phase 12, 2026-08-07):**
+/// the worst `live_move` in the whole game is the *first* solve — the position
+/// with exactly 20 free edges, where the memo table is cold — at **65-68 ms**,
+/// identical across all four levels. Median 0.0-0.3 ms, p95 ~31 ms, and **0% of
+/// moves over 400 ms**. Every position after that is smaller and warmer, so this
+/// threshold is the game's latency high-water mark and it is well inside budget.
 pub const TRACTABLE_EDGES: u32 = 20;
 
 /// Backstop work allowance for one exact solve.
