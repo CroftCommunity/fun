@@ -3577,6 +3577,12 @@ body.fullscreen .le-stage {
   color: var(--ink-muted);
 }
 .dots-board {
+  /* `width: max-content` so the lattice keeps its own size wherever it is put.
+     Inside `.dots-game` the flex column centres it; on the result screen it is a
+     block child and would otherwise stretch, leaving the board pinned to the
+     left of a wide slab of paper. */
+  width: max-content;
+  margin-inline: auto;
   --dots-node: 26px;
   --dots-span: clamp(2.2rem, 13vw, 3.2rem);
   display: grid;

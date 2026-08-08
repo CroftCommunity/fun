@@ -448,6 +448,114 @@ const SHOTS = [
     },
   },
   {
+    name: "dots-board",
+    clip: ".dots-game",
+    async run(page) {
+      await page.goto(`${origin}/dots/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".dots-board");
+      await page.waitForFunction(() => Boolean(window.__dots));
+      // The human takes the second seat by default, so wait for the engine's
+      // opening line to land before shooting -- an empty lattice would not show
+      // what a drawn edge looks like.
+      await page.waitForSelector(".dots-edge.just-drawn");
+    },
+  },
+  {
+    name: "dots-capture",
+    clip: ".dots-game",
+    async run(page) {
+      await page.goto(`${origin}/dots/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".dots-board");
+      await page.waitForFunction(() => Boolean(window.__dots));
+      await page.waitForSelector(".dots-edge.just-drawn");
+      // Drive the core to a position where the human (side 2) can close a box,
+      // then take it through the UI so the "you go again" message is on screen.
+      const edge = await page.evaluate(() => {
+        const h = window.__dots;
+        for (let i = 0; i < 24; i += 1) {
+          const b = h.game.board();
+          if (b.result !== -1) break;
+          const closer = b.legal.find((e) => h.game.closesCount(e) > 0);
+          if (closer !== undefined && b.toMove === 2) { h.refresh(); return closer; }
+          const quiet = b.legal.find((e) => h.game.closesCount(e) === 0) ?? b.legal[0];
+          if (quiet === undefined) break;
+          h.game.play(quiet);
+        }
+        h.refresh();
+        return null;
+      });
+      if (edge === null) throw new Error("guide-shots: no closing edge found for dots-capture");
+      await page.click(`.dots-edge[data-edge="${edge}"]`);
+      await page.waitForSelector(".dots-box.b");
+    },
+  },
+  {
+    name: "dots-tutor",
+    clip: ".dots-game",
+    async run(page) {
+      await page.addInitScript(() => localStorage.setItem("fun-dots-tutor", "on"));
+      await page.goto(`${origin}/dots/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".dots-board");
+      await page.waitForFunction(() => Boolean(window.__dots));
+      await page.waitForSelector(".dots-edge.just-drawn");
+      // Deep enough that the safe lines are running out, so the options list
+      // shows the distinction the guide is about -- safe versus handing a box
+      // over -- rather than a column of identical "safe" lines. Then leave the
+      // human (side 2) to move, or "Explain my options" has nothing to explain.
+      await page.evaluate(() => {
+        const h = window.__dots;
+        for (let i = 0; i < 7; i += 1) {
+          const b = h.game.board();
+          if (b.result !== -1) break;
+          const quiet = b.legal.find((e) => h.game.closesCount(e) === 0) ?? b.legal[0];
+          if (quiet === undefined) break;
+          h.game.play(quiet);
+        }
+        for (let i = 0; i < 4; i += 1) {
+          const b = h.game.board();
+          if (b.result !== -1 || b.toMove === 2 || b.legal[0] === undefined) break;
+          h.game.play(b.legal[0]);
+        }
+        h.refresh();
+      });
+      await page.click(".dots-tutor-explain");
+      await page.waitForSelector(".dots-tutor-options li");
+    },
+  },
+  {
+    name: "dots-result",
+    clip: ".sol-result",
+    async run(page) {
+      await page.goto(`${origin}/dots/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".dots-board");
+      await page.waitForFunction(() => Boolean(window.__dots));
+      // Play the lattice out through the core, then open the self-verifying ?r=
+      // link so the result screen shows the final board.
+      const share = await page.evaluate(async () => {
+        const h = window.__dots;
+        for (let i = 0; i < 40; i += 1) {
+          const b = h.game.board();
+          if (b.result !== -1) break;
+          const mv = h.game.liveMove("Perfect");
+          if (mv === null) break;
+          h.game.play(mv);
+        }
+        const env = h.game.outcome(false);
+        const json = new TextEncoder().encode(JSON.stringify(env));
+        const cs = new CompressionStream("deflate-raw");
+        const w = cs.writable.getWriter();
+        void w.write(json);
+        void w.close();
+        const buf = new Uint8Array(await new Response(cs.readable).arrayBuffer());
+        let bin = "";
+        for (const b2 of buf) bin += String.fromCharCode(b2);
+        return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      });
+      await page.goto(`${origin}/dots/?r=${share}`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".sol-result .dots-board.dots-final");
+    },
+  },
+  {
     name: "align-board",
     clip: ".al-game",
     async run(page) {

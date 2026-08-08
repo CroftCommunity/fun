@@ -1,7 +1,7 @@
 # Dots and Boxes — the fourth adversarial game
 
-status: **Pass 1 + Pass 2 complete.** Executing: Phases 1–8 are in (Phase 3a
-dropped; Phase 4 run late, after Phase 8). Next: Phase 9.
+status: **Pass 1 + Pass 2 complete.** Executing: Phases 1–9 are in (Phase 3a
+dropped; Phase 4 run late, after Phase 8). Next: Phase 10.
 
 owner decisions (2026-08-07): **3×3 boxes** (4×4 dots, 24 edges, 9 boxes) and the
 **full §10 checklist** including the experimental WebGPU hybrid.
@@ -921,6 +921,31 @@ only the dots ones and `git checkout --` the rest.
 2. **Verification:** `npm run unit` + `npx playwright test tests/how-to.spec.ts`.
 
 **Validation:** Narrow.
+
+### Phase 9 execution notes (2026-08-07)
+
+Six entries, four shots, registered and passing the guard (a named-but-missing
+shot fails `tests/how-to.test.ts`). The guide leads with the tap, then the extra
+turn, then the idea that actually makes the game — that the skill is running out
+of safe lines **second**, and that a Perfect engine declining boxes is the
+double-cross, not a mistake.
+
+Two things the shots changed, both found by looking at the output:
+
+- **The final board was pinned to the left of a wide slab of paper.** Inside
+  `.dots-game` a flex column centres it; on the result screen it is a block child
+  and stretched. `width: max-content; margin-inline: auto` on `.dots-board` fixes
+  it wherever the board is placed. No test would have caught this — the board was
+  the right size and the right colour, just in the wrong place.
+- **The first tutor shot proved nothing.** The recipe stopped after the engine's
+  opening line, so every listed option read "safe: leaves no box on three sides"
+  — a truthful screenshot of a boring position, illustrating a section about the
+  *difference* between safe and giving. Seven plies in, the list shows both, and
+  the panel says "Solved from here", which is the honest wording at that depth.
+
+Also corrected: the result shot comes from a `?r=` link, so it is a spectator's
+view and reads "Second player won 6–3" rather than naming The Engine. The alt
+text now says what the image says.
 
 ### Phase 10: plug into the AI-scoring harness
 

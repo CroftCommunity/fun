@@ -10,6 +10,7 @@ import { TWENTY48_GUIDE } from "./games/2048/2048-howto.js";
 import { DROP4_GUIDE } from "./games/drop4/drop4-howto.js";
 import { OTHELLO_GUIDE } from "./games/othello/othello-howto.js";
 import { CHECKERS_GUIDE } from "./games/checkers/checkers-howto.js";
+import { DOTS_GUIDE } from "./games/dots/dots-howto.js";
 import { ALIGN_GUIDE } from "./games/align/align-howto.js";
 import { BLOCKDOKU_GUIDE } from "./games/blockdoku/blockdoku-howto.js";
 import { LOOSEENDS_GUIDE } from "./games/looseends/looseends-howto.js";
@@ -28,6 +29,7 @@ export const GUIDES: Readonly<Record<string, Guide>> = {
   drop4: DROP4_GUIDE,
   othello: OTHELLO_GUIDE,
   checkers: CHECKERS_GUIDE,
+  dots: DOTS_GUIDE,
   align: ALIGN_GUIDE,
   blockdoku: BLOCKDOKU_GUIDE,
   looseends: LOOSEENDS_GUIDE,
