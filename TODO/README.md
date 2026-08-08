@@ -65,17 +65,41 @@ field:
   candidate hunt for the P2P-gated set (cribbage's cohort), which is a different
   question from what is buildable today.
 
-1. **Chess** — Tier-1 adversarial, **heavy**. Needs a vetted move-gen (castling,
-   en passant, promotion, checkmate/stalemate/draws) + a **Stockfish-WASM** Oracle
-   (a large binary — depends on the larger-binary hosting thread). Deferred behind
-   checkers; its own multi-phase plan. The honest-Oracle shape (centipawns, exact
-   only in tablebase endgames) is already anticipated in `docs/AI-PLAYERS.md`.
+0. **Mancala (working name: Furrow)** — Tier-1 adversarial, the fifth. Plan
+   written 2026-08-07: `plans/2026-08-07-mancala.md` (Pass 1 + Pass 2, execution
+   not started). Two owner decisions open — board size and the name. It is on the
+   slate because of the shapes it stresses, not the fun: one move that rewrites
+   many cells, a terminal that transforms the score, all three result classes
+   reachable, and the first chance to confirm dots' extra-turn shape *transfers*
+   rather than proving it once.
+1. **Chess** — Tier-1 adversarial, **heavy**. Needs a vetted move generator
+   (castling, en passant, promotion, checkmate/stalemate/draws), which is the real
+   weight. Its own multi-phase plan.
+   - **The "gated on larger-binary hosting" note was wrong, corrected 2026-08-07.**
+     It was written in a documentation pass (`2327dbc`) and attached chess to the
+     WebLLM weights thread by analogy; no binary was ever measured. Those are
+     different problems — that thread is ~1 GB of *model weights*, and a Stockfish
+     build is orders of magnitude smaller. The nearby real constraint is that
+     multi-threaded Stockfish-WASM needs `SharedArrayBuffer`, which needs COOP/COEP
+     response headers, which GitHub Pages will not serve; a single-threaded build
+     sidesteps that at a strength cost.
+   - **The better objection to a Stockfish Oracle is architectural.** Every game
+     here grades against its own solver, and the harness grades a move only when
+     the oracle reports `exact` — a proven win/draw/loss class. Stockfish reports
+     centipawns and has no `exact` to give, so a Stockfish-backed oracle would
+     report `scoredMoves == 0` forever and the tutor would have nothing honest to
+     bind its wording to. If chess ships, its Oracle is most likely ours, with the
+     shape `docs/AI-PLAYERS.md` already anticipates.
 2. **Digger** — [digger.md](digger.md). Tier-1 build-fresh (our own take on an
    LD29 digger; the original is all-rights-reserved, so not wrappable). Not
    adversarial — a single-player action/puzzle.
-3. **Logic puzzles** — [puzzles.md](puzzles.md). Tier-1 build-fresh family
-   (Minesweeper / Nonograms / Sudoku / …); the Tatham Tier-2 embed was tried and
-   torn out as unreadable, so these are build-fresh with verifiable outcomes.
+3. **Logic puzzles** — [puzzles.md](puzzles.md). **A direction, not a queued
+   item** — "maybe later", and that file says "not started" for a reason. What was
+   actually decided (2026-08-03) is that the Tatham Tier-2 **embed** is out: it was
+   tried and torn out as unreadable. The build-fresh family (Minesweeper /
+   Nonograms / Sudoku / …) remains a plausible later direction, and note it is
+   **single-player** — it reuses none of the adversarial trait / band / tutor /
+   harness stack, so it is not an answer to "what else can that stack carry".
 4. **Cribbage** — [cribbage.md](cribbage.md). **Gated:** a real two-human game
    needs a P2P transport + fair-reveal (commit/reveal) first; not startable until
    that lands.
