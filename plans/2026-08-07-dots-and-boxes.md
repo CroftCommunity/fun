@@ -1,7 +1,7 @@
 # Dots and Boxes — the fourth adversarial game
 
-status: **Pass 1 + Pass 2 complete.** Executing: Phases 1–13 are in (Phase 3a
-dropped; Phase 4 run late, after Phase 8). Next: Phase 14.
+status: **Shipped 2026-08-07.** All phases in (Phase 3a
+dropped; Phase 4 run late, after Phase 8). Live at `fun.croft.ing/dots/`.
 
 owner decisions (2026-08-07): **3×3 boxes** (4×4 dots, 24 edges, 9 boxes) and the
 **full §10 checklist** including the experimental WebGPU hybrid.
@@ -1245,6 +1245,23 @@ through `npm run test:rust`, never bare `cargo clippy`.
    produces no console errors.
 
 **Validation:** Broad.
+
+### Phase 14 execution notes (2026-08-07)
+
+`npm run gate` green locally in **3m18s** (Rust + typecheck + lint + 388 unit +
+build + 447 e2e). Pushed 14 commits; CI green on all four jobs — `build`, `rust`,
+`e2e`, and the `deploy` that needs all three.
+
+**Live smoke test** against the deployed `fun.croft.ing/dots/`: played a full game
+through the UI to a terminal, got a verifiable record, and re-opened the `?r=`
+share, which re-verified by replay before rendering. The final board and the
+spectator wording ("First player won 9–0") both render as they do locally.
+
+One console line, and it is not ours: headless Chromium logs
+`warning: No available adapters.` when the WebGPU probe asks for one on a machine
+with no GPU. That is the browser answering the probe, the probe handling it
+correctly (the local-AI toggle stays hidden), and nothing to fix. No errors, no
+failed requests.
 
 ## Open Questions
 
