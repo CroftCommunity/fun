@@ -3533,3 +3533,174 @@ body.fullscreen .le-stage {
     transition: none;
   }
 }
+
+/* ---------- Dots and Boxes ----------
+   The lattice is a CSS grid whose tracks alternate dot / segment, so an edge
+   button owns a whole segment-by-dot cell: the tap target is the cell, the drawn
+   line is a pseudo-element inside it. That is what keeps a 24-edge board tappable
+   on a phone — a hairline is drawable but not tappable.
+   Interim palette: shared semantic tokens. Phase 7 gives dots its own scoped
+   tokens with recorded contrast ratios. */
+.dots-game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+.dots-turnbar {
+  display: flex;
+  gap: 0.9rem;
+  align-items: baseline;
+  font-weight: 600;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.dots-turn {
+  color: var(--ink-muted);
+  font-weight: 500;
+}
+.dots-controls {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.dots-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+}
+.dots-banner {
+  max-width: 26rem;
+  margin: 0;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--ink-muted);
+}
+.dots-board {
+  --dots-dot: 26px;
+  --dots-seg: clamp(2.2rem, 13vw, 3.2rem);
+  display: grid;
+  padding: 0.55rem;
+  background: var(--felt);
+  border-radius: var(--radius);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%), 0 2px 8px rgb(0 0 0 / 22%);
+}
+.dots-dot {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+.dots-dot::after {
+  content: "";
+  width: 34%;
+  height: 34%;
+  border-radius: 50%;
+  background: var(--felt-ink);
+  opacity: 0.85;
+}
+.dots-box {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  border-radius: 3px;
+  font-size: 0.9rem;
+  line-height: 1;
+  color: var(--ink);
+}
+.dots-box.a {
+  background: var(--accent);
+}
+.dots-box.b {
+  background: var(--felt-ink);
+}
+/* An edge: the whole grid cell is the target; the line lives inside it. */
+.dots-edge {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: none;
+  touch-action: manipulation;
+}
+.dots-edge::after {
+  content: "";
+  border-radius: 3px;
+  background: var(--felt-ink);
+  opacity: 0.1;
+}
+.dots-edge.h::after {
+  width: 100%;
+  height: 5px;
+}
+.dots-edge.v::after {
+  width: 5px;
+  height: 100%;
+}
+/* A legal edge — a visible, tappable hint. Deliberately NOT the drawn colours:
+   a hint that shares a player's colour reads as an edge somebody already drew,
+   which is the one thing the board must never be ambiguous about. */
+.dots-edge.legal {
+  cursor: pointer;
+}
+.dots-edge.legal::after {
+  background: var(--felt-ink);
+  opacity: 0.3;
+}
+.dots-edge.legal:hover::after,
+.dots-edge.legal:focus-visible::after {
+  background: var(--accent);
+  opacity: 0.95;
+}
+.dots-edge.legal:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: -3px;
+}
+/* A drawn edge, coloured by who drew it — how a player reads a chain back. It is
+   also thicker than a hint, so the two never rely on colour alone. */
+.dots-edge.drawn::after {
+  opacity: 1;
+}
+.dots-edge.drawn.h::after {
+  height: 8px;
+}
+.dots-edge.drawn.v::after {
+  width: 8px;
+}
+.dots-edge.drawn.a::after {
+  background: var(--accent);
+}
+.dots-edge.drawn.b::after {
+  background: var(--felt-ink);
+}
+/* The most recent edge — ringed, so the opponent's move is visible. */
+.dots-edge.just-drawn::after {
+  box-shadow: 0 0 0 3px var(--active);
+}
+.dots-status {
+  margin: 0;
+  min-height: 1.2em;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--ink-muted);
+}
+.dots-flash {
+  margin: 0.2rem auto;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--ink);
+}
+.dots-flash.win {
+  color: var(--active);
+}
+.dots-board.dots-final {
+  --dots-dot: 18px;
+  --dots-seg: clamp(1.4rem, 8vw, 2rem);
+  margin: 0.3rem auto 0.6rem;
+}

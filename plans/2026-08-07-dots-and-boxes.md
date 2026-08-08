@@ -1,6 +1,7 @@
 # Dots and Boxes — the fourth adversarial game
 
-status: **Pass 1 + Pass 2 complete.** Execution not started.
+status: **Pass 1 + Pass 2 complete.** Executing: Phases 1, 2, 3, 5 and 6 are in.
+Phase 4 (mutation testing) has **not** been run. Next: Phase 7.
 
 owner decisions (2026-08-07): **3×3 boxes** (4×4 dots, 24 edges, 9 boxes) and the
 **full §10 checklist** including the experimental WebGPU hybrid.
@@ -676,6 +677,36 @@ Budget real time here and check on a narrow viewport during the phase, not after
 **Validation:** Broad. Tests plus actually playing it, in both chrome modes and at
 360 px. Per the workspace note, the Chrome extension is disabled here — use
 Playwright for the real-browser pass.
+
+### Phase 6 execution notes (2026-08-07)
+
+Playable at `/dots/`. `npm run test` and the full Playwright suite green (357
+unit, 427 e2e), plus a real-browser pass in both themes at 900 px and 360 px.
+
+Three things worth recording:
+
+- **The lattice arithmetic became its own pure module.** The plan named two front-end
+  files; there are three. `dots-lattice.ts` is the H/V/box numbering as a pure
+  function, pinned by a unit test against the diagram in `RULES.md`, because it is
+  the one piece of board arithmetic the UI cannot get from the core — and an
+  off-by-one there would draw a legal move in the wrong place while every rules
+  test stayed green. Everything else (legality, capture, score, the extra turn)
+  is read from the binding.
+- **The legal-move hint may not share a player's colour.** The first pass gave
+  legal edges the same brass as Side A's drawn edges at lower opacity, and the
+  screenshot pass showed a board where drawn and drawable edges were not reliably
+  distinguishable — the one thing this board must never be ambiguous about. Hints
+  are now neutral and thin; drawn edges are saturated and thicker, so the two
+  differ by weight as well as colour. Found by looking at it, not by a test.
+- **A settings pair landed early.** `dotsLevel` / `dotsSeat` are in `src/settings.ts`
+  now rather than in Phase 8, because a playable game needs a difficulty and a
+  seat. The seat defaults to **second**: 3×3 is a second-player win, so opening
+  against Perfect loses by construction, and defaulting the human into that seat
+  would be the shelf teaching a false lesson about the game. Phase 8 still owns
+  hints, declare-assistance and the tutor panel.
+
+The e2e also pins a **24 px minimum** on every edge target at 360 px — the phase's
+named risk, checked rather than asserted to be fine.
 
 ### Phase 7: identity, tokens, accessibility
 

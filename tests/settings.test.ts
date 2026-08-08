@@ -13,6 +13,8 @@ import {
   resolveOthelloLevel,
   resolveCheckersLevel,
   resolveCheckersSide,
+  resolveDotsLevel,
+  resolveDotsSeat,
 } from "../src/settings.js";
 
 describe("resolveLevel (Drop 4 difficulty)", () => {
@@ -78,6 +80,28 @@ describe("resolveCheckersSide (which men the human plays)", () => {
   it("falls back to the default for null or a garbage value", () => {
     expect(resolveCheckersSide(null, "black")).toBe("black");
     expect(resolveCheckersSide("red", "black")).toBe("black");
+  });
+});
+
+describe("resolveDotsLevel (Dots and Boxes difficulty)", () => {
+  it("honours a stored valid level (Perfect tops it — 3x3 dots IS solved)", () => {
+    expect(resolveDotsLevel("Easy", "Medium")).toBe("Easy");
+    expect(resolveDotsLevel("Perfect", "Medium")).toBe("Perfect");
+  });
+  it("falls back to the default for null or a garbage value", () => {
+    expect(resolveDotsLevel(null, "Medium")).toBe("Medium");
+    expect(resolveDotsLevel("Expert", "Hard")).toBe("Hard"); // no Expert level here
+  });
+});
+
+describe("resolveDotsSeat (whether the human opens)", () => {
+  it("honours a stored valid seat", () => {
+    expect(resolveDotsSeat("first", "second")).toBe("first");
+    expect(resolveDotsSeat("second", "first")).toBe("second");
+  });
+  it("falls back to the default for null or a garbage value", () => {
+    expect(resolveDotsSeat(null, "second")).toBe("second");
+    expect(resolveDotsSeat("third", "second")).toBe("second");
   });
 });
 

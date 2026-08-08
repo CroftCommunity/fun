@@ -7,7 +7,7 @@ test("home page lists the games and the drawer opens", async ({ page }) => {
   await expect(page.locator("#games-drawer")).toBeVisible();
   // One item per REGISTRY entry (src/registry.ts). Bump this when a game is
   // added or removed from the catalog.
-  await expect(page.locator(".drawer-item")).toHaveCount(18);
+  await expect(page.locator(".drawer-item")).toHaveCount(19);
 });
 
 test("the drawer recollapses via its close button and via clicking off", async ({

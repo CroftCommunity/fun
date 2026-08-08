@@ -301,6 +301,61 @@ export function setCheckersTutor(on: boolean): void {
   write(CHECKERS_TUTOR_KEY, on);
 }
 
+// ---------- Dots and Boxes ----------
+
+/** Dots and Boxes difficulty. **Perfect**, not Expert — 3x3 is solved, so the
+ *  top level really does play perfectly (see `crates/dots-core/RULES.md`). */
+export type DotsLevel = "Easy" | "Medium" | "Hard" | "Perfect";
+const DOTS_LEVELS: readonly DotsLevel[] = ["Easy", "Medium", "Hard", "Perfect"];
+const DOTS_LEVEL_KEY = "fun-dots-level";
+
+/** Pure resolver: a stored known dots level wins; otherwise the default. */
+export function resolveDotsLevel(stored: string | null, fallback: DotsLevel): DotsLevel {
+  return DOTS_LEVELS.includes(stored as DotsLevel) ? (stored as DotsLevel) : fallback;
+}
+
+/** Which seat the human takes: `first` opens (Side A), `second` replies. */
+export type DotsSeat = "first" | "second";
+const DOTS_SEATS: readonly DotsSeat[] = ["first", "second"];
+const DOTS_SEAT_KEY = "fun-dots-seat";
+
+/** Pure resolver: a stored known seat wins; otherwise the default. */
+export function resolveDotsSeat(stored: string | null, fallback: DotsSeat): DotsSeat {
+  return DOTS_SEATS.includes(stored as DotsSeat) ? (stored as DotsSeat) : fallback;
+}
+
+export function dotsLevel(): DotsLevel {
+  try {
+    return resolveDotsLevel(localStorage.getItem(DOTS_LEVEL_KEY), "Medium");
+  } catch {
+    return "Medium";
+  }
+}
+export function setDotsLevel(level: DotsLevel): void {
+  try {
+    localStorage.setItem(DOTS_LEVEL_KEY, level);
+  } catch {
+    // Storage denied (private mode): the choice still applies for the session.
+  }
+}
+
+/** The human's seat — **second by default**, because 3x3 is a second-player win
+ *  and opening against a perfect opponent loses by construction. */
+export function dotsSeat(): DotsSeat {
+  try {
+    return resolveDotsSeat(localStorage.getItem(DOTS_SEAT_KEY), "second");
+  } catch {
+    return "second";
+  }
+}
+export function setDotsSeat(seat: DotsSeat): void {
+  try {
+    localStorage.setItem(DOTS_SEAT_KEY, seat);
+  } catch {
+    // Storage denied (private mode): the choice still applies for the session.
+  }
+}
+
 // ---------- bubble aim-control tuning (device-dependent; see the "Aim &
 // controls" settings sheet) ----------
 
