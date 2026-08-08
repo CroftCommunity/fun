@@ -1,7 +1,7 @@
 # Dots and Boxes — the fourth adversarial game
 
-status: **Pass 1 + Pass 2 complete.** Executing: Phases 1, 2, 3, 5 and 6 are in.
-Phase 4 (mutation testing) has **not** been run. Next: Phase 7.
+status: **Pass 1 + Pass 2 complete.** Executing: Phases 1–8 are in (Phase 3a
+dropped; Phase 4 run late, after Phase 8). Next: Phase 9.
 
 owner decisions (2026-08-07): **3×3 boxes** (4×4 dots, 24 edges, 9 boxes) and the
 **full §10 checklist** including the experimental WebGPU hybrid.
@@ -588,6 +588,61 @@ with no test caller, and `render_text` asserted only by `contains`.
 
 **Validation:** Moderate.
 
+### Phase 4 execution notes (2026-08-07) — run late, after Phases 5–8
+
+This phase was skipped when the plan reached it and run afterwards. That is worth
+saying plainly: the binding and the whole front end were built on a core whose
+suite had holes in it. None of the holes turned out to reach the shipped path,
+but that was luck, not the process working.
+
+**`dots-core`: 193 mutants, 13 survivors → 7.** Six were real gaps, all closed
+with tests:
+
+| Survivor | Why the suite missed it |
+|---|---|
+| `board.rs:108` `<<`→`>>` | the "already drawn" guard in `completed_boxes`; nothing called it on a drawn edge, so re-offering a closing edge would have reported the box again — and a non-zero return *is* the extra-turn signal |
+| `game.rs:65` `<`→`<=` | the bounds guard in `apply_move`; an off-board edge number could set a phantom bit 24 and produce a hash the honest game cannot reach |
+| `game.rs:140,164×2` | `render_text`'s **drawn-edge** and **box-owner** branches. The empty-lattice golden never enters either, and the only other test used `contains` — the recurring `render_text` gap `CLAUDE.md` names in advance |
+
+The seven that remain are **equivalent mutants**: `box_mask`'s three `|`→`^` (the
+four bits are distinct), `build_edge_boxes`'s `<`→`<=` (no box mask has bit 24
+set, so the extra iteration writes nothing), `completed_boxes`'s `|`→`^` after
+the guard proved the bit clear, `is_drawn`'s `<`→`<=` (bit 24 is never set), and
+`render_text`'s `W = 6 * COLS + 2` → `* 2`, which only widens a row buffer whose
+trailing spaces are trimmed.
+
+**`dots-solver`: 142 mutants, 24 survivors → 6.** The interesting ones:
+
+- **The whole depth-capped search could return a constant** (9 mutants across
+  `capped`) and every test passed. `capped` runs in two regimes: above
+  `TRACTABLE_EDGES`, where — as its own doc says — no box can reach three sides,
+  so every value is flat and a constant genuinely is equivalent; and *below* the
+  threshold when the exact solve exhausts its budget, where it has real work to
+  do. Every existing test drove the flat regime. The new test drives the second,
+  and compares two moves that **both pass the turn**, so the difference comes
+  from the recursion rather than from the sign flip in `move_values_capped`.
+- **A test that measured a delta the mutation preserved.** The first attempt at
+  pinning the standing margin (`search.rs:171`, `mine - theirs` → `+`) compared
+  a position holding boxes against the same lattice without them. The mutation
+  shifts *both* by the same amount, so the difference was identical and the test
+  proved nothing. Re-written to assert an absolute value.
+- `heuristic`'s "boxes about to fall" term was asserted only by sign, so both of
+  its arithmetic mutants lived. Now pinned to the tenth.
+- `tutor.rs`: only the *positive* majority case was tested, so `settles_the_game`
+  could return `true` for everything and `MAJORITY` could be miscomputed; and
+  `quality`'s class comparison could be negated, because a real position rarely
+  offers a same-class-but-worse move and a class-dropping one at once. Both are
+  now tested where the policy lives.
+
+Five of the six remaining are equivalent (`i8::MIN + 1` → `* 1`, both below every
+reachable value; three `|`→`^` on bits the code has just proved clear; `v > best`
+→ `>=`, which picks a different tie of the same value).
+
+**The sixth is the tool being wrong.** `search.rs:223` `||`→`&&` was reported
+MISSED in all three runs. Applying it by hand fails **five** tests in the debug
+profile and one in release, against a green baseline in both. So it is caught;
+the report is not. Worth knowing before treating a survivor list as ground truth.
+
 ### Phase 5: `dots-wasm` — the C-ABI binding
 
 **Goal:** The browser can hold a game, play edges, and read the engine's facts —
@@ -805,6 +860,30 @@ panel's cost on every tap. Two exports exist for exactly this reason.
 2. **Verification:** `npm run unit` + the dots E2E green.
 
 **Validation:** Moderate.
+
+### Phase 8 execution notes (2026-08-07)
+
+Hints on by default, declare-assistance on, an opt-in tutor panel, and a coach
+whose sentence comes from Rust. 8 new unit tests (`tests/dots-tutor.test.ts`) and
+4 new E2E.
+
+- **The wording stays in Rust.** `coachFor` in TypeScript never composes a verdict
+  — it carries `coach_line`'s sentence verbatim and appends only a pointer to a
+  better edge, hedged by the same `exact` flag ("held it" vs "may be stronger").
+  The UI cannot word a heuristic as a proof because it does not own the words.
+- **The coach names a place, not a number.** The board never shows edge numbers,
+  so "edge 13" would be unfindable; the pointer reads "the vertical edge, row 1,
+  column 2", from the same pure `edgeLabel` the accessible names use.
+- **Two exports, two costs.** The per-tap path calls `assess` (COACH_DEPTH) and
+  only asks for the best edge when the move was not optimal — so an optimal move
+  costs one shallow search and the panel's depth never lands on a tap.
+- **The panel paints before it searches.** `note.textContent = "Reading ahead…"`
+  then a zero-delay timeout, because the deep search blocks the main thread and
+  the button otherwise looks dead — the checkers lesson, applied rather than
+  re-learned.
+- **"I'm done" reports what was left.** With hints off the control ends the match
+  and says how many edges were still undrawn; the record is `Abandoned` and still
+  verifies. Nothing pretends the game finished.
 
 ### Phase 9: "How to play"
 

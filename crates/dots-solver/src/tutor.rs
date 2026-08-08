@@ -339,6 +339,56 @@ mod tests {
     }
 
     #[test]
+    fn four_of_nine_is_not_a_majority_so_it_settles_nothing() {
+        // The other half of the rule above. Without it, `settles_the_game` could
+        // return `true` for every move -- or the majority could be miscomputed as
+        // four -- and the suite stayed green, which mutation testing showed on
+        // 2026-08-07. A move that leaves the mover one short of five has not
+        // settled anything: the opponent can still take five.
+        let mut pos = from_open(&[v_edge(0, 1)], Side::A);
+        pos.owners[2] = 1;
+        pos.owners[3] = 1; // A owns two; closing boxes 0 and 1 makes four
+        let report = assess(&pos, COACH_DEPTH);
+        let closing = report
+            .moves
+            .iter()
+            .find(|m| m.edge == Edge(v_edge(0, 1) as u8))
+            .expect("the closing edge is assessed");
+        assert!(
+            !closing.immediate_win,
+            "four of nine leaves the result open"
+        );
+        assert!(
+            report.moves.iter().all(|m| !m.immediate_win),
+            "and nothing else in the position settles it either"
+        );
+    }
+
+    #[test]
+    fn quality_grades_by_class_first_and_value_second() {
+        // Asserted on the grader directly: a real position rarely offers a
+        // same-class-but-worse move AND a class-dropping one at once, so driving
+        // this through `assess` left the middle grade unproven -- and swapping
+        // the class comparison for its negation passed the suite.
+        assert_eq!(quality(5, 5), MoveClass::Optimal);
+        assert_eq!(
+            quality(3, 5),
+            MoveClass::ResultPreserving,
+            "still a win, just a smaller one"
+        );
+        assert_eq!(
+            quality(-1, 5),
+            MoveClass::Blunder,
+            "a win turned into a loss"
+        );
+        assert_eq!(
+            quality(-3, -1),
+            MoveClass::ResultPreserving,
+            "losing either way"
+        );
+    }
+
+    #[test]
     fn blocks_opponent_win_is_always_false_and_says_why() {
         let pos = from_open(&(8..24).collect::<Vec<_>>(), Side::A);
         let report = assess(&pos, COACH_DEPTH);

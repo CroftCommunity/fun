@@ -277,6 +277,17 @@ mod tests {
     }
 
     #[test]
+    fn an_already_drawn_edge_completes_nothing_new() {
+        // The guard that makes "completes a box" mean *newly* completes one.
+        // Without it, re-offering the edge that closed a box would report that
+        // box again -- and the caller reads a non-zero return as "capture, so
+        // the mover goes again", which would hand out a free turn per re-tap.
+        let closed = (1u32 << 0) | (1u32 << 3) | (1u32 << 12) | (1u32 << 13);
+        assert_eq!(completed_boxes(closed, 13), 0, "edge 13 is already drawn");
+        assert_eq!(completed_boxes(closed, 0), 0);
+    }
+
+    #[test]
     fn completed_boxes_is_out_of_range_safe() {
         assert_eq!(completed_boxes(0, EDGES), 0);
         assert_eq!(completed_boxes(0, 999), 0);

@@ -289,7 +289,7 @@ pub fn move_values(pos: &Board, capped_depth: u32) -> (Vec<(Edge, i32)>, bool) {
 mod tests {
     use super::*;
     use adversary_core::{Adversary, Side};
-    use dots_core::{apply_move, box_mask, v_edge, Dots, ALL_EDGES, BOXES};
+    use dots_core::{apply_move, box_mask, h_edge, v_edge, Dots, ALL_EDGES, BOXES};
 
     fn from_open(keep_open: &[usize], to_move: Side) -> Board {
         let mut edges = ALL_EDGES;
@@ -453,6 +453,83 @@ mod tests {
             Edge(v_edge(0, 1) as u8),
             "the capturing edge is searched first"
         );
+    }
+
+    #[test]
+    fn heuristic_is_the_documented_formula_to_the_tenth() {
+        // Asserted as an exact number, not a sign. The sign-only assertion above
+        // left the whole "boxes about to fall" term unmeasured -- mutation
+        // testing (2026-08-07) deleted it and dropped its weight without a
+        // failure. The term matters because it is the only thing this eval knows
+        // that the box counts do not.
+        let level = from_open(&[v_edge(0, 1)], Side::A); // margin 0, two boxes at three sides
+        assert_eq!(boxes_at_three(&level), 2);
+        assert_eq!(heuristic(&level), 6, "0 * 10 + 2 * 3");
+
+        let mut ahead = level;
+        ahead.owners[8] = 1; // A is one box up, and the two are still standing
+        assert_eq!(heuristic(&ahead), 16, "1 * 10 + 2 * 3");
+    }
+
+    #[test]
+    fn the_capped_search_tells_two_quiet_moves_apart() {
+        // The depth-capped path is only *reachable* in production two ways: above
+        // TRACTABLE_EDGES, where nothing material exists and every value is flat,
+        // and below it when the exact solve exhausts its budget. Every earlier
+        // test drove the flat regime, so `capped` could return a constant and
+        // pass -- mutation testing, 2026-08-07. This drives the regime where the
+        // function has something to say: two moves that BOTH pass the turn, so
+        // the difference between them comes from the recursion rather than from
+        // the sign flip in `move_values_capped`.
+        let pos = from_open(
+            &[
+                h_edge(0, 0),
+                v_edge(0, 0),
+                h_edge(3, 2),
+                v_edge(2, 3),
+                h_edge(0, 1),
+                h_edge(1, 1),
+            ],
+            Side::A,
+        );
+        let values = move_values_capped(&pos, 3);
+        let value_of = |e: usize| {
+            values
+                .iter()
+                .find(|(m, _)| m.0 as usize == e)
+                .map(|&(_, v)| v)
+                .expect("every legal edge is valued")
+        };
+        // h(1,1) closes box 1: the mover banks it in tenths and keeps the turn.
+        assert_eq!(
+            value_of(h_edge(1, 1)),
+            17,
+            "the capture is worth a box, kept"
+        );
+        // Both of these pass the turn; h(0,1) leaves the opponent less than h(0,0).
+        assert!(
+            value_of(h_edge(0, 1)) > value_of(h_edge(0, 0)),
+            "the search separates two quiet moves: {values:?}"
+        );
+    }
+
+    #[test]
+    fn a_move_value_is_the_final_margin_including_boxes_already_held() {
+        // `move_values` promises the FINAL margin: what is already banked plus
+        // what the move leads to. Asserted absolutely, not as a difference --
+        // a first version compared two positions and the mutation that summed
+        // the banked boxes instead of subtracting them shifted both by the same
+        // amount, so the delta was identical and the test proved nothing.
+        let mut pos = from_open(&[v_edge(0, 1)], Side::A);
+        pos.owners[4] = 1;
+        pos.owners[6] = 1;
+        pos.owners[7] = 1; // A holds three
+        pos.owners[5] = 2; // B holds one: A stands +2
+        let values = Exact::new(&pos, NodeBudget::of(EXACT_NODE_BUDGET))
+            .move_values()
+            .expect("one free edge is affordable");
+        // The only move closes boxes 0 and 1, so the final margin is 2 + 2.
+        assert_eq!(values, vec![(Edge(v_edge(0, 1) as u8), 4)]);
     }
 
     #[test]

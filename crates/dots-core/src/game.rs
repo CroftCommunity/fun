@@ -417,11 +417,37 @@ To move: X. Reply with one edge number (0-23).";
 
     #[test]
     fn render_text_shows_drawn_edges_and_box_owners() {
+        // Also asserted in full: the empty-lattice golden above never enters the
+        // drawn-edge or owned-box branches, so `contains` was the only thing
+        // covering them -- and mutation testing (2026-08-07) walked straight
+        // through both. A drawn horizontal edge is five dashes, a drawn vertical
+        // is a bar, and the owner glyph sits three columns right of its dot.
         let pos = play(&[0, 3, 12, 13]); // B closes box 0
         let t = <Dots as Adversary>::render_text(&pos);
-        assert!(!t.contains(" 0 "), "edge 0 is drawn, so its number is gone");
-        assert!(t.contains('O'), "B's box renders as O");
-        assert!(t.contains("Boxes: X 0, O 1"), "the score is shown");
+        let expected = "\
+*-----*  1  *  2  *
+|  O  |     14    15
+*-----*  4  *  5  *
+16    17    18    19
+*  6  *  7  *  8  *
+20    21    22    23
+*  9  * 10  * 11  *
+Boxes: X 0, O 1.
+To move: O. Reply with one edge number (0-23).";
+        assert_eq!(t, expected);
+    }
+
+    #[test]
+    fn an_out_of_range_edge_draws_nothing() {
+        // `apply_move` guards the shift, so an edge number off the board cannot
+        // set a phantom bit in the mask -- which is what keeps a forged record
+        // from replaying to a hash the honest game could never produce.
+        let pos = <Dots as Adversary>::initial(0);
+        for e in [EDGES as u8, 200, u8::MAX] {
+            let next = apply_move(&pos, Edge(e));
+            assert_eq!(next.edges, pos.edges, "edge {e} is off the board");
+            assert_eq!(next.owners, pos.owners);
+        }
     }
 
     #[test]
