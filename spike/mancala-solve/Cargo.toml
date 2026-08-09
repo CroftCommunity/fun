@@ -1,0 +1,18 @@
+# Phase 0 discovery spike for plans/2026-08-07-mancala.md.
+#
+# Deliberately NOT a workspace member: it is throwaway measurement code and must
+# not enter the Rust gate. The empty [workspace] table detaches it from the
+# parent workspace so `cargo run` here does not try to join it.
+[package]
+name = "mancala-solve-spike"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+
+[profile.release]
+opt-level = 3
+debug = false
