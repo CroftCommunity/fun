@@ -390,11 +390,15 @@ test("the toggle appears with a real adapter and discloses the cost and the guar
   // number, not "a download".
   await expect(disclosure).toContainText(/one[- ]time/i);
   await expect(disclosure).toContainText(/MB/);
+  // And the latency, which is the other half of the cost. Measured median is
+  // ~235 ms a move against the engine's 7.8 ms — a player deciding whether to tap
+  // this deserves the number in the same sentence as the download size.
+  await expect(disclosure).toContainText(/quarter-second a move/i);
   // And the honest limit, which is the part that was wrong until the live trial
   // was actually run: outside the endgame the band is the engine's judgement, not
   // a proof, and the model measurably plays weaker than the engine it stands in
   // for. The copy must say so rather than claiming a guarantee it does not have.
-  await expect(disclosure).toContainText(/weaker than the engine/i);
+  await expect(disclosure).toContainText(/plays weaker/i);
   await expect(disclosure).not.toContainText(/never plays a losing move/i);
   // The turn bar switches to the persona, so a player knows who they are facing.
   await expect(page.locator(".furrow-seat.them")).toContainText("Millet");

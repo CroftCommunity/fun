@@ -51,7 +51,7 @@ was deferred.
 
 - [x] ~~**The live WebGPU hybrid trial has never been run.**~~ **Run 2026-08-10**
   on system Chrome (Apple/Metal-3), 8 games vs Perfect, Qwen2.5-0.5B: **4-0-4
-  (50%)**, fallback rate **1.2%**, 389 ms per graded move, 0 blunders over 69
+  (50%)**, fallback rate **1.2%**, median **222 ms** a move, 0 blunders over 69
   graded moves. Bramble is **indistinguishable from the engine** — which is what
   the band guarantee is supposed to buy, and here it genuinely does, because dots
   is solved from four plies in so 81% of its moves are proven.

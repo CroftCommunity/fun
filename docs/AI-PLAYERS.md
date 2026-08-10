@@ -587,8 +587,17 @@ Eight games each against Expert, same model, same rig (2026-08-10):
 | W-D-L for the hybrid | **4-0-4 (50%)** | **1-0-7 (13%)** |
 | graded / skipped | 69 / 16 (**81% exact**) | 23 / 87 (**21% exact**) |
 | fallback rate | 1.2% | 10.9% |
-| ms per graded move | 389 | 1,483 |
+| ms per graded move | 389 | 1,483 — **not latency, see below** |
+| **median ms per move** | **222** | **235** |
 | blunders | 0 | 0 |
+
+**Do not quote `ms/graded move` as latency.** It is `cost / scoredMoves`, and
+`cost` sums only the *graded* subset — so in a game where a small fraction of
+moves are graded it reads several times the real per-move cost. It made furrow
+look 5× slower than dots when the two are within 6% of each other. The trial now
+reports median/mean/worst over **every** move the hybrid makes; that is the
+latency number, and it is ~**230 ms** for both games against the engines' own
+0.3–8 ms.
 
 Dots' hybrid is *indistinguishable from the engine*. Furrow's loses seven of
 eight. Both record **zero blunders**.

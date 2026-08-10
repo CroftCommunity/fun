@@ -605,7 +605,7 @@ export function furrowModule(): GameModule {
           // the model picks badly within it: Millet wins 1 game in 8 where the
           // engine itself draws 4. Saying "never plays a losing move" was the
           // cosmetic cousin of an over-claimed `exact`.
-          `An in-browser model (${LOCAL_AI_PERSONA.name}) picks among the pits the engine rates as sound and adds banter — a one-time ~270 MB download on first use. It plays weaker than the engine, measured at 1 win in 8 against Expert: outside the endgame the engine is judging which pits are sound rather than proving it.`,
+          `An in-browser model (${LOCAL_AI_PERSONA.name}) picks among the pits the engine rates as sound and adds banter — a one-time ~270 MB download, then about a quarter-second a move against the engine's own 8 ms. It also plays weaker, measured at 1 win in 8 against Expert: outside the endgame the engine is judging which pits are sound rather than proving it.`,
         ),
       );
     }

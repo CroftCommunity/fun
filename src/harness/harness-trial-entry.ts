@@ -135,6 +135,15 @@ export async function runHybridTrial(opts: TrialOptions): Promise<TrialResult> {
   });
   const engine = new EnginePlayer(opts.level ?? 3);
 
+  // Per-move wall clock for the hybrid, over **every** move it makes.
+  //
+  // The Report's `ms/graded move` is `cost / scoredMoves`, and `cost` sums only
+  // the *graded* subset — so in a game where a small fraction of moves are graded
+  // it reads several times the real per-move cost. That is fine for what it is
+  // (cost per unit of grading) and badly wrong if anyone quotes it as latency,
+  // which is exactly the mistake this line exists to stop.
+  const hybridMs: number[] = [];
+
   const report = await runTournament(
     wiring.load,
     hybrid,
@@ -142,7 +151,15 @@ export async function runHybridTrial(opts: TrialOptions): Promise<TrialResult> {
     {
     games: opts.games,
     baseSeed: BigInt(opts.baseSeed ?? 0),
-    onGame: (i, _record, card) => {
+    onGame: (i, record, card) => {
+      // The hybrid is player A, so it makes the even-indexed decisions in the
+      // record's move list only when the runner alternates strictly — which it
+      // does not, in games with an extra-turn rule. Take the timings the runner
+      // actually recorded for moves it attributed to the LLM or its fallback.
+      record.timings.forEach((ms, at) => {
+        const src = record.sources[at];
+        if (src === "llm" || src === "fallback") hybridMs.push(ms);
+      });
       const msPer = card.scoredMoves === 0 ? 0 : card.moveMsTotal / card.scoredMoves;
       opts.onGame?.(
         `game ${i}: A W-D-L ${card.wins}-${card.draws}-${card.losses} | graded ${card.scoredMoves} (skipped ${card.skippedEarly}) blunders ${card.blunders} | ${msPer.toFixed(0)}ms/move`,
@@ -153,7 +170,11 @@ export async function runHybridTrial(opts: TrialOptions): Promise<TrialResult> {
   // without that the number is not actionable — a prompt problem, a decoding
   // problem and a model problem all look identical from the rate alone.
   const f = player.fallbacks;
-  const text = `${renderReport(report)}\n  fallback reasons: runtime ${f.runtime} · malformed ${f.malformed} · out-of-band ${f.outOfBand} · rescued by retry ${f.rescuedByRetry}${
+  const sorted = [...hybridMs].sort((a, b) => a - b);
+  const median = sorted.length ? sorted[Math.floor(sorted.length / 2)]! : 0;
+  const mean = sorted.length ? sorted.reduce((a, b) => a + b, 0) / sorted.length : 0;
+  const worst = sorted.length ? sorted[sorted.length - 1]! : 0;
+  const text = `${renderReport(report)}\n  hybrid move latency over ${sorted.length} moves: median ${median.toFixed(0)}ms · mean ${mean.toFixed(0)}ms · worst ${worst.toFixed(0)}ms\n  fallback reasons: runtime ${f.runtime} · malformed ${f.malformed} · out-of-band ${f.outOfBand} · rescued by retry ${f.rescuedByRetry}${
     f.samples.length ? `\n  malformed sample: ${JSON.stringify(f.samples[0])}` : ""
   }`;
   return { text, report };

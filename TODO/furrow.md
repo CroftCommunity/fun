@@ -54,7 +54,7 @@ any game before it. This file is the running worklist of what was deferred.
   |---|---|
   | W-D-L vs Expert | **1-0-7 (13%)** — the engine itself draws 50% |
   | fallback rate | **2.7%** after the retry fix below (was 10.9%) |
-  | cost | **~1,483 ms per graded move**, against the engine's 7.8 ms median |
+  | latency | **median 235 ms a move** (mean 367, worst 1,767) vs the engine's 7.8 ms |
   | blunders | 0 over 23 graded moves — and see below |
 
   **The 10.9% fallback rate turned out to be a shared decoder defect**, not

@@ -634,7 +634,11 @@ export function dotsModule(): GameModule {
         el(
           "p",
           { class: "dots-ai-disclosure" },
-          `An in-browser model (${LOCAL_AI_PERSONA.name}) picks within the engine's safe edges and adds banter — a one-time model download on first use; it never plays a losing move (the engine's band decides).`,
+          // Both costs stated, and the guarantee stated *with its reason* — which
+          // is what makes it true here and false in Furrow, where the same
+          // sentence had to be withdrawn. See `docs/AI-PLAYERS.md` → "The band's
+          // guarantee is only as strong as the exact fraction".
+          `An in-browser model (${LOCAL_AI_PERSONA.name}) picks within the engine's safe edges and adds banter — a one-time ~270 MB download, then about a quarter-second a move. It never plays a losing move: this board is solved from four edges in, so the engine's band is a proof rather than a guess.`,
         ),
       );
     }

@@ -238,9 +238,14 @@ test("the experimental local-AI toggle appears with a real adapter and discloses
   const toggle = page.locator(".dots-ai-toggle-input");
   await expect(toggle).toHaveCount(1);
   await toggle.check();
-  await expect(page.locator(".dots-ai-disclosure")).toContainText(/download|one[- ]time|GB|MB/i);
-  // And it discloses the guarantee, not just the cost.
-  await expect(page.locator(".dots-ai-disclosure")).toContainText(/never plays a losing move/i);
+  const disclosure = page.locator(".dots-ai-disclosure");
+  await expect(disclosure).toContainText(/download|one[- ]time|GB|MB/i);
+  await expect(disclosure).toContainText(/quarter-second a move/i);
+  // And it discloses the guarantee — which for *this* game is true, because the
+  // board is solved from four edges in. The copy must carry that reason, since
+  // the same sentence without it was wrong in Furrow.
+  await expect(disclosure).toContainText(/never plays a losing move/i);
+  await expect(disclosure).toContainText(/solved from four edges in/i);
 });
 
 test("the board fits a narrow phone viewport (no horizontal overflow)", async ({ page }) => {
