@@ -144,6 +144,20 @@ const PROBES: usize = 4;
 /// The empty-slot sentinel. Real margins fit far inside `i16`.
 const EMPTY: i16 = i16::MIN;
 
+/// The open search window: beyond any reachable margin, with room to be shifted.
+///
+/// **Not `i32::MIN`/`i32::MAX`, and that is the whole point.** Each recursion
+/// shifts the child's window by the move's `gain`, so a sentinel at the edge of
+/// the type overflows on the first shift. In release that wraps silently — an
+/// alpha of `i32::MIN + 1` becomes a large *positive* alpha, the child fails high
+/// immediately, and the search returns a bound dressed as a value. The bug was
+/// invisible to this repo's gate, which runs `--release` for speed, and surfaced
+/// only under `cargo mutants`, which builds in debug where overflow is checked.
+///
+/// A real margin cannot exceed 48 (every seed to one side), so this is three
+/// orders of magnitude of headroom and still 15 bits clear of overflow.
+pub const INF: i32 = 1 << 16;
+
 /// The twelve pit counts and the side to move, packed into a `u64`.
 ///
 /// Returns `None` when any pit holds more than [`MAX_PACKABLE`] seeds — see
@@ -391,7 +405,7 @@ impl Search {
         }
 
         let me = pos.to_move;
-        let mut best = i32::MIN;
+        let mut best = -INF - 1;
         let mut a = alpha;
         for mv in moves {
             let next = apply_move(pos, mv);
@@ -438,7 +452,7 @@ impl Search {
         }
 
         let me = pos.to_move;
-        let mut best = i32::MIN;
+        let mut best = -INF - 1;
         let mut a = alpha;
         for mv in moves {
             let next = apply_move(pos, mv);
@@ -489,9 +503,9 @@ pub fn move_values(pos: &Board, depth: u32, budget: NodeBudget) -> Report {
         let next = apply_move(pos, mv);
         let gain = margin_for(&next, me) - margin_for(pos, me);
         let sub = if affordable {
-            search.exact_future(&next, i32::MIN + 1, i32::MAX - 1)
+            search.exact_future(&next, -INF, INF)
         } else {
-            search.capped_future(&next, depth, i32::MIN + 1, i32::MAX - 1)
+            search.capped_future(&next, depth, -INF, INF)
         };
         let Some(child) = sub else {
             complete = false;
@@ -515,7 +529,7 @@ pub fn move_values(pos: &Board, depth: u32, budget: NodeBudget) -> Report {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use furrow_core::{A_STORE, B_STORE};
+    use furrow_core::{A_STORE, B_STORE, TOTAL_SEEDS};
 
     fn board(a: [u8; PITS], b: [u8; PITS], stores: (u8, u8), to_move: Side) -> Board {
         let mut cells = [0u8; CELLS];
@@ -589,10 +603,10 @@ mod tests {
         assert!(is_affordable(&pos));
 
         let mut with = Search::new(NodeBudget::of(EXACT_NODE_BUDGET));
-        let hot = with.exact_future(&pos, i32::MIN + 1, i32::MAX - 1);
+        let hot = with.exact_future(&pos, -INF, INF);
 
         let mut without = Search::with_table(Table::disabled(), NodeBudget::of(EXACT_NODE_BUDGET));
-        let cold = without.exact_future(&pos, i32::MIN + 1, i32::MAX - 1);
+        let cold = without.exact_future(&pos, -INF, INF);
 
         assert_eq!(hot, cold, "the table must not change the value");
         assert!(
@@ -715,6 +729,40 @@ mod tests {
             distinct.len() > 1,
             "the heuristic must tell the opening moves apart, got {:?}",
             deep.values
+        );
+    }
+
+    #[test]
+    fn the_window_sentinel_survives_being_shifted_by_a_move() {
+        // The invariant behind `INF`, stated where a reader will find it. Every
+        // recursion shifts the child's window by the move's gain, which is at
+        // most the whole board; a sentinel at the edge of the type would
+        // overflow on the first shift, and in release that wraps rather than
+        // panicking -- turning alpha into a large positive and the search into a
+        // bound reported as a value.
+        let max_gain = i32::from(TOTAL_SEEDS);
+        assert!(
+            INF > max_gain,
+            "the window must be wider than any real margin"
+        );
+        assert!(
+            INF.checked_add(max_gain).is_some() && (-INF).checked_sub(max_gain).is_some(),
+            "shifting the open window by a whole board must not overflow"
+        );
+    }
+
+    #[test]
+    fn a_wide_window_and_a_tight_one_agree_on_the_value() {
+        // The observable half of the same property: a window that merely contains
+        // the true value must not change it. If a shift ever wrapped, this is
+        // where it would show up as a different answer rather than a panic.
+        let pos = board([1, 2, 1, 0, 2, 1], [1, 0, 2, 1, 1, 1], (17, 18), Side::A);
+        assert!(is_affordable(&pos));
+        let mut wide = Search::new(NodeBudget::of(EXACT_NODE_BUDGET));
+        let mut tight = Search::new(NodeBudget::of(EXACT_NODE_BUDGET));
+        assert_eq!(
+            wide.exact_future(&pos, -INF, INF),
+            tight.exact_future(&pos, -100, 100)
         );
     }
 
