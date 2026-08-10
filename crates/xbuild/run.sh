@@ -20,4 +20,5 @@ RUSTC="$rustc_bin" "$cargo_bin" build \
 node "$here/check.mjs" \
   "$fun/target/wasm32-unknown-unknown/release/xbuild.wasm" \
   "$fun/crates/solitaire-core/vectors" \
-  "$fun/crates/dots-core/vectors"
+  "$fun/crates/dots-core/vectors" \
+  "$fun/crates/furrow-core/vectors"

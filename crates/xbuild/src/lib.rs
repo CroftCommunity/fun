@@ -11,6 +11,10 @@
 //! reports the length.
 
 use dots_core::{apply_move, legal_edges, state_hash as dots_state_hash, Board, Edge};
+use furrow_core::{
+    apply_move as furrow_apply, legal_pits, state_hash as furrow_state_hash, Board as FurrowBoard,
+    Pit,
+};
 use solitaire_core::{state_hash, GameState, Move};
 
 /// Length in bytes of the hex hash the buffer holds.
@@ -75,6 +79,49 @@ pub extern "C" fn dots_in_ptr() -> *const u8 {
 /// Capacity of the move-input buffer (a 3x3 game is at most 24 moves).
 #[no_mangle]
 pub extern "C" fn dots_in_cap() -> u32 {
+    IN_CAP as u32
+}
+
+/// Furrow (mancala): the state hash after replaying the first `len` bytes of the
+/// input buffer as pit moves (vectors `furrow-core/vectors/*.json`).
+///
+/// This is the cross-check that earns its keep. Every other core enrolled here
+/// writes one or two cells per move; a sow writes as many as thirteen, and the
+/// vectors deliberately walk extra-turn chains, captures and the end-of-game
+/// sweep -- the paths where a `usize` reaching the hashed path would actually
+/// show up as a native/wasm divergence rather than hiding.
+#[no_mangle]
+pub extern "C" fn furrow_replay_hash(len: u32) -> *const u8 {
+    let n = (len as usize).min(IN_CAP);
+    // SAFETY: single-threaded wasm; the host fills IN before this call and does
+    // not touch it during. Raw pointers avoid the `static_mut_refs` lint.
+    let moves: [u8; IN_CAP] = unsafe { *core::ptr::addr_of!(IN) };
+    let mut pos = FurrowBoard::opening();
+    for &p in &moves[..n] {
+        let mv = Pit(p);
+        // Replay skips anything illegal, exactly as `pond_outcome::verify` does,
+        // so wasm and native agree on tampered lists too.
+        if legal_pits(&pos).contains(&mv) {
+            pos = furrow_apply(&pos, mv);
+        }
+    }
+    write_hash(&furrow_state_hash(&pos))
+}
+
+/// Pointer to the shared move-input buffer, under its game-neutral name.
+///
+/// The same bytes [`dots_in_ptr`] returns: one buffer serves every enrolled
+/// game, because the host fills it immediately before each call and reads
+/// nothing back out of it. The dots-specific names predate the second caller and
+/// are kept so the check script's dots half does not re-lock.
+#[no_mangle]
+pub extern "C" fn move_in_ptr() -> *const u8 {
+    core::ptr::addr_of!(IN).cast::<u8>()
+}
+
+/// Capacity of the shared move-input buffer.
+#[no_mangle]
+pub extern "C" fn move_in_cap() -> u32 {
     IN_CAP as u32
 }
 

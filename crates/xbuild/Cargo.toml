@@ -11,4 +11,5 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 dots-core = { path = "../dots-core" }
+furrow-core = { path = "../furrow-core" }
 solitaire-core = { workspace = true }
