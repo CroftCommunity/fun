@@ -313,6 +313,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "furrow-solver"
+version = "0.0.0"
+dependencies = [
+ "adversary-core",
+ "adversary-solver",
+ "furrow-core",
+ "rand",
+ "rand_chacha",
+]
+
+[[package]]
 name = "generic-array"
 version = "0.14.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
