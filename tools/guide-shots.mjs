@@ -448,6 +448,118 @@ const SHOTS = [
     },
   },
   {
+    name: "furrow-board",
+    clip: ".furrow-game",
+    async run(page) {
+      await page.goto(`${origin}/furrow/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".furrow-board");
+      await page.waitForFunction(() => Boolean(window.__furrow));
+      // The human opens, so the board is the untouched position -- which is what
+      // the caption claims. Wait only for the tappable rings to be painted.
+      await page.waitForSelector(".furrow-pit.mine.legal");
+    },
+  },
+  {
+    name: "furrow-again",
+    clip: ".furrow-game",
+    async run(page) {
+      await page.goto(`${origin}/furrow/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".furrow-board");
+      await page.waitForFunction(() => Boolean(window.__furrow));
+      await page.waitForSelector(".furrow-pit.mine.legal");
+      // Pit 2 is four cells from the store and holds four seeds, so it is the
+      // classic opening -- the one the caption is about. Take it through the UI
+      // so the "go again" line is on screen for real.
+      await page.click('.furrow-pit[data-pit="2"]');
+      await page.waitForFunction(() => {
+        const h = window.__furrow;
+        return !h.busy() && h.game.board().keptTurn;
+      });
+    },
+  },
+  {
+    name: "furrow-tutor",
+    clip: ".furrow-game",
+    async run(page) {
+      await page.addInitScript(() => localStorage.setItem("fun-furrow-tutor", "on"));
+      await page.goto(`${origin}/furrow/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".furrow-board");
+      await page.waitForFunction(() => Boolean(window.__furrow));
+      await page.waitForSelector(".furrow-pit.mine.legal");
+      // Play a few real turns first. From the untouched opening the options are
+      // nearly interchangeable, and a shot illustrating "the engine's reason for
+      // each" must not show six lines that say the same thing -- the defect
+      // dots' first tutor shot had.
+      for (let i = 0; i < 3; i += 1) {
+        await page.waitForFunction(() => {
+          const h = window.__furrow;
+          const b = h.game.board();
+          return !h.busy() && (b.result !== -1 || (b.toMove === 1 && b.legal.length > 0));
+        });
+        // `result === -1` means the game is still running -- the inverted form of
+        // this check made the loop click only once the game was over, so the shot
+        // was the untouched opening with two interchangeable options in it.
+        if (await page.evaluate(() => window.__furrow.game.board().result === -1)) {
+          await page.click(".furrow-pit.mine.legal");
+        }
+      }
+      await page.waitForFunction(() => {
+        const h = window.__furrow;
+        const b = h.game.board();
+        return !h.busy() && b.result === -1 && b.toMove === 1 && b.legal.length > 0;
+      });
+      await page.click(".furrow-tutor-explain");
+      await page.waitForSelector(".furrow-tutor-options li");
+      // And the shot is only worth taking if the lines differ, which is the whole
+      // point of the section it illustrates.
+      const seen = await page.evaluate(() => {
+        const items = [...document.querySelectorAll(".furrow-tutor-options li")];
+        return { total: items.length, distinct: new Set(items.map((li) => li.textContent)).size };
+      });
+      // The section this illustrates is about the engine giving a *reason per
+      // move*. A shot with one line, or with several identical ones, is truthful
+      // and proves nothing -- the defect dots' first tutor shot had.
+      if (seen.total < 3 || seen.distinct < 3) {
+        throw new Error(
+          `guide-shots: furrow-tutor needs 3+ distinct options, got ${seen.distinct} of ${seen.total}`,
+        );
+      }
+    },
+  },
+  {
+    name: "furrow-result",
+    clip: ".sol-result",
+    async run(page) {
+      await page.goto(`${origin}/furrow/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".furrow-board");
+      await page.waitForFunction(() => Boolean(window.__furrow));
+      // Play the game out through the UI so the record is a real one -- and play
+      // it competently, by tapping the pit the coach rates best each turn.
+      // Always tapping the lowest legal pit is also a real game, but it loses
+      // 35-13, and a guide whose closing image is a rout teaches the wrong thing
+      // about the game rather than about the record. Reading `coach()` through
+      // the test hook does not mark assistance, so the record still claims what
+      // it should.
+      for (let turn = 0; turn < 120; turn += 1) {
+        await page.waitForFunction(() => {
+          const h = window.__furrow;
+          const b = h.game.board();
+          return !h.busy() && (b.result !== -1 || (b.toMove === 1 && b.legal.length > 0));
+        });
+        if (await page.evaluate(() => window.__furrow.game.board().result !== -1)) break;
+        const pit = await page.evaluate(() => {
+          const h = window.__furrow;
+          const best = h.game.coach().bestCol;
+          return best !== null && h.game.board().legal.includes(best)
+            ? best
+            : h.game.board().legal[0];
+        });
+        await page.click(`.furrow-pit[data-pit="${pit}"]`);
+      }
+      await page.waitForSelector(".sol-result .sol-verify-badge.ok", { timeout: 60000 });
+    },
+  },
+  {
     name: "dots-board",
     clip: ".dots-game",
     async run(page) {
