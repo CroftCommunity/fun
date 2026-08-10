@@ -26,11 +26,49 @@
 use adversary_core::Side;
 use furrow_core::{opposite_pit, store_of, Board, CELLS};
 
+/// The three weights, as a value so they can be swept.
+///
+/// They ship as [`Weights::SHIPPED`] and every production path uses that. The
+/// parameter exists because the heuristic decides roughly **70% of a game** here
+/// — Phase 0's measurement — which makes these three numbers the largest
+/// untuned lever on the engine's strength, and a lever nobody can pull without a
+/// way to vary it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Weights {
+    /// Weight on holding seeds rather than having fed them across.
+    pub side_seed: i32,
+    /// Weight on a pit that lands its last seed in your store — a free turn.
+    pub extra_turn: i32,
+    /// Weight on the largest capture currently available, per seed captured.
+    pub capture: i32,
+}
+
+impl Weights {
+    /// What the shipped engine plays with.
+    pub const SHIPPED: Weights = Weights {
+        side_seed: SIDE_SEED,
+        extra_turn: EXTRA_TURN,
+        capture: CAPTURE,
+    };
+}
+
+impl Default for Weights {
+    fn default() -> Self {
+        Weights::SHIPPED
+    }
+}
+
 /// Weight on holding seeds rather than having fed them across.
 ///
 /// Seeds on your own side are seeds you still get to spend; seeds on the
-/// opponent's are seeds they will mostly bank. The unit the other two weights are
-/// stated against.
+/// opponent's are seeds they will mostly bank.
+///
+/// **This is a unit, not a knob.** `capped_future` computes `gain ± child`, where
+/// `gain` is a real count of seeds banked by the move and the leaf returns this
+/// heuristic — so the estimate is *added to actual seed counts* and must be
+/// denominated in seeds. Moving it off 1 rescales the heuristic against a real
+/// margin that did not change, and the sweep measures the damage: **11.2%** at 2
+/// and **35.0%** at 0, against a 45.0% control (`tests/weight_sweep.rs`).
 pub const SIDE_SEED: i32 = 1;
 
 /// Weight on a pit that lands its last seed in your store — a free extra turn.
@@ -38,12 +76,22 @@ pub const SIDE_SEED: i32 = 1;
 /// Worth more than the one seed it banks, because it is also a tempo the
 /// opponent never gets. Phase 0 measured chains up to five moves long, so these
 /// compound.
+///
+/// **Swept 2026-08-10 and kept.** Removing the term costs ~11 points against the
+/// control; 2, 3 and 5 are indistinguishable at n=40 and 8 is clearly worse. The
+/// value sits in a flat basin, so 3 is a choice inside it rather than a peak
+/// (`tests/weight_sweep.rs`).
 pub const EXTRA_TURN: i32 = 3;
 
 /// Weight on the largest capture currently available, per seed captured.
 ///
 /// A capture moves seeds from their side to your store in one step, so it is
 /// worth about twice a plain seed — it is both a gain and a denial.
+///
+/// **Swept 2026-08-10 and kept.** Removing the term costs ~15 points against the
+/// control — the most expensive of the three to lose; 1, 2 and 4 are
+/// indistinguishable at n=40 and 6 is clearly worse
+/// (`tests/weight_sweep.rs`).
 pub const CAPTURE: i32 = 2;
 
 /// Seeds sitting in `side`'s pits (their store is not counted).
@@ -117,11 +165,17 @@ pub fn best_capture(pos: &Board, side: Side) -> i32 {
 /// search already knows.
 #[must_use]
 pub fn future_margin(pos: &Board) -> i32 {
+    future_margin_with(pos, Weights::SHIPPED)
+}
+
+/// The same estimate under an arbitrary weight set — the seam a sweep drives.
+#[must_use]
+pub fn future_margin_with(pos: &Board, w: Weights) -> i32 {
     let me = pos.to_move;
     let them = me.other();
-    SIDE_SEED * (seeds_on(pos, me) - seeds_on(pos, them))
-        + EXTRA_TURN * (free_turns(pos, me) - free_turns(pos, them))
-        + CAPTURE * (best_capture(pos, me) - best_capture(pos, them))
+    w.side_seed * (seeds_on(pos, me) - seeds_on(pos, them))
+        + w.extra_turn * (free_turns(pos, me) - free_turns(pos, them))
+        + w.capture * (best_capture(pos, me) - best_capture(pos, them))
 }
 
 #[cfg(test)]
@@ -209,6 +263,32 @@ mod tests {
         // pit is empty" would claim one here.
         let pos = board([0, 0, 0, 0, 0, 3], [0, 0, 4, 0, 0, 0], Side::A);
         assert_eq!(best_capture(&pos, Side::A), 0);
+    }
+
+    #[test]
+    fn the_shipped_weights_are_the_default_and_a_swept_set_really_changes_the_value() {
+        // The seam the sweep drives. If `future_margin_with` ignored its argument
+        // the sweep would compare a weight set against itself and report a tidy
+        // 50% forever — the most convincing way to measure nothing.
+        let pos = board([3, 0, 5, 1, 0, 2], [1, 4, 0, 0, 6, 2], Side::A);
+        assert_eq!(
+            future_margin(&pos),
+            future_margin_with(&pos, Weights::SHIPPED)
+        );
+        assert_eq!(Weights::default(), Weights::SHIPPED);
+        let heavier = Weights {
+            capture: CAPTURE + 4,
+            ..Weights::SHIPPED
+        };
+        assert_ne!(future_margin_with(&pos, heavier), future_margin(&pos));
+        // And a set of zeros must flatten it entirely, which is the sharpest
+        // check that every term really reads its own weight.
+        let zeroed = Weights {
+            side_seed: 0,
+            extra_turn: 0,
+            capture: 0,
+        };
+        assert_eq!(future_margin_with(&pos, zeroed), 0);
     }
 
     #[test]

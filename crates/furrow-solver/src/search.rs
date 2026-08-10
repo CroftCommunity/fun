@@ -344,6 +344,7 @@ pub struct Search {
     table: Table,
     budget: NodeBudget,
     nodes: u64,
+    weights: eval::Weights,
 }
 
 impl Search {
@@ -354,6 +355,18 @@ impl Search {
             table: Table::new(),
             budget,
             nodes: 0,
+            weights: eval::Weights::SHIPPED,
+        }
+    }
+
+    /// A search whose heuristic uses `weights` — the seam the weight sweep
+    /// drives (`tests/weight_sweep.rs`). Production always uses
+    /// [`eval::Weights::SHIPPED`]; nothing on a shipped path calls this.
+    #[must_use]
+    pub fn with_weights(budget: NodeBudget, weights: eval::Weights) -> Self {
+        Search {
+            weights,
+            ..Search::new(budget)
         }
     }
 
@@ -364,6 +377,7 @@ impl Search {
             table,
             budget,
             nodes: 0,
+            weights: eval::Weights::SHIPPED,
         }
     }
 
@@ -448,7 +462,7 @@ impl Search {
             return Some(0);
         }
         if depth == 0 {
-            return Some(eval::future_margin(pos));
+            return Some(eval::future_margin_with(pos, self.weights));
         }
 
         let me = pos.to_move;
@@ -492,7 +506,20 @@ pub struct Report {
 /// within `budget`.
 #[must_use]
 pub fn move_values(pos: &Board, depth: u32, budget: NodeBudget) -> Report {
-    let mut search = Search::new(budget);
+    move_values_with(pos, depth, budget, eval::Weights::SHIPPED)
+}
+
+/// [`move_values`] under an arbitrary heuristic weight set. The sweep's entry
+/// point; the exact path ignores `weights` entirely, because a proof has no
+/// weights in it.
+#[must_use]
+pub fn move_values_with(
+    pos: &Board,
+    depth: u32,
+    budget: NodeBudget,
+    weights: eval::Weights,
+) -> Report {
+    let mut search = Search::with_weights(budget, weights);
     let me = pos.to_move;
     let banked = margin_for(pos, me);
     let affordable = is_affordable(pos);

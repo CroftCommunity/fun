@@ -36,6 +36,10 @@ any game before it. This file is the running worklist of what was deferred.
 - **The blunder count cannot tell this game's levels apart.** Easy loses
   **0-0-12** to Expert and records **zero blunders**, as does Expert. Written up
   in `docs/HARNESS.md`.
+- **The heuristic's weights were swept and kept.** 16 rows × 40 games; no
+  candidate beat the shipped `(1, 3, 2)`. The scale control `(2,6,4)` **failed**,
+  which is the useful part: it proved `side_seed` is the term that denominates the
+  heuristic in seeds so it can be added to a real margin, not a free parameter.
 - **Phase 0's transposition-table sizing was wrong by ~500×** and Phase 3 refuted
   it in place: 2,827 live entries at the threshold, not 1.65M, so the table is
   640 KB rather than ~10 MB.
@@ -61,8 +65,13 @@ any game before it. This file is the running worklist of what was deferred.
   that and nothing relies on it. The human opens by default because no seat is
   known to be losing — unlike dots, where the seat *is* known and the default
   exists to protect the player.
-- [ ] **`eval`'s weights were never tuned.** `SIDE_SEED` 1, `EXTRA_TURN` 3,
-  `CAPTURE` 2 are reasoned and policy-tested, not fitted. The heuristic decides
-  ~70% of a game, so a self-play sweep over the three weights is the highest-value
-  strength work available on this game — and `docs/AI-PLAYERS.md` → "Measuring the
-  strength cost" has the protocol and its traps.
+- [x] ~~**`eval`'s weights were never tuned.**~~ **Swept 2026-08-10**
+  (`crates/furrow-solver/tests/weight_sweep.rs`, 16 rows × 40 games). **No
+  candidate beat the shipped `(1, 3, 2)`; nothing was adopted.** What the sweep
+  did establish: both non-seed terms are load-bearing (dropping the extra-turn
+  term costs ~11 points, the capture term ~15), the shipped values sit in a **flat
+  basin** (`extra_turn` 2–5 and `capture` 1–4 are indistinguishable at n=40), and
+  **`side_seed` is a unit rather than a knob** — the heuristic is added to real
+  seed counts, so it must be denominated in seeds, and moving it off 1 costs
+  33 points. Re-open only with ~400 games/row, and only with a reason to think a
+  3-point difference is there to find.
