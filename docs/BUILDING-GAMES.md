@@ -447,7 +447,10 @@ that the trait + band + tutor + harness carry to a **move that is a path**, not 
 destination square (landed 2026-08-06, `plans/2026-08-04-checkers-game.md`) — and
 **Dots and Boxes** (`src/games/dots/`, `crates/dots-*`) is the fourth, which broke
 two assumptions nobody had written down (landed 2026-08-07,
-`plans/2026-08-07-dots-and-boxes.md`).
+`plans/2026-08-07-dots-and-boxes.md`), and **Furrow** (`src/games/furrow/`,
+`crates/furrow-*`) is the fifth — mancala, the first game built to *inherit* the
+abstraction rather than to prove or to stress it (landed 2026-08-10,
+`plans/2026-08-07-mancala.md`).
 
 **Variation — a move that does not pass the turn (Dots and Boxes).** Closing the
 fourth side of a box claims it and the mover **moves again**. So `side_to_move` is
@@ -459,6 +462,41 @@ and `gradeSide` already re-derived whose move it was during replay — but the
 *prose* in three places said "alternating" and was wrong the moment this game
 existed. If your game has an extra-turn rule, the code is ready for it; read the
 turn from the board and never from parity.
+
+**Variation — one move that rewrites many cells (Furrow).** A sow lifts every seed
+out of one pit and drops them around the board one at a time, so a single move code
+can write to **thirteen of fourteen cells** — and it skips exactly one of them (the
+opponent's store), which is a rule, not arithmetic. Two consequences worth planning
+for if your game has a move like this:
+
+- **Replay correctness now depends on a loop.** Every other core on this shelf
+  writes one or two cells per move, so "the hash matched" meant a couple of fields
+  matched. Here it has to mean all fourteen counts matched, and the golden vectors
+  are chosen to walk the loop: one is driven deliberately through extra-turn chains
+  and captures because those are the paths most likely to diverge native-vs-wasm.
+- **The UI must not re-derive the path.** `furrow-wasm` exports `sow_path_json`,
+  which returns the cells a sow would fill *in order* plus what it keeps and takes.
+  A front end animating the sow from the board alone would have to re-implement the
+  skip rule in TypeScript, and a second copy of a rule is a second place for it to
+  be wrong. The core decides; the UI draws what it is told.
+
+Nothing in the shared stack noticed. The rig sends a move code and re-reads the
+board, so a thirteen-cell write is no different to it than a single-cell one.
+
+**Variation — a terminal rule that rewrites the score (Furrow).** When either side
+runs out of seeds the game ends and the other side **sweeps** every remaining seed
+into its store. The final score is therefore *not* what accumulated during play,
+and a sweep can move a dozen seeds at once. Three things follow, and the first two
+are easy to get wrong:
+
+- **Apply the transformation in `apply_move`**, so a terminal position is always
+  canonical — both sides empty, the stores holding the final score, `legal_moves`
+  returning nothing. Leaving it to the caller means every caller can forget.
+- **Make `result` apply it too**, to a position it is handed. A caller that
+  constructed a terminal without routing through `apply_move` otherwise reads the
+  wrong winner, and that caller exists: the scorer replays records.
+- **Tell the player.** A score that jumps at the final move reads as a bug unless
+  the UI says the sweep happened.
 
 **Variation — a band value that is a margin (Dots and Boxes).** Drop 4, Othello
 and checkers all produce a value the band buckets into three classes. Here the

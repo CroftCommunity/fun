@@ -29,6 +29,11 @@ files are the running, checkbox-level worklist.
   first with a move that does **not** pass the turn and a band value that is a
   margin — neither of which needed a change to anything shared. Open: the live
   WebGPU trial has never been run.
+- [furrow.md](furrow.md) — **adversarial** (the fifth game, mancala); shipped
+  2026-08-10. The first built to *inherit* the abstraction rather than prove or
+  stress it, and it needed no shared change either. Brought one move that rewrites
+  thirteen cells and a terminal that rewrites the score. Open: the live WebGPU
+  trial (same item as dots'), and `eval`'s weights are reasoned but never tuned.
 - blockdoku, looseends, color-sort — shipped; no open backlog file yet.
 
 ## Shipped — Tier-2 wrapped (playable)
@@ -65,29 +70,13 @@ field:
   candidate hunt for the P2P-gated set (cribbage's cohort), which is a different
   question from what is buildable today.
 
-0. **Mancala — shipped as Furrow, in progress.** Tier-1 adversarial, the fifth.
-   `plans/2026-08-07-mancala.md`. **Phases 0–4 done as of 2026-08-09**:
-   `crates/furrow-core` (rules, hash, `RULES.md`, three golden vectors), the
-   native == wasm cross-check, and `crates/furrow-solver` (exact endgame solver,
-   heuristic search, levels, tutor). Next is Phase 5, the `furrow-wasm` binding.
-   Owner decisions settled 2026-08-07: **6 pits × 4 seeds**, the name **Furrow**,
-   two players, the full §10 checklist.
-
-   It was on the slate for the shapes it stresses, not the fun, and all four
-   showed up: one move that rewrites as many as thirteen cells, a terminal that
-   transforms the score, all three result classes reachable, and dots' extra-turn
-   shape **transferring** — nothing shared needed changing, which is what makes
-   the dots result a property of the abstraction rather than luck.
-
-   Two findings worth knowing before reading the crates:
-   - **The top level is `Expert`, not `Perfect`.** Phase 0 could not solve the
-     opening at 100M nodes, and about 70% of a game sits above the exact
-     threshold. The published Kalah(6,4) first-player win used retrograde analysis
-     and endgame databases; it is **not reproduced here and not relied on**.
-   - **Phase 0's central design finding was wrong by ~500×** and Phase 3 refutes
-     it in place: it sized the transposition table against 1.65M entries (~10 MB)
-     from a count of distinct positions under a search with no alpha-beta. The
-     shipped search holds 2,827 at its worst, so the table is 640 KB.
+0. **Mancala — done.** Shipped as **Furrow** on 2026-08-10 (`TODO/furrow.md`,
+   `plans/2026-08-07-mancala.md`). Left here only as a pointer: it was picked for
+   the shapes it stresses rather than the fun, and all four showed up — one move
+   rewriting as many as thirteen cells, a terminal that transforms the score, all
+   three result classes reachable, and dots' extra-turn rule **transferring** with
+   no change to anything shared, which is what makes the dots result a property of
+   the abstraction rather than luck.
 1. **Chess** — Tier-1 adversarial, **heavy**. Needs a vetted move generator
    (castling, en passant, promotion, checkmate/stalemate/draws), which is the real
    weight. Its own multi-phase plan.

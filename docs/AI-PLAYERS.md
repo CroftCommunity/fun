@@ -515,6 +515,24 @@ rig grades **83% of a side's moves** against checkers' 9 of 163. The number to
 report is the same either way — a class floor over an empty denominator asserts
 nothing, and a full denominator is not a strength claim.
 
+**Furrow lands between them, and shows what the middle costs.** Its `exact` means
+the position is inside a measured 16-seeds-in-play threshold, and roughly 70% of a
+game sits above it — so the rig grades **27% of a side's moves** (78 of 288 over 12
+games), between checkers' 5% and dots' 83%.
+
+| game | what `exact` means | graded |
+|---|---|---|
+| dots | the board is solved from here | 83% |
+| **furrow** | **≤ 16 seeds still in play** | **27%** |
+| checkers | a terminal was proven | 5% |
+
+The middle is where the *reporting* rule stops being pedantry. At 83% a blunder
+count means something; at 5% nobody is tempted to read it as strength. At 27% it
+looks like a real measurement and is not — which furrow demonstrated the hard way:
+its weakest level loses **0-0-12** to its strongest and records **zero blunders**
+in both directions. See `docs/HARNESS.md` → "Furrow's demonstration" for why, and
+report the graded fraction next to the count every single time.
+
 ## Generality: a second game (Othello), then a third (checkers)
 
 Othello (`/othello/`, `crates/othello-*`) is the proof that the adversarial +

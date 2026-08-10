@@ -251,6 +251,42 @@ boxes of a chain to force you to open the next one, which looks like a blunder a
 is the opposite.
 Plan: `plans/2026-08-07-dots-and-boxes.md`. AI rationale: `docs/AI-PLAYERS.md`.
 
+## Furrow (playable — mancala, and a score that changes after the last move)
+
+`/furrow/` is mancala on the board most people mean by it: six pits a side, four
+seeds each, a store at either end. Tap one of your pits and every seed in it is
+sown one at a time around the board, skipping the opponent's store. Land your last
+seed in your own store and you go again; land it in an empty pit of yours and you
+take that seed and everything facing it. Full Tier-1 build — opt-in tutor, hints
+that declare themselves as assistance, a WebGPU-gated experimental local-AI
+opponent (persona: Millet), and a verifiable `?r=` outcome.
+
+It was built to **inherit** the shelf's adversarial abstraction rather than to
+prove or to stress it, and it did: nothing under `src/harness/` or in the shared
+crates changed. The extra-turn rule dots introduced transferred with no edit,
+which is what makes dots' result a property of the design rather than luck.
+
+Two things it brought that were genuinely new. **One move rewrites many cells** —
+a sow can write to thirteen of fourteen, and skips exactly one of them by rule, so
+replay correctness depends on a loop and the UI animates from the core's own
+`sow_path` preview rather than counting cells itself. And **a terminal rule
+rewrites the score**: when either side empties, the other sweeps every remaining
+seed into its store, so the final score is not what accumulated during play. The
+board says so when it fires, because a score that jumps at the last move otherwise
+reads as a bug.
+
+The difficulty picker tops out at **Expert, not Perfect**, and that is a claim
+about what was measured rather than modesty. The opening does not solve — 100M
+nodes, exhausted — so about 70% of a game is above the exact threshold and the
+engine is searching there, not proving. The tutor says which it is doing, every
+time.
+
+Worth knowing before you play: running *yourself* out of seeds while the
+opponent's row is full hands them everything left on it. It is the fastest way to
+lose a game you were winning.
+
+Plan: `plans/2026-08-07-mancala.md`. AI rationale: `docs/AI-PLAYERS.md`.
+
 ## Align (playable — falling-block stacker)
 
 `/align/` is a real-time falling-block stacker (build-fresh; original name,
