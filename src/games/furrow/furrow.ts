@@ -24,7 +24,12 @@ import type { GameModule } from "../../contract.js";
 import {
   declareAssistanceEnabled,
   furrowLevel,
+  furrowTutorEnabled,
+  hintsEnabled,
+  setDeclareAssistance,
   setFurrowLevel,
+  setFurrowTutor,
+  setHintsEnabled,
   type FurrowLevel,
 } from "../../settings.js";
 import {
@@ -34,7 +39,14 @@ import {
   type FurrowEnvelope,
   type VerifyResult,
 } from "./furrow-outcome.js";
-import { Furrow, type BoardView, type Level, type SideCode } from "./furrow-wasm.js";
+import {
+  Furrow,
+  type BoardView,
+  type Level,
+  type PitVerdict,
+  type SideCode,
+  type TutorReport,
+} from "./furrow-wasm.js";
 
 declare global {
   interface Window {
@@ -114,6 +126,46 @@ export function ownerOfCell(cell: number, pits: number): SideCode | null {
   if (cell === pits) return null; // A's store
   if (cell < 2 * pits + 1) return 2;
   return null; // B's store
+}
+
+/**
+ * What the coach may say about a move the player just made, or `null` when there
+ * is nothing honest to add.
+ *
+ * The sentence itself is the **engine's** (`coach_line` in `furrow-solver`, bound
+ * to `exact` in Rust so a depth-capped verdict cannot be worded as a proof). This
+ * adds only the pointer to a better pit — and hedges that pointer the same way: a
+ * search that proved nothing cannot claim the other pit held the game. That
+ * matters more here than in any shelf game so far, because Phase 0 measured about
+ * **70% of a game** sitting above the exact threshold.
+ */
+export function coachFor(
+  verdict: PitVerdict | null,
+  bestPit: number | null,
+  pits: number,
+): string | null {
+  if (!verdict || verdict.quality === "optimal") return null;
+  if (bestPit === null) return verdict.line;
+  const where = capitalise(pitLabel(bestPit, pits));
+  return verdict.exact ? `${verdict.line} ${where} held it.` : `${verdict.line} ${where} may be stronger.`;
+}
+
+/**
+ * A hint: which pit the engine likes, **why** it likes it, and the fact that
+ * taking it counts as assistance. A hint that only pointed would teach nothing,
+ * and one that did not declare its cost would quietly weaken the record.
+ */
+export function hintLine(report: TutorReport, pits: number): string | null {
+  const best = report.bestCol;
+  if (best === null) return null;
+  const fact = report.moves.find((m) => m.col === best);
+  const why = fact ? ` — ${fact.idea}` : "";
+  return `Hint: ${pitLabel(best, pits)}${why}. (A hint counts as assistance.)`;
+}
+
+/** Sentence-case a label that starts a sentence. */
+function capitalise(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 /**
@@ -229,6 +281,24 @@ export function furrowModule(): GameModule {
   let level: FurrowLevel = furrowLevel();
   let status = "";
   let sweptNotice = false;
+  /** The coach's line about the human's last move, shown in the tutor panel. */
+  let coachMsg: string | null = null;
+  /** The verdict captured *before* the human's move is applied — a move can only
+   *  be graded against the position it was played in. */
+  let pendingCoach: string | null = null;
+  /** Set when the player ends the match early, so the record and the screen agree. */
+  let endedEarly: string | null = null;
+  /**
+   * The tutor panel's last reading, held in module state rather than in the DOM.
+   *
+   * Without this the panel is wiped by the next `render()` — and a re-render
+   * lands shortly after every turn settles, so the options a player just asked
+   * for vanish under them. `TODO/dots.md` files this as a shared defect across
+   * othello, checkers and dots; Furrow does not inherit it. The reading is
+   * cleared when the position it described stops being the current one, because
+   * a stale reading is worse than none.
+   */
+  let tutorView: { note: string; options: string[]; hash: string } | null = null;
 
   const setStatus = (text: string): void => {
     status = text;
@@ -344,10 +414,7 @@ export function furrowModule(): GameModule {
   };
 
   const renderControls = (): HTMLElement => {
-    const select = el("select", {
-      class: "furrow-level",
-      "aria-label": "Difficulty",
-    });
+    const select = el("select", { class: "furrow-level", "aria-label": "Difficulty" });
     for (const l of LEVELS) {
       const opt = el("option", l === level ? { selected: "selected" } : {}, l);
       opt.setAttribute("value", l);
@@ -357,8 +424,122 @@ export function furrowModule(): GameModule {
       level = select.value as FurrowLevel;
       setFurrowLevel(level);
     });
-    const row = el("div", { class: "furrow-controls" }, select);
-    return row;
+
+    const fresh = el("button", { type: "button", class: "furrow-new" }, "New game");
+    fresh.addEventListener("click", () => void startGame());
+
+    // The shared assistance control: a hint while hints are on, and otherwise
+    // the honest way out — ending the match rather than pretending it finished.
+    const hints = hintsEnabled();
+    const action = el(
+      "button",
+      { type: "button", class: hints ? "furrow-hint" : "furrow-stuck" },
+      hints ? "Hint" : "I\u2019m done",
+    );
+    action.addEventListener("click", hints ? showHint : endNow);
+
+    const toggle = (
+      checked: boolean,
+      label: string,
+      cls: string,
+      onChange: (on: boolean) => void,
+    ): HTMLElement => {
+      const input = el("input", { type: "checkbox", class: cls });
+      (input as HTMLInputElement).checked = checked;
+      input.addEventListener("change", () => onChange((input as HTMLInputElement).checked));
+      return el("label", { class: "furrow-toggle" }, input, ` ${label}`);
+    };
+    const details = el("details", { class: "sol-settings furrow-settings" });
+    details.append(
+      el("summary", {}, "Settings"),
+      toggle(hints, "Enable hints", "furrow-set-hints", (on) => {
+        setHintsEnabled(on);
+        render(); // relabel the action control (Hint <-> I'm done)
+      }),
+      toggle(declareAssistanceEnabled(), "Declare assistance used", "furrow-set-assist", (on) => {
+        setDeclareAssistance(on);
+      }),
+      toggle(furrowTutorEnabled(), "Show tutor", "furrow-set-tutor", (on) => {
+        setFurrowTutor(on);
+        render();
+      }),
+    );
+
+    return el(
+      "div",
+      { class: "furrow-controls" },
+      el("label", { class: "furrow-field" }, "Difficulty ", select),
+      fresh,
+      action,
+      details,
+    );
+  };
+
+  const humanToMove = (): boolean =>
+    Boolean(game) && game!.board().toMove === HUMAN && game!.board().result === -1;
+
+  /** Point at a good pit, say why, and declare the cost. */
+  const showHint = (): void => {
+    if (!game || busy || ending || !humanToMove()) return;
+    const said = hintLine(game.coach(), game.board().pits);
+    if (!said) return;
+    game.markAssistance();
+    setStatus(said);
+  };
+
+  /** End the match now and report what was left, rather than pretending it
+   *  finished. The record says `Abandoned`, and the screen must agree. */
+  const endNow = (): void => {
+    if (!game || ending) return;
+    const board = game.board();
+    endedEarly = `Ended early \u2014 ${board.inPlay} seeds were still on the board`;
+    finish();
+  };
+
+  // --- the tutor panel (engine-grounded coaching; opt-in, no GPU) ---
+  const renderTutorPanel = (): HTMLElement => {
+    const panel = el("section", { class: "furrow-tutor", "aria-label": "Tutor" });
+    const explain = el(
+      "button",
+      { type: "button", class: "furrow-tutor-explain" },
+      "Explain my options",
+    );
+    const note = el("p", { class: "furrow-tutor-note", "aria-live": "polite" });
+    const optionsEl = el("ul", { class: "furrow-tutor-options", "aria-label": "Reasonable pits" });
+    // Repaint the last reading, if it still describes the position on screen.
+    if (tutorView && game && tutorView.hash === game.currentHash()) {
+      note.textContent = tutorView.note;
+      optionsEl.replaceChildren(...tutorView.options.map((line) => el("li", {}, line)));
+    }
+    explain.addEventListener("click", () => {
+      if (!game || busy || ending || !humanToMove()) return;
+      // Paint the reading state BEFORE the deep search starts. The panel's search
+      // blocks the main thread, so without this the button looks dead for as long
+      // as it runs — the lesson checkers learned the hard way.
+      note.textContent = "Reading ahead\u2026";
+      const g = game;
+      const pits = g.board().pits;
+      const at = g.currentHash();
+      window.setTimeout(() => {
+        const report = g.tutor();
+        const band = report.moves
+          .filter((m) => m.quality !== "blunder")
+          .sort((x, y) => y.value - x.value);
+        // The panel is the only surface allowed to claim a proof, and it may only
+        // do so when the search actually reached terminals.
+        const heading = report.exact ? "Solved from here:" : "Reading ahead (not yet certain):";
+        const options = band
+          .slice(0, 6)
+          .map((m) => `${pitLabel(m.col, pits)} \u2014 ${m.idea}`);
+        tutorView = { note: heading, options, hash: at };
+        note.textContent = heading;
+        optionsEl.replaceChildren(...options.map((line) => el("li", {}, line)));
+      }, 0);
+    });
+    const coach = el("p", { class: "furrow-tutor-coach", role: "status", "aria-live": "polite" });
+    if (coachMsg) coach.textContent = coachMsg;
+    panel.append(explain, note, optionsEl, coach);
+    return panel;
   };
 
   const render = (): void => {
@@ -379,6 +560,7 @@ export function furrowModule(): GameModule {
         ),
         buildBoard(board, humanTurn && !busy),
         el("p", { class: "furrow-turnline" }, turnLine(board, humanTurn)),
+        ...(furrowTutorEnabled() ? [renderTutorPanel()] : []),
         statusEl,
       ),
     );
@@ -428,6 +610,12 @@ export function furrowModule(): GameModule {
     // A refusal from a previous tap has been answered by this one; leaving it up
     // would have the board contradict itself.
     if (status) setStatus("");
+    // Grade the move against the position it was played in, before it is applied
+    // — afterwards that position no longer exists. The sentence is the engine's;
+    // `coachFor` adds only the pointer, hedged the same way.
+    if (furrowTutorEnabled()) {
+      pendingCoach = coachFor(game.assess(pit), game.coach().bestCol, game.board().pits);
+    }
     busy = true;
     render();
     await animateSow(pit);
@@ -442,6 +630,9 @@ export function furrowModule(): GameModule {
     }
     const after = game.board();
     noteSweep(before, after);
+    coachMsg = pendingCoach;
+    pendingCoach = null;
+    tutorView = null; // the reading described the position before this move
     render();
     await step();
   };
@@ -500,7 +691,9 @@ export function furrowModule(): GameModule {
   const outcomeLabel = (board: BoardView): string => {
     const you = yourStore(board);
     const them = theirStore(board);
-    if (board.result === -1) return "Ended early";
+    // An unfinished match reports what was left rather than a score nobody
+    // reached — the record says `Abandoned`, and the screen should agree.
+    if (board.result === -1) return endedEarly ?? "Ended early";
     if (board.result === 0) return `A draw ${you}–${them}`;
     return you > them ? `You won ${you}–${them}` : `${OPPONENT.name} won ${them}–${you}`;
   };
@@ -562,6 +755,10 @@ export function furrowModule(): GameModule {
     busy = false;
     ending = false;
     sweptNotice = false;
+    coachMsg = null;
+    pendingCoach = null;
+    endedEarly = null;
+    tutorView = null;
     seed = seedOverride ?? randomSeed();
     game.newGame(seed);
     setStatus("");

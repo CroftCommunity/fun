@@ -131,6 +131,22 @@ fn exposes(pos: &Board, mv: Pit) -> i32 {
     crate::eval::best_capture(&after, after.to_move)
 }
 
+/// How many seeds `mv` sows onto the opponent's row.
+///
+/// The distinction a quiet move actually turns on. Without it every non-capturing
+/// move that exposes nothing gets the same sentence, and a tutor panel where five
+/// of six lines are identical teaches nothing — which is what the first version
+/// looked like on screen.
+#[must_use]
+fn feeds(pos: &Board, mv: Pit) -> i32 {
+    let them = pos.to_move.other();
+    let after = apply_move(pos, mv);
+    Board::pits_of(them)
+        .map(|p| i32::from(after.cells[p]) - i32::from(pos.cells[p]))
+        .filter(|&d| d > 0)
+        .sum()
+}
+
 /// Whether `mv` takes the mover past a majority of the seeds, settling the game.
 #[must_use]
 fn settles_the_game(pos: &Board, mv: Pit) -> bool {
@@ -164,9 +180,15 @@ fn idea_for(pos: &Board, mv: Pit) -> String {
     if gained >= 2 {
         return format!("captures {}", gained - 1);
     }
-    match handed {
-        0 => "safe: nothing on your row is exposed to a capture".to_string(),
-        n => format!("leaves {n} seeds open to a capture"),
+    if handed > 0 {
+        return format!("leaves {handed} seeds open to a capture");
+    }
+    // Quiet, so say the thing a player would actually weigh: how much of it
+    // crosses to the other row. Seeds fed across are seeds they get to spend.
+    match feeds(pos, mv) {
+        0 => "safe, and feeds them nothing".to_string(),
+        1 => "safe, but feeds them a seed".to_string(),
+        n => format!("safe, but feeds them {n} seeds"),
     }
 }
 
@@ -394,6 +416,25 @@ mod tests {
             fact.idea.contains("safe") || fact.idea.contains("open to a capture"),
             "a quiet move should be described by what it risks, got {}",
             fact.idea
+        );
+    }
+
+    #[test]
+    fn quiet_moves_are_told_apart_by_what_they_feed_across() {
+        // The first version gave every quiet move the same sentence, and the
+        // panel showed five identical lines. `feeds` is the distinction a player
+        // actually weighs: seeds pushed onto the other row are seeds they spend.
+        let pos = board([1, 0, 0, 0, 4, 0], [1, 1, 1, 1, 1, 1], (18, 18), Side::A);
+        // Pit 0's lone seed stays on A's row.
+        assert_eq!(feeds(&pos, Pit(0)), 0);
+        // Pit 4's four seeds run pit 5, the store, then two of B's pits.
+        assert_eq!(feeds(&pos, Pit(4)), 2);
+        let r = assess(&pos, TUTOR_DEPTH);
+        let ideas: Vec<&str> = r.moves.iter().map(|m| m.idea.as_str()).collect();
+        let distinct: std::collections::BTreeSet<&&str> = ideas.iter().collect();
+        assert!(
+            distinct.len() > 1,
+            "the panel must tell quiet moves apart, got {ideas:?}"
         );
     }
 

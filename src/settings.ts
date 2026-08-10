@@ -536,3 +536,14 @@ export function setFurrowLevel(level: FurrowLevel): void {
     // Storage denied (private mode): the choice still applies for the session.
   }
 }
+
+const FURROW_TUTOR_KEY = "fun-furrow-tutor";
+
+/** Show the engine-grounded tutor panel in Furrow — **off by default** (opt-in,
+ *  matching Othello, checkers, Drop 4 and dots). */
+export function furrowTutorEnabled(): boolean {
+  return read(FURROW_TUTOR_KEY, false);
+}
+export function setFurrowTutor(on: boolean): void {
+  write(FURROW_TUTOR_KEY, on);
+}

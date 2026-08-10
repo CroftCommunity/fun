@@ -242,3 +242,98 @@ test("every pit target clears the 24px minimum touch size", async ({ page }) => 
   );
   expect(small).toBe(0);
 });
+
+// Assistance + the tutor (Phase 8). Hints are on by default and cost the record's
+// "unassisted" claim; the tutor panel is opt-in and may never word a depth-capped
+// verdict as a proof — which here is about 70% of a game, not a rare corner.
+
+test("a hint names a pit, explains it, and says it counts as assistance", async ({ page }) => {
+  await page.goto("/furrow/?seed=7");
+  await ready(page);
+  await waitHumanOrOver(page);
+  await page.locator(".furrow-hint").click();
+  const status = page.locator(".furrow-status");
+  await expect(status).toContainText(/Hint: your pit \d/);
+  await expect(status).toContainText(/assistance/i);
+  // And it carries the engine's own reason, not a generic one.
+  await expect(status).toContainText(/—/);
+});
+
+test("with hints off the control ends the game and reports what was left", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("fun-hints", "off"));
+  await page.goto("/furrow/?seed=7");
+  await ready(page);
+  await waitHumanOrOver(page);
+  await expect(page.locator(".furrow-hint")).toHaveCount(0);
+  await page.locator(".furrow-stuck").click();
+  const result = page.locator(".sol-result");
+  await expect(result).toBeVisible({ timeout: 30_000 });
+  await expect(result).toContainText(/ended early/i);
+  await expect(result).toContainText(/seeds were still on the board/i);
+  // An abandoned record is still a verifiable one — it just claims less.
+  await expect(result.locator(".sol-verify-badge.ok")).toBeVisible();
+});
+
+test("the tutor panel is off by default and appears when enabled in settings", async ({ page }) => {
+  await page.goto("/furrow/?seed=7");
+  await ready(page);
+  await expect(page.locator(".furrow-tutor")).toHaveCount(0);
+  await page.locator(".furrow-settings summary").click();
+  await page.locator(".furrow-set-tutor").check();
+  await expect(page.locator(".furrow-tutor-explain")).toBeVisible();
+});
+
+test("'Explain my options' lists band pits with the engine's own reason, and hedges", async ({
+  page,
+}) => {
+  await page.addInitScript(() => localStorage.setItem("fun-furrow-tutor", "on"));
+  await page.goto("/furrow/?seed=7");
+  await ready(page);
+  await waitHumanOrOver(page);
+  await page.locator(".furrow-tutor-explain").click();
+  const items = page.locator(".furrow-tutor-options li");
+  await expect(items.first()).toContainText(/(your|their) pit \d — /);
+  expect(await items.count()).toBeGreaterThanOrEqual(2);
+  // The opening is far above the exact threshold, so the panel must say it is
+  // reading rather than claiming a solve. This is the honesty gate, on the
+  // surface that is the only one allowed to claim a proof at all.
+  await expect(page.locator(".furrow-tutor-note")).toContainText(/not yet certain/i);
+});
+
+test("the panel paints its reading state before the search blocks the thread", async ({ page }) => {
+  // The checkers lesson: the panel's search runs on the main thread, so without
+  // painting first the button looks dead for as long as it runs.
+  await page.addInitScript(() => localStorage.setItem("fun-furrow-tutor", "on"));
+  await page.goto("/furrow/?seed=7");
+  await ready(page);
+  await waitHumanOrOver(page);
+  await page.locator(".furrow-tutor-explain").click();
+  await expect(page.locator(".furrow-tutor-note")).not.toBeEmpty();
+});
+
+test("the tutor's reading survives the re-render that lands after a turn settles", async ({
+  page,
+}) => {
+  // The shared defect `TODO/dots.md` files against othello, checkers and dots:
+  // a re-render arrives shortly after every turn settles and wipes the panel, so
+  // the options a player just asked for vanish under them. Furrow holds the
+  // reading in module state instead — and drops it when the position changes,
+  // because a stale reading is worse than none.
+  await page.addInitScript(() => localStorage.setItem("fun-furrow-tutor", "on"));
+  await page.goto("/furrow/?seed=7");
+  await ready(page);
+  await waitHumanOrOver(page);
+  await page.locator(".furrow-tutor-explain").click();
+  await expect(page.locator(".furrow-tutor-options li").first()).toBeVisible();
+  const before = await page.locator(".furrow-tutor-options li").count();
+
+  // Force a re-render without changing the position: toggling a setting does it.
+  await page.locator(".furrow-settings summary").click();
+  await page.locator(".furrow-set-assist").click();
+  expect(await page.locator(".furrow-tutor-options li").count()).toBe(before);
+
+  // But a move DOES change the position, and the stale reading must go.
+  await page.locator(".furrow-pit.mine.legal").first().click();
+  await waitHumanOrOver(page);
+  expect(await page.locator(".furrow-tutor-options li").count()).toBe(0);
+});

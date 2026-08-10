@@ -3965,3 +3965,33 @@ body.fullscreen .le-stage {
     font-size: 0.95rem;
   }
 }
+
+/* Furrow assistance: the settings drawer, the hint control, and the opt-in
+   tutor panel. All three reuse the shared `sol-settings` chrome; only the
+   panel's own spacing is game-specific. */
+.furrow-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.furrow-toggle {
+  display: block;
+  margin-block: 0.25rem;
+}
+.furrow-tutor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: center;
+  max-width: 32rem;
+  text-align: center;
+}
+.furrow-tutor-note,
+.furrow-tutor-coach {
+  margin: 0;
+}
+.furrow-tutor-options {
+  margin: 0;
+  padding-inline-start: 1.1rem;
+  text-align: start;
+}
