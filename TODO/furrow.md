@@ -53,9 +53,26 @@ any game before it. This file is the running worklist of what was deferred.
   | | value |
   |---|---|
   | W-D-L vs Expert | **1-0-7 (13%)** — the engine itself draws 50% |
-  | fallback rate | **10.9%** (12 of 110 model calls unusable) |
+  | fallback rate | **2.7%** after the retry fix below (was 10.9%) |
   | cost | **~1,483 ms per graded move**, against the engine's 7.8 ms median |
   | blunders | 0 over 23 graded moves — and see below |
+
+  **The 10.9% fallback rate turned out to be a shared decoder defect**, not
+  anything about this game: every fallback was a *malformed* reply, and the
+  captured text showed the model emitting `{` followed by hundreds of newlines
+  until the token budget ran out — grammar-constrained decoding wandering, since
+  JSON permits arbitrary whitespace after a brace. `HybridPlayer` now resamples
+  once, which took furrow from **10.9% to 2.7%** and had been costing every game
+  on the shelf. See `docs/AI-PLAYERS.md` → "The fallback rate is a decoder
+  problem".
+
+  **A hypothesis that did *not* pan out, recorded so nobody re-runs it:** the
+  first guess was that furrow's text board was to blame, because seed counts
+  reach 10–13 and were indistinguishable from pit *labels* 10–13. The board was
+  rewritten so every pit reads `code=seeds`, and the fallback rate did not move
+  (10.9% → 13.7%, well inside the ±3.3pp this rig can resolve at ~100 calls). The
+  new layout was kept — it fixes a real ambiguity, pinned by a test — but it
+  fixed nothing that was measured.
 
   **The disclosure was overclaiming.** It said "it never plays a losing move (the
   engine's band decides)", copied from dots, where it is true because 3×3 is

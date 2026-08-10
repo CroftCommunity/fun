@@ -359,7 +359,7 @@ export function furrowModule(): GameModule {
   const hybridPrompt = (g: Furrow, band: readonly BandMove[], sit: Situation): string => {
     const pits = band.map((m) => m.col).join(", ");
     return [
-      `Board (each pit shows its number under its seed count):\n${g.renderText()}`,
+      `Board (each pit reads as pitNumber=seeds):\n${g.renderText()}`,
       SITUATION_HINT[sit],
       `Sow ONE of these pits: ${pits}.`,
       `Reply ONLY with JSON {"move": <one of ${pits}>, "reason": "<your one-line quip, under 12 words>"}.`,

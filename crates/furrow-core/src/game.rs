@@ -19,7 +19,7 @@
 use adversary_core::{Adversary, MatchResult, Side};
 use serde::{Deserialize, Serialize};
 
-use crate::board::{is_pit_of, opposite_pit, store_of, Board, A_STORE, B_STORE, CELLS};
+use crate::board::{is_pit_of, opposite_pit, store_of, Board, CELLS};
 use crate::hash::state_hash;
 
 /// A move: sow the seeds in cell `0..CELLS`. Stores are never legal.
@@ -167,31 +167,42 @@ impl Adversary for Furrow {
     }
 
     fn render_text(pos: &Board) -> String {
-        // Both rows read left-to-right in the picture, so B's pits appear in
-        // descending cell order -- the way the board actually faces the players.
-        // Each pit shows its own cell number under its seed count, so a text
-        // player reads the board and the move vocabulary off one picture.
-        let cell = |i: usize| format!("{:>3}", pos.cells[i]);
-        let label = |i: usize| format!("{i:>3}");
-
-        let b_pits: Vec<usize> = Board::pits_of(Side::B).rev().collect();
-        let a_pits: Vec<usize> = Board::pits_of(Side::A).collect();
-
-        let row = |cells: &[usize], f: &dyn Fn(usize) -> String| {
-            cells.iter().map(|&i| f(i)).collect::<Vec<_>>().join(" ")
+        // Each pit is rendered as **`code=seeds`**, one token, and that is the
+        // whole design of this picture.
+        //
+        // The first version laid the board out spatially — a row of pit labels
+        // above the opponent's counts and below yours, with both stores sharing a
+        // line with the opponent's counts. It looked like a mancala board and it
+        // measured badly: the live trial put the model's unusable-reply rate at
+        // **10.9%** against dots' 1.2% on the same model. Three reasons, and the
+        // third is the one no other game on this shelf has:
+        //
+        // 1. Labels sat in a different row from the counts they named, ascending
+        //    on one side and descending on the other, so reading a move meant
+        //    zipping two rows together in two directions.
+        // 2. The store line also carried the opponent's counts, so one line held
+        //    eight numbers of two different kinds.
+        // 3. **Seed counts reach 10-13 in this game**, so a `12` in a count row is
+        //    indistinguishable from the pit *label* 12. Dots never had this
+        //    problem because its board has no counts to confuse with its codes.
+        //
+        // Binding the code to its count removes all three: there is no zipping,
+        // no mixed line, and a bare number can only be a count because every code
+        // is followed by `=`.
+        let cell = |i: usize| format!("{i:>2}={:<2}", pos.cells[i]);
+        let row = |cells: &[usize]| {
+            cells
+                .iter()
+                .map(|&i| cell(i))
+                .collect::<Vec<_>>()
+                .join("  ")
         };
+        let theirs: Vec<usize> = Board::pits_of(Side::B).rev().collect();
+        let mine: Vec<usize> = Board::pits_of(Side::A).collect();
 
         let mut lines = vec![
-            format!("        {}", row(&b_pits, &label)),
-            format!(
-                "O {}   {}   {} X",
-                cell(B_STORE),
-                row(&b_pits, &cell),
-                cell(A_STORE)
-            ),
-            format!("        {}", row(&a_pits, &cell)),
-            format!("        {}", row(&a_pits, &label)),
-            format!("Store: X {}, O {}.", pos.store(Side::A), pos.store(Side::B)),
+            format!("O pits: {}   O store: {}", row(&theirs), pos.store(Side::B)),
+            format!("X pits: {}   X store: {}", row(&mine), pos.store(Side::A)),
         ];
         let mover = match pos.to_move {
             Side::A => "X",
@@ -248,7 +259,7 @@ impl pond_outcome::Game for Furrow {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::board::{PITS, TOTAL_SEEDS};
+    use crate::board::{A_STORE, B_STORE, PITS, TOTAL_SEEDS};
     use pond_outcome::{attest, verify, Outcome};
 
     /// A board from twelve pit counts (A's six then B's six) plus both stores.
@@ -517,16 +528,39 @@ mod tests {
     }
 
     #[test]
-    fn the_text_board_shows_both_rows_the_stores_and_the_legal_moves() {
+    fn every_pit_carries_its_own_code_so_a_count_cannot_be_read_as_one() {
         let text = <Furrow as Adversary>::render_text(&Board::opening());
-        assert!(text.contains("Store: X 0, O 0."), "got:\n{text}");
         assert!(
             text.contains("To move: X. Reply with one pit number (0, 1, 2, 3, 4, 5)."),
             "got:\n{text}"
         );
-        // B's pits read right-to-left in the picture, the way the board faces.
-        assert!(text.contains(" 12  11  10   9   8   7"), "got:\n{text}");
-        assert!(text.contains("  0   1   2   3   4   5"), "got:\n{text}");
+        assert!(
+            text.contains("X store: 0") && text.contains("O store: 0"),
+            "got:\n{text}"
+        );
+        // B's pits read right-to-left in the picture, the way the board faces,
+        // and each carries its own count.
+        assert!(
+            text.contains("12=4") && text.contains(" 7=4"),
+            "got:\n{text}"
+        );
+        assert!(
+            text.contains(" 0=4") && text.contains(" 5=4"),
+            "got:\n{text}"
+        );
+
+        // The property the whole layout exists for: a pit holding twelve seeds
+        // must not be readable as the pit *numbered* twelve. Every code is
+        // followed by `=`, so a bare number can only ever be a count.
+        let mut heavy = Board::opening();
+        heavy.cells[1] = 12;
+        let text = <Furrow as Adversary>::render_text(&heavy);
+        assert!(text.contains(" 1=12"), "got:\n{text}");
+        assert_eq!(
+            text.matches("12=").count(),
+            1,
+            "only pit 12 may present itself as a code, not a count of twelve:\n{text}"
+        );
     }
 
     #[test]

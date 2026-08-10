@@ -836,7 +836,7 @@ mod tests {
         new_game(0, 0);
         render_text();
         let text = out();
-        assert!(text.contains("Store: X 0, O 0."), "got:\n{text}");
+        assert!(text.contains("X store: 0"), "got:\n{text}");
         assert!(
             text.contains("pit number (0, 1, 2, 3, 4, 5)"),
             "got:\n{text}"

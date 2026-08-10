@@ -272,6 +272,57 @@ describe("the hybrid opponent never leaves the engine's band", () => {
     ).toBe(best);
   }, 900_000);
 
+  it("a malformed reply is resampled once before the engine steps in", async () => {
+    // Aimed at a measured failure, not a hypothetical one. The live trial put
+    // furrow's fallback rate at 10-20% with *every one* malformed — the model
+    // emitting `{` and then newlines until the token budget ran out, which is
+    // grammar-constrained decoding wandering rather than a bad answer. It is a
+    // sampling accident, so one resample should rescue most of them.
+    const oracle = await loadReal();
+    oracle.newGame(0n);
+    const band = buildBand(oracle.tutor().moves);
+    const wanted = band[band.length - 1]!.col;
+
+    let calls = 0;
+    const player = new HybridPlayer(
+      new MockRuntime({
+        reply: (() => {
+          calls += 1;
+          // The real observed shape: an opening brace and nothing else.
+          return calls === 1 ? "{\n\n\n\n" : JSON.stringify({ move: wanted, reason: "ok" });
+        }) as never,
+      }),
+    );
+    const decision = await player.pick(band, { prompt: "pick one", system: "test" });
+    expect(calls).toBe(2);
+    expect(decision.move).toBe(wanted);
+    expect(decision.source).toBe("llm");
+    expect(player.fallbacks.rescuedByRetry).toBe(1);
+    expect(player.fallbacks.malformed).toBe(0);
+
+    // Two malformed replies still fall back, and are still counted as one
+    // malformed fallback rather than two.
+    const hopeless = new HybridPlayer(new MockRuntime({ reply: (() => "{\n\n") as never }));
+    const gave_up = await hopeless.pick(band, { prompt: "pick one", system: "test" });
+    expect(gave_up.source).toBe("fallback");
+    expect(gave_up.move).toBe(band[0]!.col);
+    expect(hopeless.fallbacks.malformed).toBe(1);
+
+    // A runtime error is NOT retried — a throw is not a sampling accident.
+    let throws = 0;
+    const broken = new HybridPlayer(
+      new MockRuntime({
+        reply: (() => {
+          throws += 1;
+          throw new Error("model exploded");
+        }) as never,
+      }),
+    );
+    expect((await broken.pick(band, { prompt: "p", system: "s" })).source).toBe("fallback");
+    expect(throws).toBe(1);
+    expect(broken.fallbacks.runtime).toBe(1);
+  }, 900_000);
+
   it("every offered pit is legal, so an in-band pick can never abort a match", async () => {
     // The band is the model's whole vocabulary. If it ever held a move the core
     // would refuse, the hybrid could hand the runner an illegal code — which is

@@ -128,7 +128,8 @@ export interface TrialResult {
 export async function runHybridTrial(opts: TrialOptions): Promise<TrialResult> {
   const wiring = GAMES[opts.game ?? "drop4"];
   const runtime = new WebLLMRuntime({ model: opts.model, onProgress: opts.onProgress });
-  const hybrid = new HybridAiPlayer(new HybridPlayer(runtime), {
+  const player = new HybridPlayer(runtime);
+  const hybrid = new HybridAiPlayer(player, {
     label: `Hybrid(${opts.model})`,
     buildPrompt: wiring.prompt,
   });
@@ -148,5 +149,12 @@ export async function runHybridTrial(opts: TrialOptions): Promise<TrialResult> {
       );
     },
   });
-  return { text: renderReport(report), report };
+  // The aggregate fallback rate is in the Report; *why* it fired is not, and
+  // without that the number is not actionable — a prompt problem, a decoding
+  // problem and a model problem all look identical from the rate alone.
+  const f = player.fallbacks;
+  const text = `${renderReport(report)}\n  fallback reasons: runtime ${f.runtime} · malformed ${f.malformed} · out-of-band ${f.outOfBand} · rescued by retry ${f.rescuedByRetry}${
+    f.samples.length ? `\n  malformed sample: ${JSON.stringify(f.samples[0])}` : ""
+  }`;
+  return { text, report };
 }

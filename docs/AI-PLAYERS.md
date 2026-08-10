@@ -533,6 +533,46 @@ its weakest level loses **0-0-12** to its strongest and records **zero blunders*
 in both directions. See `docs/HARNESS.md` → "Furrow's demonstration" for why, and
 report the graded fraction next to the count every single time.
 
+### The fallback rate is a decoder problem, not a model problem
+
+The live trials also measured how often the model's reply is unusable and the
+engine has to step in. A fallback is always *safe* — the engine's own top-of-band
+move is played — so this is a UX number: it is how often the persona goes quiet.
+Dots measured **1.2%** and Furrow **10.9%** on the same model and the same rig,
+which is a 9× difference nobody could explain from the aggregate alone.
+
+**Counting the three fallback paths separately settled it in one run.** Every
+single furrow fallback was `malformed` — zero runtime errors, zero out-of-band.
+Capturing the replies verbatim showed what "malformed" actually meant:
+
+```text
+"{   \n\n\n\n\n\n\n\n  \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n ..."
+```
+
+The model emits an opening brace and then **hundreds of newlines** until the token
+budget is gone. That is not a bad answer, a long answer, or a truncated one — it is
+**grammar-constrained decoding wandering**. JSON permits arbitrary whitespace after
+`{`, so the grammar always allows another newline, and a small model sampling at
+non-zero temperature can get stuck emitting them. Raising `maxTokens` would only
+buy more newlines.
+
+It is a *sampling accident*, independent per call, so `HybridPlayer` now
+**resamples once** before falling back. Measured immediately after, same rig, same
+8 games:
+
+| | before | after |
+|---|---|---|
+| furrow fallback rate | 10.9% | **2.7%** (10 of 13 rescued) |
+| dots fallback rate | 1.2% | 1.1% |
+
+Three things worth carrying forward. **A retry is only correct for the path that
+is a sampling accident** — a runtime throw is not retried, and an out-of-band pick
+is not retried, because neither gets better by asking again. **The aggregate rate
+was not actionable**; the three-way split and one verbatim sample were. And the
+defect was in *shared* code, so it had been costing every game on the shelf since
+the first hybrid shipped — it simply took a game with a high enough rate to make
+anyone look.
+
 ### The band's guarantee is only as strong as the exact fraction
 
 Every hybrid opponent on this shelf is sold the same way: the engine builds a band

@@ -56,6 +56,10 @@ was deferred.
   the band guarantee is supposed to buy, and here it genuinely does, because dots
   is solved from four plies in so 81% of its moves are proven.
 
+  Its 1.2% fallback rate hides the same decoder defect furrow's 10.9% made
+  obvious — dots' one malformed reply is also `{` followed by whitespace. The
+  shared retry now in `HybridPlayer` covers it.
+
   Worth keeping next to it: the *same* rig gives Furrow's hybrid **1-0-7**, for
   the same reason in reverse (21% exact). Dots' disclosure copy is accurate;
   Furrow's had to be corrected. See `docs/AI-PLAYERS.md` → "The band's guarantee
