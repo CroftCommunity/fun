@@ -10,6 +10,8 @@ import { checkersOracle } from "../games/checkers/checkers-oracle.js";
 import { Checkers } from "../games/checkers/checkers-wasm.js";
 import { dotsOracle } from "../games/dots/dots-oracle.js";
 import { Dots } from "../games/dots/dots-wasm.js";
+import { furrowOracle } from "../games/furrow/furrow-oracle.js";
+import { Furrow } from "../games/furrow/furrow-wasm.js";
 import { drop4Oracle } from "../games/drop4/drop4-oracle.js";
 import { Drop4 } from "../games/drop4/drop4-wasm.js";
 import { othelloOracle } from "../games/othello/othello-oracle.js";
@@ -21,7 +23,7 @@ import { EnginePlayer, HybridAiPlayer, type HybridPromptBuilder } from "./match-
 import { renderReport, runTournament, type Report } from "./tournament.js";
 
 /** Which shelf game the trial grades. */
-export type TrialGame = "drop4" | "othello" | "checkers" | "dots";
+export type TrialGame = "drop4" | "othello" | "checkers" | "dots" | "furrow";
 
 /**
  * Per-game wiring for the trial: how to load the game as a `GameOracle`, and a
@@ -77,6 +79,19 @@ const GAMES: Record<TrialGame, {
       prompt: `Board (free edges show their number):\n${game.renderText()}\nOffered edges: ${band
         .map((b) => `${b.col} (${b.idea})`)
         .join(", ")}\nPick one edge number and say why in one short sentence.`,
+    }),
+  },
+  furrow: {
+    load: async () => furrowOracle(await Furrow.load("/furrow.wasm")),
+    prompt: (game, band) => ({
+      system:
+        "You are a mancala opponent. Choose exactly one of the offered pit numbers and reply as JSON {move, reason}.",
+      // The rendered board prints each pit's own number under its seed count, so
+      // like dots (and unlike checkers' opaque codes) the offered numbers are
+      // readable straight off the picture.
+      prompt: `Board (each pit shows its number under its seed count):\n${game.renderText()}\nOffered pits: ${band
+        .map((b) => `${b.col} (${b.idea})`)
+        .join(", ")}\nPick one pit number and say why in one short sentence.`,
     }),
   },
 };

@@ -26,6 +26,8 @@ import { checkersOracle } from "../src/games/checkers/checkers-oracle.js";
 import { Checkers } from "../src/games/checkers/checkers-wasm.js";
 import { dotsOracle } from "../src/games/dots/dots-oracle.js";
 import { Dots } from "../src/games/dots/dots-wasm.js";
+import { furrowOracle } from "../src/games/furrow/furrow-oracle.js";
+import { Furrow } from "../src/games/furrow/furrow-wasm.js";
 import { othelloOracle } from "../src/games/othello/othello-oracle.js";
 import { Othello } from "../src/games/othello/othello-wasm.js";
 import type { GameOracle } from "../src/harness/game-oracle.js";
@@ -215,6 +217,48 @@ const ANCHORS: readonly Anchor[] = [
       preserving: 0,
       blunders: 0,
       skippedEarly: 4,
+      abortedGames: 0,
+      llmMoves: 0,
+      fallbackMoves: 0,
+    },
+  },
+  {
+    game: "furrow",
+    load: async () =>
+      furrowOracle(
+        await loadWasm("target/wasm32-unknown-unknown/release/furrow_wasm.wasm", () =>
+          Furrow.load(),
+        ),
+      ),
+    // Recorded 2026-08-10, when Furrow shipped (Phase 10).
+    //
+    // The graded fraction lands between checkers' and dots', as predicted: 13 of
+    // 48 of a side's moves over two games, about 27%. Checkers grades 9 of 163
+    // because its `exact` means a terminal was proven; dots grades 20 of 24
+    // because 3x3 is solved from four plies in. Here `exact` means the position
+    // is inside a measured 16-seeds-in-play threshold, and Phase 0 measured
+    // roughly 70% of a game above it.
+    //
+    // **Read the blunder count with care, and do not read strength into it.**
+    // Measured over 12 games at the same settings, Easy-vs-Expert also records
+    // **0 blunders** — while losing **0-0-12**. The scorer grades only the
+    // endgame, and a player that lost in the midgame arrives there already in a
+    // losing class, where no move can drop one. For this game the W-D-L is the
+    // discriminating signal and the blunder count is not.
+    //
+    // 1-0-1 is a genuine split here, unlike dots' — where it is one forced
+    // result rendered twice because the rig alternates who opens. This board is
+    // not solved from the opening, so neither seat is known to win.
+    recorded: {
+      games: 2,
+      wins: 1,
+      draws: 0,
+      losses: 1,
+      scoredMoves: 13,
+      optimal: 13,
+      preserving: 0,
+      blunders: 0,
+      skippedEarly: 35,
       abortedGames: 0,
       llmMoves: 0,
       fallbackMoves: 0,

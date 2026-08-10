@@ -121,6 +121,34 @@ So when a change alters how a player *plays* rather than whether it is legal:
 Reading `optimal` as "the engine is still as strong" is the mistake, and it is an
 easy one because the number is genuinely true.
 
+#### Furrow's demonstration: 0 blunders, 0-0-12
+
+Mancala (2026-08-10) produced the sharpest available proof of that limitation,
+and it is worth stating as a rule rather than as an anecdote. Measured over 12
+games at identical settings:
+
+| matchup | graded | blunders | W-D-L |
+|---|---|---|---|
+| Expert vs Expert | 78 of 288 (27%) | **0** | 6-0-6 |
+| **Easy vs Expert** | 22 of 139 (16%) | **0** | **0-0-12** |
+
+The weakest level loses **every single game** and never once registers a blunder.
+
+The mechanism is general, not specific to that game. A blunder is a move that
+**drops a class** — winning to drawing, drawing to losing. The scorer only grades
+where the Oracle is exact, which is the endgame. A weak player has already lost
+the game in the unproven midgame, so it *arrives* in the graded region already in
+a losing class — and **you cannot drop out of a class you are already in**. Every
+move it makes there is losing, and therefore none of them is a blunder.
+
+So the failure mode is not "the blunder count is noisy"; it is that the blunder
+count is **structurally blind to a player that loses before the graded region
+begins**. The worse the player, the earlier it loses, and the less the metric can
+see. For any game where the exact threshold sits late, the W-D-L is the
+discriminating signal and the blunder count is not — which is why furrow's harness
+test asserts the discrimination on wins and losses, and asserts `blunders === 0`
+for *both* sides as the honest half of the same statement.
+
 ## The vocabulary
 
 Mirrors the Rust `drop4-harness` so the two rigs' numbers are comparable.
