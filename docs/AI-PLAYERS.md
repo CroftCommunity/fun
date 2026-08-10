@@ -533,6 +533,45 @@ its weakest level loses **0-0-12** to its strongest and records **zero blunders*
 in both directions. See `docs/HARNESS.md` → "Furrow's demonstration" for why, and
 report the graded fraction next to the count every single time.
 
+### The band's guarantee is only as strong as the exact fraction
+
+Every hybrid opponent on this shelf is sold the same way: the engine builds a band
+of moves it rates as sound, the model picks inside it, so the model cannot lose
+the game. **That claim is not uniformly true, and the live trials measured how
+far it varies.**
+
+Eight games each against Expert, same model, same rig (2026-08-10):
+
+| | dots | furrow |
+|---|---|---|
+| W-D-L for the hybrid | **4-0-4 (50%)** | **1-0-7 (13%)** |
+| graded / skipped | 69 / 16 (**81% exact**) | 23 / 87 (**21% exact**) |
+| fallback rate | 1.2% | 10.9% |
+| ms per graded move | 389 | 1,483 |
+| blunders | 0 | 0 |
+
+Dots' hybrid is *indistinguishable from the engine*. Furrow's loses seven of
+eight. Both record **zero blunders**.
+
+The mechanism is the one already documented above, seen from a new angle.
+`buildBand` filters on `quality !== "blunder"`, and `quality` compares a value's
+class against the best available. Where the search is **exact**, that class is a
+proof and the band really is a set of non-losing moves. Where it is **capped**,
+the class is the heuristic's opinion — so the band is the engine's *judgement*,
+and a model picking badly inside it can and does lose. Dots is solved from four
+plies in; furrow is proven for about a fifth of its moves.
+
+**So the guarantee scales with the exact fraction, and the UI copy has to scale
+with it too.** Furrow shipped with dots' sentence — "it never plays a losing move
+(the engine's band decides)" — copied across, where it was simply false for 70% of
+a game. Nothing on CI could catch that: legality *is* guaranteed by construction,
+the mock-runtime tests pass, and the blunder count is 0 in both columns because it
+is blind to a player that loses outside the graded region.
+
+**Only running the model found it.** Before promising a band guarantee in
+player-facing copy, check the game's exact fraction — and if it is not most of the
+game, say what the band actually is.
+
 ## Generality: a second game (Othello), then a third (checkers)
 
 Othello (`/othello/`, `crates/othello-*`) is the proof that the adversarial +

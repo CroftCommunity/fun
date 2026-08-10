@@ -46,12 +46,24 @@ any game before it. This file is the running worklist of what was deferred.
 
 ## Open follow-ups
 
-- [ ] **The live WebGPU hybrid trial has never been run.** `HARNESS_TRIAL_GAME=furrow
-  npm run harness:trial` needs system Chrome and a one-time model download, which
-  is an owner-machine task. What is proven on CI is the *gating* and the
-  never-leave-the-band guarantee under a mock runtime — not the model. Do not
-  describe Millet as measured. Dots is in the same position, so this is one item
-  with two games in it (`TODO/dots.md`).
+- [x] ~~**The live WebGPU hybrid trial has never been run.**~~ **Run 2026-08-10**
+  on system Chrome (Apple/Metal-3), 8 games vs Expert, Qwen2.5-0.5B. Millet is now
+  measured, and the result changed shipped copy:
+
+  | | value |
+  |---|---|
+  | W-D-L vs Expert | **1-0-7 (13%)** — the engine itself draws 50% |
+  | fallback rate | **10.9%** (12 of 110 model calls unusable) |
+  | cost | **~1,483 ms per graded move**, against the engine's 7.8 ms median |
+  | blunders | 0 over 23 graded moves — and see below |
+
+  **The disclosure was overclaiming.** It said "it never plays a losing move (the
+  engine's band decides)", copied from dots, where it is true because 3×3 is
+  solved from four plies in. Here ~70% of a game is above the exact threshold, so
+  the band is the engine's *judgement* rather than a proof, and the model
+  measurably loses inside it. The copy now states the download size, that Millet
+  plays weaker than the engine, and why. Written up in `docs/AI-PLAYERS.md` →
+  "The band's guarantee is only as strong as the exact fraction".
 - [ ] **Persona roster** — Millet is inlined in `furrow.ts`, as Chip, Rowan, Alder
   and Bramble are in their games. Part of the cross-game roster thread
   (`TODO/README.md`).

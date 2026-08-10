@@ -49,9 +49,17 @@ was deferred.
 
 ## Open follow-ups
 
-- [ ] **The live WebGPU hybrid trial has never been run** — and as of 2026-08-10
-  there are **two** games in this position: dots (Bramble) and Furrow (Millet).
-  Both are proven on CI under a mock runtime and neither has faced a real model. `HARNESS_TRIAL_GAME=dots
+- [x] ~~**The live WebGPU hybrid trial has never been run.**~~ **Run 2026-08-10**
+  on system Chrome (Apple/Metal-3), 8 games vs Perfect, Qwen2.5-0.5B: **4-0-4
+  (50%)**, fallback rate **1.2%**, 389 ms per graded move, 0 blunders over 69
+  graded moves. Bramble is **indistinguishable from the engine** — which is what
+  the band guarantee is supposed to buy, and here it genuinely does, because dots
+  is solved from four plies in so 81% of its moves are proven.
+
+  Worth keeping next to it: the *same* rig gives Furrow's hybrid **1-0-7**, for
+  the same reason in reverse (21% exact). Dots' disclosure copy is accurate;
+  Furrow's had to be corrected. See `docs/AI-PLAYERS.md` → "The band's guarantee
+  is only as strong as the exact fraction". `HARNESS_TRIAL_GAME=dots
   npm run harness:trial` needs system Chrome and a one-time model download, which
   is an owner-machine task. What is proven on CI is the *gating* and the
   never-leave-the-band guarantee under a mock runtime — not the model. Do not

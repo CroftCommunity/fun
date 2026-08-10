@@ -596,7 +596,16 @@ export function furrowModule(): GameModule {
         el(
           "p",
           { class: "furrow-ai-disclosure" },
-          `An in-browser model (${LOCAL_AI_PERSONA.name}) picks within the engine's safe pits and adds banter — a one-time model download on first use; it never plays a losing move (the engine's band decides).`,
+          // Measured, not asserted (2026-08-10, 8 games vs Expert). The earlier
+          // copy said "never plays a losing move (the engine's band decides)",
+          // copied from dots — where it is true, because 3x3 is solved from four
+          // plies in and the band's class floor is a *proof* nearly everywhere.
+          // Here roughly 70% of a game is above the exact threshold, so for most
+          // of it the band is the engine's judgement rather than a guarantee, and
+          // the model picks badly within it: Millet wins 1 game in 8 where the
+          // engine itself draws 4. Saying "never plays a losing move" was the
+          // cosmetic cousin of an over-claimed `exact`.
+          `An in-browser model (${LOCAL_AI_PERSONA.name}) picks among the pits the engine rates as sound and adds banter — a one-time ~270 MB download on first use. It plays weaker than the engine, measured at 1 win in 8 against Expert: outside the endgame the engine is judging which pits are sound rather than proving it.`,
         ),
       );
     }

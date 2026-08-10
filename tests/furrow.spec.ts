@@ -386,9 +386,16 @@ test("the toggle appears with a real adapter and discloses the cost and the guar
   await expect(toggle).toHaveCount(1);
   await toggle.check();
   const disclosure = page.locator(".furrow-ai-disclosure");
-  await expect(disclosure).toContainText(/download|one[- ]time/i);
-  // And the guarantee, not just the cost: the engine's band still decides.
-  await expect(disclosure).toContainText(/never plays a losing move/i);
+  // The cost, with the size — a player deciding whether to tap this deserves the
+  // number, not "a download".
+  await expect(disclosure).toContainText(/one[- ]time/i);
+  await expect(disclosure).toContainText(/MB/);
+  // And the honest limit, which is the part that was wrong until the live trial
+  // was actually run: outside the endgame the band is the engine's judgement, not
+  // a proof, and the model measurably plays weaker than the engine it stands in
+  // for. The copy must say so rather than claiming a guarantee it does not have.
+  await expect(disclosure).toContainText(/weaker than the engine/i);
+  await expect(disclosure).not.toContainText(/never plays a losing move/i);
   // The turn bar switches to the persona, so a player knows who they are facing.
   await expect(page.locator(".furrow-seat.them")).toContainText("Millet");
 });
