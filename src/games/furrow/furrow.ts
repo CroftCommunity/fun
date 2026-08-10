@@ -243,7 +243,12 @@ export function furrowModule(): GameModule {
 
   const pitButton = (board: BoardView, cell: number, interactive: boolean): HTMLElement => {
     const mine = ownerOfCell(cell, board.pits) === HUMAN;
-    const legal = board.legal.includes(cell);
+    // The ring marks *your* tappable pits, and only while it is your turn.
+    // `board.legal` is the mover's legal set, so during the engine's turn it
+    // holds the engine's pits — ringing those would both confuse the player and
+    // quietly hand them the opponent's options, which is assistance nobody asked
+    // for. Gate it on `interactive`, which already means "yours, now".
+    const legal = interactive && mine && board.legal.includes(cell);
     const seeds = board.cells[cell] ?? 0;
     const classes = ["furrow-pit", mine ? "mine" : "theirs"];
     if (legal) classes.push("legal");
@@ -413,12 +418,16 @@ export function furrowModule(): GameModule {
 
   const applyMove = async (pit: number): Promise<void> => {
     if (!game || busy || ending) return;
+    if (game.board().toMove !== HUMAN) return;
     // Ask the core first: an illegal tap is refused here, not filtered by the UI.
     const preview = game.sowPath(pit);
     if (!preview) {
       setStatus("That pit has nothing to sow.");
       return;
     }
+    // A refusal from a previous tap has been answered by this one; leaving it up
+    // would have the board contradict itself.
+    if (status) setStatus("");
     busy = true;
     render();
     await animateSow(pit);

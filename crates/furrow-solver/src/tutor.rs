@@ -214,8 +214,13 @@ pub fn assess(pos: &Board, capped_depth: u32) -> TutorReport {
             exact: false,
         };
     }
+    // The two budgets are the whole reason they are two constants: the tap path
+    // must not pay the panel's bill. `capped_depth` is how the caller says which
+    // path it is on, so the budget follows it rather than being fixed here.
     let budget = if is_affordable(pos) {
         NodeBudget::of(EXACT_NODE_BUDGET)
+    } else if capped_depth <= COACH_DEPTH {
+        NodeBudget::of(COACH_NODE_BUDGET)
     } else {
         NodeBudget::of(TUTOR_NODE_BUDGET)
     };
@@ -402,6 +407,66 @@ mod tests {
         let level = board([0, 0, 0, 0, 0, 1], [1, 0, 0, 0, 0, 0], (10, 10), Side::A);
         let r = assess(&level, TUTOR_DEPTH);
         assert!(r.moves.iter().all(|m| !m.immediate_win));
+    }
+
+    #[test]
+    fn a_majority_is_more_than_half_and_a_tie_is_not_one() {
+        // The boundary, because `MAJORITY` is `TOTAL_SEEDS / 2 + 1` and the `+ 1`
+        // is the whole rule. Banking the 24th of 48 seeds is a *tie*, not a win,
+        // and a version that dropped the `+ 1` would tell a player the game was
+        // settled when the opponent could still draw it.
+        assert_eq!(MAJORITY, 25);
+        let ties = board([0, 0, 0, 0, 0, 1], [1, 0, 0, 0, 0, 0], (23, 0), Side::A);
+        let r = assess(&ties, TUTOR_DEPTH);
+        assert!(
+            r.moves.iter().all(|m| !m.immediate_win),
+            "banking the 24th seed of 48 settles nothing"
+        );
+        let wins = board([0, 0, 0, 0, 0, 1], [1, 0, 0, 0, 0, 0], (24, 0), Side::A);
+        let r = assess(&wins, TUTOR_DEPTH);
+        assert!(
+            r.moves.iter().any(|m| m.immediate_win),
+            "banking the 25th does settle it"
+        );
+    }
+
+    #[test]
+    fn exposes_counts_the_reply_capture_it_hands_over() {
+        // Phase 4 found `exposes` surviving replacement by 0, 1 and -1, because
+        // the only test that used it accepted either wording. It is pinned as a
+        // number now, and the fixture had to be built carefully: B's pit 12 sits
+        // one step from B's store, so a lone seed there banks rather than
+        // captures. The reply that actually threatens pit 0 comes from pit 11,
+        // landing in the empty pit 12 that faces it.
+        //
+        // A sows pit 3 (one seed, to pit 4) and leaves three seeds in pit 0. B
+        // then sows pit 11 into the empty pit 12, taking those three and the
+        // lander: four.
+        let pos = board([3, 0, 0, 1, 0, 0], [0, 0, 0, 0, 1, 0], (22, 21), Side::A);
+        assert_eq!(
+            exposes(&pos, Pit(3)),
+            4,
+            "the three it left plus the lander"
+        );
+        // A move that keeps the turn exposes nothing, because there is no reply.
+        let keeps = board([1, 0, 0, 0, 0, 1], [1, 1, 0, 0, 0, 0], (0, 0), Side::A);
+        assert!(keeps_turn(&keeps, Pit(5)));
+        assert_eq!(exposes(&keeps, Pit(5)), 0);
+    }
+
+    #[test]
+    fn the_coach_and_the_panel_do_not_share_a_budget() {
+        // The checkers lesson. That the two constants differ is already a
+        // compile-time assertion at the top of this file -- clippy is right that
+        // repeating it in a test asserts nothing. What a test *can* add is that
+        // the split is wired through: `assess` picks its budget from the depth it
+        // was handed, so the tap path and the panel really do run differently on
+        // the same position.
+        let opening = Board::opening();
+        let coach = assess(&opening, COACH_DEPTH);
+        let panel = assess(&opening, TUTOR_DEPTH);
+        assert_eq!(coach.moves.len(), panel.moves.len());
+        assert!(!coach.exact && !panel.exact);
     }
 
     #[test]

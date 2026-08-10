@@ -92,6 +92,57 @@ test("landing in your own store keeps the turn and the board says why", async ({
   await expect(page.locator(".furrow-turnline")).toContainText(/go again/i);
 });
 
+test("the tappable ring never marks the opponent's pits", async ({ page }) => {
+  // `board.legal` is the *mover's* legal set, so during the engine's turn it
+  // holds the engine's pits. Ringing those would confuse the player and quietly
+  // hand them the opponent's options -- assistance nobody asked for, and a bug a
+  // screenshot caught after the whole suite went green.
+  await page.goto("/furrow/?seed=7");
+  await ready(page);
+  await waitHumanOrOver(page);
+  // On your turn: every ring is on one of your pits, and there is at least one.
+  const yours = await page.locator(".furrow-pit.legal").count();
+  expect(yours).toBeGreaterThan(0);
+  expect(await page.locator(".furrow-pit.legal.theirs").count()).toBe(0);
+
+  // Hand the turn over and watch while the engine has it.
+  await page.locator(".furrow-pit.mine.legal").first().click();
+  await page.waitForFunction(() => {
+    const b = window.__furrow!.game.board();
+    return b.result !== -1 || b.toMove === 2;
+  });
+  const duringTheirTurn = await page.evaluate(() => ({
+    theirs: document.querySelectorAll(".furrow-pit.legal.theirs").length,
+    any: document.querySelectorAll(".furrow-pit.legal").length,
+  }));
+  expect(duringTheirTurn.theirs).toBe(0);
+  expect(duringTheirTurn.any).toBe(0);
+});
+
+test("an empty pit is not dimmed, because the numeral is the information", async ({ page }) => {
+  // Measured: at the 0.45 opacity this used to carry, the "0" composited to
+  // 2.71:1 against the well in light mode -- below even the 3:1 UI floor, for
+  // the one piece of information a pit carries. axe cannot see it, because it
+  // cannot evaluate opacity-composited text.
+  await page.goto("/furrow/?seed=7");
+  await ready(page);
+  await waitHumanOrOver(page);
+  await page.locator('.furrow-pit[data-pit="0"]').click();
+  await waitHumanOrOver(page);
+  const dim = await page.evaluate(() => {
+    const empty = document.querySelector(".furrow-pit.empty .furrow-count");
+    return empty ? Number(getComputedStyle(empty).opacity) : 1;
+  });
+  expect(dim).toBe(1);
+  // Emptiness is signalled by the border style instead, which carries no contrast
+  // debt.
+  const dashed = await page.evaluate(() => {
+    const empty = document.querySelector(".furrow-pit.empty");
+    return empty ? getComputedStyle(empty).borderStyle : "";
+  });
+  expect(dashed).toBe("dashed");
+});
+
 test("the difficulty picker persists the chosen level", async ({ page }) => {
   await page.goto("/furrow/?seed=7");
   await ready(page);

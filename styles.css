@@ -3871,7 +3871,16 @@ body.fullscreen .le-stage {
 }
 .furrow-pit.mine { border-color: var(--fur-a); }
 .furrow-pit.theirs { border-color: var(--fur-b); }
-.furrow-pit.empty .furrow-count { opacity: 0.45; }
+/* An empty pit is NOT dimmed, and that is deliberate. The numeral is the only
+   thing a pit carries — there are no drawn seeds — so dimming it dims the
+   information. Measured: at the 0.45 opacity this rule used to carry, the "0"
+   composited to 2.71:1 against the well in light mode, below even the 3:1 UI
+   floor, let alone the 4.5:1 a numeral takes. axe does not catch it, because it
+   cannot evaluate opacity-composited text; the arithmetic does. Emptiness is
+   signalled instead by the absence of the legal ring, which is what it means. */
+.furrow-pit.empty {
+  border-style: dashed;
+}
 
 /* A legal pit is the only one that offers itself. The core still decides — this
    is a hint, not a gate, which is why an illegal tap is refused by the core and

@@ -94,6 +94,17 @@ const PAIRS: ReadonlyArray<readonly [string, string, number]> = [
   ["dots-b", "dots-paper", 4.5],
   ["dots-ink", "dots-paper", 3], // the lattice dots are a UI element
   ["dots-hint", "dots-paper", 3], // the legal-edge hint is a UI indicator
+  // Furrow: the seed counts are numerals on a pit well, so they take the text
+  // floor. The two sides' colours are rims and store fills against the board, so
+  // they take the UI floor -- and they are reinforced by a mark (▲ / ●), which is
+  // what actually carries ownership at a glance. The landing and legal colours
+  // are two *different* indicators on the same well, and both must clear the UI
+  // floor there: a hint that only reads by hue would be no hint at all.
+  ["fur-seed", "fur-well", 4.5],
+  ["fur-a", "fur-board", 3],
+  ["fur-b", "fur-board", 3],
+  ["fur-landing", "fur-well", 3],
+  ["fur-legal", "fur-well", 3],
 ];
 
 describe.each(["light", "dark"] as const)("tokens: %s theme clears WCAG AA", (name) => {
