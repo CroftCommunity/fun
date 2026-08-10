@@ -29,7 +29,8 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { furrowOracle } from "../src/games/furrow/furrow-oracle.js";
 import { Furrow } from "../src/games/furrow/furrow-wasm.js";
 import type { GameOracle } from "../src/harness/game-oracle.js";
-import { buildBand } from "../src/harness/hybrid-player.js";
+import { MockRuntime } from "../src/harness/ai-runtime.js";
+import { buildBand, HybridPlayer } from "../src/harness/hybrid-player.js";
 import { EnginePlayer } from "../src/harness/match-runner.js";
 import { renderReport, runTournament } from "../src/harness/tournament.js";
 
@@ -207,5 +208,84 @@ describe("the band carries the game's own idea", () => {
     const band = buildBand(oracle.tutor().moves);
     expect(band.length).toBeGreaterThan(1);
     expect(new Set(band.map((m) => m.idea)).size).toBeGreaterThan(1);
+  }, 900_000);
+});
+
+/**
+ * Phase 11 — the experimental hybrid opponent, on CI.
+ *
+ * The live WebGPU trial runs off CI on system Chrome (`HARNESS_TRIAL_GAME=furrow
+ * npm run harness:trial`) and **has not been run**; nothing here downloads a
+ * model. Say that rather than implying otherwise — dots' live trial is still
+ * unrun too, so the backlog now has two entries.
+ *
+ * What *is* provable on CI is the guarantee that actually matters: **whatever the
+ * model says, the move played is one the engine offered** — and every failure
+ * mode lands on the engine's own top-of-band choice rather than breaking the
+ * game.
+ */
+describe("the hybrid opponent never leaves the engine's band", () => {
+  const bandOf = (oracle: GameOracle): number[] => buildBand(oracle.tutor().moves).map((m) => m.col);
+
+  it("an in-band pick is played; garbage, out-of-band and a throw all fall back", async () => {
+    const oracle = await loadReal();
+    oracle.newGame(0n);
+    // Play on until the band is a **strict subset** of the legal pits. Early on
+    // nothing is a blunder, so a band of everything would make "stayed in band"
+    // vacuous — the fallback could return any move and pass. This is dots'
+    // correction, applied from the start rather than after the fact.
+    for (let ply = 0; ply < 60; ply += 1) {
+      if (bandOf(oracle).length < oracle.legalMoves().length) break;
+      const mv = oracle.liveMove(3);
+      if (mv === null) break;
+      oracle.play(mv);
+    }
+    const band = bandOf(oracle);
+    const best = band[0]!;
+    expect(band.length).toBeGreaterThan(1);
+    expect(band.length).toBeLessThan(oracle.legalMoves().length);
+
+    const pickWith = async (
+      reply: (p: string, o: { schema?: unknown }) => string,
+    ): Promise<number> => {
+      const player = new HybridPlayer(new MockRuntime({ reply: reply as never }));
+      const decision = await player.pick(buildBand(oracle.tutor().moves), {
+        prompt: "pick one",
+        system: "test",
+      });
+      return decision.move;
+    };
+
+    // A model that picks the last offered pit: honoured, because it is in band.
+    const last = band[band.length - 1]!;
+    expect(await pickWith(() => JSON.stringify({ move: last, reason: "ok" }))).toBe(last);
+    // Garbage, an out-of-band pit, and a thrown error all land on the engine's
+    // top-of-band move — never on an illegal one, and never on an exception.
+    expect(await pickWith(() => "not json at all")).toBe(best);
+    expect(await pickWith(() => JSON.stringify({ move: 99, reason: "off the board" }))).toBe(best);
+    // A store index is the shape of illegal move only this game can produce.
+    expect(await pickWith(() => JSON.stringify({ move: 6, reason: "the store" }))).toBe(best);
+    expect(
+      await pickWith(() => {
+        throw new Error("model exploded");
+      }),
+    ).toBe(best);
+  }, 900_000);
+
+  it("every offered pit is legal, so an in-band pick can never abort a match", async () => {
+    // The band is the model's whole vocabulary. If it ever held a move the core
+    // would refuse, the hybrid could hand the runner an illegal code — which is
+    // the one way a personality feature could cost a game.
+    const oracle = await loadReal();
+    for (let seed = 0n; seed < 3n; seed += 1n) {
+      oracle.newGame(seed);
+      while (oracle.board().result === -1) {
+        const legal = oracle.legalMoves();
+        for (const col of bandOf(oracle)) expect(legal).toContain(col);
+        const mv = oracle.liveMove(2);
+        if (mv === null) break;
+        oracle.play(mv);
+      }
+    }
   }, 900_000);
 });

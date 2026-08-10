@@ -21,6 +21,9 @@
 //! A finished match is a verifiable `pond-outcome` record, shareable via `?r=`.
 
 import type { GameModule } from "../../contract.js";
+import { WebLLMRuntime } from "../../harness/ai-runtime.js";
+import { speak } from "../../harness/banter.js";
+import { buildBand, HybridPlayer, type BandMove } from "../../harness/hybrid-player.js";
 import {
   declareAssistanceEnabled,
   furrowLevel,
@@ -50,6 +53,8 @@ import {
 
 declare global {
   interface Window {
+    /** Test seam: override the local-AI model id (a smaller/faster model). */
+    __FURROW_AI_MODEL?: string;
     /** E2E hook: the live binding + a re-render, so tests drive the core. */
     __furrow?: {
       game: Furrow;
@@ -63,6 +68,18 @@ declare global {
 
 /** The opponent's identity — honest: it is the shelf's engine. */
 const OPPONENT = { name: "The Engine", avatar: "🤖" } as const;
+
+const LOCAL_AI = "local-ai";
+/** A small, fast model — the local-AI opponent is UX (banter), not strength. */
+const LOCAL_AI_MODEL = "Qwen2.5-0.5B-Instruct-q4f16_1-MLC";
+/** The experimental local-AI opponent's persona, continuing the Chip / Rowan /
+ *  Alder / Bramble line. Millet is a seed crop, which is what this game sows. */
+const LOCAL_AI_PERSONA = { name: "Millet", avatar: "\u{1F331}" } as const;
+const HYBRID_SYSTEM = [
+  "You are Millet, a friendly but competitive mancala opponent.",
+  "You always pick from the offered pits (they are safe by construction).",
+  "You add a short, in-character line of banter — never analysis, never move lists.",
+].join(" ");
 
 /** The human opens (Side A). Unlike dots, no seat is a known loss: Phase 0 could
  *  not solve the opening, so the published first-player advantage is not
@@ -174,14 +191,18 @@ function capitalise(s: string): string {
  * The extra turn is the rule a player is most likely to read as a bug, so it is
  * stated rather than left to be inferred from a board that did not change hands.
  */
-export function turnLine(board: BoardView, humanToMove: boolean): string {
+export function turnLine(
+  board: BoardView,
+  humanToMove: boolean,
+  opponentName: string = OPPONENT.name,
+): string {
   if (board.result !== -1) return "The game is over.";
   if (board.keptTurn) {
     return humanToMove
       ? "Your seed landed in your store — go again."
-      : `${OPPONENT.name} landed in its store — it goes again.`;
+      : `${opponentName} landed in its store — it goes again.`;
   }
-  return humanToMove ? "Your move." : `${OPPONENT.name} is thinking…`;
+  return humanToMove ? "Your move." : `${opponentName} is thinking…`;
 }
 
 interface ResultScreenOpts {
@@ -300,6 +321,102 @@ export function furrowModule(): GameModule {
    */
   let tutorView: { note: string; options: string[]; hash: string } | null = null;
 
+  // --- experimental local-AI opponent (hybrid: engine band + LLM in-band pick) ---
+  // The engine still decides *which moves are safe*; the model only picks among
+  // them and says something. Reuses the game-agnostic hybrid harness unchanged —
+  // the fifth game to do so, and the second where the band's `idea` already comes
+  // from Rust so there is nothing to phrase here.
+  let localAiAvailable = false;
+  let opponentKind: "engine" | typeof LOCAL_AI = "engine" as "engine" | typeof LOCAL_AI;
+  let runtime: WebLLMRuntime | null = null;
+  let hybrid: HybridPlayer | null = null;
+  let aiSay: string | null = null;
+
+  const opponentIdentity = (): { name: string; avatar: string } =>
+    opponentKind === LOCAL_AI ? LOCAL_AI_PERSONA : OPPONENT;
+
+  /** What the position is about, for the persona's tone only — never for play. */
+  type Situation = "chaining" | "capturing" | "starved" | "neutral";
+  const readSituation = (band: readonly BandMove[]): Situation => {
+    if (band.some((m) => /go again/.test(m.idea))) return "chaining";
+    if (band.some((m) => /^captures /.test(m.idea))) return "capturing";
+    if (band.length <= 2) return "starved";
+    return "neutral";
+  };
+  const SITUATION_HINT: Record<Situation, string> = {
+    chaining: "A pit lands in your store — take the free turn with a little flourish.",
+    capturing: "There is a capture on the board — be pleased with yourself.",
+    starved: "Your row is nearly empty — be wry about having no choices left.",
+    neutral: "Nothing decisive yet — a light competitive jab.",
+  };
+  const FALLBACK_LINE: Record<Situation, string> = {
+    chaining: "Straight into the store. And again.",
+    capturing: "Those were sitting there so nicely.",
+    starved: "Not much left on my side. Not much needed.",
+    neutral: "Your move. I'm not worried yet.",
+  };
+
+  const hybridPrompt = (g: Furrow, band: readonly BandMove[], sit: Situation): string => {
+    const pits = band.map((m) => m.col).join(", ");
+    return [
+      `Board (each pit shows its number under its seed count):\n${g.renderText()}`,
+      SITUATION_HINT[sit],
+      `Sow ONE of these pits: ${pits}.`,
+      `Reply ONLY with JSON {"move": <one of ${pits}>, "reason": "<your one-line quip, under 12 words>"}.`,
+    ].join("\n");
+  };
+
+  const hybridMove = async (): Promise<number | null> => {
+    if (!game) return null;
+    try {
+      if (!runtime || !hybrid) {
+        setStatus(`${LOCAL_AI_PERSONA.name}: warming up the model (one-time download)\u2026`);
+        render();
+        runtime = new WebLLMRuntime({
+          model: window.__FURROW_AI_MODEL ?? LOCAL_AI_MODEL,
+          onProgress: (t) => setStatus(`${LOCAL_AI_PERSONA.name}: ${t}`),
+        });
+        hybrid = new HybridPlayer(runtime);
+      }
+      // The band's `idea` is the engine's own sentence (Rust), so the UI
+      // opponent, the tutor and the harness adapter all carry one wording rather
+      // than three that agree.
+      const band = buildBand(game.tutor().moves);
+      if (band.length === 0) return game.liveMove(level as Level); // no band -> classic safety
+      const sit = readSituation(band);
+      const decision = await hybrid.pick(band, {
+        prompt: hybridPrompt(game, band, sit),
+        system: HYBRID_SYSTEM,
+      });
+      // The shared filter decides whether the model's own words are fit to speak
+      // (`src/harness/banter.ts`): a line that claims something about the board
+      // can be false, and a persona that sounds authoritative and is wrong is the
+      // cosmetic cousin of an over-claimed `exact`.
+      aiSay = speak(decision, FALLBACK_LINE[sit]).line;
+      return decision.move;
+    } catch {
+      aiSay = null;
+      return game.liveMove(level as Level); // never break the game on an AI failure
+    }
+  };
+
+  // A real WebGPU adapter is required; probe once on mount and offer the toggle
+  // only if it passes (the classic engine otherwise).
+  const probeLocalAi = async (): Promise<void> => {
+    try {
+      const gpu = (
+        navigator as Navigator & {
+          gpu?: { requestAdapter(): Promise<{ isFallbackAdapter?: boolean } | null> };
+        }
+      ).gpu;
+      const adapter = gpu ? await gpu.requestAdapter() : null;
+      localAiAvailable = Boolean(adapter) && adapter?.isFallbackAdapter !== true;
+    } catch {
+      localAiAvailable = false;
+    }
+    if (!disposed && localAiAvailable) render();
+  };
+
   const setStatus = (text: string): void => {
     status = text;
     const node = container?.querySelector(".furrow-status");
@@ -408,7 +525,7 @@ export function furrowModule(): GameModule {
       el(
         "span",
         { class: `furrow-seat them${humanTurn ? "" : " active"}` },
-        `${OPPONENT.avatar} ${OPPONENT.name} ${theirStore(board)}`,
+        `${opponentIdentity().avatar} ${opponentIdentity().name} ${theirStore(board)}`,
       ),
     );
   };
@@ -464,6 +581,25 @@ export function furrowModule(): GameModule {
         render();
       }),
     );
+    if (localAiAvailable) {
+      details.append(
+        toggle(
+          opponentKind === LOCAL_AI,
+          "Experimental: local AI opponent",
+          "furrow-ai-toggle-input",
+          (on) => {
+            opponentKind = on ? LOCAL_AI : "engine";
+            aiSay = null;
+            render();
+          },
+        ),
+        el(
+          "p",
+          { class: "furrow-ai-disclosure" },
+          `An in-browser model (${LOCAL_AI_PERSONA.name}) picks within the engine's safe pits and adds banter — a one-time model download on first use; it never plays a losing move (the engine's band decides).`,
+        ),
+      );
+    }
 
     return el(
       "div",
@@ -552,6 +688,16 @@ export function furrowModule(): GameModule {
         "div",
         { class: "furrow-game" },
         renderTurnbar(board),
+        // The local-AI opponent's spoken reason for its last move (personality).
+        ...(aiSay && opponentKind === LOCAL_AI
+          ? [
+              el(
+                "p",
+                { class: "furrow-ai-say", role: "status" },
+                `${LOCAL_AI_PERSONA.name}: ${aiSay}`,
+              ),
+            ]
+          : []),
         renderControls(),
         el(
           "p",
@@ -559,7 +705,7 @@ export function furrowModule(): GameModule {
           "Tap one of your pits. Land your last seed in your store to go again; land it in an empty pit of yours to capture. Most seeds wins.",
         ),
         buildBoard(board, humanTurn && !busy),
-        el("p", { class: "furrow-turnline" }, turnLine(board, humanTurn)),
+        el("p", { class: "furrow-turnline" }, turnLine(board, humanTurn, opponentIdentity().name)),
         ...(furrowTutorEnabled() ? [renderTutorPanel()] : []),
         statusEl,
       ),
@@ -665,7 +811,7 @@ export function furrowModule(): GameModule {
       render();
       await sleep(THINK_MS);
       if (disposed || !game) return;
-      const mv = game.liveMove(level as Level);
+      const mv = opponentKind === LOCAL_AI ? await hybridMove() : game.liveMove(level as Level);
       if (mv === null) break;
       await animateSow(mv);
       if (disposed || !game) return;
@@ -759,6 +905,7 @@ export function furrowModule(): GameModule {
     pendingCoach = null;
     endedEarly = null;
     tutorView = null;
+    aiSay = null;
     seed = seedOverride ?? randomSeed();
     game.newGame(seed);
     setStatus("");
@@ -834,6 +981,9 @@ export function furrowModule(): GameModule {
         }
         const seedParam = url.searchParams.get("seed");
         await startGame(seedParam !== null ? BigInt(seedParam) : undefined);
+        // Probe WebGPU in the background; if present the controls re-render with
+        // the experimental local-AI opponent offered (classic engine otherwise).
+        void probeLocalAi();
       })();
     },
     unmount(): void {
@@ -843,6 +993,8 @@ export function furrowModule(): GameModule {
       container = null;
       game = null;
       verifier = null;
+      runtime = null; // release the WebGPU engine (local-AI) if it was created
+      hybrid = null;
     },
   };
 }

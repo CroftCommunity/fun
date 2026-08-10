@@ -3995,3 +3995,17 @@ body.fullscreen .le-stage {
   padding-inline-start: 1.1rem;
   text-align: start;
 }
+
+/* The experimental local-AI opponent's spoken line and its up-front disclosure.
+   The line is personality only — the engine's band decided the move. */
+.furrow-ai-say {
+  margin: 0;
+  text-align: center;
+  font-style: italic;
+  max-width: 32rem;
+}
+.furrow-ai-disclosure {
+  margin: 0.35rem 0 0;
+  max-width: 32rem;
+  font-size: 0.9rem;
+}

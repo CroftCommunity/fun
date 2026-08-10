@@ -337,3 +337,58 @@ test("the tutor's reading survives the re-render that lands after a turn settles
   await waitHumanOrOver(page);
   expect(await page.locator(".furrow-tutor-options li").count()).toBe(0);
 });
+
+// The experimental local-AI opponent (Phase 11). The engine stays the default and
+// the toggle appears only behind a real, non-fallback WebGPU adapter.
+
+test("the experimental local-AI opponent is hidden with no real WebGPU adapter", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "gpu", {
+      configurable: true,
+      value: { requestAdapter: async () => null },
+    });
+  });
+  await page.goto("/furrow/?seed=7");
+  await ready(page);
+  await page.locator(".furrow-settings summary").click();
+  await expect(page.locator(".furrow-ai-toggle-input")).toHaveCount(0);
+});
+
+test("a fallback adapter does not count as WebGPU", async ({ page }) => {
+  // A software adapter would run the model on the CPU, which is not the offer.
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "gpu", {
+      configurable: true,
+      value: { requestAdapter: async () => ({ isFallbackAdapter: true }) },
+    });
+  });
+  await page.goto("/furrow/?seed=7");
+  await ready(page);
+  await page.locator(".furrow-settings summary").click();
+  await expect(page.locator(".furrow-ai-toggle-input")).toHaveCount(0);
+});
+
+test("the toggle appears with a real adapter and discloses the cost and the guarantee", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "gpu", {
+      configurable: true,
+      value: { requestAdapter: async () => ({ isFallbackAdapter: false }) },
+    });
+  });
+  await page.goto("/furrow/?seed=7");
+  await ready(page);
+  await page.locator(".furrow-settings summary").click();
+  const toggle = page.locator(".furrow-ai-toggle-input");
+  await expect(toggle).toHaveCount(1);
+  await toggle.check();
+  const disclosure = page.locator(".furrow-ai-disclosure");
+  await expect(disclosure).toContainText(/download|one[- ]time/i);
+  // And the guarantee, not just the cost: the engine's band still decides.
+  await expect(disclosure).toContainText(/never plays a losing move/i);
+  // The turn bar switches to the persona, so a player knows who they are facing.
+  await expect(page.locator(".furrow-seat.them")).toContainText("Millet");
+});

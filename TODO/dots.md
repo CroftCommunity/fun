@@ -49,7 +49,9 @@ was deferred.
 
 ## Open follow-ups
 
-- [ ] **The live WebGPU hybrid trial has never been run.** `HARNESS_TRIAL_GAME=dots
+- [ ] **The live WebGPU hybrid trial has never been run** — and as of 2026-08-10
+  there are **two** games in this position: dots (Bramble) and Furrow (Millet).
+  Both are proven on CI under a mock runtime and neither has faced a real model. `HARNESS_TRIAL_GAME=dots
   npm run harness:trial` needs system Chrome and a one-time model download, which
   is an owner-machine task. What is proven on CI is the *gating* and the
   never-leave-the-band guarantee under a mock runtime — not the model. Do not
