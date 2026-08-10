@@ -71,9 +71,39 @@ impl Level {
 ///
 /// The depths are set against Phase 3's measurement of the capped path from the
 /// opening: 714 nodes at depth 4, 21,711 at depth 8, 79,347 at depth 10 and
-/// 248,997 at depth 12 — so the top level's depth 10 is about 20 ms natively and
-/// well inside [`CAPPED_NODE_BUDGET`]. Phase 12 re-tunes these against wasm on a
-/// phone; they are measured here, not guessed, but they are measured on a laptop.
+/// 248,997 at depth 12 — so the top level's depth 10 is well inside
+/// [`CAPPED_NODE_BUDGET`].
+///
+/// **Measured in wasm, Node/V8, 6 seeds × every level (Phase 12, 2026-08-10),
+/// 220–299 moves per level:**
+///
+/// | level | median | p95 | worst | over 400 ms | where the worst sits |
+/// |---|---|---|---|---|---|
+/// | Easy | 0.0 ms | 5.3 ms | 61.2 ms | 0% | 16 seeds in play — the first exact solve |
+/// | Medium | 0.2 ms | 0.6 ms | 15.1 ms | 0% | 14 seeds |
+/// | Hard | 1.1 ms | 6.6 ms | 11.7 ms | 0% | 14 seeds |
+/// | Expert | 7.8 ms | 51.6 ms | **89.2 ms** | 0% | **47 seeds — the opening** |
+///
+/// Two different worst cases live in that table. The cheap levels' worst move is
+/// the first exact solve with a cold table — the exact path ignores level, so
+/// Easy pays what Expert pays for it, exactly as in dots. Expert's worst is
+/// somewhere else: the **opening**, where depth 10 is at its most expensive and
+/// nothing has left the board. Measuring only the top level would have found the
+/// second and missed the first.
+///
+/// **Iterative deepening is rejected, on a measurement rather than by analogy.**
+/// `adversary_solver::deepen` exists to keep the best *complete* iteration when a
+/// budget cuts a search short. Over **960 plies** of real play at the top level
+/// the capped search's allowance truncated a move list **zero times** — directly
+/// observable, since [`crate::search::move_values`] breaks out of its loop on
+/// exhaustion and the report then holds fewer moves than there are legal ones.
+/// With nothing ever cut short there is no incomplete iteration to rescue, and
+/// deepening could only add the cost of searching depths 1..9 first.
+///
+/// Note what that refutes: the plan's prior was that deepening would pay here,
+/// because branching is narrow (4.11) and the midgame is deep — deepening's
+/// natural home. The prior was about the shape of the game; the answer turned out
+/// to be about the size of the budget.
 #[must_use]
 pub fn live_band(level: Level) -> LiveBand {
     match level {

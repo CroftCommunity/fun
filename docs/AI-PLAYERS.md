@@ -195,6 +195,7 @@ The shape of the problem decides the fix, and all three games looked different:
   drop 4     ▁▁▁▁▁▁▁▂▄▆███     20% over 400ms  → a tail, in the OPENING.
   othello    ▃▄▅▆▇███████▇▆    38% over 400ms  → a plateau. Median already 262ms.
   dots       ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▂   0% over 400ms  → one spike, at a known position.
+  furrow     ▁▁▁▁▁▁▁▁▁▁▁▁▁▂▃▄   0% over 400ms  → a small tail, in the OPENING.
 ```
 
 Dots and Boxes (measured 2026-08-07, wasm/Node, 5 seeds × 4 levels) is the
@@ -204,6 +205,24 @@ easiest shape there is, and it is worth knowing why: its worst move is the
 a median of 0.0-0.3 ms. The exact path ignores level, so Easy costs what Perfect
 costs. A per-level table was still taken, because "we measured the top level and
 it was fine" is exactly how Othello's stall survived.
+
+Furrow (measured 2026-08-10, wasm/Node, 6 seeds × 4 levels, 220–299 moves each)
+is the mirror image of dots and worth the contrast:
+
+| level | median | p95 | worst | over 400 ms | where the worst sits |
+|---|---|---|---|---|---|
+| Easy | 0.0 ms | 5.3 ms | 61.2 ms | 0% | 16 seeds in play — the first exact solve |
+| Medium | 0.2 ms | 0.6 ms | 15.1 ms | 0% | 14 seeds |
+| Hard | 1.1 ms | 6.6 ms | 11.7 ms | 0% | 14 seeds |
+| **Expert** | 7.8 ms | 51.6 ms | **89.2 ms** | 0% | **47 seeds — the opening** |
+
+Two things only the per-level table shows. The **cheap** levels' worst move is the
+first exact solve with a cold table, exactly as in dots — the exact path ignores
+level, so Easy pays what Expert pays for it. But **Expert's** worst is somewhere
+else entirely: the *opening*, where its depth-10 capped search is at its most
+expensive and nothing has left the board yet. Reading only the top level would
+have found the second and missed the first; reading only the worst number would
+have found neither.
 
 A worst-case number alone would have hidden all of this. Record median, p95,
 worst, **and the fraction over your target**, per level — and take the numbers at
@@ -216,12 +235,12 @@ bigger cost sat on top of it.
 `adversary_solver::deepen` searches `1..=max_depth` and keeps the last iteration
 that **finished**. It is not free, and whether it pays is a property of the game:
 
-| | checkers | Othello | dots |
-|---|---|---|---|
-| deepening vs direct search | **+14% nodes (tax)** | **−41% nodes (win)** | **not applicable** |
-| existing move ordering | capture length — and capture is *mandatory*, so it is already near-optimal | a static corner/edge weight table — a weak guess | captures first, and no capture is possible where the capped path runs |
-| budget bite rate | 0% of moves | 28–38% of moves | 0% of moves |
-| outcome | **reverted, ships nothing** | shipped, free speed | **rejected — every iteration returns the same values** |
+| | checkers | Othello | dots | furrow |
+|---|---|---|---|---|
+| deepening vs direct search | **+14% nodes (tax)** | **−41% nodes (win)** | **not applicable** | **not applicable** |
+| existing move ordering | capture length — and capture is *mandatory*, so it is already near-optimal | a static corner/edge weight table — a weak guess | captures first, and no capture is possible where the capped path runs | extra-turn moves first, then by pit descending |
+| budget bite rate | 0% of moves | 28–38% of moves | 0% of moves | **0 of 960 plies** |
+| outcome | **reverted, ships nothing** | shipped, free speed | **rejected — every iteration returns the same values** | **rejected — the budget never truncates a search** |
 
 Dots is the third answer, and a different kind of one. Its capped search only ever
 runs in the first four plies, where no box can reach three sides — so measured at
@@ -231,6 +250,25 @@ returns in 0.0 ms. Deepening keeps the best *complete* iteration when a budget
 truncates a search; when every iteration is identical there is no better one to
 keep. **Check that the search has something to find before asking how to search
 it better.**
+
+Furrow is the fourth answer and the one the plan expected to go the other way.
+Its prior was explicit: a small branching factor (**4.11**, measured) and a deep
+midgame are deepening's natural home, and Phase 0 suggested a budget that might
+bite. **It does not.** Over 960 plies of real play at the top level, the capped
+search's allowance truncated a move list **zero times** — directly observable,
+because `move_values` breaks out of its loop on exhaustion and the report then
+holds fewer moves than there are legal ones.
+
+The reason is arithmetic rather than deep: branching 4.11 at depth 10 costs a
+measured 79,347 nodes from the opening, against a 600,000-node allowance. Nothing
+is ever cut short, so there is no incomplete iteration for `deepen` to rescue and
+it could only add the cost of searching depths 1 through 9 first — roughly a third
+again, for nothing.
+
+**The prior was about the shape of the game and the answer was about the size of
+the budget.** Two of four games now reject deepening for two entirely different
+reasons, which is the case for measuring it per game rather than reasoning by
+analogy from the one where it won.
 
 > **The rule: deepening pays where the budget actually bites often, or where the
 > static move ordering is poor. Where neither holds it is a tax on every move for
