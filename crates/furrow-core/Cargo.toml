@@ -1,0 +1,20 @@
+[package]
+name = "furrow-core"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Deterministic, headless mancala (Kalah 6x4) engine. Sow counterclockwise skipping the opponent's store, an extra turn on your own store, capture into an empty own pit, and a sweep when a side empties. Canonical state hash. Implements the shared Adversary trait and pond_outcome::Game, so a two-player match replays from (seed, moves) exactly and native==wasm. No floats on the hashed path, no network."
+
+[lints]
+workspace = true
+
+[dependencies]
+adversary-core = { path = "../adversary-core" }
+serde = { workspace = true }
+sha2.workspace = true
+hex.workspace = true
+pond-outcome.workspace = true
+
+[dev-dependencies]
+pond-docformat.workspace = true

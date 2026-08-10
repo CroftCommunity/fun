@@ -1,0 +1,7 @@
+{
+  "name": "extra-turn-chain",
+  "note": "A full game where each side prefers a move that keeps the turn, else its highest-numbered legal pit. Deterministic, and it walks the paths most likely to diverge between native and wasm: extra-turn chains up to four moves long, captures, and the sweep. Final score 26-22 to A.",
+  "seed": 0,
+  "moves": [2, 5, 8, 12, 1, 5, 4, 7, 12, 11, 0, 2, 4, 5, 12, 10, 4, 12, 11, 3, 12, 11, 5, 4, 10, 2],
+  "final_state_hash": "e5c7938bc701388ff3aac402ce4a5dc5b94afbb61ce54289b77532b29083e0a5"
+}

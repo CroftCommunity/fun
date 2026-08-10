@@ -1,0 +1,7 @@
+{
+  "name": "lowest-legal-game",
+  "note": "A full game where each side always sows its lowest-numbered legal pit. Deterministic, and it ends the way this game ends and no other on the shelf does: A's side empties, B sweeps 36 seeds against A's 12, and the final score is not what accumulated during play.",
+  "seed": 0,
+  "moves": [0, 7, 1, 2, 7, 3, 7, 4, 7, 5],
+  "final_state_hash": "19d837e0d742996e0677335abf4c168b675de894988b1f2a5e1680492ee50b2e"
+}

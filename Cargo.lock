@@ -301,6 +301,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "furrow-core"
+version = "0.0.0"
+dependencies = [
+ "adversary-core",
+ "hex",
+ "pond-docformat",
+ "pond-outcome",
+ "serde",
+ "sha2",
+]
+
+[[package]]
 name = "generic-array"
 version = "0.14.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
