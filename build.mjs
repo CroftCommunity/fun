@@ -137,6 +137,9 @@ else console.warn("note: othello.wasm not built yet — run `npm run build:wasm`
 const dtwasm = join(root, "target/wasm32-unknown-unknown/release/dots_wasm.wasm");
 if (await exists(dtwasm)) await cp(dtwasm, join(dist, "dots.wasm"));
 else console.warn("note: dots.wasm not built yet — run `npm run build:wasm` (dots needs it)");
+const fuwasm = join(root, "target/wasm32-unknown-unknown/release/furrow_wasm.wasm");
+if (await exists(fuwasm)) await cp(fuwasm, join(dist, "furrow.wasm"));
+else console.warn("note: furrow.wasm not built yet — run `npm run build:wasm` (furrow needs it)");
 const ckwasm = join(root, "target/wasm32-unknown-unknown/release/checkers_wasm.wasm");
 if (await exists(ckwasm)) await cp(ckwasm, join(dist, "checkers.wasm"));
 else console.warn("note: checkers.wasm not built yet — run `npm run build:wasm` (checkers needs it)");

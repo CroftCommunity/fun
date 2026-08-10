@@ -50,6 +50,7 @@ members = [
     "crates/checkers-wasm",
     "crates/furrow-core",
     "crates/furrow-solver",
+    "crates/furrow-wasm",
     "crates/othello-core",
     "crates/othello-solver",
     "crates/othello-wasm",

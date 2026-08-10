@@ -324,6 +324,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "furrow-wasm"
+version = "0.0.0"
+dependencies = [
+ "adversary-core",
+ "furrow-core",
+ "furrow-solver",
+ "pond-outcome",
+ "rand_chacha",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "generic-array"
 version = "0.14.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"

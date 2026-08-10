@@ -1,0 +1,22 @@
+[package]
+name = "furrow-wasm"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Browser binding over furrow-core + furrow-solver for the shelf: raw C-ABI + serde-JSON (no wasm-bindgen). Holds one Furrow (mancala) game, exposes rules (legal/play/board/hash/result/render), the live opponent (difficulty Levels), the engine-grounded tutor split into a cheap per-tap coach and a deeper panel, and the verifiable outcome. Reports keptTurn and the sow path, because one move writes to many cells and the UI must animate it without re-implementing the rule. Never panics."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[lints]
+workspace = true
+
+[dependencies]
+adversary-core = { path = "../adversary-core" }
+furrow-core = { path = "../furrow-core" }
+furrow-solver = { path = "../furrow-solver" }
+pond-outcome = { workspace = true }
+serde = { workspace = true }
+serde_json.workspace = true
+rand_chacha.workspace = true
