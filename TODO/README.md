@@ -65,13 +65,29 @@ field:
   candidate hunt for the P2P-gated set (cribbage's cohort), which is a different
   question from what is buildable today.
 
-0. **Mancala (working name: Furrow)** — Tier-1 adversarial, the fifth. Plan
-   written 2026-08-07: `plans/2026-08-07-mancala.md` (Pass 1 + Pass 2, execution
-   not started). Two owner decisions open — board size and the name. It is on the
-   slate because of the shapes it stresses, not the fun: one move that rewrites
-   many cells, a terminal that transforms the score, all three result classes
-   reachable, and the first chance to confirm dots' extra-turn shape *transfers*
-   rather than proving it once.
+0. **Mancala — shipped as Furrow, in progress.** Tier-1 adversarial, the fifth.
+   `plans/2026-08-07-mancala.md`. **Phases 0–4 done as of 2026-08-09**:
+   `crates/furrow-core` (rules, hash, `RULES.md`, three golden vectors), the
+   native == wasm cross-check, and `crates/furrow-solver` (exact endgame solver,
+   heuristic search, levels, tutor). Next is Phase 5, the `furrow-wasm` binding.
+   Owner decisions settled 2026-08-07: **6 pits × 4 seeds**, the name **Furrow**,
+   two players, the full §10 checklist.
+
+   It was on the slate for the shapes it stresses, not the fun, and all four
+   showed up: one move that rewrites as many as thirteen cells, a terminal that
+   transforms the score, all three result classes reachable, and dots' extra-turn
+   shape **transferring** — nothing shared needed changing, which is what makes
+   the dots result a property of the abstraction rather than luck.
+
+   Two findings worth knowing before reading the crates:
+   - **The top level is `Expert`, not `Perfect`.** Phase 0 could not solve the
+     opening at 100M nodes, and about 70% of a game sits above the exact
+     threshold. The published Kalah(6,4) first-player win used retrograde analysis
+     and endgame databases; it is **not reproduced here and not relied on**.
+   - **Phase 0's central design finding was wrong by ~500×** and Phase 3 refutes
+     it in place: it sized the transposition table against 1.65M entries (~10 MB)
+     from a count of distinct positions under a search with no alpha-beta. The
+     shipped search holds 2,827 at its worst, so the table is 640 KB.
 1. **Chess** — Tier-1 adversarial, **heavy**. Needs a vetted move generator
    (castling, en passant, promotion, checkmate/stalemate/draws), which is the real
    weight. Its own multi-phase plan.
@@ -108,6 +124,27 @@ field:
    (and the Emscripten + runtime-untar class is discouraged, `docs/BUILDING-GAMES.md`).
 
 ## Cross-game open threads (span more than one game)
+
+- [ ] **Nothing in this repo's workflow compiles the solvers with overflow checks
+  on.** The gate runs `cargo test --workspace --release`, for the documented
+  reason that debug takes over twenty minutes (bubble-solver's search). Release
+  **wraps** on integer overflow instead of panicking. So a solver can be
+  arithmetically wrong in a way its own green suite cannot see.
+
+  This is not hypothetical: furrow's search opened its alpha-beta window at
+  `i32::MIN + 1` and shifted it by each move's gain, which overflows on the first
+  shift. In release the wrap turned alpha into a large *positive* number, so the
+  child failed high immediately and returned a bound reported as a value — and
+  every test still passed. It surfaced only because `cargo mutants` builds in
+  debug, and it surfaced *before the first mutant ran*
+  (`plans/2026-08-07-mancala.md` → Phase 4).
+
+  **Every other solver on the shelf uses window sentinels of the same shape** —
+  checkers, Othello, drop4, dots — and none of them has been compiled with
+  overflow checks by anything except a mutation run. Each should get one
+  `cargo test --package <crate>` in debug, once, and the ones that are slow in
+  debug should say so rather than be skipped quietly. If any of them is clean,
+  that is worth recording too; the point is that right now nobody knows.
 
 - ~~**Extract `crates/adversary-solver`**~~ — **done 2026-08-05** (P8 Phases 6–8).
   The class-preserving band selector lives in `crates/adversary-solver`, generic
