@@ -212,6 +212,29 @@ mod tests {
     }
 
     #[test]
+    fn each_term_is_an_exact_number_not_merely_a_comparison() {
+        // Phase 4 found `seeds_on` surviving replacement by 1, 0 and -1, and
+        // `future_margin`'s first `+` surviving a flip to `-`. Both survived for
+        // the same reason: every test here compared two calls, and any constant
+        // satisfies a comparison. So the terms are pinned as numbers.
+        let pos = board([3, 0, 5, 1, 0, 2], [1, 4, 0, 0, 6, 2], Side::A);
+        assert_eq!(seeds_on(&pos, Side::A), 11);
+        assert_eq!(seeds_on(&pos, Side::B), 13);
+        // Free turns: A's pit 5 holds 2 and is 1 away -- no; pit 3 holds 1 and is
+        // 3 away -- no. B's pit 11 holds 6 and is 2 away -- no. Neither side has
+        // one here, which is itself worth stating.
+        assert_eq!(free_turns(&pos, Side::A), 0);
+        assert_eq!(free_turns(&pos, Side::B), 0);
+        // A's pit 3 holds 1 and lands in pit 4, which is empty, facing pit 8
+        // which holds 4: a capture of 5.
+        assert_eq!(best_capture(&pos, Side::A), 5);
+        assert_eq!(best_capture(&pos, Side::B), 0);
+        // And the whole formula, as one number a reader can add up:
+        //   1 * (11 - 13) + 3 * (0 - 0) + 2 * (5 - 0) = -2 + 0 + 10 = 8
+        assert_eq!(future_margin(&pos), 8);
+    }
+
+    #[test]
     fn holding_seeds_scores_better_than_having_fed_them_across() {
         let holding = board([4, 4, 4, 4, 4, 4], [0; PITS], Side::A);
         let fed = board([0; PITS], [4, 4, 4, 4, 4, 4], Side::A);

@@ -3760,3 +3760,199 @@ body.fullscreen .le-stage {
   color: var(--ink-muted);
   max-width: 26rem;
 }
+
+/* ---------- Furrow (mancala) ---------- */
+
+/* The board is a carved slab: two rows of pit wells between two stores. The
+   wells are darker than the board so a pit reads as a hollow, and each side's
+   store carries its own colour and mark so the two are told apart by shape as
+   well as hue. Every colour is a token — no raw hex lives here. */
+
+.furrow-game {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.furrow-turnbar {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.furrow-seat {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  font-variant-numeric: tabular-nums;
+}
+.furrow-seat.you.active { border-color: var(--fur-a); }
+.furrow-seat.them.active { border-color: var(--fur-b); }
+
+.furrow-banner,
+.furrow-turnline,
+.furrow-status {
+  margin: 0;
+  text-align: center;
+  max-width: 32rem;
+}
+
+/* The board is fourteen cells wide and cannot reflow — a mancala row that
+   wrapped would stop being a row. So it sizes to its contents and its *wrapper*
+   scrolls. `max-width: 100%` on the board itself was the first version and it
+   was the bug: it clamped the box while the contents overflowed, which clipped
+   the far store on a 360px phone and, worse, made the "no horizontal overflow"
+   test pass — because the box it measured was obediently 360px wide. Measure
+   scrollWidth, not the box. */
+.furrow-boardwrap {
+  inline-size: 100%;
+  overflow-x: auto;
+  display: flex;
+  justify-content: center;
+}
+
+.furrow-board {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem;
+  border-radius: 1.2rem;
+  background: var(--fur-board);
+  width: max-content;
+  margin-inline: auto;
+}
+
+.furrow-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.furrow-row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+/* Whose row this is, as a shape — not only as a rim colour. In light mode the
+   side rims sit at ~3.3:1 against the board, which is enough to see and not
+   enough to read at a glance, so the mark carries the meaning and the colour
+   only reinforces it. */
+.furrow-rowmark {
+  inline-size: 1.1rem;
+  text-align: center;
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.furrow-row.mine .furrow-rowmark { color: var(--fur-a); }
+.furrow-row.theirs .furrow-rowmark { color: var(--fur-b); }
+
+.furrow-pit,
+.furrow-store {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--fur-well);
+  color: var(--fur-seed);
+  border: 2px solid transparent;
+  font-variant-numeric: tabular-nums;
+}
+
+.furrow-pit {
+  inline-size: 2.75rem;
+  block-size: 2.75rem;
+  border-radius: 50%;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.furrow-pit.mine { border-color: var(--fur-a); }
+.furrow-pit.theirs { border-color: var(--fur-b); }
+.furrow-pit.empty .furrow-count { opacity: 0.45; }
+
+/* A legal pit is the only one that offers itself. The core still decides — this
+   is a hint, not a gate, which is why an illegal tap is refused by the core and
+   not by a disabled attribute.
+
+   Deliberately NOT --fur-landing: that colour means "a seed is landing here this
+   instant", and a tappable pit wearing it reads as one a seed just fell into.
+   Dots learned the same lesson from a screenshot. The ring is inset so it sits
+   on the well, where its contrast was measured, rather than bleeding onto the
+   board. */
+.furrow-pit.legal { box-shadow: inset 0 0 0 3px var(--fur-legal); }
+.furrow-pit[aria-disabled="true"] { cursor: default; }
+.furrow-pit.just-sown {
+  outline: 2px solid var(--fur-seed);
+  outline-offset: 2px;
+}
+/* The seed in flight belongs to nobody yet, so it wears neither side's colour. */
+.furrow-pit.landing,
+.furrow-store.landing {
+  background: var(--fur-landing);
+  color: var(--fur-well);
+}
+.furrow-pit.captured {
+  outline: 3px dashed var(--fur-landing);
+  outline-offset: 2px;
+}
+
+.furrow-store {
+  inline-size: 3rem;
+  block-size: 6rem;
+  border-radius: 1.5rem;
+  gap: 0.15rem;
+}
+.furrow-store.mine { border-color: var(--fur-a); }
+.furrow-store.theirs { border-color: var(--fur-b); }
+.furrow-mark {
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+.furrow-store .furrow-count {
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.furrow-controls {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.furrow-flash {
+  margin: 0;
+  text-align: center;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+/* Sized so the whole board fits inside the page's content width on a 360px
+   phone — 312px once the page padding is taken off, which is what the test
+   measures. Six pits at 1.9rem plus five 0.25rem gaps plus the row mark plus two
+   2.1rem stores plus the padding is ~303px. A 30px pit is still comfortably over
+   the 24px touch-target floor. Narrower than this, the wrapper scrolls rather
+   than clipping. */
+@media (max-width: 24rem) {
+  .furrow-board {
+    gap: 0.25rem;
+    padding: 0.4rem;
+  }
+  .furrow-row { gap: 0.25rem; }
+  .furrow-pit {
+    inline-size: 1.9rem;
+    block-size: 1.9rem;
+  }
+  .furrow-store {
+    inline-size: 2.1rem;
+    block-size: 4.05rem;
+  }
+  .furrow-rowmark {
+    inline-size: 0.8rem;
+    font-size: 0.95rem;
+  }
+}

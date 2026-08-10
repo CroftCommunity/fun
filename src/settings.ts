@@ -506,3 +506,33 @@ export function colorSortStrict(): boolean {
 export function setColorSortStrict(on: boolean): void {
   write(CS_STRICT_KEY, on);
 }
+
+// ---------- Furrow (mancala) ----------
+
+/** Furrow difficulty. **Expert**, not Perfect — Phase 0 could not solve the
+ *  opening at 100M nodes and about 70% of a game sits above the exact
+ *  threshold, so the top level searches rather than solves for most of it
+ *  (see `crates/furrow-core/RULES.md`). */
+export type FurrowLevel = "Easy" | "Medium" | "Hard" | "Expert";
+const FURROW_LEVELS: readonly FurrowLevel[] = ["Easy", "Medium", "Hard", "Expert"];
+const FURROW_LEVEL_KEY = "fun-furrow-level";
+
+/** Pure resolver: a stored known Furrow level wins; otherwise the default. */
+export function resolveFurrowLevel(stored: string | null, fallback: FurrowLevel): FurrowLevel {
+  return FURROW_LEVELS.includes(stored as FurrowLevel) ? (stored as FurrowLevel) : fallback;
+}
+
+export function furrowLevel(): FurrowLevel {
+  try {
+    return resolveFurrowLevel(localStorage.getItem(FURROW_LEVEL_KEY), "Medium");
+  } catch {
+    return "Medium";
+  }
+}
+export function setFurrowLevel(level: FurrowLevel): void {
+  try {
+    localStorage.setItem(FURROW_LEVEL_KEY, level);
+  } catch {
+    // Storage denied (private mode): the choice still applies for the session.
+  }
+}

@@ -732,6 +732,248 @@ mod tests {
         );
     }
 
+    /// A reference search: plain negamax, **no alpha-beta and no table**, with a
+    /// memo keyed independently of `pack_key`.
+    ///
+    /// This exists because of what Phase 4 measured. 58 of 64 surviving mutants
+    /// were in this file — the `gain` subtraction, every window shift, the
+    /// cutoff comparison — and the reason was that the hand-derived tests all
+    /// used positions with **equal stores**, where `margin_for(pos, me)` is `0`
+    /// and `a - 0` equals `a + 0`. The whole `-`/`+` family was invisible.
+    ///
+    /// A differential test kills that family at once: any deviation in the
+    /// pruned search changes a value the reference does not. Note honestly what
+    /// it does and does not prove — the reference restates the same recurrence,
+    /// so this checks the *pruning and the table* against the plain formula, not
+    /// the formula against mancala. The formula is what the hand-derived tests
+    /// above are for.
+    fn reference_future(
+        pos: &Board,
+        memo: &mut std::collections::HashMap<(Vec<u8>, bool), i32>,
+    ) -> i32 {
+        let moves = legal_pits(pos);
+        if moves.is_empty() {
+            return 0;
+        }
+        let key = (
+            (0..CELLS)
+                .filter(|&i| i != PITS && i != CELLS - 1)
+                .map(|i| pos.cells[i])
+                .collect::<Vec<u8>>(),
+            pos.to_move == Side::A,
+        );
+        if let Some(&v) = memo.get(&key) {
+            return v;
+        }
+        let me = pos.to_move;
+        let mut best = i32::MIN;
+        for mv in moves {
+            let next = apply_move(pos, mv);
+            let gain = margin_for(&next, me) - margin_for(pos, me);
+            let v = if next.to_move == me {
+                gain + reference_future(&next, memo)
+            } else {
+                gain - reference_future(&next, memo)
+            };
+            best = best.max(v);
+        }
+        memo.insert(key, best);
+        best
+    }
+
+    /// Deterministic descent to a position with `target` seeds still in play.
+    fn descend(target: u32, seed: u64) -> Board {
+        let mut s = seed.wrapping_mul(0x9e37_79b9_7f4a_7c15) | 1;
+        let mut pos = Board::opening();
+        let mut guard = 0;
+        while pos.in_play() > target && !legal_pits(&pos).is_empty() && guard < 400 {
+            s ^= s << 13;
+            s ^= s >> 7;
+            s ^= s << 17;
+            let moves = legal_pits(&pos);
+            pos = apply_move(&pos, moves[(s as usize) % moves.len()]);
+            guard += 1;
+        }
+        pos
+    }
+
+    #[test]
+    fn the_pruned_search_agrees_with_a_plain_negamax_on_every_move() {
+        // The differential test. Positions are reached by real play, so their
+        // stores are UNEQUAL -- which is the exact condition the hand-derived
+        // tests lacked and the reason the `gain` arithmetic went unchecked.
+        let mut checked = 0;
+        let mut unequal = 0;
+        for seed in 0..24u64 {
+            let pos = descend(10, seed);
+            if legal_pits(&pos).is_empty() {
+                continue;
+            }
+            if pos.store(Side::A) != pos.store(Side::B) {
+                unequal += 1;
+            }
+            let report = move_values(&pos, 6, NodeBudget::of(EXACT_NODE_BUDGET));
+            assert!(report.exact, "ten seeds is inside the threshold");
+
+            let me = pos.to_move;
+            let banked = margin_for(&pos, me);
+            for (mv, value) in &report.values {
+                let next = apply_move(&pos, *mv);
+                let gain = margin_for(&next, me) - margin_for(&pos, me);
+                let mut memo = std::collections::HashMap::new();
+                let child = reference_future(&next, &mut memo);
+                let want = banked
+                    + if next.to_move == me {
+                        gain + child
+                    } else {
+                        gain - child
+                    };
+                assert_eq!(
+                    *value, want,
+                    "seed {seed}: pruned search valued {mv:?} at {value}, plain negamax says {want}"
+                );
+                checked += 1;
+            }
+        }
+        assert!(checked >= 60, "only {checked} moves were compared");
+        assert!(
+            unequal >= 12,
+            "only {unequal} of the positions had unequal stores -- the differential \
+             test is worthless if `margin_for(pos, me)` is zero everywhere"
+        );
+    }
+
+    #[test]
+    fn the_capped_search_agrees_with_a_plain_depth_limited_negamax() {
+        // The same argument for the other half of the search. At a depth that
+        // cannot reach a terminal, the heuristic decides -- so this pins the
+        // capped path's window arithmetic against an unpruned reference.
+        fn plain(pos: &Board, depth: u32) -> i32 {
+            let moves = legal_pits(pos);
+            if moves.is_empty() {
+                return 0;
+            }
+            if depth == 0 {
+                return eval::future_margin(pos);
+            }
+            let me = pos.to_move;
+            let mut best = i32::MIN;
+            for mv in moves {
+                let next = apply_move(pos, mv);
+                let gain = margin_for(&next, me) - margin_for(pos, me);
+                let v = if next.to_move == me {
+                    gain + plain(&next, depth - 1)
+                } else {
+                    gain - plain(&next, depth - 1)
+                };
+                best = best.max(v);
+            }
+            best
+        }
+
+        for seed in 0..12u64 {
+            let pos = descend(30, seed);
+            if legal_pits(&pos).is_empty() || is_affordable(&pos) {
+                continue;
+            }
+            for depth in [2u32, 4, 5] {
+                let mut search = Search::new(NodeBudget::of(CAPPED_NODE_BUDGET));
+                let pruned = search
+                    .capped_future(&pos, depth, -INF, INF)
+                    .expect("the budget covers this depth");
+                assert_eq!(
+                    pruned,
+                    plain(&pos, depth),
+                    "seed {seed} depth {depth}: alpha-beta changed a capped value"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn move_values_are_exact_numbers_from_a_position_with_unequal_stores() {
+        // The narrow version of the same point, pinned as constants so a reader
+        // can check the arithmetic by hand. A is nine seeds ahead, and the value
+        // of every move must carry that lead -- a version that returned only the
+        // future would report these as small numbers around zero.
+        // Seven seeds in play plus 25 + 16 banked is the full forty-eight; a
+        // fixture that does not conserve them is not a reachable position.
+        let pos = board([0, 1, 0, 2, 0, 1], [1, 0, 1, 0, 0, 1], (25, 16), Side::A);
+        assert_eq!(pos.in_play(), 7);
+        assert_eq!(
+            u32::from(pos.store(Side::A) + pos.store(Side::B)) + pos.in_play(),
+            u32::from(TOTAL_SEEDS)
+        );
+        let r = exact_of(&pos);
+        assert!(r.exact);
+        // Pinned as constants so the arithmetic is checkable by hand: a final
+        // margin of 10 is 29-19, of 4 is 26-22, of 14 is 31-17. A version that
+        // returned only the FUTURE margin would report these as small numbers
+        // around zero, and one that dropped the banked lead would flip Pit(3)'s
+        // sign outright.
+        assert_eq!(r.values, vec![(Pit(1), 10), (Pit(3), 4), (Pit(5), 14)]);
+        // And the whole set, as numbers: the sum of the two final stores is
+        // always 48, so a final margin of `m` means the game ended 24+m/2 to
+        // 24-m/2 and every value here is even.
+        assert!(
+            r.values.iter().all(|&(_, v)| v % 2 == 0),
+            "a final margin of 48 seeds is always even, got {:?}",
+            r.values
+        );
+    }
+
+    #[test]
+    fn no_table_behaviour_can_change_a_value_across_many_positions() {
+        // The property that explains the whole remaining survivor list. Mutating
+        // `scramble`, `Table::slot`'s mask, or either probe direction changes
+        // *which slot* an entry lands in and therefore how often the search hits
+        // the cache — and can change nothing else, because a hit requires an
+        // exact match on the full 61-bit key. A wrong slot costs a re-search; it
+        // cannot return another position's value.
+        //
+        // So rather than leave thirteen mutants unexplained, the property they
+        // preserve is asserted directly and broadly: the same search, with and
+        // without the table, over positions reached by real play.
+        for seed in 0..16u64 {
+            let pos = descend(12, seed);
+            if legal_pits(&pos).is_empty() {
+                continue;
+            }
+            let mut with = Search::new(NodeBudget::of(EXACT_NODE_BUDGET));
+            let mut without =
+                Search::with_table(Table::disabled(), NodeBudget::of(EXACT_NODE_BUDGET));
+            assert_eq!(
+                with.exact_future(&pos, -INF, INF),
+                without.exact_future(&pos, -INF, INF),
+                "seed {seed}: the table changed a value"
+            );
+        }
+    }
+
+    #[test]
+    fn the_table_probes_the_same_window_it_stored_into() {
+        // `get` and `put` walk the probe window independently; if they ever
+        // walked it in opposite directions they would agree only on the first
+        // slot, which at a 4% load factor looks like it works. Fill a window and
+        // read every entry back.
+        let mut t = Table::new();
+        // Keys chosen to land in the same slot is not something a test can
+        // arrange without reimplementing the hash, so instead store more keys
+        // than the probe window is deep and require every one to be readable.
+        for k in 0..64u64 {
+            t.put(k * 0x9e37_79b9, i32::try_from(k).unwrap_or(0) - 32);
+        }
+        for k in 0..64u64 {
+            assert_eq!(
+                t.get(k * 0x9e37_79b9),
+                Some(i32::try_from(k).unwrap_or(0) - 32),
+                "key {k} was stored and could not be read back"
+            );
+        }
+        assert_eq!(t.len(), 64, "every distinct key took its own slot");
+        assert!(!t.is_empty());
+    }
+
     #[test]
     fn the_window_sentinel_survives_being_shifted_by_a_move() {
         // The invariant behind `INF`, stated where a reader will find it. Every

@@ -444,6 +444,33 @@ mod tests {
     }
 
     #[test]
+    fn the_trait_impl_really_delegates_rather_than_answering_for_itself() {
+        // Phase 4's one core survivor: `<Furrow as Adversary>::legal_moves` could
+        // return `vec![]` with every test green, because every test called the
+        // free function `legal_pits` directly. This is the shelf's recurring
+        // mutation gap (a trait impl that only delegates), and it is the one that
+        // matters most here -- the harness, the solver and the match runner all
+        // reach this game *through the trait* and never through the free
+        // function.
+        let pos = Board::opening();
+        assert_eq!(<Furrow as Adversary>::legal_moves(&pos), legal_pits(&pos));
+        assert_eq!(<Furrow as Adversary>::legal_moves(&pos).len(), PITS);
+        assert_eq!(<Furrow as Adversary>::side_to_move(&pos), Side::A);
+        assert_eq!(
+            <Furrow as Adversary>::apply(&pos, Pit(2)),
+            apply_move(&pos, Pit(2))
+        );
+        assert_eq!(
+            <Furrow as Adversary>::state_hash(&pos),
+            crate::hash::state_hash(&pos)
+        );
+        assert_eq!(<Furrow as Adversary>::initial(0), Board::opening());
+        // And at a terminal it must be empty for a real reason, not by accident.
+        let over = board([0; PITS], [0; PITS], (24, 24), Side::A);
+        assert!(<Furrow as Adversary>::legal_moves(&over).is_empty());
+    }
+
+    #[test]
     fn legal_pits_are_the_movers_own_non_empty_pits_only() {
         let pos = board([0, 2, 0, 0, 0, 1], [4, 4, 4, 4, 4, 4], (0, 0), Side::A);
         assert_eq!(legal_pits(&pos), vec![Pit(1), Pit(5)]);

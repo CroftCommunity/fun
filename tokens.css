@@ -108,6 +108,21 @@
   --dots-b: #9b3016;          /* Side B: edges + boxes       (6.31:1)  */
   --dots-hint: #8a7a4a;       /* a drawable edge (neither side) (3.59:1) */
 
+  /* Furrow (mancala): a carved wooden board. The pit wells are darker than the
+     board so a pit reads as a hollow rather than a tile, and the two sides are
+     told apart by mark (▲ / ●) as well as hue — the same rule dots follows. The
+     landing colour is deliberately neither side's: a seed in flight belongs to
+     nobody yet. The legal-pit ring is a third colour again, because a tappable
+     pit wearing the landing colour reads as one a seed just fell into — the
+     mistake dots made and a screenshot caught. Pinned in tests/tokens.test.ts. */
+  --fur-board: #a9763f;       /* the carved board                      */
+  --fur-well: #6b4a26;        /* a pit hollow, on the board            */
+  --fur-seed: #f6ecd8;        /* seed counts, on a well      (6.80:1)  */
+  --fur-a: #16305e;           /* your side: fill + rim  (3.31:1 on board) */
+  --fur-b: #5c1a09;           /* their side: fill + rim (3.33:1 on board) */
+  --fur-landing: #f0c14b;     /* a landing seed, on a well   (4.72:1)  */
+  --fur-legal: #7fd4c1;       /* a pit you may sow, on a well (4.59:1) */
+
   /* Blockdoku board lines (graphical, not text): a thin cell grid and a heavier
      3×3-box divider that also frames the board, so the nine sub-squares read at a
      glance on the tan cells. */
@@ -253,6 +268,17 @@
   --dots-a: #8fb0ff;          /* Side A: edges + boxes       (6.93:1)  */
   --dots-b: #ff9d78;          /* Side B: edges + boxes       (7.30:1)  */
   --dots-hint: #d8c07a;       /* a drawable edge (neither side) (8.28:1) */
+
+  /* Furrow, re-tuned for dark: the board darkens to a stained walnut and both
+     sides lighten, so the same rules hold — the wells stay darker than the board
+     and neither the landing nor the legal colour is a side's. */
+  --fur-board: #46311c;       /* the carved board (walnut)             */
+  --fur-well: #2a1c10;        /* a pit hollow, on the board            */
+  --fur-seed: #f0e4cd;        /* seed counts, on a well     (13.12:1)  */
+  --fur-a: #93b6ff;           /* your side: fill + rim  (6.04:1 on board) */
+  --fur-b: #ff9c74;           /* their side: fill + rim (5.98:1 on board) */
+  --fur-landing: #ffd76a;     /* a landing seed, on a well  (11.93:1)  */
+  --fur-legal: #7fe3cd;       /* a pit you may sow, on a well (10.83:1) */
 
   /* Blockdoku board lines, re-tuned for dark: a subtle grid and a light-moss
      box divider that pops on the near-black cells. */
