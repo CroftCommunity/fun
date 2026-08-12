@@ -46,7 +46,7 @@ directory. This isolation matters most for **Tier-2 wraps / webxdc-style
 bundles**, which are wholly self-contained under their own directory and must not
 bleed into the shared chrome (see "The two tiers" below).
 
-### The two tiers
+### The three tiers
 
 The standards in §§2–8 describe **Tier-1 Croft-native** games (build-fresh,
 determinism-first, verifiable). The shelf also admits **Tier-2** opportunistic
@@ -56,6 +56,20 @@ containment/legibility harness rather than by the verifiable-outcome + tap-first
 standards. **The Tier-2 wrapped-game standard is ratified in §9 below**; Astray
 (`src/games/astray/`) is its reference implementation, as solitaire is for
 Tier-1. Everything in §§2–8 is Tier-1 unless noted.
+
+**Tier-3 — engine-backed originals** (§11) is the third: a game **we build**, on a
+**third-party engine we do not control the numerics of**. It is ours like Tier-1
+and non-verifiable like Tier-2, and it is neither of them. The two axes that
+actually separate the tiers are *who built it* and *can the outcome be re-proved*:
+
+```
+                    outcome re-provable?        YES              NO
+   who built it?
+   ours (build-fresh)                        Tier-1           Tier-3
+   theirs (taken as-is)                         —             Tier-2
+```
+
+Emoji Wars (`levelforge`) is Tier-3's reference implementation.
 
 ## 2. Determinism-first core → wasm
 
@@ -739,6 +753,163 @@ Reference implementations: **Drop 4** (solvable), **Othello** (heuristic Oracle)
 
 See §10's "Recipe — adding an AI opponent to a new adversarial game" for what
 reuses vs what is new.
+
+## 11. Tier-3 — engine-backed originals
+
+A Tier-3 game is **ours**, built fresh, on a **third-party simulation engine whose
+numerics we do not control** — a physics engine, a solver, anything whose output
+we cannot reproduce bit-for-bit across machines. It is not a wrap: we wrote the
+game, we own the code, it lives in our chrome directly with no sandbox. It simply
+cannot carry §3's verifiable outcome, and it does not pretend to.
+
+Emoji Wars (`levelforge`, matter-js) is the reference implementation.
+
+**This tier is a decision, not a default.** For Emoji Wars specifically, a
+deterministic path was *measured, found to work, and declined*: Rapier's
+`enhanced-determinism` produces bit-identical results on native and wasm
+(`discovery/alpha/experiments/rapier-determinism`, commit `eb70cff`). The cost
+was re-deriving every phone-tuned feel constant in ~1,700 lines of play code
+against a different solver, to buy a replay proof that a hand-authored physics
+level does not especially want. The shelf chose feel over provability **with the
+numbers in hand**. Any future Tier-3 admission should be able to say something
+equally specific about why determinism was not worth its price here.
+
+### The inclusion filter (all must hold)
+
+1. **Ours.** We wrote the game. If it is someone else's game taken as-is, it is
+   Tier-2 and §9 governs it. A game we build *using* a third-party engine is
+   Tier-3; a game someone else built that we merely host is not.
+2. **The engine is the only non-deterministic part.** Non-determinism is a
+   property we accept in one named dependency, not a general licence to be loose.
+   See "the data/sim line" below — it is the heart of this tier.
+3. **Fully client-side / static, non-extractive, local-first.** Unchanged from the
+   shelf bar. No backend, no telemetry-home, no ads, no dark patterns.
+4. **The engine is redistribution-licensed, pinned, and vendored.** It is not our
+   code, so it follows the workspace dependency rule: **vendor it and add a CI
+   drift check.** No CDN, no floating range, license recorded, size disclosed.
+5. **Honestly represented.** The shelf must not imply a verifiable record where
+   there is none — the same rule §9 imposes on wraps, and for the same reason.
+
+### The sharing rule: inputs yes, outcomes never
+
+This is the sharp edge of "honestly represented," and it is implementable rather
+than aspirational:
+
+> **A Tier-3 game may share an input. It may never share a claimed outcome.**
+
+A level, a seed, a challenge, an authored puzzle — all fine, because they are
+data, and data reproduces. A score, a time, a win, a "cleared in 3 shots" — not
+shareable as a *record*, because nothing on the receiving end can re-derive it.
+Tier-1's `?r=` share re-verifies by replaying a move list into a deterministic
+core (§3); Tier-3 has no such core, so a share link carries the puzzle, not the
+result.
+
+Concretely: Emoji Wars sharing a level JSON is exactly right. Emoji Wars sharing
+"I beat this in 3 shots" as a verified claim is exactly the faked verifiable
+outcome §9 forbids. A *self-reported* score shown as self-reported is fine; the
+lie is in the framing, not the number.
+
+### The data/sim line (the load-bearing requirement)
+
+Tier-3 is **not "Tier-1 minus rigour."** It is Tier-1 discipline applied to the
+half of the game that can carry it. Every Tier-3 game must draw an explicit line
+between:
+
+- **The data side** — level schema, migrations, authored content, rules that are
+  pure functions of data (scoring thresholds, mode state machines, break-model
+  *decisions* as distinct from break-model *physics*). This side is deterministic,
+  and it keeps **full Tier-1 discipline**: golden vectors, TDD red-first,
+  mutation testing where the logic is non-trivial (§8).
+- **The sim side** — whatever the engine actually integrates. Not reproducible,
+  not golden-vectored, not mutation-tested.
+
+The line must be visible in the directory structure, not just asserted in prose.
+If you cannot point at which modules are on which side, the tier is being used as
+an excuse rather than a category.
+
+Emoji Wars is a good example of why this matters: its levels are authored JSON
+with a versioned schema and a `migrate()`. Content determinism and simulation
+determinism are different properties, and Tier-3 gives up only the second.
+
+### What replaces golden vectors on the sim side
+
+Tier-1 pins behaviour with golden vectors — exact expected outputs. Tier-3 cannot,
+so the analogue is a **tolerance probe**: record the current engine's behaviour on
+a fixed scenario, assert future runs stay within a recorded tolerance.
+
+- Probes are **feel regression nets**, not correctness proofs. They catch "someone
+  changed a constant and the hop is now mushy," which is Tier-3's characteristic
+  failure — a change that leaves every test green and the game feeling wrong.
+- Tolerances are **recorded from the engine's own run-to-run variance**, never
+  invented. The bar is "as close as the engine is to itself."
+- Probes should isolate one subsystem each (free fall, a bounce, a slide, a
+  settle) so a failure is diagnostic rather than a shrug.
+
+### Which Tier-1 standards change for an engine-backed original
+
+| Tier-1 standard | For a Tier-3 original |
+|---|---|
+| Determinism-first Rust core → wasm (§2) | **Split** — required on the data side; **N/A** on the sim side. The line must be explicit. |
+| Verifiable outcome / `pond-outcome` / `?r=` (§3) | **Replaced** by the sharing rule: inputs shareable, outcomes never presented as records |
+| Tap-first, core decides legality (§4) | **Required** — we wrote the input model, so we own it. (This is where Tier-3 is stricter than Tier-2, which is exempt.) |
+| Identity + tokens, WCAG AA, axe both themes (§5) | **Required**, fully — this is our own UI, not an embedded foreign canvas |
+| Standard settings (§6) | **Required** — again, ours |
+| How to play (§7) | **Required**, and it must state plainly that the game keeps **no verifiable record** |
+| TDD + the gate (§8) | **Required.** Red-first on the data side; tolerance probes on the sim side. Mutation testing expected on the data side only. |
+| Game isolation, `GameModule`, `/<id>/` URL, wiring test (§1) | **Unchanged** |
+
+### What admitting the first Tier-3 game requires in code
+
+As of this section being written, **the code does not yet know Tier-3 exists**.
+The catalog contract in `src/contract.ts` is a discriminated union with a Tier-1
+variant (`tier?: 1`) and a Tier-2 variant (`tier: 2`), and nothing else — so
+`tier: 3` will not typecheck today. Two changes are needed when the first Tier-3
+game lands, and both are **test-first**, not speculative groundwork to do now:
+
+1. **A Tier-3 variant in `src/contract.ts`**, carrying the engine's provenance
+   (name, pinned version, license, `approxSizeKb`) the way the Tier-2 variant
+   carries the game's.
+2. **The honest-representation banner must fire for it.** `src/wrapped-banner.ts`
+   currently returns `null` unless `entry.tier === 2`. A Tier-3 game has no
+   verifiable record either, so shipping one without widening that check would
+   put an unmarked non-verifiable game on the shelf — the precise failure the
+   honesty rule exists to prevent. Widen the condition, do not add a second banner.
+
+Until both exist, this section is a **ratified standard with no implementation**.
+That is a normal state for this repo — §9 was written the same way — but it is
+worth stating plainly so nobody reads the checklist, writes `tier: 3`, and
+concludes the docs are lying.
+
+### Tier-3 vs Tier-2 — the differences that bite
+
+Both give up the verifiable outcome, so they are easy to conflate. They are not alike:
+
+| | Tier-2 wrap | Tier-3 original |
+|---|---|---|
+| Authorship | theirs, taken as-is | **ours** |
+| Runs in | sandboxed iframe (`allow-scripts`, no `allow-same-origin`) | **our page directly** — it is our code |
+| Containment harness (§9) | **required** | **N/A** — nothing foreign is executing |
+| Provenance artifact | `tier2.meta.json` (the *game's* provenance) | **the engine's** provenance: pin, license, size, drift check |
+| Tap-first (§4) | exempt (native input, documented) | **required** |
+| Standard settings (§6) | exempt | **required** |
+| Accessibility | our chrome only; embedded canvas exempt | **whole surface** |
+
+The short version: Tier-2 buys safety with **containment**, because the code is
+not ours. Tier-3 has nothing to contain and instead owes the **full first-party
+standard** everywhere except the one property the engine denies it.
+
+## New-game checklist (Tier-3 engine-backed original — see §11)
+
+- [ ] Passes the inclusion filter (ours; engine is the only non-deterministic part; client-side/static + non-extractive; engine vendored/pinned/licensed with a CI drift check; honestly represented).
+- [ ] The **data/sim line** is visible in the directory structure, and the data side is named in the game's README.
+- [ ] Data side: TDD red-first, golden vectors, mutation testing triaged (equivalent vs real gap) per §8.
+- [ ] Sim side: tolerance probes recorded from the engine's own run-to-run variance, one subsystem each.
+- [ ] Sharing carries **inputs only** (level/seed/challenge). No outcome is presented as a verified record; any self-reported number is shown as self-reported.
+- [ ] Tap-first honoured (§4); standard settings wired (§6); tokens + WCAG AA + axe clean in both themes across the **whole** surface (§5).
+- [ ] "How to play" guide states plainly there is **no verifiable record**; `guide:shots` + sync tests; header link (§7).
+- [ ] `GameModule` mounts; registry `tier: 3` + `status`; own `/<id>/` URL with a wiring test (§1). **First Tier-3 game only:** widen `src/contract.ts` and the `wrapped-banner.ts` tier check first, test-first — see "What admitting the first Tier-3 game requires in code".
+- [ ] Engine bundle size disclosed; no runtime third-party fetch, no CDN.
+- [ ] Full gate green (`npm run gate`) and deployed.
 
 ## New-game checklist (Tier-2 wrap — see §9)
 

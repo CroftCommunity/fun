@@ -1,6 +1,15 @@
 # Emoji Wars — the physics parity harness, and feel as the gate
 
-status: **Pass 1 (shape).** Not started. Gated on one owner decision (below).
+status: **SUPERSEDED 2026-08-11.** The owner decided against a deterministic engine
+for Emoji Wars: it keeps pixel-based matter-js, and the shelf gains a third tier
+for engine-backed originals (`docs/BUILDING-GAMES.md` §11). The Rapier spike that
+this plan rested on stands as evidence and is unaffected
+(`discovery/alpha/experiments/rapier-determinism`, commit `eb70cff`) — it is why
+the tier is a decision rather than a default. Kept, not deleted, because the
+reasoning is what justifies §11. The one idea that survives: a tolerance-probe
+regression net against matter-js itself, now standardised in §11.
+
+original status (superseded): Pass 1 (shape), not started, gated on one owner decision.
 
 **Standing assumption, stated rather than assumed silently:** this plan is
 written as though Emoji Wars lands *in* `fun`. That is the owner's call and it is

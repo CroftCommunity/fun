@@ -127,7 +127,7 @@ at them and add what's specific to this repo. Git identity: chasemp
   `git add` only the shots for the game you changed and `git checkout --` the
   rest (other games' JPEGs can re-encode differently run-to-run).
 
-## The shelf model — two tiers (COHESION §62 in discovery)
+## The shelf model — three tiers (COHESION §62 in discovery)
 
 `docs/BUILDING-GAMES.md` is the full standards doc. In short:
 
@@ -146,6 +146,21 @@ at them and add what's specific to this repo. Git identity: chasemp
   reference implementation (as solitaire is for Tier-1). Every wrap ships a
   `tier2.meta.json` (provenance + posture). Avoid the Emscripten + runtime-untar
   class (the SuperTuxKart cut, `plans/2026-07-31-supertuxkart-wrap.md`).
+
+- **Tier 3 — engine-backed original.** A game **we build** on a **third-party
+  engine whose numerics we do not control** (a physics engine, a solver). Ours
+  like Tier-1, non-verifiable like Tier-2, and neither of them: it runs in our
+  page directly (nothing foreign to contain), so it owes the **full first-party
+  standard** — tap-first, settings, accessibility across the whole surface —
+  everywhere except the verifiable outcome the engine denies it. Two rules carry
+  the tier: **share inputs, never outcomes** (a level or seed, never a result
+  presented as a record), and **the data/sim line must be visible in the
+  directory structure**, with the data side keeping full Tier-1 discipline
+  (golden vectors, mutation testing). The sim side pins behaviour with
+  **tolerance probes** instead. Standard is **`docs/BUILDING-GAMES.md` §11**;
+  **Emoji Wars** (`levelforge`, matter-js) is the reference implementation.
+  This tier is a decision, not a default — for Emoji Wars a deterministic path
+  was measured, found to work, and declined on cost (see §11).
 
 **Adversarial (two-player) games + AI opponents.** Three shipped, in order:
 Drop 4 (`/drop4/`, solvable), Othello (`/othello/`, heuristic Oracle with an exact
