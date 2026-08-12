@@ -41,8 +41,22 @@ files are the running, checkbox-level worklist.
 - astray, hexgl, clumsybird, orchard-drop — shipped wraps (see `docs/BUILDING-GAMES.md`
   §9). [supertuxkart.md](supertuxkart.md) is the one under review (below).
 
+## In flight / not yet moved
+
+- [emojiwars.md](emojiwars.md) — **the first Tier-3 game** (`docs/BUILDING-GAMES.md` §11), still
+  living in `CroftCommunity/levelforge`. Decided to move into `fun`; **nothing moved yet**. Blocked
+  on a layout decision (it has no Rust core) and on the catalog contract not knowing `tier: 3`
+  exists. Carries the reshape (frontstage/backstage/lobby — `main.ts` is 3,721 lines and 39% of that
+  codebase), the mode rename + schema migration, and the canvas-library extraction that is blocked
+  on two unnamed use cases.
+
 ## Subsystems
 
+- [pwa.md](pwa.md) — **installability + offline.** Nothing built: the shelf has no manifest and no
+  service worker at all. Gated on one unverified claim — whether distinct manifest `id` values really
+  produce separate installs under nested scope — which is the owner's stated condition and is settled
+  by shipping **two** manifests before twenty. Plan:
+  `plans/2026-08-11-pwa-install-per-game-and-shelf.md`.
 - [harness.md](harness.md) — the browser AI-scoring harness (P6). **Generalized**
   (P8 Phases 1–3): it drives a `GameOracle` port, names no game, and grades Drop 4,
   Othello **and checkers** on CI — the last with a move that is a jump chain, and
