@@ -1,5 +1,10 @@
 # TODO
 
+> Repo operations / deferred items only (per-game follow-ups). The product/design
+> backlog of record is `discovery/alpha/ROADMAP_TODO.md`; the tracking scheme is
+> `CroftC/.claude/TRACKING.md`. Product-shaped items (anything spanning games or the
+> platform) go there, not here.
+
 Per-game (and per-subsystem) backlog for the `fun.croft.ing` shelf — one file per
 game, holding the follow-ups deferred out of each delivery. The authoritative
 phase plans live in `plans/`; the **standards every game must meet** live in
