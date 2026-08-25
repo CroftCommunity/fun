@@ -1,5 +1,12 @@
 # fun.croft.ing — agent directives
 
+## Identity (workspace architecture)
+
+**Scope:** The games shelf — shared drawer chrome + `pond-*` substrate, per-game bundles.
+**Not this repo:** anything platform-level (discovery designs it; croft ships it).
+**Provides:** the games site. **Consumes:** the pond substrate contract (internal).
+Card + altitudes: `CroftC/.claude/ARCHITECTURE.md`.
+
 Project-layer directives for the Croft games shelf. These sit **on top of** the
 global coding-agents practices (`~/.claude/coding-agents/`, source
 `github-personal:chasemp/coding-agents`) — they don't restate them, they point
