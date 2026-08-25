@@ -186,3 +186,11 @@ else; the drawer chrome, settings, theme, how-to renderer, and the `pond-*`
 substrate are shared and never duplicated per game. This matters most for Tier-2
 / webxdc-style bundles, which are wholly self-contained under their own
 directory. Do not let one game's mechanics leak into another's files.
+
+## Concurrent sessions (workspace norm)
+
+Multiple agent sessions share the `CroftC/` workspace. Do multi-turn work in a dedicated
+worktree — `git -C fun worktree add ../worktrees/fun/<slug> -b claude/<slug>` — never in
+this checkout (peer sessions stage with `git add -A`; loose files get swept into unrelated
+commits). Contested surfaces here — claim in `CroftC/.coordination/claims/` before
+touching: **landing on `main`** (the shared shelf chrome and `pond-*` substrate). Full protocol and the reasons behind it: `CroftC/.claude/COORDINATION.md`.
