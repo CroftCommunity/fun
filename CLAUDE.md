@@ -19,7 +19,7 @@ at them and add what's specific to this repo. Git identity: chasemp
   test first — including data/schemas/constants. Watch the test fail before you
   make it pass. (coding-agents `CLAUDE.md`; the `tdd-guardian` agent.)
 - **Phase-plan every new game and every non-trivial change.** Use the
-  `phase-plan` skill (three passes; plan doc per the workspace convention `plans/YYYY-MM-DD[-N]-plan-<slug>.md` with a
+  `/phase-plan` command (three passes; plan doc per the workspace convention `plans/YYYY-MM-DD[-N]-plan-<slug>.md` with a
   `**Status:**` line and Review Log (`CroftC/.claude/TRACKING.md`; older plans here
   predate it and keep their names),
   matching this repo's existing convention). A game is complex enough to warrant
