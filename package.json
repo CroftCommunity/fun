@@ -39,5 +39,8 @@
   },
   "dependencies": {
     "@mlc-ai/web-llm": "^0.2.84"
+  },
+  "overrides": {
+    "playwright-core": "1.61.1"
   }
 }
