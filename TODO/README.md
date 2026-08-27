@@ -1,9 +1,12 @@
 # TODO
 
-> Repo operations / deferred items only (per-game follow-ups). The product/design
-> backlog of record is `discovery/alpha/ROADMAP_TODO.md`; the tracking scheme is
-> `CroftC/.claude/TRACKING.md`. Product-shaped items (anything spanning games or the
-> platform) go there, not here.
+> Known work only — items whose shape is already decided, and which may therefore be
+> proposed as work (per-game follow-ups). Anything still an open question (decide /
+> verify / investigate / reconcile) belongs in the backlog of record,
+> `discovery/alpha/ROADMAP_TODO.md`, however small or operational it is — as does
+> anything spanning games or the platform. Tracking scheme:
+> `CroftC/.claude/TRACKING.md`; the two piles and why: its § "Two piles".
+> Per-topic files in this directory inherit this header.
 
 Per-game (and per-subsystem) backlog for the `fun.croft.ing` shelf — one file per
 game, holding the follow-ups deferred out of each delivery. The authoritative
