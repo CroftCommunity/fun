@@ -8,7 +8,7 @@
 //! Three rules the implementation exists to keep:
 //!
 //! - **Lazy.** Nothing is fetched until the player turns music on. A silent
-//!   visitor pays zero bytes, which matters when the library is ~12.5 MB.
+//!   visitor pays zero bytes, which matters when the library is ~13.8 MB.
 //! - **Best-effort.** Every failure path is silent. Music is decoration; a
 //!   missing file, a denied autoplay, or a full cache must never break a game.
 //!   This is the one place the repo's "fail loud" rule is deliberately inverted,
@@ -51,6 +51,7 @@ export const TRACKS: readonly Track[] = [
   { id: "morning-inside-the-basin", title: "Morning Inside the Basin", kind: "piece" },
   { id: "save-point-morning", title: "Save Point Morning", kind: "piece" },
   { id: "six-sides-of-logic", title: "Six Sides of Logic", kind: "piece" },
+  { id: "sunday-drive-south", title: "Sunday Drive South", kind: "piece" },
   { id: "sunset-at-the-harbor", title: "Sunset at the Harbor", kind: "piece" },
   { id: "the-unfolding-hour", title: "The Unfolding Hour", kind: "piece" },
 ];
@@ -68,7 +69,7 @@ const BY_GAME: Readonly<Record<string, string>> = {
   bubble: "gravity-glass",
   wyrdle: "six-sides-of-logic",
   othello: "the-unfolding-hour",
-  checkers: "the-unfolding-hour",
+  checkers: "sunday-drive-south",
   drop4: "six-sides-of-logic",
   dots: "six-sides-of-logic",
   furrow: "morning-in-the-lower-valley",

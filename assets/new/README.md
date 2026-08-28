@@ -17,10 +17,17 @@ Name the file after the game id in `src/registry.ts` and the tool does the rest.
 
 | Drop this | Becomes | Lands in |
 |---|---|---|
-| `<id>-cover.png\|jpg\|jpeg` | 512×512 JPEG, q82 | `src/games/<id>/assets/cover.jpg` |
-| `<id>-cover@57.png` | same, cropped around 57% down | `src/games/<id>/assets/cover.jpg` |
-| `<id>-splash.png\|jpg\|jpeg` | 1200px tall JPEG, q80 | `src/games/<id>/assets/splash.jpg` |
+| `<game>-cover` / `<game>_icon` | 512×512 JPEG, q82 | `src/games/<id>/assets/cover.jpg` |
+| `<game>-cover@57.png` | same, cropped around 57% down | `src/games/<id>/assets/cover.jpg` |
+| `<game>-splash` / `<game>_splash` | sized on its long edge, q80 | `src/games/<id>/assets/splash.jpg` |
 | `<Any Track Name>.mp3\|wav\|m4a` | 64 kbps MP3 | `assets/audio/<any-track-name>.mp3` |
+
+**Naming is forgiving on purpose.** `-`, `_`, a space or nothing at all separates
+the game from the kind; case does not matter; `icon` is accepted for `cover`; and
+the game may be named by its registry id **or by its title**. All of
+`blockdoku_icon.png`, `Drop4Splash.jpeg` and `dots_and_boxes_icon.png` land
+correctly — the last one on the game whose id is `dots`. A drop-off that rejects
+the names a person actually types is a drop-off nobody uses.
 
 **Per-game art lives with its game** (`src/games/<id>/assets/`), because that is
 where a game's own assets belong — `CLAUDE.md` § "Game isolation". The build
@@ -30,6 +37,23 @@ copies each game's `assets/` to `/<id>/assets/`.
 even when a game claims one by default. The same piece can be the shelf's ambient
 bed and another game's theme; filing it under one game would be a lie about what
 it is.
+
+## A PWA splash is not one image you supply
+
+Worth knowing before commissioning more splash art, because it surprised us:
+
+- **Android / Chrome composes the splash itself** from the manifest — the app
+  name, `background_color`, and an icon of at least 512px. It accepts **no**
+  splash image. The cover art is the input.
+- **iOS wants `apple-touch-startup-image`** at *exact per-device pixel sizes*,
+  portrait and landscape, one `<link>` per device class.
+
+So `splash.jpg` here is **source art**, not a platform asset, and generating the
+real ones is a build step that arrives with the manifest work
+(`TODO/pwa.md` — the shelf has no manifest and no service worker yet). A
+landscape source constrains what a portrait phone screen can be cut from it, so
+portrait art gives that step more to work with. The tool prints which aspect it
+saw.
 
 ## Cropping
 
