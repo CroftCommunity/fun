@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>fun.croft.ing — UI/UX directions</title>
+<link rel="stylesheet" href="harness.css" />
+<style>
+  .strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.4rem 0 0; }
+  .strip a { text-decoration: none; color: inherit; }
+  .strip img { width: 100%; display: block; border-radius: 10px; border: 1px solid var(--h-rule); }
+  .strip b { display: block; margin-top: 0.5rem; font-size: 0.9rem; }
+  .strip small { color: var(--h-ink-dim); font-size: 0.78rem; }
+
+  .player { border: 1px solid var(--h-rule); border-radius: 12px; background: var(--h-panel); padding: 1rem 1.1rem; margin-top: 1rem; }
+  .player .row { display: flex; align-items: center; gap: 0.85rem; padding: 0.5rem 0; border-bottom: 1px solid var(--h-rule); }
+  .player .row:last-child { border-bottom: none; }
+  .player .row .n { flex: 1; font-size: 0.88rem; }
+  .player .row .n small { display: block; color: var(--h-ink-dim); font-size: 0.74rem; }
+  .player audio { height: 32px; }
+
+  .axes { display: grid; grid-template-columns: 1fr 1fr; gap: 1.1rem; margin-top: 1rem; }
+  .axis { border: 1px solid var(--h-rule); border-radius: 10px; padding: 0.9rem 1rem; background: var(--h-panel); }
+  .axis h4 { margin: 0 0 0.35rem; font-size: 0.88rem; }
+  .axis p { margin: 0; font-size: 0.82rem; color: var(--h-ink-dim); line-height: 1.5; }
+  code { background: #0f1113; padding: 0.05em 0.35em; border-radius: 3px; font-size: 0.88em; }
+  @media (max-width: 760px) { .strip, .axes { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="h-wrap">
+  <p class="h-kicker">fun.croft.ing · design spike · not a build input</p>
+  <h1>Three ways the shelf could look</h1>
+  <p class="h-lede">
+    Static mocks, no build step, nothing wired to a real game. Frames render at true 390 × 844
+    and 1180 × 740, so what you read is what a device would render. Every direction carries a
+    light/dark switch, because the repo tests both and a direction that only works in one is
+    not a direction.
+  </p>
+
+  <div class="h-jump">
+    <a href="b-worlds.html">Direction B — Gallery of Worlds →</a>
+    <a class="alt" href="c-pond.html">Direction C — The Pond →</a>
+    <a class="alt" href="pwa.html">Install, splash, standalone →</a>
+  </div>
+  <p class="h-note">Everything below is the reasoning. The three links above are the mocks.</p>
+
+  <h2>What is actually wrong today</h2>
+  <table class="h-table">
+    <tr><td>The home page</td><td>Renders one sentence — "Pick a game from the drawer to play." — over an empty page. Twenty games, and the front door is a text label.</td></tr>
+    <tr><td>The drawer</td><td>A flat 20-item scroll. Identical pills, no art, no metadata. <code>Placeholder</code>, a dev artifact, is item #1 above Solitaire.</td></tr>
+    <tr><td>The differentiator</td><td>Verifiable outcomes, AI opponents, daily packs, share replays — all built, none legible before you are inside a game.</td></tr>
+    <tr><td>The art</td><td>40 guide screenshots in <code>assets/guide/</code> used only inside how-to pages. The navigation shows emoji. Separately, ten games now have commissioned icons and splashes that nothing uses at all.</td></tr>
+    <tr><td>Controls</td><td>Match-3 on desktop is 13 identical pills in four rows above a 400px board, in a 1440px viewport.</td></tr>
+    <tr><td>Desktop</td><td>Mobile, stretched. At 1440px the drawer still overlays behind a dimming scrim.</td></tr>
+    <tr><td>Continuity</td><td>No resume, no recently played, no "3 dailies waiting" — despite eight games shipping daily packs.</td></tr>
+  </table>
+
+  <h2>The two axes, kept separate</h2>
+  <p class="h-note">
+    Each direction pairs a look with a structure, but the two are independent — you can take
+    B's structure with C's palette. Say which half you like and I will recombine.
+  </p>
+  <div class="axes">
+    <div class="axis">
+      <h4>Axis 1 — the look</h4>
+      <p><b>B</b> matches the commissioned art: near-black gallery ground, each game's own accent.
+      <b>C</b> does the opposite: warm paper and hairline rules so the art is the only loud thing
+      on screen.</p>
+    </div>
+    <div class="axis">
+      <h4>Axis 2 — what the home page is for</h4>
+      <p><b>B</b> is today-first: it opens on what you were doing and what is waiting.
+      <b>C</b> is a shelf: a browsable index that argues for the games in words, because
+      "you can re-check the result yourself" is the real differentiator and no icon says it.</p>
+    </div>
+  </div>
+
+  <h2>The directions</h2>
+  <div class="h-cards">
+    <a class="h-card" href="b-worlds.html">
+      <span class="h-tag">Direction B</span>
+      <h3>Gallery of Worlds</h3>
+      <p>Dark, luminous, one saturated world per game. The chrome goes quiet and borrows each
+         game's accent. Home opens on the world you were last in.</p>
+      <span class="h-open">Open the mock →</span>
+    </a>
+    <a class="h-card" href="c-pond.html">
+      <span class="h-tag">Direction C</span>
+      <h3>The Pond</h3>
+      <p>Warm paper, hairline rules, a serif, a great deal of air. A printed catalogue where
+         each tier is a shelf label with a sentence explaining what it promises.</p>
+      <span class="h-open">Open the mock →</span>
+    </a>
+    <a class="h-card" href="pwa.html">
+      <span class="h-tag">Cross-cutting</span>
+      <h3>Install, splash, standalone</h3>
+      <p>The install invitation, the OS sheet, a phone home screen carrying the icons, launch
+         splash, standalone chrome, the music sheet, and an honest offline page.</p>
+      <span class="h-open">Open the mock →</span>
+    </a>
+  </div>
+
+  <h2>The music</h2>
+  <p class="h-note">
+    Sixteen tracks, moved out of <code>fun_images/</code> to <code>~/Downloads/fun_audio/</code>.
+    They split cleanly in two: seven ~30-second loops and nine 2–3 minute pieces. The mocks assume
+    the loops are shelf ambient and the longer pieces are per-game. Four are transcoded here at
+    96 kbps so you can hear them in context.
+  </p>
+  <div class="player">
+    <div class="row">
+      <span class="n">Morning Miles<small>shelf ambient — the mocks' default</small></span>
+      <audio controls preload="none" src="brand/audio/shelf-morning-miles.mp3"></audio>
+    </div>
+    <div class="row">
+      <span class="n">Porch Light Nocturne<small>shelf ambient, after dark</small></span>
+      <audio controls preload="none" src="brand/audio/shelf-porch-light.mp3"></audio>
+    </div>
+    <div class="row">
+      <span class="n">Gateway to the Spire<small>per-game — used on the Ring Pop frames</small></span>
+      <audio controls preload="none" src="brand/audio/game-gateway-spire.mp3"></audio>
+    </div>
+    <div class="row">
+      <span class="n">Clover Hill Crossing<small>per-game alternative</small></span>
+      <audio controls preload="none" src="brand/audio/game-clover-hill.mp3"></audio>
+    </div>
+  </div>
+
+  <h2>What the art covers, and what it does not</h2>
+  <table class="h-table">
+    <tr><th>Have icon + splash</th><td>2048 · Align · Bubble · Color Sort · Loose Ends · Orchard Drop · Othello · Ring Pop · Wyrdle</td></tr>
+    <tr><th>Splash only</th><td>Solitaire (the file is square, so the mocks use it as an icon)</td></tr>
+    <tr><th>Nothing yet</th><td>Checkers · Drop 4 · Dots and Boxes · Furrow · Blockdoku · Astray · HexGL · Clumsy Bird · Match-3's board art · Cribbage</td></tr>
+    <tr><th>Naming</th><td>Ring Pop's splash reads "GEM MATCH MASTERPIECE" — it is Match-3 rebranded. The mocks call it Ring Pop throughout; the registry id, how-to guide, campaign packs and share links all still say <code>match3</code>.</td></tr>
+  </table>
+
+  <h2>Running these</h2>
+  <p class="h-note">
+    From the <code>fun</code> worktree: <code>node ../../../fun/tools/serve.mjs</code> serves
+    <code>dist/</code>, but these mocks need the repo root instead. Any static server rooted at
+    the repo will do — the pages reference <code>brand/</code> and <code>art/</code> relative to
+    <code>mocks/</code>, and <code>../assets/</code> for the fonts. Opening
+    <code>mocks/index.html</code> over <code>file://</code> also works for everything except the
+    audio in some browsers.
+  </p>
+</div>
+<script src="harness.js"></script>
+</body>
+</html>
