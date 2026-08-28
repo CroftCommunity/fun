@@ -17,13 +17,13 @@ Name the file after the game id in `src/registry.ts` and the tool does the rest.
 
 | Drop this | Becomes | Lands in |
 |---|---|---|
-| `<game>-cover` / `<game>_icon` | 512×512 JPEG, q82 | `src/games/<id>/assets/cover.jpg` |
-| `<game>-cover@57.png` | same, cropped around 57% down | `src/games/<id>/assets/cover.jpg` |
+| `<game>-icon` / `<game>_icon` | 512×512 JPEG, q82 | `src/games/<id>/assets/icon.jpg` |
+| `<game>-icon@57.png` | same, cropped around 57% down | `src/games/<id>/assets/icon.jpg` |
 | `<game>-splash` / `<game>_splash` | sized on its long edge, q80 | `src/games/<id>/assets/splash.jpg` |
 | `<Any Track Name>.mp3\|wav\|m4a` | 64 kbps MP3 | `assets/audio/<any-track-name>.mp3` |
 
 **Naming is forgiving on purpose.** `-`, `_`, a space or nothing at all separates
-the game from the kind; case does not matter; `icon` is accepted for `cover`; and
+the game from the kind; case does not matter; `cover` is accepted as a synonym for `icon`; and
 the game may be named by its registry id **or by its title**. All of
 `blockdoku_icon.png`, `Drop4Splash.jpeg` and `dots_and_boxes_icon.png` land
 correctly — the last one on the game whose id is `dots`. A drop-off that rejects
@@ -37,6 +37,15 @@ copies each game's `assets/` to `/<id>/assets/`.
 even when a game claims one by default. The same piece can be the shelf's ambient
 bed and another game's theme; filing it under one game would be a lie about what
 it is.
+
+## Two assets, and what each is for
+
+**`icon.jpg`** — a 512² square. One asset doing both jobs: the home page shows it
+as the game's tile, and the PWA manifest will use the same file as the app icon.
+"Icon" is the word because it is what you called it and what a web manifest calls
+it. A game without one falls back to its `emoji` in `src/registry.ts`.
+
+**`splash.jpg`** — source art for the launch screen. Nothing consumes it yet.
 
 ## A PWA splash is not one image you supply
 

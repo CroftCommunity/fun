@@ -18,18 +18,18 @@ import { describe, expect, it } from "vitest";
 import { REGISTRY } from "../src/registry.js";
 
 const gamesDir = join(process.cwd(), "src", "games");
-const coverPath = (id: string): string => join(gamesDir, id, "assets", "cover.jpg");
+const iconPath = (id: string): string => join(gamesDir, id, "assets", "icon.jpg");
 
-describe("cover art: the registry and the filesystem agree", () => {
-  it("every game claiming a cover has the file", () => {
-    for (const g of REGISTRY.filter((x) => x.cover)) {
-      expect(existsSync(coverPath(g.id)), `${g.id} claims cover: true but has no assets/cover.jpg`).toBe(true);
+describe("icon art: the registry and the filesystem agree", () => {
+  it("every game claiming an icon has the file", () => {
+    for (const g of REGISTRY.filter((x) => x.icon)) {
+      expect(existsSync(iconPath(g.id)), `${g.id} claims icon: true but has no assets/icon.jpg`).toBe(true);
     }
   });
 
   it("every game with the file claims it", () => {
-    const onDisk = readdirSync(gamesDir).filter((d) => existsSync(coverPath(d)));
-    const claimed = REGISTRY.filter((g) => g.cover).map((g) => g.id);
+    const onDisk = readdirSync(gamesDir).filter((d) => existsSync(iconPath(d)));
+    const claimed = REGISTRY.filter((g) => g.icon).map((g) => g.id);
     expect([...onDisk].sort()).toEqual([...claimed].sort());
   });
 });

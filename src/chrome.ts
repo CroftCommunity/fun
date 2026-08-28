@@ -108,7 +108,7 @@ export function boot(root: HTMLElement = document.body): Chrome {
     const link = el(
       "a",
       { href: `/${g.id}/`, class: "drawer-item", "data-game-id": g.id },
-      `${g.icon} ${g.title}`,
+      `${g.emoji} ${g.title}`,
     );
     if (g.status === "soon") {
       link.append(el("span", { class: "badge" }, "soon"));

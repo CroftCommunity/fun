@@ -82,7 +82,7 @@ function squareBox(w, h, focus) {
   return { s, left: Math.max(0, Math.round(w / 2 - s / 2)), top: Math.max(0, Math.min(h - s, Math.round(cy - s / 2))) };
 }
 
-function toCover(src, dest, focus) {
+function toIcon(src, dest, focus) {
   const { w, h } = dims(src);
   const box = squareBox(w, h, focus);
   const tmp = join(DROP, `.intake-tmp${extname(src)}`);
@@ -107,7 +107,8 @@ function toCover(src, dest, focus) {
 function toSplash(src, dest) {
   const { w, h } = dims(src);
   sh("sips", ["-Z", w >= h ? "1600" : "1200", "-s", "format", "jpeg", "-s", "formatOptions", "80", src, "--out", dest]);
-  return `${w}x${h} ${w >= h ? "landscape" : "portrait"} → ${w >= h ? "1600px wide" : "1200px tall"}`;
+  const shape = w === h ? "square" : w > h ? "landscape" : "portrait";
+  return `${w}x${h} ${shape} → ${w >= h ? "1600px wide" : "1200px tall"}`;
 }
 
 function toTrack(src, dest) {
@@ -151,7 +152,7 @@ function main() {
     // `Drop4Splash` and `dots_and_boxes_icon` — underscores, no separator at
     // all, mixed case, and "icon" for what this calls a cover. A drop-off that
     // rejects the names a person actually types is a drop-off nobody uses.
-    const m = /^(.*?)[-_ ]?(cover|icon|splash)(?:@(\d{1,3}))?$/i.exec(stem);
+    const m = /^(.*?)[-_ ]?(icon|cover|splash)(?:@(\d{1,3}))?$/i.exec(stem);
 
     if (IMAGE.has(ext) && m) {
       const [, rawId, rawKind, focus] = m;
@@ -160,7 +161,9 @@ function main() {
         skipped.push(`${file}: "${rawId}" matches no game id or title in src/registry.ts`);
         continue;
       }
-      const kind = rawKind.toLowerCase() === "icon" ? "cover" : rawKind.toLowerCase();
+      // `cover` is accepted as a synonym; `icon` is the name that sticks, because
+      // it is what the drop was called and what a web manifest calls it.
+      const kind = rawKind.toLowerCase() === "cover" ? "icon" : rawKind.toLowerCase();
       const dir = join(root, "src", "games", id, "assets");
       planned.push({
         file,
@@ -177,7 +180,7 @@ function main() {
         dir: join(root, "assets", "audio"),
       });
     } else if (IMAGE.has(ext)) {
-      skipped.push(`${file}: name it <game>-cover or <game>-splash`);
+      skipped.push(`${file}: name it <game>-icon or <game>-splash`);
     } else {
       skipped.push(`${file}: not an image or audio file this tool handles`);
     }
@@ -196,8 +199,8 @@ function main() {
     const how =
       p.kind === "track"
         ? toTrack(src, p.dest)
-        : p.kind === "cover"
-          ? toCover(src, p.dest, p.focus)
+        : p.kind === "icon"
+          ? toIcon(src, p.dest, p.focus)
           : toSplash(src, p.dest);
     const size = Math.round(statSync(p.dest).size / 1024);
     console.log(`  ${p.file}\n    → ${rel}  ${how}  ${size}KB${exists ? "  (replaced)" : ""}`);

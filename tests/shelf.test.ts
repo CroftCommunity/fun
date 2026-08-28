@@ -28,12 +28,12 @@ import type { GameEntry } from "../src/contract.js";
 const AT = "2026-08-28T09:41:00Z";
 
 const GAMES = [
-  { id: "solitaire", title: "Solitaire", icon: "♠", status: "playable", group: "provable", daily: true },
-  { id: "othello", title: "Othello", icon: "⚫", status: "playable", group: "versus" },
-  { id: "wyrdle", title: "Wyrdle", icon: "🐉", status: "playable", group: "provable", daily: true },
-  { id: "astray", title: "Astray", icon: "🔮", status: "playable", group: "wrapped", tier: 2,
+  { id: "solitaire", title: "Solitaire", emoji: "♠", status: "playable", group: "provable", daily: true },
+  { id: "othello", title: "Othello", emoji: "⚫", status: "playable", group: "versus" },
+  { id: "wyrdle", title: "Wyrdle", emoji: "🐉", status: "playable", group: "provable", daily: true },
+  { id: "astray", title: "Astray", emoji: "🔮", status: "playable", group: "wrapped", tier: 2,
     attribution: { author: "wwwtyro", license: "The Unlicense", upstreamUrl: "https://example.invalid" } },
-  { id: "cribbage", title: "Cribbage", icon: "🎴", status: "soon", group: "versus" },
+  { id: "cribbage", title: "Cribbage", emoji: "🎴", status: "soon", group: "versus" },
 ] as unknown as readonly GameEntry[];
 
 describe("shelf state: what the shelf itself observes", () => {

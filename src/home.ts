@@ -11,10 +11,9 @@
 //! only expresses a preference among them (`prefersLayout`), and the user's
 //! explicit choice wins in both directions.
 //!
-//! Cover art: a game declaring `cover: true` renders
-//! `/<id>/assets/cover.jpg`; the rest keep the registry emoji. Ten of twenty
-//! have art today, so both paths are live at once and the fallback is a real
-//! state rather than a theoretical one.
+//! ICON art: a game declaring `icon: true` renders `/<id>/assets/icon.jpg` as
+//! its tile; the rest fall back to the registry `emoji`. Both paths are live, so
+//! the fallback is a real state rather than a theoretical one.
 
 import type { ShelfModel } from "./shelf.js";
 
@@ -30,11 +29,11 @@ function el<K extends keyof HTMLElementTagNameMap>(
 }
 
 /** The cover image, or the emoji for a game that has no art yet. */
-function art(game: { id: string; icon: string; cover?: true }, cls: string): HTMLElement {
-  if (!game.cover) return el("span", { class: `${cls} is-emoji`, "aria-hidden": "true" }, game.icon);
+function art(game: { id: string; emoji: string; icon?: true }, cls: string): HTMLElement {
+  if (!game.icon) return el("span", { class: `${cls} is-emoji`, "aria-hidden": "true" }, game.emoji);
   return el("img", {
     class: cls,
-    src: `/${game.id}/assets/cover.jpg`,
+    src: `/${game.id}/assets/icon.jpg`,
     alt: "",
     loading: "lazy",
     decoding: "async",
@@ -44,7 +43,7 @@ function art(game: { id: string; icon: string; cover?: true }, cls: string): HTM
 }
 
 /** A game tile: cover art or emoji, title, and a link to the game's own URL. */
-function tile(game: { id: string; title: string; icon: string; cover?: true }): HTMLElement {
+function tile(game: { id: string; title: string; emoji: string; icon?: true }): HTMLElement {
   return el(
     "a",
     { href: `/${game.id}/`, class: "home-tile", "data-game-id": game.id },
