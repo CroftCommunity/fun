@@ -1,7 +1,7 @@
 # A skin layer for the shelf — two identities, one app
 
-**Status:** Pass 1 (shape). Not started. Four owner decisions recorded (D1–D4); three open
-questions remain (O1, O2, O4), none blocking the first phase. O3 settled 2026-08-27 → D4.
+**Status:** Pass 1 (shape). Not started. Six decisions recorded (D1–D6); **one** open question
+remains (O4), which is independent of this plan. O1–O3 settled 2026-08-27 → D5, D6, D4.
 
 **Owner decision (2026-08-27):** both mock directions are wanted, shipped together —
 **Gallery of Worlds is the default**, The Pond is selectable. Mocks that produced this:
@@ -199,6 +199,42 @@ light/dark came back as an axis.
   **inside** forage. Nothing in this workspace tracks repo-to-repo divergence except
   `DECISIONS.md` and the audit script.
 
+- **D5 — `prefersLayout` lives on the FAMILY, not the skin** (settles O1). Recorded rather
+  than inherited, because the argument is forage's and transfers with no adaptation.
+  `forage/js/skins.js` on its own equivalent:
+
+  > `prefersDensity` (DL-028) lives HERE and not on the skin. It used to sit on each phpBB
+  > entry independently, where nothing stopped the two from disagreeing — and a disagreement
+  > means toggling palette silently re-lays-out the board. One home deletes that class.
+
+  Identical here: on the skin, `worlds-light` and `worlds-dark` could disagree, and ☾/☀ would
+  silently re-lay-out the home page — a control that looks purely cosmetic changing the
+  information architecture. On the family the class does not exist, so fun's `validateFamilies`
+  equivalent has one fewer thing to check rather than one more. That layout is a *home page*
+  property where forage's density is a *board* property changes nothing: the failure mode is
+  the same surface-swap under a palette toggle.
+
+- **D6 — fun starts `docs/adr/` with exactly one ADR: the token split** (settles O2). Two
+  halves, and the second is the point.
+
+  *No ADR for adopting skins-subsume-themes.* D4 says point at forage's ADR-003, never copy it.
+  An ADR in fun reading "we adopt ADR-003" would be precisely the second copy of the rules that
+  D4 forbids, and it would create two places for the model to drift.
+
+  *An ADR for the chrome/game token split, because that one has no upstream.* It is fun's own
+  decision, driven by fun-specific facts — roughly a hundred tokens of which most are
+  game-owned, the Align IP guardrail, and the colour-blind-safety commitments where shape
+  carries the meaning and hue is the second signal. It constrains every future skin and every
+  future game, which is what an ADR is for.
+
+  *Conventions are already fixed and starting the directory is free.* Audit check 11 is
+  conditional — `if [ -d "$ROOT/$r/docs/adr" ]` — so fun having none today is compliant. Once
+  it exists, the check requires `NNNN-slug.md` naming and a registered `fun/NNNN` row in
+  `.claude/DECISIONS.md`, and separately flags ADR-shaped files anywhere outside `docs/adr/`.
+  The ADR is written **with M1**, where the split actually lands. The id is allocated then with
+  `bash .claude/bin/next-id.sh adr fun` — not now, and not by eye (`TRACKING.md` § ID
+  discipline); an id reserved for a plan that may not land is waste.
+
 ## Verified assumptions
 
 Checked in this repo at `e453afb`:
@@ -229,8 +265,9 @@ Explicitly **not** verified, and therefore not asserted anywhere above:
   `COORDINATION.md`. Do this before M2 writes fun's registry, so fun's implementation is
   checked from its first commit rather than retrofitted.
 - **M1 — the token split.** Divide `tokens.css` into chrome roles and game palettes with a
-  declared allowlist; port `skinScan` from `forage/js/skins.js` and gate it in `tests/`.
-  Nothing user-visible changes. This is the phase that makes every later one safe.
+  declared allowlist; reimplement `skinScan` in TypeScript (D4: independent implementation) and
+  gate it in `tests/`. Carries fun's first ADR (D6), id allocated at write time. Nothing
+  user-visible changes. This is the phase that makes every later one safe.
 - **M2 — skins subsume themes.** Registry (`FAMILIES`, `SKINS`, sibling derived from family +
   palette), `resolveSkin`, the rewritten pre-paint script, retirement of `theme.ts` and
   `resolveTheme` with **no migration shim** (pre-1.0, per the workspace rule). Ships with the
@@ -246,15 +283,10 @@ Explicitly **not** verified, and therefore not asserted anywhere above:
 
 ## Open questions
 
-- **O1 — where does `prefersLayout` live, family or skin?** Forage moved `prefersDensity` onto
-  the FAMILY specifically because two skins in one family could otherwise disagree, and a
-  disagreement means toggling palette silently re-lays-out the page. The same argument applies
-  unchanged, so family is the presumed answer — but it should be recorded as a decision rather
-  than inherited by imitation.
-- **O2 — does this warrant an ADR in `fun`?** `fun/docs/` has no `adr/` directory today; forage
-  has one. If yes, allocate with `bash .claude/bin/next-id.sh adr fun` — **not by eye**, per
-  `TRACKING.md` § ID discipline. Not allocated yet, deliberately: an id reserved for a plan that
-  may not land is waste.
+- ~~**O1 — where does `prefersLayout` live, family or skin?**~~ **Settled 2026-08-27 → D5:**
+  the family, on forage's own recorded argument.
+- ~~**O2 — does this warrant an ADR in `fun`?**~~ **Settled 2026-08-27 → D6:** one ADR, for the
+  token split only — not for adopting a model that already has an ADR upstream.
 - ~~**O3 — is the skin mechanism itself shared code or parallel implementations?**~~
   **Settled 2026-08-27 → D4:** independent implementations, shared contract, enforced by a new
   audit check. The undeclared edge `ARCHITECTURE.md` warns about is closed by M0 rather than
@@ -266,4 +298,11 @@ Explicitly **not** verified, and therefore not asserted anywhere above:
 
 ## Review Log
 
-*(empty — Pass 1 shape only, nothing executed)*
+- **2026-08-27 — Pass 1 written, then settled in three rounds.** The plan opened with four
+  open questions. O3 was settled first at the owner's direction and turned on a fact not in
+  the original draft — forage has no build step — which moved the answer from "extract a
+  shared package" to "share the contract". O1 and O2 then settled from the record rather than
+  from preference: O1 by forage's own `prefersDensity` argument, O2 by audit check 11 being
+  conditional, so starting `docs/adr/` is a free choice and the only ADR-worthy decision here
+  is the one with no upstream to point at. O4 stays open and is independent of this plan.
+  Nothing has been executed.
