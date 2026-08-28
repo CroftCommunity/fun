@@ -55,7 +55,23 @@ export interface RangeRow {
   demo?: DemoFactory<number>;
 }
 
-export type SettingRow = ToggleRow | RangeRow;
+/**
+ * A one-of-several setting shown as a radio group. Added for the appearance
+ * picker (M5): a family or a layout is a choice among named options, which
+ * neither a toggle nor a range can express. Rendered as real radios inside a
+ * `<fieldset>` so the group is announced as a group and arrow keys work.
+ */
+export interface ChoiceRow {
+  kind: "choice";
+  id: string;
+  label: string;
+  hint?: string;
+  value: string;
+  options: ReadonlyArray<{ readonly value: string; readonly label: string; readonly hint?: string }>;
+  onChange(value: string): void;
+}
+
+export type SettingRow = ToggleRow | RangeRow | ChoiceRow;
 
 export interface SettingsSheetSpec {
   intro?: string;
@@ -128,13 +144,37 @@ function renderRangeRow(row: RangeRow): HTMLElement {
   return wrap;
 }
 
+function renderChoiceRow(row: ChoiceRow): HTMLElement {
+  const wrap = el("fieldset", { class: "sheet-row sheet-choice", "data-setting": row.id });
+  wrap.append(el("legend", { class: "sheet-choice-label" }, row.label));
+  if (row.hint) wrap.append(el("p", { class: "sheet-hint" }, row.hint));
+  for (const opt of row.options) {
+    const input = el("input", {
+      type: "radio",
+      name: `sheet-${row.id}`,
+      value: opt.value,
+      class: "sheet-choice-input",
+    }) as HTMLInputElement;
+    input.checked = opt.value === row.value;
+    input.addEventListener("change", () => {
+      if (input.checked) row.onChange(opt.value);
+    });
+    const label = el("label", { class: "sheet-choice-opt" }, input, el("span", {}, opt.label));
+    if (opt.hint) label.append(el("small", { class: "sheet-choice-hint" }, opt.hint));
+    wrap.append(label);
+  }
+  return wrap;
+}
+
 /** Build a settings sheet from a spec. The returned node is a plain container;
  *  the caller places it wherever it likes (e.g. inside a `<details>`). */
 export function renderSettingsSheet(spec: SettingsSheetSpec): HTMLElement {
   const sheet = el("div", { class: "sheet" });
   if (spec.intro) sheet.append(el("p", { class: "sheet-intro" }, spec.intro));
   for (const row of spec.rows) {
-    sheet.append(row.kind === "toggle" ? renderToggleRow(row) : renderRangeRow(row));
+    if (row.kind === "toggle") sheet.append(renderToggleRow(row));
+    else if (row.kind === "range") sheet.append(renderRangeRow(row));
+    else sheet.append(renderChoiceRow(row));
   }
   return sheet;
 }

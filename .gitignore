@@ -20,3 +20,8 @@ reference/
 
 # WebLLM model cache (ai:trial) — never commit the multi-GB weights
 .webllm-cache/
+
+# assets/new/ is a DROP-OFF for raw masters, not a deliverable. The repo carries
+# only the derived web-sized copies that tools/intake.mjs produces from them.
+/assets/new/*
+!/assets/new/README.md

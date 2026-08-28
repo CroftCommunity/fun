@@ -11,9 +11,9 @@ import { wrappedBanner } from "../src/wrapped-banner.js";
 
 function tier2Entry(overrides: Partial<GameEntry> = {}): GameEntry {
   return {
-    id: "astray",
+    id: "example-wrap",
     title: "Astray",
-    icon: "🔮",
+    emoji: "🔮",
     status: "playable",
     tier: 2,
     attribution: {
@@ -26,7 +26,7 @@ function tier2Entry(overrides: Partial<GameEntry> = {}): GameEntry {
 }
 
 function tier1Entry(): GameEntry {
-  return { id: "solitaire", title: "Solitaire", icon: "♠", status: "playable" };
+  return { id: "solitaire", title: "Solitaire", emoji: "♠", status: "playable" };
 }
 
 describe("wrappedBanner (Tier-2 honest representation)", () => {

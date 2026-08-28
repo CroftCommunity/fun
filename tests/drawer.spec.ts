@@ -1,13 +1,16 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
+import { REGISTRY } from "../src/registry.js";
+
 test("home page lists the games and the drawer opens", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /open games drawer/i }).click();
   await expect(page.locator("#games-drawer")).toBeVisible();
-  // One item per REGISTRY entry (src/registry.ts). Bump this when a game is
-  // added or removed from the catalog.
-  await expect(page.locator(".drawer-item")).toHaveCount(20);
+  // One item per REGISTRY entry — read from the registry rather than pinned to a
+  // number, because the number was wrong within an hour of three games being
+  // removed and the comment telling the next person to "bump this" did not help.
+  await expect(page.locator(".drawer-item")).toHaveCount(REGISTRY.length);
 });
 
 test("the drawer recollapses via its close button and via clicking off", async ({

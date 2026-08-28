@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "fun.croft.ing — the Croft games pond. A determinism-first, local-first game shelf (Rust cores compiled to wasm, vanilla TS slide-out drawer UI).",
+  "description": "fun.croft.ing \u2014 the Croft games pond. A determinism-first, local-first game shelf (Rust cores compiled to wasm, vanilla TS slide-out drawer UI).",
   "engines": {
     "node": ">=22 <23"
   },
@@ -22,7 +22,8 @@
     "serve": "node build.mjs && node tools/serve.mjs",
     "test:rust": "bash tools/rust-gate.sh",
     "test": "npm run test:rust && npm run typecheck && npm run lint && npm run unit && npm run build",
-    "gate": "npm run test && npm run e2e"
+    "gate": "npm run test && npm run e2e",
+    "intake": "node tools/intake.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",

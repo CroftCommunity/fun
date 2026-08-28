@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Direction C — The Pond · fun.croft.ing mocks</title>
+<link rel="stylesheet" href="harness.css" />
+<style>
+/* =========================================================================
+   DIRECTION C — "The Pond"
+
+   The opposite bet from B. Instead of matching the art's energy, the chrome
+   goes completely quiet and lets each piece of art be the only loud thing on
+   screen — a printed catalogue, or a shelf in a good bookshop. Warm paper,
+   hairline rules, a serif for display, and a great deal of air.
+
+   Structure: SHELF. The home page is a browsable index where the tier is a
+   printed shelf label with a sentence explaining what it promises. It argues
+   for the games in words, because "provable" is this shelf's actual
+   differentiator and no icon can say it.
+   ========================================================================= */
+
+.dir-c .screen {
+  --paper: #f7f3ea;
+  --paper2: #efe9dc;
+  --ink: #1c1a16;
+  --dim: #6d675c;
+  --rule: #ddd5c5;
+  --acc: #8a5a12;         /* burnt umber — the only accent      */
+  --acc-ink: #fdfbf6;
+  --good: #2f6b45;
+  --felt: #1f5c3f;
+  --card: #fbf7ee;
+  --suit-red: #b3123b;
+  --suit-black: #1b201c;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  background: var(--paper); color: var(--ink);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.dir-c .screen[data-theme="dark"] {
+  --paper: #14130f; --paper2: #1d1b16; --ink: #f0ece2; --dim: #9a9285;
+  --rule: #322e26; --acc: #d9a94e; --acc-ink: #14130f; --good: #6fbb8c;
+}
+
+.dir-c .app { display: flex; flex-direction: column; height: 100%; }
+.dir-c .scroll { flex: 1; overflow: hidden; }
+.dir-c .ser { font-family: var(--serif); font-weight: 400; }
+
+/* --- masthead: a printed page's, not an app's ---------------------------- */
+
+.dir-c .mast {
+  padding: 1.15rem 1.15rem 0.85rem;
+  border-bottom: 1px solid var(--rule);
+  display: flex; align-items: flex-end; gap: 0.6rem;
+}
+.dir-c .mast h1 {
+  font-family: var(--serif); font-weight: 400; font-size: 1.55rem;
+  margin: 0; letter-spacing: -0.01em; line-height: 1;
+}
+.dir-c .mast .sp { flex: 1; }
+.dir-c .mast button {
+  border: none; background: none; color: var(--dim); cursor: pointer;
+  width: 40px; height: 40px; font-size: 1rem; border-radius: 50%;
+}
+.dir-c .mast button:hover { background: var(--paper2); color: var(--ink); }
+.dir-c .rule { height: 1px; background: var(--rule); margin: 0 1.15rem; }
+
+/* A quiet music line rather than a control cluster. */
+.dir-c .nowplaying {
+  display: flex; align-items: center; gap: 0.45rem;
+  padding: 0.5rem 1.15rem; font-size: 0.72rem; color: var(--dim);
+  border-bottom: 1px solid var(--rule);
+}
+.dir-c .nowplaying .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--acc); }
+.dir-c .nowplaying em { font-style: italic; font-family: var(--serif); color: var(--ink); }
+.dir-c .nowplaying button { margin-left: auto; border: none; background: none; color: var(--dim); font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+
+/* --- the shelf: a printed label, a sentence, then the row ---------------- */
+
+.dir-c .shelf { padding: 1.35rem 1.15rem 0; }
+.dir-c .label {
+  font-size: 0.63rem; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--acc); font-weight: 700; margin: 0 0 0.3rem;
+}
+.dir-c .shelf h2 {
+  font-family: var(--serif); font-weight: 400; font-size: 1.28rem;
+  margin: 0 0 0.28rem; letter-spacing: -0.01em;
+}
+.dir-c .shelf .blurb { margin: 0 0 0.95rem; font-size: 0.81rem; color: var(--dim); max-width: 30ch; line-height: 1.45; }
+
+.dir-c .item {
+  display: flex; align-items: center; gap: 0.85rem;
+  padding: 0.62rem 0; text-decoration: none; color: inherit;
+  border-top: 1px solid var(--rule);
+}
+.dir-c .item:last-child { border-bottom: 1px solid var(--rule); }
+.dir-c .item img { width: 52px; height: 52px; border-radius: 9px; object-fit: cover; flex: 0 0 auto; }
+.dir-c .item .t { flex: 1; min-width: 0; }
+.dir-c .item .t b { display: block; font-family: var(--serif); font-weight: 400; font-size: 1.06rem; }
+.dir-c .item .t small { color: var(--dim); font-size: 0.73rem; }
+.dir-c .item .go { color: var(--dim); font-size: 0.95rem; }
+.dir-c .item .mark { font-size: 0.68rem; color: var(--good); font-weight: 600; }
+
+/* The one loud thing: a single featured plate per screenful. */
+.dir-c .plate { margin: 1.35rem 1.15rem 0; }
+.dir-c .plate img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 3px; display: block; }
+.dir-c .plate .cap {
+  display: flex; align-items: baseline; gap: 0.5rem;
+  padding-top: 0.5rem; font-size: 0.73rem; color: var(--dim);
+  border-bottom: 1px solid var(--rule); padding-bottom: 0.7rem;
+}
+.dir-c .plate .cap b { font-family: var(--serif); font-weight: 400; font-size: 1.05rem; color: var(--ink); }
+.dir-c .plate .cap .r { margin-left: auto; }
+.dir-c .btn {
+  display: inline-block; margin-top: 0.8rem;
+  border: 1px solid var(--ink); background: none; color: var(--ink);
+  font: inherit; font-size: 0.82rem; padding: 0.62rem 1.15rem;
+  border-radius: 2px; cursor: pointer; min-height: 44px;
+}
+.dir-c .btn.fill { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+.dir-c .foot {
+  display: flex; justify-content: space-around;
+  border-top: 1px solid var(--rule); padding: 0.55rem 0 calc(0.55rem + 18px);
+}
+.dir-c .foot a {
+  font-size: 0.72rem; color: var(--dim); text-decoration: none;
+  min-height: 44px; display: flex; align-items: center; padding: 0 0.8rem;
+}
+.dir-c .foot a[aria-current] { color: var(--ink); font-weight: 600; border-bottom: 1.5px solid var(--acc); }
+
+/* --- in-game: the chrome is one line, and it recedes --------------------- */
+
+.dir-c .gbar {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--rule);
+  min-height: 52px;
+}
+.dir-c .gbar .b { border: none; background: none; color: var(--dim); font-size: 1.1rem; cursor: pointer; width: 40px; height: 40px; border-radius: 50%; }
+.dir-c .gbar h2 { font-family: var(--serif); font-weight: 400; font-size: 1.08rem; margin: 0; }
+.dir-c .gbar .sp { flex: 1; }
+.dir-c .gbar .sel {
+  border: none; border-bottom: 1px solid var(--rule); background: none;
+  color: var(--ink); font: inherit; font-size: 0.78rem; cursor: pointer;
+  padding: 0.25rem 0.1rem;
+}
+
+.dir-c .meta {
+  display: flex; gap: 1.3rem; padding: 0.6rem 1.15rem;
+  font-size: 0.72rem; color: var(--dim); border-bottom: 1px solid var(--rule);
+}
+.dir-c .meta b { display: block; font-family: var(--serif); font-weight: 400; font-size: 1.15rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+.dir-c .meta .r { margin-left: auto; text-align: right; }
+
+.dir-c .stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.9rem; padding: 0 0.9rem; overflow: hidden; }
+
+.dir-c .acts { display: flex; gap: 0.6rem; padding: 0.7rem 1.15rem calc(0.7rem + 18px); border-top: 1px solid var(--rule); }
+.dir-c .acts button {
+  flex: 1; min-height: 46px; border-radius: 2px; cursor: pointer;
+  border: 1px solid var(--rule); background: none; color: var(--ink);
+  font: inherit; font-size: 0.84rem;
+}
+.dir-c .acts button.fill { background: var(--ink); color: var(--paper); border-color: var(--ink); font-weight: 600; }
+.dir-c .acts button.ic { flex: 0 0 48px; color: var(--dim); font-size: 1.05rem; }
+
+/* --- boards, rendered with less ink -------------------------------------- */
+
+.dir-c .felt-b { background: var(--felt); border-radius: 4px; padding: 0.6rem; width: 100%; display: flex; flex-direction: column; gap: 0.7rem; }
+.dir-c .row { display: flex; gap: 0.32rem; }
+.dir-c .pc { width: 44px; height: 62px; border-radius: 3px; background: var(--card); color: var(--suit-black); display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 600; font-size: 0.9rem; line-height: 1; font-family: var(--serif); }
+.dir-c .pc.red { color: var(--suit-red); }
+.dir-c .pc .s { font-size: 0.76rem; margin-top: 2px; }
+.dir-c .pc.back { background: repeating-linear-gradient(45deg, #c8a11f 0 4px, var(--felt) 4px 8px); }
+.dir-c .pc.slot { background: none; border: 1px dashed rgb(234 242 234 / 0.45); color: rgb(234 242 234 / 0.5); }
+.dir-c .pc.glow { outline: 2px solid #e0b93c; outline-offset: 1px; }
+.dir-c .stock { position: relative; }
+.dir-c .stock .n { position: absolute; inset: auto 0 -3px 0; margin: auto; width: 26px; background: var(--paper); color: var(--ink); border-radius: 999px; font-size: 0.68rem; text-align: center; padding: 1px 0; }
+.dir-c .fan { display: flex; flex-direction: column; }
+.dir-c .fan .pc + .pc { margin-top: -46px; }
+
+.dir-c .m3 { width: 100%; background: var(--paper2); border: 1px solid var(--rule); border-radius: 4px; padding: 0.4rem; display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; }
+.dir-c .m3 i { aspect-ratio: 1; border-radius: 4px; display: grid; place-items: center; font-size: 0.92rem; color: #fff; font-style: normal; }
+.dir-c .m3 i.g0 { background: #c62828; } .dir-c .m3 i.g1 { background: #15539f; }
+.dir-c .m3 i.g2 { background: #2e7d32; } .dir-c .m3 i.g3 { background: #7b1fa2; }
+.dir-c .m3 i.g4 { background: #8a5a00; } .dir-c .m3 i.g5 { background: #00697a; }
+.dir-c .m3 i.sel { outline: 2px solid var(--ink); outline-offset: 1px; }
+
+.dir-c .oth { width: 100%; background: var(--paper2); border: 1px solid var(--rule); border-radius: 4px; padding: 4px; display: grid; grid-template-columns: repeat(8, 1fr); gap: 1px; }
+.dir-c .oth i { aspect-ratio: 1; background: var(--paper); display: grid; place-items: center; font-style: normal; border: 0.5px solid var(--rule); }
+.dir-c .oth i b { width: 74%; aspect-ratio: 1; border-radius: 50%; display: block; }
+.dir-c .oth i.a b { background: #1c1a16; }
+.dir-c .oth i.b b { background: var(--paper); border: 1.5px solid #1c1a16; }
+.dir-c .oth i.l b { width: 20%; background: var(--acc); }
+
+.dir-c .vs { display: flex; align-items: center; gap: 0.7rem; width: 100%; padding-bottom: 0.7rem; border-bottom: 1px solid var(--rule); }
+.dir-c .vs img { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; }
+.dir-c .vs .w b { display: block; font-family: var(--serif); font-weight: 400; font-size: 1.02rem; }
+.dir-c .vs .w small { color: var(--dim); font-size: 0.71rem; }
+.dir-c .vs .sc { margin-left: auto; font-family: var(--serif); font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+
+.dir-c .note { font-size: 0.75rem; color: var(--dim); text-align: center; font-family: var(--serif); font-style: italic; }
+</style>
+</head>
+<body class="dir-c">
+<div class="h-wrap">
+  <a class="h-back" href="index.html">← All directions</a>
+  <p class="h-kicker">Direction C · quiet chrome · shelf structure</p>
+  <h1>The Pond</h1>
+  <p class="h-lede">
+    The opposite bet from B. Instead of matching the art's energy, the chrome goes completely
+    quiet — warm paper, hairline rules, a serif, a lot of air — so each piece of art is the only
+    loud thing on screen. The home page is a browsable index where the tier is a printed shelf
+    label with a sentence saying what it promises, because "you can re-check the result yourself"
+    is this shelf's real differentiator and no icon can say it.
+  </p>
+  <div class="h-switch" data-theme-switch>
+    <button aria-pressed="true" data-set="light">Light</button>
+    <button aria-pressed="false" data-set="dark">Dark</button>
+  </div>
+
+  <h2>Mobile — 390 × 844</h2>
+  <div class="h-rail">
+
+    <!-- HOME -->
+    <figure class="h-frame">
+      <figcaption><b>Home</b> — a catalogue, argued in words</figcaption>
+      <div class="screen" data-theme="light">
+        <div class="app">
+          <div class="mast">
+            <h1>fun.croft.ing</h1>
+            <span class="sp"></span>
+            <button aria-label="Search">⌕</button>
+            <button aria-label="Theme">☾</button>
+          </div>
+          <div class="nowplaying">
+            <span class="dot"></span> Now playing <em>Morning Miles</em>
+            <button>mute</button>
+          </div>
+
+          <div class="scroll">
+            <div class="plate">
+              <img src="brand/splash/ringpop.jpg" alt="" />
+              <div class="cap">
+                <b>Ring Pop</b> <span>Level 4 of 6</span>
+                <span class="r">★★☆</span>
+              </div>
+              <button class="btn fill">Continue</button>
+              <button class="btn">Start over</button>
+            </div>
+
+            <div class="shelf">
+              <p class="label">Shelf one</p>
+              <h2>Solo, and provable</h2>
+              <p class="blurb">Eleven games decided entirely in your browser. Each finished
+                board hands you a record anyone can re-check.</p>
+              <a class="item" href="#">
+                <img src="brand/icon/solitaire.jpg" alt="" />
+                <span class="t"><b>Solitaire</b><small>Klondike · today's deal</small></span>
+                <span class="mark">played</span>
+              </a>
+              <a class="item" href="#">
+                <img src="brand/icon/wyrdle.jpg" alt="" />
+                <span class="t"><b>Wyrdle</b><small>Five letters, six guesses</small></span>
+                <span class="go">›</span>
+              </a>
+              <a class="item" href="#">
+                <img src="brand/icon/color-sort.jpg" alt="" />
+                <span class="t"><b>Color Sort</b><small>Sixty levels</small></span>
+                <span class="go">›</span>
+              </a>
+              <a class="item" href="#">
+                <img src="brand/icon/2048.jpg" alt="" />
+                <span class="t"><b>2048</b><small>Today's board</small></span>
+                <span class="go">›</span>
+              </a>
+            </div>
+
+            <div class="shelf">
+              <p class="label">Shelf two</p>
+              <h2>Against the engine</h2>
+              <p class="blurb">Five opponents that will tell you, honestly, when they already
+                know they have won.</p>
+              <a class="item" href="#">
+                <img src="brand/icon/othello.jpg" alt="" />
+                <span class="t"><b>Othello</b><small>Rowan · four strengths</small></span>
+                <span class="go">›</span>
+              </a>
+            </div>
+          </div>
+
+          <nav class="foot">
+            <a href="#" aria-current="page">Shelf</a>
+            <a href="#">Today</a>
+            <a href="#">Record</a>
+          </nav>
+        </div>
+      </div>
+    </figure>
+
+    <!-- SOLITAIRE -->
+    <figure class="h-frame">
+      <figcaption><b>Solitaire</b> — the felt is the only saturated thing on screen</figcaption>
+      <div class="screen" data-theme="light">
+        <div class="app">
+          <div class="gbar">
+            <button class="b" aria-label="Back">‹</button>
+            <h2>Solitaire</h2>
+            <span class="sp"></span>
+            <button class="sel">Today's deal ▾</button>
+            <button class="b" aria-label="More">⋯</button>
+          </div>
+          <div class="meta">
+            <span>Moves <b>14</b></span>
+            <span>Time <b>3:20</b></span>
+            <span class="r">Deal <b>#240</b></span>
+          </div>
+          <div class="stage">
+            <div class="felt-b">
+              <div class="row">
+                <div class="pc back stock"><span class="n">24</span></div>
+                <div class="pc slot"></div>
+                <div style="flex:1"></div>
+                <div class="pc slot">♣</div>
+                <div class="pc slot">♦</div>
+              </div>
+              <div class="row">
+                <div class="fan"><div class="pc">4<span class="s">♠</span></div></div>
+                <div class="fan"><div class="pc back"></div><div class="pc red">K<span class="s">♦</span></div></div>
+                <div class="fan"><div class="pc back"></div><div class="pc back"></div><div class="pc red glow">A<span class="s">♥</span></div></div>
+                <div class="fan"><div class="pc back"></div><div class="pc back"></div><div class="pc back"></div><div class="pc red">3<span class="s">♥</span></div></div>
+                <div class="fan"><div class="pc back"></div><div class="pc back"></div><div class="pc back"></div><div class="pc back"></div><div class="pc red">9<span class="s">♦</span></div></div>
+                <div class="fan"><div class="pc back"></div><div class="pc back"></div><div class="pc back"></div><div class="pc back"></div><div class="pc back"></div><div class="pc red">6<span class="s">♥</span></div></div>
+              </div>
+            </div>
+            <p class="note">Every move is recorded. The finished deal re-checks itself.</p>
+          </div>
+          <div class="acts">
+            <button class="ic" aria-label="Undo">↶</button>
+            <button class="fill">Hint</button>
+            <button>Auto-play</button>
+            <button class="ic" aria-label="Settings">⚙</button>
+          </div>
+        </div>
+      </div>
+    </figure>
+
+    <!-- RING POP -->
+    <figure class="h-frame">
+      <figcaption><b>Ring Pop</b> — the same board, with the chrome turned down</figcaption>
+      <div class="screen" data-theme="light">
+        <div class="app">
+          <div class="gbar">
+            <button class="b" aria-label="Back">‹</button>
+            <h2>Ring Pop</h2>
+            <span class="sp"></span>
+            <button class="sel">Campaign 4 / 6 ▾</button>
+            <button class="b" aria-label="More">⋯</button>
+          </div>
+          <div class="meta">
+            <span>Score <b>708</b></span>
+            <span>Target <b>1416</b></span>
+            <span>Swaps <b>20</b></span>
+            <span class="r">Stars <b>★★☆</b></span>
+          </div>
+          <div class="stage">
+            <div class="m3">
+              <i class="g3">◆</i><i class="g3">◆</i><i class="g1">▲</i><i class="g3">◆</i><i class="g0">●</i><i class="g3">◆</i><i class="g3">◆</i><i class="g4">★</i>
+              <i class="g3">◆</i><i class="g4">★</i><i class="g3">◆</i><i class="g1">▲</i><i class="g3">◆</i><i class="g5">✚</i><i class="g1">▲</i><i class="g5">✚</i>
+              <i class="g0">●</i><i class="g4">★</i><i class="g0">●</i><i class="g2">■</i><i class="g4">★</i><i class="g1">▲</i><i class="g5">✚</i><i class="g3">◆</i>
+              <i class="g4">★</i><i class="g1">▲</i><i class="g4">★</i><i class="g5 sel">✚</i><i class="g1 sel">▲</i><i class="g3">◆</i><i class="g3">◆</i><i class="g1">▲</i>
+              <i class="g0">●</i><i class="g5">✚</i><i class="g5">✚</i><i class="g1">▲</i><i class="g5">✚</i><i class="g2">■</i><i class="g3">◆</i><i class="g2">■</i>
+              <i class="g0">●</i><i class="g3">◆</i><i class="g4">★</i><i class="g1">▲</i><i class="g1">▲</i><i class="g4">★</i><i class="g4">★</i><i class="g5">✚</i>
+              <i class="g5">✚</i><i class="g5">✚</i><i class="g3">◆</i><i class="g4">★</i><i class="g5">✚</i><i class="g2">■</i><i class="g5">✚</i><i class="g0">●</i>
+              <i class="g1">▲</i><i class="g5">✚</i><i class="g0">●</i><i class="g0">●</i><i class="g5">✚</i><i class="g4">★</i><i class="g2">■</i><i class="g2">■</i>
+            </div>
+            <p class="note">The outlined pair is a strong opener.</p>
+          </div>
+          <div class="acts">
+            <button class="ic" aria-label="Undo">↶</button>
+            <button class="fill">Hint</button>
+            <button>Restart</button>
+            <button class="ic" aria-label="Settings">⚙</button>
+          </div>
+        </div>
+      </div>
+    </figure>
+
+    <!-- OTHELLO -->
+    <figure class="h-frame">
+      <figcaption><b>Othello</b> — a paper board, not a felt one</figcaption>
+      <div class="screen" data-theme="light">
+        <div class="app">
+          <div class="gbar">
+            <button class="b" aria-label="Back">‹</button>
+            <h2>Othello</h2>
+            <span class="sp"></span>
+            <button class="sel">Medium ▾</button>
+            <button class="b" aria-label="More">⋯</button>
+          </div>
+          <div class="stage">
+            <div class="vs">
+              <img src="brand/icon/othello.jpg" alt="" />
+              <span class="w"><b>Rowan</b><small>Medium · plays white</small></span>
+              <span class="sc">2 – 2</span>
+            </div>
+            <div class="oth">
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i class="l"><b></b></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i class="l"><b></b></i><i class="b"><b></b></i><i class="a"><b></b></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i class="a"><b></b></i><i class="b"><b></b></i><i class="l"><b></b></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i class="l"><b></b></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+            <p class="note">Your move. Tap a marked square to flip the line between.</p>
+          </div>
+          <div class="acts">
+            <button class="ic" aria-label="Undo">↶</button>
+            <button class="fill">Hint</button>
+            <button>New game</button>
+            <button class="ic" aria-label="Settings">⚙</button>
+          </div>
+        </div>
+      </div>
+    </figure>
+
+  </div>
+
+  <h2>What this direction is betting on</h2>
+  <table class="h-table">
+    <tr><td>Identity</td><td>Warm paper, hairline rules, one umber accent, a serif for display. The chrome contributes no colour at all.</td></tr>
+    <tr><td>Home page</td><td>A shelf. Each tier gets a printed label and a sentence saying what it promises, so "provable" is argued rather than badged.</td></tr>
+    <tr><td>Art</td><td>Used sparingly and large — one plate per screenful, small precise tiles in the index. The restraint is what makes the art land.</td></tr>
+    <tr><td>Boards</td><td>Rendered with less ink. Othello becomes a paper board; Ring Pop drops the glow. Deliberately quieter than the art that sells it.</td></tr>
+    <tr><td>The risk</td><td>It may read as too calm for a games site — and it puts the chrome in tension with the art it is framing. Judge it against B side by side.</td></tr>
+  </table>
+</div>
+<script src="harness.js"></script>
+</body>
+</html>

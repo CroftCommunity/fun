@@ -4,6 +4,7 @@
 // clean, shareable, new-tab-able URLs with no client router or Pages 404 hack.
 // A second bundle (how-to.js) powers the shared "How to play" page (`/how-to/`).
 import { build } from "esbuild";
+import { skinInit } from "./tools/skin-init.mjs";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,15 +14,18 @@ const dist = join(root, "dist");
 
 // Game entry pages: "" is the home/drawer page (no game mounted); the rest carry
 // <body data-game> so the chrome knows what to mount.
-const GAME_PAGES = ["", "placeholder", "solitaire", "match3", "bubble", "wyrdle", "2048", "drop4", "othello", "checkers", "dots", "furrow", "align", "blockdoku", "looseends", "color-sort", "astray", "hexgl", "clumsybird", "orchard-drop", "cribbage"];
+const GAME_PAGES = ["", "placeholder", "solitaire", "match3", "bubble", "wyrdle", "2048", "drop4", "othello", "checkers", "dots", "furrow", "align", "blockdoku", "looseends", "color-sort", "orchard-drop", "cribbage"];
 
 // Tier-2 wrapped games: their vendored bundle ships under src/games/<id>/vendor/
 // and is served at /<id>/vendor/ for the sandboxed iframe to load same-origin.
-const TIER2_VENDORS = ["astray", "hexgl", "clumsybird", "orchard-drop"];
+const TIER2_VENDORS = ["orchard-drop"];
 
-// Pre-paint theme resolution: set [data-theme] before first paint so the felt
-// table never flashes the wrong theme. Same rule as src/theme.ts resolveTheme.
-const THEME_INIT = `(function(){try{var s=localStorage.getItem('fun-theme');var d=(s==='light'||s==='dark')?s:(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',d);}catch(e){}})();`;
+// Pre-paint skin resolution: set [data-skin] before first paint so a palette
+// never flashes. GENERATED from src/skins.ts rather than hand-kept, because the
+// script and the module must agree on the answer and two hand-kept lists are
+// exactly the pair that drifts — tests/skin-init.test.ts runs the emitted script
+// and asserts it lands where resolveSkin does.
+const SKIN_INIT = skinInit(await readFile(join(root, "src/skins.ts"), "utf8"));
 
 function page({ title, dataAttr = "", base, script, appDiv = false }) {
   return `<!doctype html>
@@ -32,7 +36,7 @@ function page({ title, dataAttr = "", base, script, appDiv = false }) {
     <title>${title}</title>
     <meta name="description" content="fun.croft.ing — the Croft games pond, a determinism-first local-first game shelf." />
     <meta name="theme-color" content="#1f5c3f" />
-    <script>${THEME_INIT}</script>
+    <script>${SKIN_INIT}</script>
     <link rel="stylesheet" href="${base}styles.css" />
   </head>
   <body${dataAttr}>
@@ -218,6 +222,15 @@ else console.warn("note: blockdoku-daily-pack.json missing — blockdoku's daily
 // the self-hosted display font.
 const assets = join(root, "assets");
 if (await exists(assets)) await cp(assets, join(dist, "assets"), { recursive: true });
+
+// Per-game assets: src/games/<id>/assets -> dist/<id>/assets. A game's own art
+// lives with the game (CLAUDE.md "Game isolation"), unlike the shelf-level
+// assets/ tree above. tests/art.test.ts asserts the registry's `cover: true`
+// claims match what is actually on disk, in both directions.
+for (const id of GAME_PAGES.filter(Boolean)) {
+  const from = join(root, "src", "games", id, "assets");
+  if (await exists(from)) await cp(from, join(dist, id, "assets"), { recursive: true });
+}
 
 // Tier-2 vendored bundles: copy src/games/<id>/vendor -> dist/<id>/vendor so the
 // wrapped game's sandboxed iframe loads it same-origin (no runtime third-party

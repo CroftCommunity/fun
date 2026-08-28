@@ -7,6 +7,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { SKINS } from "../src/skins.js";
+
 // Resolve from the repo root (vitest's cwd) rather than import.meta.url, which
 // the transform can rebase away from the real file.
 function read(rel: string): string {
@@ -43,13 +45,39 @@ function ratio(a: string, b: string): number {
 
 const css = read("tokens.css");
 
-function scope(name: "light" | "dark"): Record<string, string> {
-  const marker = '[data-theme="dark"]';
-  const block =
-    name === "light" ? css.slice(css.indexOf(":root"), css.indexOf(marker)) : css.slice(css.indexOf(marker));
+// Each SKIN carries exactly one palette (src/skins.ts). Resolving one means
+// doing what the cascade does: start from `:root`, then apply every block whose
+// selector list names this skin, in source order.
+//
+// It is NOT a slice between two markers. Since M4 the game palettes are shared
+// by every dark skin through a GROUPED selector —
+// `[data-skin="worlds-dark"], [data-skin="pond-dark"]` — precisely so the dark
+// game values are not hand-synced across families, which is the drift ADR-003
+// removed. A slicing parser reads that group as an empty block and grades the
+// wrong thing while staying green.
+function blocks(source: string): Array<{ selector: string; decls: Record<string, string> }> {
+  const out: Array<{ selector: string; decls: Record<string, string> }> = [];
+  // Strip comments first: without this the "selector" captured for the first
+  // block is the whole file header, and `:root` never matches at its end.
+  const clean = source.replace(/\/\*[\s\S]*?\*\//g, "");
+  for (const m of clean.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
+    const decls: Record<string, string> = {};
+    for (const d of (m[2] as string).matchAll(/--([\w-]+):\s*(#[0-9a-fA-F]{6})/g)) {
+      decls[d[1] as string] = d[2] as string;
+    }
+    out.push({ selector: (m[1] as string).trim(), decls });
+  }
+  return out;
+}
+
+const BLOCKS = blocks(css);
+
+function scope(skin: string): Record<string, string> {
   const map: Record<string, string> = {};
-  for (const m of block.matchAll(/--([\w-]+):\s*(#[0-9a-fA-F]{6})/g)) {
-    map[m[1] as string] = m[2] as string;
+  for (const b of BLOCKS) {
+    const isRoot = /(^|,)\s*:root\s*$/.test(b.selector);
+    const namesSkin = b.selector.includes(`[data-skin="${skin}"]`);
+    if (isRoot || namesSkin) Object.assign(map, b.decls);
   }
   return map;
 }
@@ -68,6 +96,12 @@ const PAIRS: ReadonlyArray<readonly [string, string, number]> = [
   ["suit-red", "card", 4.5],
   ["suit-black", "card", 4.5],
   ["felt-ink", "felt", 3], // labels/hints on the felt table — UI/large floor
+  // The home page (M3) puts --active on both grounds as text: the shelf
+  // layout's group label, and the "opened today" mark on a surface pill.
+  // Recorded here because a pair nothing asserts is a pair that can rot —
+  // axe caught --accent used the same way at 2.13:1 in the light palette.
+  ["active", "bg", 4.5],
+  ["active", "surface", 4.5],
   ["focus", "bg", 3], // focus ring is a UI indicator
   ["gem-0", "surface", 3], // match-3 gem glyphs on their tile — large-glyph floor
   ["gem-1", "surface", 3],
@@ -107,11 +141,11 @@ const PAIRS: ReadonlyArray<readonly [string, string, number]> = [
   ["fur-legal", "fur-well", 3],
 ];
 
-describe.each(["light", "dark"] as const)("tokens: %s theme clears WCAG AA", (name) => {
+describe.each(Object.keys(SKINS))("tokens: skin %s clears WCAG AA", (name) => {
   const map = scope(name);
   it.each(PAIRS)("%s on %s ≥ %s:1", (fg, bg, floor) => {
-    expect(map[fg], `missing --${fg} in ${name}`).toBeTruthy();
-    expect(map[bg], `missing --${bg} in ${name}`).toBeTruthy();
+    expect(map[fg], `missing --${fg} in skin ${name}`).toBeTruthy();
+    expect(map[bg], `missing --${bg} in skin ${name}`).toBeTruthy();
     expect(ratio(map[fg] as string, map[bg] as string)).toBeGreaterThanOrEqual(floor);
   });
 });

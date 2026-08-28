@@ -1,0 +1,166 @@
+/*
+ * Mock harness — the chrome AROUND the mocks, deliberately neutral and
+ * un-designed so it is never mistaken for one of the directions being compared.
+ * Nothing here is production CSS; `mocks/` is a design spike, not a build input.
+ *
+ * Frames are rendered at true 390x844 (iPhone-class) and 1280x800, unscaled, so
+ * what you read is what a device would render. Compare by scrolling the row.
+ */
+
+:root {
+  --h-bg: #16181a;
+  --h-panel: #1f2225;
+  --h-ink: #e8eae8;
+  --h-ink-dim: #9aa2a0;
+  --h-rule: #33383b;
+  --h-accent: #c8a11f;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--h-bg);
+  color: var(--h-ink);
+  font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--h-accent); }
+
+.h-wrap { max-width: 1180px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+
+.h-kicker {
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--h-ink-dim);
+  margin: 0 0 0.4rem;
+}
+
+.h-wrap h1 { font-size: 2rem; line-height: 1.15; margin: 0 0 0.6rem; letter-spacing: -0.02em; }
+.h-wrap h2 { font-size: 1.15rem; margin: 3rem 0 0.3rem; letter-spacing: -0.01em; }
+.h-lede { color: var(--h-ink-dim); max-width: 62ch; margin: 0 0 1.2rem; }
+.h-note { color: var(--h-ink-dim); font-size: 0.86rem; max-width: 72ch; }
+
+.h-back {
+  display: inline-block;
+  margin-bottom: 1.4rem;
+  font-size: 0.85rem;
+  text-decoration: none;
+  color: var(--h-ink-dim);
+}
+.h-back:hover { color: var(--h-ink); }
+
+/* --- the frame rail ------------------------------------------------------ */
+
+.h-rail {
+  display: flex;
+  gap: 1.5rem;
+  overflow-x: auto;
+  padding: 1.25rem 0 1.5rem;
+  scroll-snap-type: x proximity;
+}
+.h-rail::-webkit-scrollbar { height: 10px; }
+.h-rail::-webkit-scrollbar-thumb { background: var(--h-rule); border-radius: 5px; }
+
+.h-frame { flex: 0 0 auto; scroll-snap-align: start; }
+
+.h-frame > figcaption {
+  font-size: 0.78rem;
+  color: var(--h-ink-dim);
+  margin: 0 0 0.5rem;
+  letter-spacing: 0.03em;
+}
+.h-frame > figcaption b { color: var(--h-ink); font-weight: 600; letter-spacing: 0; }
+
+/* The device viewport. `contain` so a mock's fixed/absolute positioning is
+   scoped to the frame instead of escaping onto the harness page. */
+.screen {
+  width: 390px;
+  height: 844px;
+  overflow: hidden;
+  position: relative;
+  contain: layout paint style;
+  border-radius: 22px;
+  border: 1px solid var(--h-rule);
+  box-shadow: 0 12px 34px rgb(0 0 0 / 0.45);
+}
+.screen.desktop { width: 1180px; height: 740px; border-radius: 10px; }
+
+/* --- theme switch -------------------------------------------------------- */
+
+.h-switch { display: flex; gap: 0.4rem; align-items: center; margin: 0.4rem 0 0; }
+.h-switch button {
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--h-rule);
+  background: var(--h-panel);
+  color: var(--h-ink-dim);
+  cursor: pointer;
+}
+.h-switch button[aria-pressed="true"] {
+  background: var(--h-ink);
+  color: var(--h-bg);
+  border-color: var(--h-ink);
+}
+
+/* --- comparison table on the index -------------------------------------- */
+
+.h-table { width: 100%; border-collapse: collapse; margin: 1rem 0 0; font-size: 0.9rem; }
+.h-table th, .h-table td {
+  text-align: left;
+  padding: 0.6rem 0.9rem 0.6rem 0;
+  border-bottom: 1px solid var(--h-rule);
+  vertical-align: top;
+}
+.h-table th { color: var(--h-ink-dim); font-weight: 500; white-space: nowrap; }
+.h-table td:first-child { color: var(--h-ink-dim); white-space: nowrap; padding-right: 1.6rem; }
+
+.h-cards { display: grid; gap: 1.1rem; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin-top: 1.2rem; }
+/* These are the page's primary navigation, so they must not look like the
+   static .axis panels next to them: accent rule, an explicit affordance, and a
+   hover that lifts. An earlier revision styled them identically and they read
+   as content — nobody found the links. */
+.h-card {
+  display: flex;
+  flex-direction: column;
+  padding: 1.1rem 1.2rem 1.1rem;
+  border: 1px solid var(--h-rule);
+  border-left: 4px solid var(--h-accent);
+  border-radius: 12px;
+  background: var(--h-panel);
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+.h-card:hover {
+  border-color: var(--h-accent);
+  background: #262a2e;
+  transform: translateY(-2px);
+}
+.h-card h3 { margin: 0 0 0.15rem; font-size: 1.1rem; }
+.h-card p { margin: 0.4rem 0 0; color: var(--h-ink-dim); font-size: 0.87rem; }
+.h-card .h-tag { font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--h-accent); }
+.h-card .h-open {
+  margin-top: auto; padding-top: 0.9rem;
+  font-size: 0.85rem; font-weight: 600; color: var(--h-accent);
+}
+.h-card:hover .h-open { text-decoration: underline; text-underline-offset: 3px; }
+
+/* The jump bar directly under the lede — the fastest path to a mock. */
+.h-jump { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 1.4rem 0 0.5rem; }
+.h-jump a {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  padding: 0.75rem 1.15rem;
+  border-radius: 999px;
+  border: 1px solid var(--h-accent);
+  background: var(--h-accent);
+  color: #17190f;
+  text-decoration: none;
+  font-weight: 600; font-size: 0.9rem;
+}
+.h-jump a.alt { background: transparent; color: var(--h-accent); }
+.h-jump a:hover { background: #e5bd3a; color: #17190f; border-color: #e5bd3a; }

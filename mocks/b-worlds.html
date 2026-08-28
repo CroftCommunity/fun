@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Direction B — Gallery of Worlds · fun.croft.ing mocks</title>
+<link rel="stylesheet" href="harness.css" />
+<style>
+/* =========================================================================
+   DIRECTION B — "Gallery of Worlds"
+
+   Premise: the commissioned icons and splashes already ARE an identity —
+   dark, luminous, one saturated world per game. So the shelf chrome stops
+   competing with them. It goes near-black and near-silent, and borrows each
+   game's own accent as you move through it. The art is the design; the
+   chrome is the gallery lighting.
+
+   Structure: TODAY-FIRST. The home page opens on what you were doing and
+   what is waiting, because a returning player is the common case. The full
+   catalogue is one tap down, not the front door.
+   ========================================================================= */
+
+.dir-b .screen {
+  --bg: #0c0e11;          /* gallery black, faintly blue      */
+  --raise: #15191e;       /* a lit panel                      */
+  --raise2: #1e242b;      /* a pressed / nested panel         */
+  --ink: #f3f5f7;
+  --dim: #98a2ad;
+  --line: #262d35;
+  --acc: #d9b53c;         /* per-screen: overridden inline    */
+  --acc-ink: #14110a;
+  --good: #5ec98a;
+  --felt: #123f2b;
+  --card: #ece4d3;
+  --suit-red: #a8113a;
+  --suit-black: #1b201c;
+  background: var(--bg); color: var(--ink);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+/* The light variant exists to answer "does this survive light mode" honestly:
+   the ground turns warm paper, the art stays exactly as it is. */
+.dir-b .screen[data-theme="light"] {
+  --bg: #f4f1ea; --raise: #ffffff; --raise2: #ebe6da;
+  --ink: #191c1f; --dim: #5c6570; --line: #d9d2c4;
+  --acc-ink: #1b1608;
+  --good: #2f6b45;
+}
+
+.dir-b .app { display: flex; flex-direction: column; height: 100%; }
+.dir-b .scroll { flex: 1; overflow: hidden; }
+.dir-b .dsp { font-family: "Fredoka", "Baloo 2", system-ui, sans-serif; letter-spacing: -0.01em; }
+
+/* --- header: wordmark, music, theme -------------------------------------- */
+
+.dir-b .top {
+  display: flex; align-items: center; gap: 0.3rem;
+  padding: 0.5rem 0.5rem 0.5rem 0.9rem;
+  min-height: 52px;
+}
+.dir-b .mark { font-family: "Fredoka", "Baloo 2", system-ui, sans-serif; font-weight: 600; font-size: 1.1rem; }
+.dir-b .mark i { font-style: normal; color: var(--acc); }
+.dir-b .top .sp { flex: 1; }
+.dir-b .ib {
+  width: 40px; height: 40px; display: grid; place-items: center;
+  border: none; background: none; color: var(--dim); font-size: 1.02rem;
+  border-radius: 10px; cursor: pointer;
+}
+.dir-b .ib:hover { background: var(--raise); color: var(--ink); }
+
+/* The one persistent music control. Collapsed it is a note; tapping it opens
+   the track name. Mute state is remembered — it is the first thing a player
+   turns off, and asking twice is how you lose them. */
+.dir-b .music {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  height: 34px; padding: 0 0.7rem 0 0.55rem;
+  border-radius: 999px; border: 1px solid var(--line);
+  background: var(--raise); color: var(--dim);
+  font-size: 0.72rem; cursor: pointer;
+  max-width: 168px; overflow: hidden; white-space: nowrap;
+}
+.dir-b .music .eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; }
+.dir-b .music .eq b { width: 2.5px; background: var(--acc); border-radius: 1px; display: block; }
+.dir-b .music .eq b:nth-child(1) { height: 60%; }
+.dir-b .music .eq b:nth-child(2) { height: 100%; }
+.dir-b .music .eq b:nth-child(3) { height: 40%; }
+.dir-b .music.muted { color: color-mix(in srgb, var(--dim) 70%, transparent); }
+.dir-b .music.muted .eq b { background: var(--dim); height: 40%; }
+
+/* --- home: the hero is the world you were last in ------------------------ */
+
+.dir-b .hero { position: relative; height: 292px; overflow: hidden; }
+.dir-b .hero > img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dir-b .hero .veil {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, var(--bg) 4%, color-mix(in srgb, var(--bg) 55%, transparent) 42%, transparent 78%);
+}
+.dir-b .hero .txt { position: absolute; inset: auto 0 0 0; padding: 0 0.95rem 0.9rem; }
+.dir-b .hero .eyebrow {
+  font-size: 0.66rem; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--acc); font-weight: 700; margin-bottom: 0.25rem;
+}
+.dir-b .hero h2 { margin: 0; font-size: 1.72rem; font-weight: 600; }
+.dir-b .hero p { margin: 0.15rem 0 0.7rem; color: var(--dim); font-size: 0.82rem; }
+.dir-b .play {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  border: none; border-radius: 999px; cursor: pointer;
+  background: var(--acc); color: var(--acc-ink);
+  font: inherit; font-weight: 700; font-size: 0.9rem;
+  padding: 0.7rem 1.4rem; min-height: 46px;
+}
+.dir-b .ghost {
+  border: 1px solid var(--line); background: color-mix(in srgb, var(--raise) 70%, transparent);
+  color: var(--ink); border-radius: 999px; font: inherit; font-size: 0.82rem;
+  padding: 0.65rem 1rem; min-height: 46px; cursor: pointer; margin-left: 0.4rem;
+}
+
+/* --- sections ------------------------------------------------------------ */
+
+.dir-b .sec { padding: 1.15rem 0.95rem 0; }
+.dir-b .sec h3 {
+  font-family: "Fredoka", "Baloo 2", system-ui, sans-serif;
+  font-size: 0.98rem; font-weight: 600; margin: 0 0 0.1rem;
+  display: flex; align-items: baseline; gap: 0.45rem;
+}
+.dir-b .sec h3 em { font-style: normal; font-size: 0.72rem; color: var(--dim); font-weight: 400; font-family: var(--font-body, system-ui); }
+.dir-b .sec h3 a { margin-left: auto; font-size: 0.76rem; color: var(--acc); text-decoration: none; font-weight: 500; }
+.dir-b .sec > p { margin: 0 0 0.7rem; font-size: 0.76rem; color: var(--dim); }
+
+/* Today: an icon with a progress ring. Done games dim out rather than vanish. */
+.dir-b .today { display: flex; gap: 0.65rem; }
+.dir-b .today a { text-decoration: none; color: inherit; width: 62px; }
+.dir-b .ring { position: relative; width: 62px; height: 62px; }
+.dir-b .ring img { width: 100%; height: 100%; border-radius: 15px; display: block; object-fit: cover; }
+.dir-b .ring svg { position: absolute; inset: -4px; width: 70px; height: 70px; transform: rotate(-90deg); }
+.dir-b .ring circle { fill: none; stroke-width: 2.5; }
+.dir-b .ring .trk { stroke: var(--line); }
+.dir-b .ring .bar { stroke: var(--acc); stroke-linecap: round; }
+.dir-b .today a.done .ring img { opacity: 0.42; }
+.dir-b .today a.done .ring .bar { stroke: var(--good); }
+.dir-b .today b { display: block; font-size: 0.66rem; font-weight: 500; text-align: center; margin-top: 0.3rem; color: var(--dim); }
+
+/* The shelf: icons at the size an OS shows them, because that is where these
+   are going. Three up, named, nothing else. */
+.dir-b .shelf { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem 0.6rem; }
+.dir-b .shelf a { text-decoration: none; color: inherit; }
+.dir-b .shelf img { width: 100%; aspect-ratio: 1; border-radius: 17px; display: block; object-fit: cover; box-shadow: 0 3px 10px rgb(0 0 0 / 0.4); }
+.dir-b .shelf b { display: block; font-size: 0.64rem; font-weight: 500; text-align: center; margin-top: 0.32rem; color: var(--dim); }
+.dir-b .shelf .none {
+  width: 100%; aspect-ratio: 1; border-radius: 17px;
+  border: 1px dashed var(--line); display: grid; place-items: center;
+  font-size: 1.4rem; color: var(--line);
+}
+
+.dir-b .tabs {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--line); background: color-mix(in srgb, var(--bg) 88%, var(--raise));
+  padding-bottom: 18px;
+}
+.dir-b .tabs a {
+  min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; text-decoration: none; color: var(--dim); font-size: 0.66rem;
+}
+.dir-b .tabs a i { font-style: normal; font-size: 1.1rem; }
+.dir-b .tabs a[aria-current] { color: var(--acc); font-weight: 600; }
+
+/* --- in-game chrome ------------------------------------------------------ */
+
+.dir-b .gbar {
+  display: flex; align-items: center; gap: 0.35rem;
+  padding: 0.45rem 0.5rem; min-height: 52px;
+}
+.dir-b .gbar .ttl { display: flex; align-items: center; gap: 0.45rem; font-weight: 600; font-size: 0.98rem; }
+.dir-b .gbar .ttl img { width: 26px; height: 26px; border-radius: 7px; }
+.dir-b .chip {
+  border: 1px solid var(--line); background: var(--raise); color: var(--ink);
+  font: inherit; font-size: 0.73rem; font-weight: 600;
+  padding: 0.34rem 0.62rem; border-radius: 999px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 0.25rem;
+}
+.dir-b .chip.acc { border-color: color-mix(in srgb, var(--acc) 55%, transparent); color: var(--acc); }
+
+/* One status line. Never a stack. */
+.dir-b .stat {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 0.35rem 0.95rem 0.6rem; font-size: 0.76rem; color: var(--dim);
+}
+.dir-b .stat b { color: var(--ink); font-variant-numeric: tabular-nums; font-size: 0.88rem; }
+.dir-b .stat .r { margin-left: auto; }
+
+.dir-b .stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 0.75rem; gap: 0.7rem; overflow: hidden; }
+
+.dir-b .bar {
+  display: flex; gap: 0.5rem; align-items: center;
+  padding: 0.55rem 0.75rem calc(0.55rem + 18px);
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 88%, var(--raise));
+}
+.dir-b .bar button {
+  flex: 1; min-height: 46px; border-radius: 13px;
+  border: 1px solid var(--line); background: var(--raise); color: var(--ink);
+  font: inherit; font-size: 0.85rem; cursor: pointer;
+}
+.dir-b .bar button.pri { background: var(--acc); color: var(--acc-ink); border-color: var(--acc); font-weight: 700; flex: 1.35; }
+.dir-b .bar button.ic { flex: 0 0 50px; font-size: 1.05rem; color: var(--dim); }
+
+/* --- boards -------------------------------------------------------------- */
+
+.dir-b .felt-b { background: var(--felt); border-radius: 16px; padding: 0.6rem; width: 100%; display: flex; flex-direction: column; gap: 0.7rem; box-shadow: 0 10px 30px rgb(0 0 0 / 0.45), inset 0 1px 0 rgb(255 255 255 / 0.08); }
+.dir-b .row { display: flex; gap: 0.32rem; }
+.dir-b .pc { width: 44px; height: 62px; border-radius: 5px; background: var(--card); color: var(--suit-black); display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; line-height: 1; box-shadow: 0 1px 3px rgb(0 0 0 / 0.5); }
+.dir-b .pc.red { color: var(--suit-red); }
+.dir-b .pc .s { font-size: 0.76rem; margin-top: 2px; }
+.dir-b .pc.back { background: repeating-linear-gradient(45deg, #c8a11f 0 4px, var(--felt) 4px 8px); }
+.dir-b .pc.slot { background: none; border: 1.5px dashed rgb(223 234 223 / 0.45); color: rgb(223 234 223 / 0.55); box-shadow: none; }
+.dir-b .pc.glow { outline: 2.5px solid var(--acc); outline-offset: 1px; box-shadow: 0 0 14px color-mix(in srgb, var(--acc) 60%, transparent); }
+.dir-b .stock { position: relative; }
+.dir-b .stock .n { position: absolute; inset: auto 0 -3px 0; margin: auto; width: 26px; background: var(--raise); color: var(--ink); border-radius: 999px; font-size: 0.68rem; text-align: center; padding: 1px 0; }
+.dir-b .fan { display: flex; flex-direction: column; }
+.dir-b .fan .pc + .pc { margin-top: -46px; }
+
+.dir-b .m3 { width: 100%; background: #1a1230; border: 1px solid #2f2350; border-radius: 16px; padding: 0.45rem; display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; box-shadow: 0 10px 30px rgb(0 0 0 / 0.5); }
+.dir-b .m3 i { aspect-ratio: 1; border-radius: 8px; display: grid; place-items: center; font-size: 0.92rem; color: #fff; font-style: normal; background: #241a40; }
+.dir-b .m3 i.g0 { background: linear-gradient(160deg,#ff6b6b,#c62828); }
+.dir-b .m3 i.g1 { background: linear-gradient(160deg,#6fa8ff,#15539f); }
+.dir-b .m3 i.g2 { background: linear-gradient(160deg,#7fe08a,#2e7d32); }
+.dir-b .m3 i.g3 { background: linear-gradient(160deg,#d38ef5,#7b1fa2); }
+.dir-b .m3 i.g4 { background: linear-gradient(160deg,#ffd166,#c48a00); color: #2a1e00; }
+.dir-b .m3 i.g5 { background: linear-gradient(160deg,#5fd6e8,#00697a); }
+.dir-b .m3 i.sel { outline: 3px solid var(--acc); outline-offset: -1px; box-shadow: 0 0 16px color-mix(in srgb, var(--acc) 70%, transparent); }
+
+.dir-b .goal { display: flex; align-items: center; gap: 0.7rem; width: 100%; padding: 0.55rem 0.7rem; background: var(--raise); border: 1px solid var(--line); border-radius: 14px; }
+.dir-b .goal .l { font-size: 0.63rem; color: var(--dim); text-transform: uppercase; letter-spacing: 0.09em; display: block; }
+.dir-b .goal .v { font-size: 1.05rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.dir-b .goal .prog { flex: 1; height: 7px; border-radius: 999px; background: var(--raise2); overflow: hidden; }
+.dir-b .goal .prog span { display: block; height: 100%; background: linear-gradient(90deg, var(--acc), #ff9de2); }
+.dir-b .stars { color: var(--acc); font-size: 0.85rem; letter-spacing: 1px; }
+
+.dir-b .oth { width: 100%; background: #0f4b2e; border-radius: 14px; padding: 5px; display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; box-shadow: 0 10px 30px rgb(0 0 0 / 0.45); }
+.dir-b .oth i { aspect-ratio: 1; background: #157a49; display: grid; place-items: center; font-style: normal; border-radius: 2px; }
+.dir-b .oth i b { width: 76%; aspect-ratio: 1; border-radius: 50%; display: block; }
+.dir-b .oth i.a b { background: radial-gradient(circle at 34% 30%, #4a4f57, #131519); box-shadow: 0 1px 3px rgb(0 0 0 / 0.6); }
+.dir-b .oth i.b b { background: radial-gradient(circle at 34% 30%, #ffffff, #d9d3c6); box-shadow: 0 1px 3px rgb(0 0 0 / 0.5); }
+.dir-b .oth i.l b { width: 24%; background: var(--acc); box-shadow: 0 0 10px var(--acc); }
+
+.dir-b .vs { display: flex; align-items: center; gap: 0.6rem; width: 100%; padding: 0.5rem 0.65rem; background: var(--raise); border: 1px solid var(--line); border-radius: 14px; }
+.dir-b .vs .face { width: 42px; height: 42px; border-radius: 12px; object-fit: cover; flex: 0 0 auto; }
+.dir-b .vs .who b { display: block; font-size: 0.88rem; }
+.dir-b .vs .who small { color: var(--dim); font-size: 0.7rem; }
+.dir-b .sc { margin-left: auto; display: flex; gap: 0.5rem; font-variant-numeric: tabular-nums; }
+.dir-b .sc em { font-style: normal; display: flex; align-items: center; gap: 0.25rem; font-weight: 700; }
+.dir-b .sc em i { width: 13px; height: 13px; border-radius: 50%; display: inline-block; }
+.dir-b .sc em i.a { background: #16181d; border: 1px solid var(--line); }
+.dir-b .sc em i.b { background: #f6f4ef; }
+
+.dir-b .tip { width: 100%; font-size: 0.75rem; color: var(--dim); text-align: center; }
+</style>
+</head>
+<body class="dir-b">
+<div class="h-wrap">
+  <a class="h-back" href="index.html">← All directions</a>
+  <p class="h-kicker">Direction B · identity re-based on the commissioned art · today-first</p>
+  <h1>Gallery of Worlds</h1>
+  <p class="h-lede">
+    The icons and splashes already are an identity — dark, luminous, one saturated world per
+    game. So the chrome stops competing: it goes near-black and near-silent, and borrows each
+    game's own accent as you move. The art is the design; the chrome is the gallery lighting.
+    The home page opens on <em>what you were doing</em>, because a returning player is the
+    common case.
+  </p>
+  <div class="h-switch" data-theme-switch>
+    <button aria-pressed="true" data-set="dark">Dark</button>
+    <button aria-pressed="false" data-set="light">Light</button>
+  </div>
+
+  <h2>Mobile — 390 × 844</h2>
+  <div class="h-rail">
+
+    <!-- HOME -->
+    <figure class="h-frame">
+      <figcaption><b>Home</b> — the hero is the world you were last in</figcaption>
+      <div class="screen" data-theme="dark" style="--acc:#c98ef5">
+        <div class="app">
+          <div class="top">
+            <span class="mark">fun<i>.</i></span>
+            <span class="sp"></span>
+            <button class="music"><span class="eq"><b></b><b></b><b></b></span> Morning Miles</button>
+            <button class="ib" aria-label="Search">⌕</button>
+          </div>
+
+          <div class="scroll">
+            <div class="hero">
+              <img src="brand/splash/ringpop.jpg" alt="" />
+              <div class="veil"></div>
+              <div class="txt">
+                <div class="eyebrow">Continue</div>
+                <h2 class="dsp">Ring Pop</h2>
+                <p>Campaign · Level 4 of 6 · ★★☆ · 2,124 to beat</p>
+                <button class="play">▸ Play</button>
+                <button class="ghost">Start over</button>
+              </div>
+            </div>
+
+            <div class="sec">
+              <h3>Today <em>1 of 5</em><a href="#">All →</a></h3>
+              <p>A fresh board every day. Everyone gets the same one.</p>
+              <div class="today">
+                <a href="#" class="done"><span class="ring"><img src="brand/icon/solitaire.jpg" alt="" /><svg viewBox="0 0 70 70"><circle class="trk" cx="35" cy="35" r="33"/><circle class="bar" cx="35" cy="35" r="33" stroke-dasharray="207" stroke-dashoffset="0"/></svg></span><b>Solitaire</b></a>
+                <a href="#"><span class="ring"><img src="brand/icon/wyrdle.jpg" alt="" /><svg viewBox="0 0 70 70"><circle class="trk" cx="35" cy="35" r="33"/><circle class="bar" cx="35" cy="35" r="33" stroke-dasharray="207" stroke-dashoffset="145"/></svg></span><b>Wyrdle</b></a>
+                <a href="#"><span class="ring"><img src="brand/icon/2048.jpg" alt="" /><svg viewBox="0 0 70 70"><circle class="trk" cx="35" cy="35" r="33"/><circle class="bar" cx="35" cy="35" r="33" stroke-dasharray="207" stroke-dashoffset="207"/></svg></span><b>2048</b></a>
+                <a href="#"><span class="ring"><img src="brand/icon/bubble.jpg" alt="" /><svg viewBox="0 0 70 70"><circle class="trk" cx="35" cy="35" r="33"/><circle class="bar" cx="35" cy="35" r="33" stroke-dasharray="207" stroke-dashoffset="207"/></svg></span><b>Bubble</b></a>
+                <a href="#"><span class="ring"><img src="brand/icon/color-sort.jpg" alt="" /><svg viewBox="0 0 70 70"><circle class="trk" cx="35" cy="35" r="33"/><circle class="bar" cx="35" cy="35" r="33" stroke-dasharray="207" stroke-dashoffset="207"/></svg></span><b>Color Sort</b></a>
+              </div>
+            </div>
+
+            <div class="sec">
+              <h3>Your shelf <em>20</em><a href="#">Install →</a></h3>
+              <div class="shelf">
+                <a href="#"><img src="brand/icon/ringpop.jpg" alt="" /><b>Ring Pop</b></a>
+                <a href="#"><img src="brand/icon/othello.jpg" alt="" /><b>Othello</b></a>
+                <a href="#"><img src="brand/icon/looseends.jpg" alt="" /><b>Loose Ends</b></a>
+                <a href="#"><img src="brand/icon/orchard-drop.jpg" alt="" /><b>Orchard</b></a>
+                <a href="#"><img src="brand/icon/align.jpg" alt="" /><b>Align</b></a>
+                <a href="#"><img src="brand/icon/color-sort.jpg" alt="" /><b>Color Sort</b></a>
+                <a href="#"><img src="brand/icon/wyrdle.jpg" alt="" /><b>Wyrdle</b></a>
+                <a href="#"><img src="brand/icon/2048.jpg" alt="" /><b>2048</b></a>
+              </div>
+            </div>
+          </div>
+
+          <nav class="tabs">
+            <a href="#" aria-current="page"><i>◷</i>Today</a>
+            <a href="#"><i>▦</i>Shelf</a>
+            <a href="#"><i>☺</i>You</a>
+          </nav>
+        </div>
+      </div>
+    </figure>
+
+    <!-- SOLITAIRE -->
+    <figure class="h-frame">
+      <figcaption><b>Solitaire</b> — gold accent; the felt keeps its own world</figcaption>
+      <div class="screen" data-theme="dark" style="--acc:#e0b93c">
+        <div class="app">
+          <div class="gbar">
+            <button class="ib" aria-label="Back">‹</button>
+            <span class="ttl"><img src="brand/icon/solitaire.jpg" alt="" />Solitaire</span>
+            <span class="sp" style="flex:1"></span>
+            <button class="chip">Today ▾</button>
+            <button class="ib" aria-label="More">⋯</button>
+          </div>
+          <div class="stat">
+            <span>Moves <b>14</b></span><span>Time <b>3:20</b></span>
+            <span class="r">Deal <b>#240</b></span>
+          </div>
+          <div class="stage">
+            <div class="felt-b">
+              <div class="row">
+                <div class="pc back stock"><span class="n">24</span></div>
+                <div class="pc slot"></div>
+                <div style="flex:1"></div>
+                <div class="pc slot">♣</div>
+                <div class="pc slot">♦</div>
+              </div>
+              <div class="row">
+                <div class="fan"><div class="pc">4<span class="s">♠</span></div></div>
+                <div class="fan"><div class="pc back"></div><div class="pc red">K<span class="s">♦</span></div></div>
+                <div class="fan"><div class="pc back"></div><div class="pc back"></div><div class="pc red glow">A<span class="s">♥</span></div></div>
+                <div class="fan"><div class="pc back"></div><div class="pc back"></div><div class="pc back"></div><div class="pc red">3<span class="s">♥</span></div></div>
+                <div class="fan"><div class="pc back"></div><div class="pc back"></div><div class="pc back"></div><div class="pc back"></div><div class="pc red">9<span class="s">♦</span></div></div>
+                <div class="fan"><div class="pc back"></div><div class="pc back"></div><div class="pc back"></div><div class="pc back"></div><div class="pc back"></div><div class="pc red">6<span class="s">♥</span></div></div>
+              </div>
+            </div>
+            <p class="tip">Verifiable deal — your finished move list re-checks itself.</p>
+          </div>
+          <div class="bar">
+            <button class="ic" aria-label="Undo">↶</button>
+            <button class="pri">Hint</button>
+            <button>Auto</button>
+            <button class="ic" aria-label="Settings">⚙</button>
+          </div>
+        </div>
+      </div>
+    </figure>
+
+    <!-- RING POP -->
+    <figure class="h-frame">
+      <figcaption><b>Ring Pop</b> — 13 pills become one chip, one goal bar, one action row</figcaption>
+      <div class="screen" data-theme="dark" style="--acc:#c98ef5">
+        <div class="app">
+          <div class="gbar">
+            <button class="ib" aria-label="Back">‹</button>
+            <span class="ttl"><img src="brand/icon/ringpop.jpg" alt="" />Ring Pop</span>
+            <span class="sp" style="flex:1"></span>
+            <button class="chip acc">Campaign 4/6 ▾</button>
+            <button class="ib" aria-label="More">⋯</button>
+          </div>
+          <div class="stat">
+            <span>Swaps <b>20</b></span>
+            <span class="stars">★★☆</span>
+            <span class="r">Target score</span>
+          </div>
+          <div class="stage">
+            <div class="goal">
+              <span><span class="l">Score</span><span class="v">708 <small style="font-size:0.72rem;color:var(--dim);font-weight:400">/ 1416</small></span></span>
+              <span class="prog"><span style="width:50%"></span></span>
+            </div>
+            <div class="m3">
+              <i class="g3">◆</i><i class="g3">◆</i><i class="g1">▲</i><i class="g3">◆</i><i class="g0">●</i><i class="g3">◆</i><i class="g3">◆</i><i class="g4">★</i>
+              <i class="g3">◆</i><i class="g4">★</i><i class="g3">◆</i><i class="g1">▲</i><i class="g3">◆</i><i class="g5">✚</i><i class="g1">▲</i><i class="g5">✚</i>
+              <i class="g0">●</i><i class="g4">★</i><i class="g0">●</i><i class="g2">■</i><i class="g4">★</i><i class="g1">▲</i><i class="g5">✚</i><i class="g3">◆</i>
+              <i class="g4">★</i><i class="g1">▲</i><i class="g4">★</i><i class="g5 sel">✚</i><i class="g1 sel">▲</i><i class="g3">◆</i><i class="g3">◆</i><i class="g1">▲</i>
+              <i class="g0">●</i><i class="g5">✚</i><i class="g5">✚</i><i class="g1">▲</i><i class="g5">✚</i><i class="g2">■</i><i class="g3">◆</i><i class="g2">■</i>
+              <i class="g0">●</i><i class="g3">◆</i><i class="g4">★</i><i class="g1">▲</i><i class="g1">▲</i><i class="g4">★</i><i class="g4">★</i><i class="g5">✚</i>
+              <i class="g5">✚</i><i class="g5">✚</i><i class="g3">◆</i><i class="g4">★</i><i class="g5">✚</i><i class="g2">■</i><i class="g5">✚</i><i class="g0">●</i>
+              <i class="g1">▲</i><i class="g5">✚</i><i class="g0">●</i><i class="g0">●</i><i class="g5">✚</i><i class="g4">★</i><i class="g2">■</i><i class="g2">■</i>
+            </div>
+            <p class="tip">The glowing pair is a good opener.</p>
+          </div>
+          <div class="bar">
+            <button class="ic" aria-label="Undo">↶</button>
+            <button class="pri">Hint</button>
+            <button>Restart</button>
+            <button class="ic" aria-label="Settings">⚙</button>
+          </div>
+        </div>
+      </div>
+    </figure>
+
+    <!-- OTHELLO -->
+    <figure class="h-frame">
+      <figcaption><b>Othello</b> — the opponent is a character, not two <code>&lt;select&gt;</code>s</figcaption>
+      <div class="screen" data-theme="dark" style="--acc:#e0b93c">
+        <div class="app">
+          <div class="gbar">
+            <button class="ib" aria-label="Back">‹</button>
+            <span class="ttl"><img src="brand/icon/othello.jpg" alt="" />Othello</span>
+            <span class="sp" style="flex:1"></span>
+            <button class="chip">Medium ▾</button>
+            <button class="ib" aria-label="More">⋯</button>
+          </div>
+          <div class="stage">
+            <div class="vs">
+              <img class="face" src="brand/icon/othello.jpg" alt="" />
+              <span class="who"><b>Rowan</b><small>Medium · plays white · thinking…</small></span>
+              <span class="sc"><em><i class="a"></i>2</em><em><i class="b"></i>2</em></span>
+            </div>
+            <div class="oth">
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i class="l"><b></b></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i class="l"><b></b></i><i class="b"><b></b></i><i class="a"><b></b></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i class="a"><b></b></i><i class="b"><b></b></i><i class="l"><b></b></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i class="l"><b></b></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+            <p class="tip">Your move — tap a glowing dot to flip the line.</p>
+          </div>
+          <div class="bar">
+            <button class="ic" aria-label="Undo">↶</button>
+            <button class="pri">Hint</button>
+            <button>New game</button>
+            <button class="ic" aria-label="Settings">⚙</button>
+          </div>
+        </div>
+      </div>
+    </figure>
+
+  </div>
+
+  <h2>What this direction is betting on</h2>
+  <table class="h-table">
+    <tr><td>Identity</td><td>Re-based on the commissioned art. Near-black gallery ground; each screen borrows that game's accent (<code>--acc</code>), so moving between games feels like moving between rooms.</td></tr>
+    <tr><td>Home page</td><td>Today-first. Hero = the world you were last in, then today's boards, then the shelf as an icon grid at OS size.</td></tr>
+    <tr><td>Art</td><td>Splashes as heroes, icons as the shelf. Ten games are covered today; ten still need art.</td></tr>
+    <tr><td>Music</td><td>One persistent control in the header, showing the running track. Mute is remembered.</td></tr>
+    <tr><td>Light mode</td><td>Ground turns warm paper, art unchanged. Toggle it above — this is the honest test of whether the direction survives a light theme.</td></tr>
+    <tr><td>Cost</td><td>New token set, new contrast table, and the per-game accent has to be defined for all twenty. Ten games need art commissioned.</td></tr>
+  </table>
+</div>
+<script src="harness.js"></script>
+</body>
+</html>

@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PWA — install, splash, standalone · fun.croft.ing mocks</title>
+<link rel="stylesheet" href="harness.css" />
+<style>
+/* =========================================================================
+   THE PWA SET
+
+   Still not built. `TODO/pwa.md` says the shelf has no manifest and no service
+   worker at all, and `plans/2026-08-11-pwa-install-per-game-and-shelf.md` is
+   gated on ONE unverified claim: whether distinct manifest `id` values really
+   produce separate installs under nested scope.
+
+   CORRECTED 2026-08-28, because these frames encoded a wrong model. An earlier
+   note said Android "accepts no splash image" — true of the manifest, and read
+   (reasonably) as "Android has no splash". It has one: Chrome COMPOSES it from
+   `background_color`, a large raster icon and `name`. And the splash you
+   actually DESIGN is neither of those: it is an ordinary page you write, reached
+   by pointing `start_url` at it, which hands off to the app on a timer or a tap.
+   That works everywhere precisely because it is not a platform feature. Frame 4
+   is that page. Full writeup, now a workspace standard:
+   `croft-pwa/docs/PWA-INSTALL.md`.
+
+   Chrome here follows Direction B, since these screens only exist once the art
+   is doing the work.
+   ========================================================================= */
+
+.dir-p .screen {
+  --bg: #0c0e11; --raise: #15191e; --raise2: #1e242b;
+  --ink: #f3f5f7; --dim: #98a2ad; --line: #262d35;
+  --acc: #d9b53c; --acc-ink: #14110a; --good: #5ec98a;
+  background: var(--bg); color: var(--ink);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.dir-p .screen[data-theme="light"] {
+  --bg: #f4f1ea; --raise: #ffffff; --raise2: #ebe6da;
+  --ink: #191c1f; --dim: #5c6570; --line: #d9d2c4; --acc-ink: #1b1608;
+}
+.dir-p .app { display: flex; flex-direction: column; height: 100%; position: relative; }
+.dir-p .dsp { font-family: "Fredoka", "Baloo 2", system-ui, sans-serif; letter-spacing: -0.01em; }
+
+/* --- 1. the in-page install invitation ----------------------------------- */
+
+.dir-p .top { display: flex; align-items: center; gap: 0.3rem; padding: 0.5rem 0.5rem 0.5rem 0.9rem; min-height: 52px; }
+.dir-p .mark { font-family: "Fredoka", system-ui, sans-serif; font-weight: 600; font-size: 1.1rem; }
+.dir-p .mark i { font-style: normal; color: var(--acc); }
+.dir-p .sp { flex: 1; }
+.dir-p .ib { width: 40px; height: 40px; display: grid; place-items: center; border: none; background: none; color: var(--dim); font-size: 1rem; border-radius: 10px; cursor: pointer; }
+
+/* Offered per game, at the moment the player has shown they like it — not on
+   arrival. The size is stated up front, because a wrap can be large and a
+   surprise download is exactly the thing this shelf says it does not do. */
+.dir-p .invite {
+  margin: 0.9rem; padding: 0.95rem;
+  background: var(--raise); border: 1px solid var(--line); border-radius: 16px;
+}
+.dir-p .invite .hd { display: flex; gap: 0.75rem; align-items: center; }
+.dir-p .invite img { width: 54px; height: 54px; border-radius: 14px; }
+.dir-p .invite .hd b { display: block; font-size: 0.98rem; }
+.dir-p .invite .hd small { color: var(--dim); font-size: 0.76rem; }
+.dir-p .invite p { margin: 0.7rem 0 0; font-size: 0.8rem; color: var(--dim); line-height: 1.45; }
+.dir-p .invite .btns { display: flex; gap: 0.5rem; margin-top: 0.85rem; }
+.dir-p .invite button {
+  flex: 1; min-height: 46px; border-radius: 12px; cursor: pointer;
+  border: 1px solid var(--line); background: transparent; color: var(--ink); font: inherit; font-size: 0.85rem;
+}
+.dir-p .invite button.pri { background: var(--acc); color: var(--acc-ink); border-color: var(--acc); font-weight: 700; }
+.dir-p .facts { margin-top: 0.75rem; border-top: 1px solid var(--line); padding-top: 0.6rem; }
+.dir-p .facts div { display: flex; font-size: 0.74rem; color: var(--dim); padding: 0.2rem 0; }
+.dir-p .facts div b { margin-left: auto; color: var(--ink); font-weight: 500; }
+
+/* --- 2. the OS "add to home screen" sheet -------------------------------- */
+
+.dir-p .dim { position: absolute; inset: 0; background: rgb(0 0 0 / 0.55); }
+.dir-p .sheet {
+  position: absolute; inset: auto 0 0 0;
+  background: #2b2f36; border-radius: 18px 18px 0 0;
+  padding: 0.9rem 1rem calc(0.9rem + 18px);
+  box-shadow: 0 -8px 40px rgb(0 0 0 / 0.5);
+}
+.dir-p .sheet .grab { width: 36px; height: 4px; border-radius: 2px; background: #555c66; margin: 0 auto 0.9rem; }
+.dir-p .sheet h3 { margin: 0 0 0.9rem; font-size: 1.05rem; color: #fff; font-weight: 600; }
+.dir-p .sheet .app-row { display: flex; gap: 0.8rem; align-items: center; padding: 0.55rem 0; }
+.dir-p .sheet .app-row img { width: 52px; height: 52px; border-radius: 13px; }
+.dir-p .sheet .app-row b { display: block; color: #fff; font-size: 0.95rem; }
+.dir-p .sheet .app-row small { color: #a7aeb8; font-size: 0.76rem; }
+.dir-p .sheet .go { display: flex; gap: 0.6rem; margin-top: 1rem; }
+.dir-p .sheet .go button { flex: 1; min-height: 46px; border-radius: 999px; border: none; font: inherit; font-size: 0.9rem; cursor: pointer; }
+.dir-p .sheet .go .cancel { background: #3b414a; color: #e6e9ed; }
+.dir-p .sheet .go .add { background: #6ea8ff; color: #05203f; font-weight: 700; }
+
+/* --- 3. the phone home screen -------------------------------------------- */
+
+.dir-p .os {
+  height: 100%;
+  background: linear-gradient(165deg, #2b3a52 0%, #4a3757 46%, #7a4a54 100%);
+  display: flex; flex-direction: column;
+  padding: 2.4rem 1.1rem 0;
+}
+.dir-p .os .clock { text-align: center; color: #fff; margin-bottom: 1.6rem; }
+.dir-p .os .clock b { display: block; font-size: 3.1rem; font-weight: 300; line-height: 1; letter-spacing: -0.02em; }
+.dir-p .os .clock small { font-size: 0.82rem; opacity: 0.85; }
+.dir-p .os .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.15rem 0.9rem; }
+.dir-p .os .grid a { text-decoration: none; }
+.dir-p .os .grid img, .dir-p .os .grid .stub {
+  width: 100%; aspect-ratio: 1; border-radius: 19px; display: block; object-fit: cover;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.35);
+}
+.dir-p .os .grid .stub { background: rgb(255 255 255 / 0.15); display: grid; place-items: center; font-size: 1.5rem; }
+.dir-p .os .grid b { display: block; text-align: center; font-size: 0.63rem; font-weight: 400; color: #fff; margin-top: 0.34rem; text-shadow: 0 1px 3px rgb(0 0 0 / 0.6); }
+.dir-p .os .dock {
+  margin-top: auto; margin-bottom: 0.8rem;
+  background: rgb(255 255 255 / 0.18); border-radius: 26px; padding: 0.7rem;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.9rem;
+  backdrop-filter: blur(12px);
+}
+.dir-p .os .dock img, .dir-p .os .dock .stub { width: 100%; aspect-ratio: 1; border-radius: 17px; object-fit: cover; display: block; }
+.dir-p .os .dock .stub { background: rgb(255 255 255 / 0.2); }
+.dir-p .callout {
+  position: absolute; left: 12px; right: 12px; bottom: 92px;
+  background: rgb(12 14 17 / 0.92); border: 1px solid #3a424c; border-radius: 12px;
+  padding: 0.6rem 0.75rem; font-size: 0.72rem; color: #cfd6de; line-height: 1.4;
+}
+.dir-p .callout b { color: var(--acc); }
+
+/* --- 4. the launch splash ------------------------------------------------ */
+
+.dir-p .splash { position: relative; height: 100%; }
+.dir-p .splash img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dir-p .splash .bot { position: absolute; inset: auto 0 0 0; padding: 0 0 46px; text-align: center; }
+.dir-p .spin {
+  width: 26px; height: 26px; margin: 0 auto 0.6rem;
+  border-radius: 50%; border: 2.5px solid rgb(255 255 255 / 0.22);
+  border-top-color: var(--acc);
+}
+.dir-p .splash .bot small { color: rgb(255 255 255 / 0.55); font-size: 0.7rem; letter-spacing: 0.05em; }
+
+/* --- 5. standalone chrome + music sheet ---------------------------------- */
+
+.dir-p .statusbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.6rem 1.15rem 0.35rem; font-size: 0.76rem; font-weight: 600;
+  color: var(--ink);
+}
+.dir-p .statusbar .icons { display: flex; gap: 0.35rem; opacity: 0.85; font-size: 0.7rem; }
+.dir-p .gbar { display: flex; align-items: center; gap: 0.35rem; padding: 0.3rem 0.5rem 0.45rem; min-height: 46px; }
+.dir-p .gbar .ttl { display: flex; align-items: center; gap: 0.45rem; font-weight: 600; font-size: 0.98rem; }
+.dir-p .gbar .ttl img { width: 26px; height: 26px; border-radius: 7px; }
+.dir-p .chip { border: 1px solid var(--line); background: var(--raise); color: var(--ink); font: inherit; font-size: 0.73rem; font-weight: 600; padding: 0.34rem 0.62rem; border-radius: 999px; cursor: pointer; }
+.dir-p .stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 0.75rem; gap: 0.8rem; }
+.dir-p .m3 { width: 100%; background: #1a1230; border: 1px solid #2f2350; border-radius: 16px; padding: 0.45rem; display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; }
+.dir-p .m3 i { aspect-ratio: 1; border-radius: 8px; display: grid; place-items: center; font-size: 0.92rem; color: #fff; font-style: normal; }
+.dir-p .m3 i.g0 { background: linear-gradient(160deg,#ff6b6b,#c62828); }
+.dir-p .m3 i.g1 { background: linear-gradient(160deg,#6fa8ff,#15539f); }
+.dir-p .m3 i.g2 { background: linear-gradient(160deg,#7fe08a,#2e7d32); }
+.dir-p .m3 i.g3 { background: linear-gradient(160deg,#d38ef5,#7b1fa2); }
+.dir-p .m3 i.g4 { background: linear-gradient(160deg,#ffd166,#c48a00); color: #2a1e00; }
+.dir-p .m3 i.g5 { background: linear-gradient(160deg,#5fd6e8,#00697a); }
+.dir-p .bar { display: flex; gap: 0.5rem; padding: 0.55rem 0.75rem calc(0.55rem + 18px); border-top: 1px solid var(--line); }
+.dir-p .bar button { flex: 1; min-height: 46px; border-radius: 13px; border: 1px solid var(--line); background: var(--raise); color: var(--ink); font: inherit; font-size: 0.85rem; cursor: pointer; }
+.dir-p .bar button.pri { background: var(--acc); color: var(--acc-ink); border-color: var(--acc); font-weight: 700; flex: 1.35; }
+.dir-p .bar button.ic { flex: 0 0 50px; color: var(--dim); font-size: 1.05rem; }
+
+.dir-p .msheet {
+  position: absolute; inset: auto 0 0 0;
+  background: var(--raise); border-top: 1px solid var(--line);
+  border-radius: 18px 18px 0 0; padding: 0.75rem 1rem calc(0.9rem + 18px);
+}
+.dir-p .msheet .grab { width: 36px; height: 4px; border-radius: 2px; background: var(--line); margin: 0 auto 0.85rem; }
+.dir-p .msheet h4 { margin: 0 0 0.7rem; font-size: 0.66rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--dim); }
+.dir-p .trk { display: flex; align-items: center; gap: 0.7rem; padding: 0.5rem 0; border-bottom: 1px solid var(--line); }
+.dir-p .trk:last-of-type { border-bottom: none; }
+.dir-p .trk .eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; width: 14px; }
+.dir-p .trk .eq b { width: 3px; background: var(--acc); border-radius: 1px; }
+.dir-p .trk .eq b:nth-child(1) { height: 55%; } .dir-p .trk .eq b:nth-child(2) { height: 100%; } .dir-p .trk .eq b:nth-child(3) { height: 35%; }
+.dir-p .trk .n { flex: 1; font-size: 0.85rem; }
+.dir-p .trk .n small { display: block; color: var(--dim); font-size: 0.7rem; }
+.dir-p .trk .dur { color: var(--dim); font-size: 0.74rem; font-variant-numeric: tabular-nums; }
+.dir-p .trk.on .n { color: var(--acc); font-weight: 600; }
+.dir-p .toggles { margin-top: 0.9rem; border-top: 1px solid var(--line); padding-top: 0.75rem; }
+.dir-p .tg { display: flex; align-items: center; gap: 0.6rem; padding: 0.45rem 0; font-size: 0.84rem; }
+.dir-p .tg small { display: block; color: var(--dim); font-size: 0.7rem; }
+.dir-p .tg .sw { margin-left: auto; width: 46px; height: 27px; border-radius: 999px; background: var(--line); position: relative; flex: 0 0 auto; }
+.dir-p .tg .sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 21px; height: 21px; border-radius: 50%; background: #fff; }
+.dir-p .tg .sw.on { background: var(--acc); }
+.dir-p .tg .sw.on::after { left: auto; right: 3px; }
+
+/* --- 6. offline ---------------------------------------------------------- */
+
+.dir-p .offline { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem 1.5rem; text-align: center; gap: 0.5rem; }
+.dir-p .offline .big { font-size: 2.2rem; }
+.dir-p .offline h3 { margin: 0.4rem 0 0; font-size: 1.15rem; font-family: "Fredoka", system-ui, sans-serif; }
+.dir-p .offline p { margin: 0; color: var(--dim); font-size: 0.84rem; max-width: 28ch; line-height: 1.5; }
+.dir-p .offline .list { width: 100%; margin-top: 1.2rem; }
+.dir-p .offline .list .r { display: flex; gap: 0.7rem; align-items: center; padding: 0.55rem 0; border-top: 1px solid var(--line); text-align: left; }
+.dir-p .offline .list img { width: 40px; height: 40px; border-radius: 11px; }
+.dir-p .offline .list b { font-size: 0.87rem; font-weight: 500; }
+.dir-p .offline .list .ok { margin-left: auto; color: var(--good); font-size: 0.74rem; font-weight: 600; }
+.dir-p .offline .list .no { margin-left: auto; color: var(--dim); font-size: 0.74rem; }
+</style>
+</head>
+<body class="dir-p">
+<div class="h-wrap">
+  <a class="h-back" href="index.html">← All directions</a>
+  <p class="h-kicker">Cross-cutting · none of this is built yet</p>
+  <h1>Install, splash, standalone</h1>
+  <p class="h-lede">
+    <code>TODO/pwa.md</code> records that the shelf has no manifest and no service worker at
+    all, and the plan is gated on one unverified claim: whether distinct manifest
+    <code>id</code> values really produce separate installs under nested scope. These frames
+    show what that claim buys if it holds — a phone home screen carrying several Croft games,
+    each launching to its own splash — and what it degrades to if it does not. Chrome follows
+    Direction B, since these screens only make sense once the art is doing the work.
+  </p>
+  <div class="h-switch" data-theme-switch>
+    <button aria-pressed="true" data-set="dark">Dark</button>
+    <button aria-pressed="false" data-set="light">Light</button>
+  </div>
+
+  <h2>The install path</h2>
+  <div class="h-rail">
+
+    <figure class="h-frame">
+      <figcaption><b>1. The invitation</b> — offered after you have played, never on arrival</figcaption>
+      <div class="screen" data-theme="dark" style="--acc:#c98ef5">
+        <div class="app">
+          <div class="top"><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">⌕</button></div>
+          <div class="invite">
+            <div class="hd">
+              <img src="brand/icon/ringpop.jpg" alt="" />
+              <div><b>Keep Ring Pop on your home screen</b><small>Level 4 · you have played 6 times</small></div>
+            </div>
+            <p>It becomes its own app icon and opens without a browser bar. Everything stays
+               on this device — there is no account and nothing to sign in to.</p>
+            <div class="facts">
+              <div>Download <b>1.4 MB</b></div>
+              <div>Works offline <b>Yes, fully</b></div>
+              <div>Sends anything anywhere <b>No</b></div>
+            </div>
+            <div class="btns">
+              <button>Not now</button>
+              <button class="pri">Add to home screen</button>
+            </div>
+          </div>
+          <div style="padding:0 0.9rem;font-size:0.75rem;color:var(--dim);line-height:1.5">
+            You can install any game on the shelf this way, or install the whole shelf as one
+            app from <b style="color:var(--ink);font-weight:500">Settings → Install</b>.
+          </div>
+        </div>
+      </div>
+    </figure>
+
+    <figure class="h-frame">
+      <figcaption><b>2. The OS sheet</b> — what the browser shows next</figcaption>
+      <div class="screen" data-theme="dark" style="--acc:#c98ef5">
+        <div class="app">
+          <div class="top"><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">⌕</button></div>
+          <div class="invite" style="opacity:0.5">
+            <div class="hd">
+              <img src="brand/icon/ringpop.jpg" alt="" />
+              <div><b>Keep Ring Pop on your home screen</b><small>Level 4 · you have played 6 times</small></div>
+            </div>
+          </div>
+          <div class="dim"></div>
+          <div class="sheet">
+            <div class="grab"></div>
+            <h3>Add to Home screen</h3>
+            <div class="app-row">
+              <img src="brand/icon/ringpop.jpg" alt="" />
+              <div><b>Ring Pop</b><small>fun.croft.ing/ringpop</small></div>
+            </div>
+            <div class="go">
+              <button class="cancel">Cancel</button>
+              <button class="add">Add</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </figure>
+
+    <figure class="h-frame">
+      <figcaption><b>3. The home screen</b> — the claim the plan is gated on</figcaption>
+      <div class="screen" data-theme="dark">
+        <div class="app">
+          <div class="os">
+            <div class="clock"><b>9:41</b><small>Thursday, 27 August</small></div>
+            <div class="grid">
+              <a href="#"><img src="brand/icon/ringpop.jpg" alt="" /><b>Ring Pop</b></a>
+              <a href="#"><img src="brand/icon/solitaire.jpg" alt="" /><b>Solitaire</b></a>
+              <a href="#"><img src="brand/icon/wyrdle.jpg" alt="" /><b>Wyrdle</b></a>
+              <a href="#"><span class="stub">✉</span><b>Mail</b></a>
+              <a href="#"><img src="brand/icon/othello.jpg" alt="" /><b>Othello</b></a>
+              <a href="#"><img src="brand/icon/color-sort.jpg" alt="" /><b>Color Sort</b></a>
+              <a href="#"><span class="stub">◷</span><b>Clock</b></a>
+              <a href="#"><span class="stub">▦</span><b>Photos</b></a>
+            </div>
+            <div class="dock">
+              <span class="stub"></span><span class="stub"></span>
+              <img src="brand/icon/2048.jpg" alt="" /><span class="stub"></span>
+            </div>
+          </div>
+          <div class="callout">
+            <b>This is the unverified part.</b> Each icon needs its own manifest <code>id</code>
+            under a nested scope to install separately. Ship <b>two</b> and find out before
+            committing to twenty — the fallback is one "fun.croft.ing" icon opening the shelf.
+          </div>
+        </div>
+      </div>
+    </figure>
+
+    <figure class="h-frame">
+      <figcaption><b>4. Launch</b> — a page at <code>start_url</code>, not a manifest field</figcaption>
+      <div class="screen" data-theme="dark" style="--acc:#c98ef5">
+        <div class="splash">
+          <img src="brand/splash/ringpop.jpg" alt="" />
+          <div class="bot">
+            <div class="spin"></div>
+            <small>fun.croft.ing</small>
+          </div>
+          <div class="callout" style="bottom:12px">
+            <b>This is a page, not an asset.</b> <code>start_url: /ringpop/splash.html</code>
+            renders it, then hands off to the game on a timer or a tap. Its
+            background must match the manifest's <code>background_color</code>, or
+            Chrome's own composed splash flashes a different colour first.
+          </div>
+        </div>
+      </div>
+    </figure>
+
+    <figure class="h-frame">
+      <figcaption><b>5. Standalone</b> — no browser bar; status bar takes the game's colour</figcaption>
+      <div class="screen" data-theme="dark" style="--acc:#c98ef5">
+        <div class="app">
+          <div class="statusbar">
+            <span>9:41</span>
+            <span class="icons"><span>▮▮▮</span><span>◗</span><span>▰</span></span>
+          </div>
+          <div class="gbar">
+            <button class="ib">‹</button>
+            <span class="ttl"><img src="brand/icon/ringpop.jpg" alt="" />Ring Pop</span>
+            <span class="sp"></span>
+            <button class="chip">Campaign 4/6 ▾</button>
+            <button class="ib">⋯</button>
+          </div>
+          <div class="stage">
+            <div class="m3">
+              <i class="g3">◆</i><i class="g3">◆</i><i class="g1">▲</i><i class="g3">◆</i><i class="g0">●</i><i class="g3">◆</i><i class="g3">◆</i><i class="g4">★</i>
+              <i class="g3">◆</i><i class="g4">★</i><i class="g3">◆</i><i class="g1">▲</i><i class="g3">◆</i><i class="g5">✚</i><i class="g1">▲</i><i class="g5">✚</i>
+              <i class="g0">●</i><i class="g4">★</i><i class="g0">●</i><i class="g2">■</i><i class="g4">★</i><i class="g1">▲</i><i class="g5">✚</i><i class="g3">◆</i>
+              <i class="g4">★</i><i class="g1">▲</i><i class="g4">★</i><i class="g5">✚</i><i class="g1">▲</i><i class="g3">◆</i><i class="g3">◆</i><i class="g1">▲</i>
+              <i class="g0">●</i><i class="g5">✚</i><i class="g5">✚</i><i class="g1">▲</i><i class="g5">✚</i><i class="g2">■</i><i class="g3">◆</i><i class="g2">■</i>
+              <i class="g0">●</i><i class="g3">◆</i><i class="g4">★</i><i class="g1">▲</i><i class="g1">▲</i><i class="g4">★</i><i class="g4">★</i><i class="g5">✚</i>
+              <i class="g5">✚</i><i class="g5">✚</i><i class="g3">◆</i><i class="g4">★</i><i class="g5">✚</i><i class="g2">■</i><i class="g5">✚</i><i class="g0">●</i>
+              <i class="g1">▲</i><i class="g5">✚</i><i class="g0">●</i><i class="g0">●</i><i class="g5">✚</i><i class="g4">★</i><i class="g2">■</i><i class="g2">■</i>
+            </div>
+          </div>
+          <div class="bar">
+            <button class="ic">↶</button><button class="pri">Hint</button>
+            <button>Restart</button><button class="ic">⚙</button>
+          </div>
+        </div>
+      </div>
+    </figure>
+
+  </div>
+
+  <h2>Music and offline</h2>
+  <div class="h-rail">
+
+    <figure class="h-frame">
+      <figcaption><b>6. The music sheet</b> — shelf ambient plus a per-game track</figcaption>
+      <div class="screen" data-theme="dark" style="--acc:#c98ef5">
+        <div class="app">
+          <div class="statusbar"><span>9:41</span><span class="icons"><span>▮▮▮</span><span>◗</span><span>▰</span></span></div>
+          <div class="gbar">
+            <button class="ib">‹</button>
+            <span class="ttl"><img src="brand/icon/ringpop.jpg" alt="" />Ring Pop</span>
+            <span class="sp"></span><button class="ib">⋯</button>
+          </div>
+          <div class="stage" style="opacity:0.28"></div>
+          <div class="msheet">
+            <div class="grab"></div>
+            <h4>Playing in Ring Pop</h4>
+            <div class="trk on">
+              <span class="eq"><b></b><b></b><b></b></span>
+              <span class="n">Gateway to the Spire<small>chosen for Ring Pop</small></span>
+              <span class="dur">0:29</span>
+            </div>
+            <div class="trk">
+              <span class="eq" style="opacity:0.25"><b></b><b></b><b></b></span>
+              <span class="n">Clover Hill Crossing<small>also fits</small></span>
+              <span class="dur">0:28</span>
+            </div>
+            <div class="trk">
+              <span class="eq" style="opacity:0.25"><b></b><b></b><b></b></span>
+              <span class="n">Six Sides of Logic<small>also fits</small></span>
+              <span class="dur">1:58</span>
+            </div>
+            <div class="toggles">
+              <div class="tg">
+                <span>Music<small>Ambient on the shelf, a track in each game</small></span>
+                <span class="sw on"></span>
+              </div>
+              <div class="tg">
+                <span>Sound effects<small>Taps, matches, wins</small></span>
+                <span class="sw on"></span>
+              </div>
+              <div class="tg">
+                <span>Duck when you play<small>Music drops under game sounds</small></span>
+                <span class="sw"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </figure>
+
+    <figure class="h-frame">
+      <figcaption><b>7. Offline</b> — an honest inventory, not a dead-end page</figcaption>
+      <div class="screen" data-theme="dark" style="--acc:#c98ef5">
+        <div class="app">
+          <div class="top"><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">⌕</button></div>
+          <div class="offline">
+            <span class="big">⚑</span>
+            <h3 class="dsp">You are offline</h3>
+            <p>Everything already on this device still plays. Nothing here needed a server anyway.</p>
+            <div class="list">
+              <div class="r"><img src="brand/icon/ringpop.jpg" alt="" /><b>Ring Pop</b><span class="ok">Ready</span></div>
+              <div class="r"><img src="brand/icon/solitaire.jpg" alt="" /><b>Solitaire</b><span class="ok">Ready</span></div>
+              <div class="r"><img src="brand/icon/othello.jpg" alt="" /><b>Othello</b><span class="ok">Ready</span></div>
+              <div class="r"><img src="brand/icon/wyrdle.jpg" alt="" /><b>Wyrdle</b><span class="no">Needs 1.1 MB</span></div>
+              <div class="r"><img src="brand/icon/2048.jpg" alt="" /><b>2048</b><span class="no">Needs 0.9 MB</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </figure>
+
+  </div>
+
+  <h2>What these frames commit you to</h2>
+  <table class="h-table">
+    <tr><td>The gate</td><td>Frame 3 is the unverified claim. Ship <b>two</b> manifests and check before writing twenty — the plan already says so, and these frames are what "yes" looks like.</td></tr>
+    <tr><td>Art needed</td><td><b>Done.</b> Every built game ships a 512² icon; 15 of 16 ship splash art. The icon is the load-bearing one — it is also what Android composes its own splash from.</td></tr>
+    <tr><td>Install timing</td><td>Offered after repeat play, never on arrival, and always with the download size stated up front.</td></tr>
+    <tr><td>Music</td><td><b>Built.</b> 17 tracks at 64 kbps, lazy-loaded, off by default, cached after first fetch. Offline still waits on the service worker.</td></tr>
+    <tr><td>Offline</td><td>Lists what is actually playable rather than showing a dead page. This is the shelf's whole pitch, so it should look deliberate.</td></tr>
+  </table>
+</div>
+<script src="harness.js"></script>
+</body>
+</html>

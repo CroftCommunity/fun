@@ -6,8 +6,20 @@
 
 import type { GameModule, PresentationMode } from "./contract.js";
 import { findGame, REGISTRY } from "./registry.js";
-import { applyTheme, currentTheme, toggleTheme } from "./theme.js";
+import { applySkin, currentSkin, isDark, setSkin, siblingOf, togglePalette } from "./skins.js";
 import { wrappedBanner } from "./wrapped-banner.js";
+import { renderHome } from "./home.js";
+import { appearanceSpec } from "./appearance.js";
+import { startMusic } from "./music.js";
+import { renderSettingsSheet } from "./settings-sheet.js";
+import {
+  LAYOUT_KEY,
+  buildShelfModel,
+  noteOpened,
+  prefersLayoutFor,
+  resolveLayout,
+  type ShelfState,
+} from "./shelf.js";
 
 /** Test-facing handle to the running chrome. */
 export interface Chrome {
@@ -30,6 +42,41 @@ function el<K extends keyof HTMLElementTagNameMap>(
   for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
   for (const c of children) node.append(c);
   return node;
+}
+
+
+const SHELF_STATE_KEY = "fun-shelf-state";
+
+function readStored(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+/** The shelf's own record of what it has seen opened. Never a game's progress. */
+function readShelfState(): ShelfState {
+  try {
+    const raw = localStorage.getItem(SHELF_STATE_KEY);
+    const parsed: unknown = raw === null ? null : JSON.parse(raw);
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    // Storage is user-writable and survives releases; keep only string values
+    // rather than trusting the shape a previous version happened to write.
+    return Object.fromEntries(
+      Object.entries(parsed as Record<string, unknown>).filter(([, v]) => typeof v === "string"),
+    ) as ShelfState;
+  } catch {
+    return {};
+  }
+}
+
+function writeShelfState(state: ShelfState): void {
+  try {
+    localStorage.setItem(SHELF_STATE_KEY, JSON.stringify(state));
+  } catch {
+    // Storage denied: the shelf simply forgets. Never fail a launch for it.
+  }
 }
 
 /** Boot the chrome into `root` (defaults to `document.body`). */
@@ -61,14 +108,18 @@ export function boot(root: HTMLElement = document.body): Chrome {
     const link = el(
       "a",
       { href: `/${g.id}/`, class: "drawer-item", "data-game-id": g.id },
-      `${g.icon} ${g.title}`,
+      `${g.emoji} ${g.title}`,
     );
     if (g.status === "soon") {
       link.append(el("span", { class: "badge" }, "soon"));
       link.setAttribute("aria-disabled", "false"); // still linkable to its page
     }
     if (g.id === gameId) link.setAttribute("aria-current", "page");
-    list.append(link);
+    // A <ul> may only directly contain <li>. The links were appended straight to
+    // the list, which axe's `list` rule fails — a real bug that shipped because
+    // every existing scan ran with the drawer CLOSED (and therefore `hidden`,
+    // so axe skipped it). Found by the M6 matrix, which opens it.
+    list.append(el("li", {}, link));
   }
   drawer.append(list);
 
@@ -81,21 +132,94 @@ export function boot(root: HTMLElement = document.body): Chrome {
 
   // Theme toggle (Phase E). Pre-paint set [data-theme]; sync the manifest colour
   // and reflect the current theme on the control.
-  applyTheme(currentTheme());
+  applySkin(currentSkin());
   const themeBtn = el("button", {
     class: "theme-toggle",
-    "aria-pressed": String(currentTheme() === "dark"),
+    "aria-pressed": String(isDark()),
     "aria-label": "Toggle light or dark theme",
   });
   const paintThemeBtn = (): void => {
-    const dark = currentTheme() === "dark";
+    const dark = isDark();
     themeBtn.textContent = dark ? "☀" : "☾";
     themeBtn.setAttribute("aria-pressed", String(dark));
+    // A family with one palette has nowhere to toggle to. Disable VISIBLY
+    // rather than letting the control look live and do nothing — a silent
+    // no-op from a working-looking button is the failure forage's ADR-003
+    // calls out, and the reason the disabled state is deliberate.
+    themeBtn.disabled = siblingOf(currentSkin()) === undefined;
   };
   paintThemeBtn();
   themeBtn.addEventListener("click", () => {
-    toggleTheme();
+    togglePalette();
     paintThemeBtn();
+    // The panel captures the running skin when it is painted, so a palette
+    // change made while it is open leaves it describing the previous side —
+    // and the next style choice would then land on the wrong palette.
+    if (!appearancePanel.hidden) paintAppearance();
+  });
+
+  // Appearance: which identity the shelf wears, and what the home page opens on.
+  // Lives in the header rather than a game's own settings because the skin is
+  // shelf-wide — a per-game home for a global preference is where "I changed it
+  // and it changed back" comes from.
+  const appearanceBtn = el("button", {
+    class: "appearance-toggle",
+    "aria-expanded": "false",
+    "aria-controls": "appearance-panel",
+    "aria-label": "Appearance settings",
+  });
+  appearanceBtn.textContent = "\u2699";
+  // A named landmark, not a bare div: axe's `region` rule fails page content
+  // that belongs to no landmark, and this panel sits between the header and
+  // <main>. Caught by the picker's own axe test.
+  const appearancePanel = el("section", {
+    id: "appearance-panel",
+    class: "appearance-panel",
+    "aria-label": "Appearance",
+    hidden: "",
+  });
+
+  // Lazy by construction: startMusic fetches nothing unless the stored
+  // preference is already "on". A visitor who never asks for sound pays no bytes.
+  const music = startMusic(gameId);
+
+  const paintAppearance = (): void => {
+    appearancePanel.replaceChildren(
+      renderSettingsSheet(
+        appearanceSpec({
+          skin: currentSkin(),
+          layout: readStored(LAYOUT_KEY),
+          gameId,
+          music: music.isEnabled(),
+          onMusic: (on) => {
+            music.setEnabled(on);
+            paintAppearance();
+          },
+          onSkin: (id) => {
+            setSkin(id);
+            paintThemeBtn();
+            paintAppearance();
+            repaintHome();
+          },
+          onLayout: (id) => {
+            try {
+              if (id) localStorage.setItem(LAYOUT_KEY, id);
+              else localStorage.removeItem(LAYOUT_KEY);
+            } catch {
+              // Storage denied: the choice applies for this page view only.
+            }
+            paintAppearance();
+            repaintHome();
+          },
+        }),
+      ),
+    );
+  };
+  appearanceBtn.addEventListener("click", () => {
+    const open = appearancePanel.hidden;
+    appearancePanel.hidden = !open;
+    appearanceBtn.setAttribute("aria-expanded", String(open));
+    if (open) paintAppearance();
   });
 
   const heading = el(
@@ -103,7 +227,7 @@ export function boot(root: HTMLElement = document.body): Chrome {
     { class: "visually-hidden" },
     gameId ? `fun.croft.ing — ${gameId}` : "fun.croft.ing — games",
   );
-  const header = el("header", { class: "chrome-header" }, heading, toggle, fullscreenBtn, themeBtn);
+  const header = el("header", { class: "chrome-header" }, heading, toggle, fullscreenBtn, themeBtn, appearanceBtn);
   if (gameId) {
     header.append(
       el("a", { href: `/how-to/?game=${gameId}`, class: "how-to-link" }, "How to play"),
@@ -121,16 +245,27 @@ export function boot(root: HTMLElement = document.body): Chrome {
 
   const playArea = el("main", { class: "play-area", id: "play-area" });
 
-  root.prepend(header, scrim, drawer, playArea);
+  root.prepend(header, scrim, drawer, appearancePanel, playArea);
+
+  /** Render (or re-render) the home page in the layout currently in force. */
+  function repaintHome(): void {
+    if (gameId) return;
+    playArea.replaceChildren();
+    renderHome(
+      playArea,
+      buildShelfModel({ games: REGISTRY, state: readShelfState(), now: new Date() }),
+      resolveLayout(readStored(LAYOUT_KEY), prefersLayoutFor(currentSkin())),
+    );
+  }
 
   // --- mount the current game / welcome ---
   let mounted: GameModule | null = null;
   const mode: PresentationMode = gameId ? "standalone" : "drawer";
   const entry = gameId ? findGame(gameId) : undefined;
   if (!gameId) {
-    playArea.append(
-      el("div", { class: "welcome" }, "Pick a game from the drawer to play."),
-    );
+    // The home page. Was one sentence over an empty page; it is now the model
+    // rendered in whichever layout is in force (M3).
+    repaintHome();
   } else if (!entry) {
     playArea.append(el("div", { class: "welcome" }, "Unknown game."));
   } else if (entry.status === "soon" || !entry.load) {
@@ -144,6 +279,7 @@ export function boot(root: HTMLElement = document.body): Chrome {
     if (banner) playArea.append(banner);
     mounted = entry.load();
     mounted.mount(playArea, { mode });
+    writeShelfState(noteOpened(readShelfState(), entry.id, new Date()));
   }
 
   // --- drawer open/close + focus trap + ESC ---

@@ -41,8 +41,23 @@ export interface GameAttribution {
 interface BaseGameEntry {
   readonly id: string;
   readonly title: string;
-  readonly icon: string;
+  /** Fallback glyph, shown where a game has no icon art yet. */
+  readonly emoji: string;
   readonly status: "playable" | "soon";
+  /**
+   * Which shelf group the home page files this under (`src/shelf.ts` GROUPS).
+   * Omitted means "by tier": Tier-2 wraps land in `wrapped`, everything else in
+   * `provable`. Only the adversarial games need to say so explicitly.
+   */
+  readonly group?: "provable" | "versus" | "wrapped";
+  /**
+   * This game ships `src/games/<id>/assets/icon.jpg` — a 512² square, served at
+   * `/<id>/assets/icon.jpg`. It is the game's ICON in the manifest sense: the
+   * home page shows it as the tile, and the PWA work will use the same file.
+   * One asset, both jobs. Asserted against the filesystem by `tests/art.test.ts`
+   * in BOTH directions, so the claim cannot drift from the file.
+   */
+  readonly icon?: true;
   /** Construct a fresh module instance. Absent for `soon` games. */
   readonly load?: () => GameModule;
 }

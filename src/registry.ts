@@ -18,78 +18,36 @@ import { alignModule } from "./games/align/align.js";
 import { blockdokuModule } from "./games/blockdoku/blockdoku.js";
 import { looseendsModule } from "./games/looseends/looseends.js";
 import { colorSortModule } from "./games/color-sort/color-sort.js";
-import { astrayModule } from "./games/astray/astray.js";
-import { hexglModule } from "./games/hexgl/hexgl.js";
-import { clumsybirdModule } from "./games/clumsybird/clumsybird.js";
 import { orchardDropModule } from "./games/orchard-drop/orchard-drop.js";
 
 export const REGISTRY: readonly GameEntry[] = [
   {
     id: "placeholder",
     title: "Placeholder",
-    icon: "🎲",
+    emoji: "🎲",
     status: "playable",
     load: placeholderModule,
   },
-  { id: "solitaire", title: "Solitaire", icon: "♠", status: "playable", load: solitaireModule },
-  { id: "match3", title: "Match-3", icon: "🍬", status: "playable", load: match3Module },
-  { id: "bubble", title: "Bubble", icon: "🫧", status: "playable", load: bubbleModule },
-  { id: "wyrdle", title: "Wyrdle", icon: "🐉", status: "playable", load: wyrdleModule },
-  { id: "2048", title: "2048", icon: "🔢", status: "playable", load: twenty48Module },
-  { id: "drop4", title: "Drop 4", icon: "🔴", status: "playable", load: drop4Module },
-  { id: "othello", title: "Othello", icon: "⚫", status: "playable", load: othelloModule },
-  { id: "checkers", title: "Checkers", icon: "⛃", status: "playable", load: checkersModule },
-  { id: "dots", title: "Dots and Boxes", icon: "▦", status: "playable", load: dotsModule },
-  { id: "furrow", title: "Furrow", icon: "🌾", status: "playable", load: furrowModule },
-  { id: "align", title: "Align", icon: "🟪", status: "playable", load: alignModule },
-  { id: "blockdoku", title: "Blockdoku", icon: "🟦", status: "playable", load: blockdokuModule },
-  { id: "looseends", title: "Loose Ends", icon: "🎯", status: "playable", load: looseendsModule },
-  { id: "color-sort", title: "Color Sort", icon: "🧪", status: "playable", load: colorSortModule },
-  {
-    id: "astray",
-    title: "Astray",
-    icon: "🔮",
-    status: "playable",
-    tier: 2,
-    attribution: {
-      author: "wwwtyro",
-      license: "The Unlicense",
-      upstreamUrl: "https://github.com/wwwtyro/Astray",
-    },
-    load: astrayModule,
-  },
-  {
-    id: "hexgl",
-    title: "HexGL",
-    icon: "🏎",
-    status: "playable",
-    tier: 2,
-    attribution: {
-      author: "Thibaut Despoulain (BKcore)",
-      license: "MIT",
-      upstreamUrl: "https://github.com/BKcore/HexGL",
-    },
-    load: hexglModule,
-  },
-  {
-    id: "clumsybird",
-    title: "Clumsy Bird",
-    icon: "🐤",
-    status: "playable",
-    tier: 2,
-    attribution: {
-      author: "ellisonleao",
-      license: "GPL-3.0",
-      upstreamUrl: "https://github.com/ellisonleao/clumsy-bird",
-      basedOn: "Flappy Bird by Dong Nguyen",
-    },
-    load: clumsybirdModule,
-  },
+  { id: "solitaire", title: "Solitaire", emoji: "♠", status: "playable", icon: true, load: solitaireModule },
+  { id: "match3", title: "Match-3", emoji: "🍬", status: "playable", icon: true, load: match3Module },
+  { id: "bubble", title: "Bubble", emoji: "🫧", status: "playable", icon: true, load: bubbleModule },
+  { id: "wyrdle", title: "Wyrdle", emoji: "🐉", status: "playable", icon: true, load: wyrdleModule },
+  { id: "2048", title: "2048", emoji: "🔢", status: "playable", icon: true, load: twenty48Module },
+  { id: "drop4", title: "Drop 4", emoji: "🔴", status: "playable", icon: true, group: "versus", load: drop4Module },
+  { id: "othello", title: "Othello", emoji: "⚫", status: "playable", icon: true, group: "versus", load: othelloModule },
+  { id: "checkers", title: "Checkers", emoji: "⛃", status: "playable", icon: true, group: "versus", load: checkersModule },
+  { id: "dots", title: "Dots and Boxes", emoji: "▦", status: "playable", icon: true, group: "versus", load: dotsModule },
+  { id: "furrow", title: "Furrow", emoji: "🌾", status: "playable", icon: true, group: "versus", load: furrowModule },
+  { id: "align", title: "Align", emoji: "🟪", status: "playable", icon: true, load: alignModule },
+  { id: "blockdoku", title: "Blockdoku", emoji: "🟦", status: "playable", icon: true, load: blockdokuModule },
+  { id: "looseends", title: "Loose Ends", emoji: "🎯", status: "playable", icon: true, load: looseendsModule },
+  { id: "color-sort", title: "Color Sort", emoji: "🧪", status: "playable", icon: true, load: colorSortModule },
   {
     id: "orchard-drop",
     title: "Orchard Drop",
-    icon: "🍉",
+    emoji: "🍉",
     status: "playable",
+    icon: true,
     tier: 2,
     attribution: {
       author: "the Croft shelf, with physics by @liabru's Matter.js",
@@ -99,7 +57,7 @@ export const REGISTRY: readonly GameEntry[] = [
     },
     load: orchardDropModule,
   },
-  { id: "cribbage", title: "Cribbage", icon: "🎴", status: "soon" },
+  { id: "cribbage", title: "Cribbage", emoji: "🎴", status: "soon" },
 ];
 
 /** Look up a catalog entry by id. */
