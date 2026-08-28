@@ -4182,3 +4182,52 @@ body.fullscreen .le-stage {
 .home-row-icon { font-size: 1.25rem; width: 1.6rem; text-align: center; }
 .home-row-title { flex: 1; font-family: var(--font-display); font-size: 1.02rem; }
 .home-row-note { font-size: 0.72rem; color: var(--ink-muted); }
+
+/* --- Appearance picker (M5) ------------------------------------------------
+   Lives in the shared header because the skin is shelf-wide. A per-game home
+   for a global preference is where "I changed it and it changed back" comes
+   from. Tokens only; 44px tap floor. */
+
+.appearance-toggle {
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 1.05rem;
+  cursor: pointer;
+}
+.appearance-toggle:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.appearance-panel {
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  padding: 0.9rem;
+}
+.appearance-panel[hidden] { display: none; }
+.appearance-panel .sheet { max-width: 40rem; margin: 0 auto; }
+
+.sheet-choice {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.7rem 0.85rem 0.85rem;
+  margin: 0 0 0.75rem;
+}
+.sheet-choice-label {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 0 0.3rem;
+}
+.sheet-choice-opt {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 44px;
+  padding: 0.35rem 0.2rem;
+  cursor: pointer;
+  font-size: 0.92rem;
+}
+.sheet-choice-input { width: 1.05rem; height: 1.05rem; accent-color: var(--accent); }
+.sheet-choice-hint { margin-left: auto; color: var(--ink-muted); font-size: 0.75rem; }

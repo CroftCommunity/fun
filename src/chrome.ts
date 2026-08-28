@@ -6,9 +6,11 @@
 
 import type { GameModule, PresentationMode } from "./contract.js";
 import { findGame, REGISTRY } from "./registry.js";
-import { applySkin, currentSkin, isDark, siblingOf, togglePalette } from "./skins.js";
+import { applySkin, currentSkin, isDark, setSkin, siblingOf, togglePalette } from "./skins.js";
 import { wrappedBanner } from "./wrapped-banner.js";
 import { renderHome } from "./home.js";
+import { appearanceSpec } from "./appearance.js";
+import { renderSettingsSheet } from "./settings-sheet.js";
 import {
   LAYOUT_KEY,
   buildShelfModel,
@@ -145,6 +147,64 @@ export function boot(root: HTMLElement = document.body): Chrome {
   themeBtn.addEventListener("click", () => {
     togglePalette();
     paintThemeBtn();
+    // The panel captures the running skin when it is painted, so a palette
+    // change made while it is open leaves it describing the previous side —
+    // and the next style choice would then land on the wrong palette.
+    if (!appearancePanel.hidden) paintAppearance();
+  });
+
+  // Appearance: which identity the shelf wears, and what the home page opens on.
+  // Lives in the header rather than a game's own settings because the skin is
+  // shelf-wide — a per-game home for a global preference is where "I changed it
+  // and it changed back" comes from.
+  const appearanceBtn = el("button", {
+    class: "appearance-toggle",
+    "aria-expanded": "false",
+    "aria-controls": "appearance-panel",
+    "aria-label": "Appearance settings",
+  });
+  appearanceBtn.textContent = "\u2699";
+  // A named landmark, not a bare div: axe's `region` rule fails page content
+  // that belongs to no landmark, and this panel sits between the header and
+  // <main>. Caught by the picker's own axe test.
+  const appearancePanel = el("section", {
+    id: "appearance-panel",
+    class: "appearance-panel",
+    "aria-label": "Appearance",
+    hidden: "",
+  });
+
+  const paintAppearance = (): void => {
+    appearancePanel.replaceChildren(
+      renderSettingsSheet(
+        appearanceSpec({
+          skin: currentSkin(),
+          layout: readStored(LAYOUT_KEY),
+          onSkin: (id) => {
+            setSkin(id);
+            paintThemeBtn();
+            paintAppearance();
+            repaintHome();
+          },
+          onLayout: (id) => {
+            try {
+              if (id) localStorage.setItem(LAYOUT_KEY, id);
+              else localStorage.removeItem(LAYOUT_KEY);
+            } catch {
+              // Storage denied: the choice applies for this page view only.
+            }
+            paintAppearance();
+            repaintHome();
+          },
+        }),
+      ),
+    );
+  };
+  appearanceBtn.addEventListener("click", () => {
+    const open = appearancePanel.hidden;
+    appearancePanel.hidden = !open;
+    appearanceBtn.setAttribute("aria-expanded", String(open));
+    if (open) paintAppearance();
   });
 
   const heading = el(
@@ -152,7 +212,7 @@ export function boot(root: HTMLElement = document.body): Chrome {
     { class: "visually-hidden" },
     gameId ? `fun.croft.ing — ${gameId}` : "fun.croft.ing — games",
   );
-  const header = el("header", { class: "chrome-header" }, heading, toggle, fullscreenBtn, themeBtn);
+  const header = el("header", { class: "chrome-header" }, heading, toggle, fullscreenBtn, themeBtn, appearanceBtn);
   if (gameId) {
     header.append(
       el("a", { href: `/how-to/?game=${gameId}`, class: "how-to-link" }, "How to play"),
@@ -170,7 +230,18 @@ export function boot(root: HTMLElement = document.body): Chrome {
 
   const playArea = el("main", { class: "play-area", id: "play-area" });
 
-  root.prepend(header, scrim, drawer, playArea);
+  root.prepend(header, scrim, drawer, appearancePanel, playArea);
+
+  /** Render (or re-render) the home page in the layout currently in force. */
+  function repaintHome(): void {
+    if (gameId) return;
+    playArea.replaceChildren();
+    renderHome(
+      playArea,
+      buildShelfModel({ games: REGISTRY, state: readShelfState(), now: new Date() }),
+      resolveLayout(readStored(LAYOUT_KEY), prefersLayoutFor(currentSkin())),
+    );
+  }
 
   // --- mount the current game / welcome ---
   let mounted: GameModule | null = null;
@@ -179,11 +250,7 @@ export function boot(root: HTMLElement = document.body): Chrome {
   if (!gameId) {
     // The home page. Was one sentence over an empty page; it is now the model
     // rendered in whichever layout is in force (M3).
-    renderHome(
-      playArea,
-      buildShelfModel({ games: REGISTRY, state: readShelfState(), now: new Date() }),
-      resolveLayout(readStored(LAYOUT_KEY), prefersLayoutFor(currentSkin())),
-    );
+    repaintHome();
   } else if (!entry) {
     playArea.append(el("div", { class: "welcome" }, "Unknown game."));
   } else if (entry.status === "soon" || !entry.load) {
