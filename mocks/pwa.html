@@ -9,13 +9,20 @@
 /* =========================================================================
    THE PWA SET
 
-   Nothing here is built yet. `TODO/pwa.md` says the shelf has no manifest and
-   no service worker at all, and `plans/2026-08-11-pwa-install-per-game-and-shelf.md`
-   is gated on ONE unverified claim: whether distinct manifest `id` values really
-   produce separate installs under nested scope. These frames show what that
-   claim buys if it holds — a phone home screen with several Croft games on it,
-   each launching to its own splash — and what the fallback looks like if it
-   does not.
+   Still not built. `TODO/pwa.md` says the shelf has no manifest and no service
+   worker at all, and `plans/2026-08-11-pwa-install-per-game-and-shelf.md` is
+   gated on ONE unverified claim: whether distinct manifest `id` values really
+   produce separate installs under nested scope.
+
+   CORRECTED 2026-08-28, because these frames encoded a wrong model. An earlier
+   note said Android "accepts no splash image" — true of the manifest, and read
+   (reasonably) as "Android has no splash". It has one: Chrome COMPOSES it from
+   `background_color`, a large raster icon and `name`. And the splash you
+   actually DESIGN is neither of those: it is an ordinary page you write, reached
+   by pointing `start_url` at it, which hands off to the app on a timer or a tap.
+   That works everywhere precisely because it is not a platform feature. Frame 4
+   is that page. Full writeup, now a workspace standard:
+   `croft-pwa/docs/PWA-INSTALL.md`.
 
    Chrome here follows Direction B, since these screens only exist once the art
    is doing the work.
@@ -305,13 +312,19 @@
     </figure>
 
     <figure class="h-frame">
-      <figcaption><b>4. Launch</b> — the splash art earns its keep here</figcaption>
+      <figcaption><b>4. Launch</b> — a page at <code>start_url</code>, not a manifest field</figcaption>
       <div class="screen" data-theme="dark" style="--acc:#c98ef5">
         <div class="splash">
           <img src="brand/splash/ringpop.jpg" alt="" />
           <div class="bot">
             <div class="spin"></div>
             <small>fun.croft.ing</small>
+          </div>
+          <div class="callout" style="bottom:12px">
+            <b>This is a page, not an asset.</b> <code>start_url: /ringpop/splash.html</code>
+            renders it, then hands off to the game on a timer or a tap. Its
+            background must match the manifest's <code>background_color</code>, or
+            Chrome's own composed splash flashes a different colour first.
           </div>
         </div>
       </div>
@@ -431,9 +444,9 @@
   <h2>What these frames commit you to</h2>
   <table class="h-table">
     <tr><td>The gate</td><td>Frame 3 is the unverified claim. Ship <b>two</b> manifests and check before writing twenty — the plan already says so, and these frames are what "yes" looks like.</td></tr>
-    <tr><td>Art needed</td><td>A square icon and a portrait splash per game. Ten of twenty have both today; Solitaire has art but no icon file, and ten games have neither.</td></tr>
+    <tr><td>Art needed</td><td><b>Done.</b> Every built game ships a 512² icon; 15 of 16 ship splash art. The icon is the load-bearing one — it is also what Android composes its own splash from.</td></tr>
     <tr><td>Install timing</td><td>Offered after repeat play, never on arrival, and always with the download size stated up front.</td></tr>
-    <tr><td>Music</td><td>One ambient loop on the shelf, one track per game, one remembered mute. Your files already split this way — seven ~30s loops and nine 2–3 min pieces.</td></tr>
+    <tr><td>Music</td><td><b>Built.</b> 17 tracks at 64 kbps, lazy-loaded, off by default, cached after first fetch. Offline still waits on the service worker.</td></tr>
     <tr><td>Offline</td><td>Lists what is actually playable rather than showing a dead page. This is the shelf's whole pitch, so it should look deliberate.</td></tr>
   </table>
 </div>

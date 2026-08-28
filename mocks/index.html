@@ -38,6 +38,19 @@
     not a direction.
   </p>
 
+  <div class="axis" style="border-left:4px solid var(--h-accent);margin:1.4rem 0 0">
+    <h4>Status — most of this now ships</h4>
+    <p>These mocks were the argument. The argument was accepted, and
+    <b>M1–M6 of <code>plans/2026-08-27-1-plan-skin-layer.md</code> are built</b>: two skin
+    families with four graded palettes, both home layouts, the appearance picker, per-game
+    icon art, and the music layer. Run the real thing with
+    <code>node tools/serve.mjs</code> — it is no longer a sentence over an empty page.</p>
+    <p>They are kept because the reasoning below is still the reasoning, and because a
+    direction is easier to argue with as a picture than as a diff. Where a mock and the
+    shipped app disagree, <b>the app is right</b> — it had to survive contrast grading, axe
+    in four palettes, and twenty real game pages.</p>
+  </div>
+
   <div class="h-jump">
     <a href="b-worlds.html">Direction B — Gallery of Worlds →</a>
     <a class="alt" href="c-pond.html">Direction C — The Pond →</a>
@@ -45,15 +58,15 @@
   </div>
   <p class="h-note">Everything below is the reasoning. The three links above are the mocks.</p>
 
-  <h2>What is actually wrong today</h2>
+  <h2>What was wrong (2026-08-27) — the state that prompted this</h2>
   <table class="h-table">
-    <tr><td>The home page</td><td>Renders one sentence — "Pick a game from the drawer to play." — over an empty page. Twenty games, and the front door is a text label.</td></tr>
-    <tr><td>The drawer</td><td>A flat 20-item scroll. Identical pills, no art, no metadata. <code>Placeholder</code>, a dev artifact, is item #1 above Solitaire.</td></tr>
-    <tr><td>The differentiator</td><td>Verifiable outcomes, AI opponents, daily packs, share replays — all built, none legible before you are inside a game.</td></tr>
-    <tr><td>The art</td><td>40 guide screenshots in <code>assets/guide/</code> used only inside how-to pages. The navigation shows emoji. Separately, ten games now have commissioned icons and splashes that nothing uses at all.</td></tr>
+    <tr><td>The home page</td><td><b>Fixed.</b> Rendered one sentence — "Pick a game from the drawer to play." — over an empty page. Twenty games, and the front door was a text label.</td></tr>
+    <tr><td>The drawer</td><td><b>Partly fixed</b> — the home page now lists games; the drawer itself is unchanged. Was a flat 20-item scroll. Identical pills, no art, no metadata. <code>Placeholder</code>, a dev artifact, was item #1 above Solitaire — it is now unlisted from the home page.</td></tr>
+    <tr><td>The differentiator</td><td><b>Fixed in the shelf layout</b>, which groups games by what the tier promises. Verifiable outcomes, AI opponents, daily packs, share replays — all built, none legible before you are inside a game.</td></tr>
+    <tr><td>The art</td><td><b>Fixed.</b> Every built game now ships <code>icon.jpg</code>. Was: 40 guide screenshots in <code>assets/guide/</code> used only inside how-to pages. The navigation shows emoji. Separately, ten games now have commissioned icons and splashes that nothing uses at all.</td></tr>
     <tr><td>Controls</td><td>Match-3 on desktop is 13 identical pills in four rows above a 400px board, in a 1440px viewport.</td></tr>
     <tr><td>Desktop</td><td>Mobile, stretched. At 1440px the drawer still overlays behind a dimming scrim.</td></tr>
-    <tr><td>Continuity</td><td>No resume, no recently played, no "3 dailies waiting" — despite eight games shipping daily packs.</td></tr>
+    <tr><td>Continuity</td><td><b>Partly fixed</b> — "jump back in" and "opened today" are live; there is still no per-game progress to read. Was: no resume, no recently played, no "3 dailies waiting" — despite eight games shipping daily packs.</td></tr>
   </table>
 
   <h2>The two axes, kept separate</h2>
@@ -127,12 +140,13 @@
     </div>
   </div>
 
-  <h2>What the art covers, and what it does not</h2>
+  <h2>What the art covers now</h2>
   <table class="h-table">
-    <tr><th>Have icon + splash</th><td>2048 · Align · Bubble · Color Sort · Loose Ends · Orchard Drop · Othello · Ring Pop · Wyrdle</td></tr>
-    <tr><th>Splash only</th><td>Solitaire (the file is square, so the mocks use it as an icon)</td></tr>
-    <tr><th>Nothing yet</th><td>Checkers · Drop 4 · Dots and Boxes · Furrow · Blockdoku · Astray · HexGL · Clumsy Bird · Match-3's board art · Cribbage</td></tr>
-    <tr><th>Naming</th><td>Ring Pop's splash reads "GEM MATCH MASTERPIECE" — it is Match-3 rebranded. The mocks call it Ring Pop throughout; the registry id, how-to guide, campaign packs and share links all still say <code>match3</code>.</td></tr>
+    <tr><th>Icon</th><td><b>16 of 16 built games.</b> Only Cribbage (not built) and Placeholder (a dev artifact) go without.</td></tr>
+    <tr><th>Splash</th><td><b>15 of 16.</b> Only Checkers still has landscape-only art.</td></tr>
+    <tr><th>Removed</th><td>Astray, HexGL and Clumsy Bird were removed 2026-08-28 as not fitting the shelf's model, so the Tier-2 wrap category has no third-party instance left.</td></tr>
+    <tr><th>Naming</th><td>Ring Pop's art reads "GEM MATCH MASTERPIECE" — it is Match-3 rebranded, and the mocks call it Ring Pop. <b>The code still says <code>match3</code></b>; the rename touches the registry id, the how-to guide, seven campaign packs and every <code>?r=</code> share link, and has not been done.</td></tr>
+    <tr><th>Music</th><td>17 tracks at 64 kbps, 13.8 MB, in <code>assets/audio/</code>. Lazy-loaded and off by default.</td></tr>
   </table>
 
   <h2>Running these</h2>
