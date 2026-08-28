@@ -46,7 +46,9 @@ files are the running, checkbox-level worklist.
 
 ## Shipped — Tier-2 wrapped (playable)
 
-- astray, hexgl, clumsybird, orchard-drop — shipped wraps (see `docs/BUILDING-GAMES.md`
+- Astray, HexGL and Clumsy Bird were **removed 2026-08-28** as not fitting the
+  shelf's model, which leaves the tier with no third-party instance
+  (see `docs/BUILDING-GAMES.md`
   §9). [supertuxkart.md](supertuxkart.md) is the one under review (below).
 
 ## In flight / not yet moved

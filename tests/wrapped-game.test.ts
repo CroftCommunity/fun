@@ -18,12 +18,12 @@ beforeEach(() => {
 describe("mountWrappedGame", () => {
   it("mounts a sandboxed iframe pointing at the vendored bundle", () => {
     const handle = mountWrappedGame(container, {
-      src: "/astray/vendor/index.html",
+      src: "/example-wrap/vendor/index.html",
       title: "Astray (wrapped game)",
     });
     const iframe = container.querySelector("iframe");
     expect(iframe).not.toBeNull();
-    expect(iframe!.getAttribute("src")).toBe("/astray/vendor/index.html");
+    expect(iframe!.getAttribute("src")).toBe("/example-wrap/vendor/index.html");
     expect(iframe!.getAttribute("title")).toBe("Astray (wrapped game)");
     // Phase 0 containment level: opaque origin, no allow-same-origin.
     expect(iframe!.getAttribute("sandbox")).toBe("allow-scripts");

@@ -782,50 +782,6 @@ const SHOTS = [
     },
   },
   {
-    name: "astray-maze",
-    clip: ".wrapped-game-frame",
-    async run(page) {
-      await page.goto(`${origin}/astray/`, { waitUntil: "networkidle" });
-      await page.waitForSelector(".wrapped-game-frame");
-      // Let the wrapped game boot: Three.js appends its canvas, then the maze
-      // textures load. Wait for the canvas, then a beat for the first frames.
-      await page
-        .frameLocator(".wrapped-game-frame")
-        .locator("canvas")
-        .first()
-        .waitFor({ state: "attached", timeout: 15000 });
-      await page.waitForTimeout(1500);
-    },
-  },
-  {
-    name: "hexgl-race",
-    clip: ".wrapped-game-frame",
-    async run(page) {
-      await page.goto(`${origin}/hexgl/`, { waitUntil: "networkidle" });
-      await page.waitForSelector(".wrapped-game-frame");
-      const frame = page.frameLocator(".wrapped-game-frame");
-      // menu -> Start -> click-to-continue past the controls-help -> race.
-      await frame.locator("#start").click({ timeout: 8000 });
-      await page.waitForTimeout(1500);
-      await page.locator(".wrapped-game-frame").click({ position: { x: 450, y: 300 } });
-      await page.waitForTimeout(8000); // track + textures load, race begins
-    },
-  },
-  {
-    name: "clumsybird-title",
-    clip: ".wrapped-game-frame",
-    async run(page) {
-      await page.goto(`${origin}/clumsybird/`, { waitUntil: "networkidle" });
-      await page.waitForSelector(".wrapped-game-frame");
-      await page
-        .frameLocator(".wrapped-game-frame")
-        .locator("canvas")
-        .first()
-        .waitFor({ state: "attached", timeout: 15000 });
-      await page.waitForTimeout(2000); // let the title screen paint
-    },
-  },
-  {
     name: "looseends-home",
     clip: ".le-home",
     async run(page) {

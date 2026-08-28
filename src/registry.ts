@@ -18,9 +18,6 @@ import { alignModule } from "./games/align/align.js";
 import { blockdokuModule } from "./games/blockdoku/blockdoku.js";
 import { looseendsModule } from "./games/looseends/looseends.js";
 import { colorSortModule } from "./games/color-sort/color-sort.js";
-import { astrayModule } from "./games/astray/astray.js";
-import { hexglModule } from "./games/hexgl/hexgl.js";
-import { clumsybirdModule } from "./games/clumsybird/clumsybird.js";
 import { orchardDropModule } from "./games/orchard-drop/orchard-drop.js";
 
 export const REGISTRY: readonly GameEntry[] = [
@@ -45,49 +42,6 @@ export const REGISTRY: readonly GameEntry[] = [
   { id: "blockdoku", title: "Blockdoku", emoji: "🟦", status: "playable", icon: true, load: blockdokuModule },
   { id: "looseends", title: "Loose Ends", emoji: "🎯", status: "playable", icon: true, load: looseendsModule },
   { id: "color-sort", title: "Color Sort", emoji: "🧪", status: "playable", icon: true, load: colorSortModule },
-  {
-    id: "astray",
-    title: "Astray",
-    emoji: "🔮",
-    status: "playable",
-    icon: true,
-    tier: 2,
-    attribution: {
-      author: "wwwtyro",
-      license: "The Unlicense",
-      upstreamUrl: "https://github.com/wwwtyro/Astray",
-    },
-    load: astrayModule,
-  },
-  {
-    id: "hexgl",
-    title: "HexGL",
-    emoji: "🏎",
-    status: "playable",
-    icon: true,
-    tier: 2,
-    attribution: {
-      author: "Thibaut Despoulain (BKcore)",
-      license: "MIT",
-      upstreamUrl: "https://github.com/BKcore/HexGL",
-    },
-    load: hexglModule,
-  },
-  {
-    id: "clumsybird",
-    title: "Clumsy Bird",
-    emoji: "🐤",
-    status: "playable",
-    icon: true,
-    tier: 2,
-    attribution: {
-      author: "ellisonleao",
-      license: "GPL-3.0",
-      upstreamUrl: "https://github.com/ellisonleao/clumsy-bird",
-      basedOn: "Flappy Bird by Dong Nguyen",
-    },
-    load: clumsybirdModule,
-  },
   {
     id: "orchard-drop",
     title: "Orchard Drop",

@@ -53,8 +53,9 @@ determinism-first, verifiable). The shelf also admits **Tier-2** opportunistic
 ethical wraps/ports (already-packaged, static, non-extractive, taken as-is, **no
 verifiable outcome — stated honestly**), gated by a real-browser
 containment/legibility harness rather than by the verifiable-outcome + tap-first
-standards. **The Tier-2 wrapped-game standard is ratified in §9 below**; Astray
-(`src/games/astray/`) is its reference implementation, as solitaire is for
+standards. **The Tier-2 wrapped-game standard is ratified in §9 below**. It has
+**no live reference implementation** since 2026-08-28 — see the note at the head
+of §9 — where solitaire remains the one for
 Tier-1. Everything in §§2–8 is Tier-1 unless noted.
 
 **Tier-3 — engine-backed originals** (§11) is the third: a game **we build**, on a
@@ -292,10 +293,27 @@ page (`/how-to/?game=<id>`). It follows the Croft user-guide pattern:
 
 ## 9. Tier-2 — wrapped games (the ratified addendum)
 
+
+> **Status, 2026-08-28: this tier has no third-party instance.** Astray, HexGL and
+> Clumsy Bird were removed at the owner's call — they did not fit the shelf's
+> model. What remains marked `tier: 2` is **Orchard Drop**, which is *ours* (the
+> Croft shelf, on @liabru's Matter.js), so it is a wrap of a physics engine rather
+> than of somebody else's game. By the definitions above that is closer to Tier 3.
+>
+> The standard below is kept, not struck: it was ratified, it was applied four
+> times, and the containment harness and `tier2.meta.json` schema it produced are
+> still live and gate whatever carries a `tier2.meta.json`. But **nothing here is
+> currently demonstrated by a real opportunistic wrap**, and the next one to
+> arrive should expect to re-earn the reference-implementation role rather than
+> inherit it.
+>
+> Whether Tier 2 survives as a category at all is an open owner decision.
+
 A Tier-2 game is an **already-packaged, ethical game taken as-is**. We do **not**
 rebuild it and we do **not** fake a verifiable outcome. It earns a place by being
 honestly represented and provably contained, not by the Tier-1 verifiable-outcome
-standard. Astray (`src/games/astray/`) is the reference implementation; the Tux
+standard. **The reference implementation was Astray, removed 2026-08-28** (see
+the note at the head of this section); the Tux
 Racer spike (`plans/2026-07-30-tux-racer-wrap-spike.md`) is the origin of this
 standard, and the SuperTuxKart cut (`plans/2026-07-31-supertuxkart-wrap.md`) is
 the cautionary tale — **avoid the Emscripten + runtime-asset-untar class**; prefer
@@ -363,7 +381,7 @@ meta's `approxSizeKb`).
 
 ### Porting a game — the step-by-step recipe
 
-Follow Astray (`src/games/astray/`, the simplest) or HexGL (a bigger, patched
+Read this section straight — there is no wrap to copy from right now (the
 bundle). The whole thing is a wrapper + a metadata file; you write no game code.
 
 1. **Recon against primary sources.** Confirm the real repo, the **license**
@@ -408,7 +426,7 @@ governs the chrome + frame, not the vendored game's internals:
   full-screen). Confirm the game is actually playable at phone width, not just
   non-overflowing — some ports assume a desktop canvas.
 - **Input honesty.** Declare the real input model in the meta (`keyboard`,
-  `pointer`, `touch`, `gamepad`). If a game is keyboard-only (Astray), **say so**
+  `pointer`, `touch`, `gamepad`). If a game is keyboard-only, **say so**
   in the how-to — do not imply our tap-first floor. A game that needs a physical
   keyboard is admissible but must be honest that it plays best with one.
 - **Focus + full-screen.** Input reaches the frame, but focus must return to our

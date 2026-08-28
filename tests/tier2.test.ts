@@ -11,7 +11,7 @@ import { wrappedBanner } from "../src/wrapped-banner.js";
 
 function tier2Entry(overrides: Partial<GameEntry> = {}): GameEntry {
   return {
-    id: "astray",
+    id: "example-wrap",
     title: "Astray",
     emoji: "🔮",
     status: "playable",

@@ -129,6 +129,29 @@ const slug = (name) =>
     .toLowerCase()
     .replace(/^-|-$/g, "");
 
+/** Levenshtein distance, for suggesting a near-miss rather than guessing one. */
+function distance(a, b) {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 0; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+  }
+  return d[a.length][b.length];
+}
+
+/** The closest known name, if it is close enough to be worth suggesting. */
+function nearest(what, candidates) {
+  let best = null;
+  let bestD = Infinity;
+  for (const c of candidates) {
+    const dist = distance(what, c);
+    if (dist < bestD) [best, bestD] = [c, dist];
+  }
+  return bestD <= Math.max(2, Math.floor(what.length / 4)) ? best : null;
+}
+
 function main() {
   if (!existsSync(DROP)) {
     console.log("no assets/new/ — nothing to do");
@@ -152,13 +175,25 @@ function main() {
     // `Drop4Splash` and `dots_and_boxes_icon` — underscores, no separator at
     // all, mixed case, and "icon" for what this calls a cover. A drop-off that
     // rejects the names a person actually types is a drop-off nobody uses.
-    const m = /^(.*?)[-_ ]?(icon|cover|splash)(?:@(\d{1,3}))?$/i.exec(stem);
+    // A trailing shape word is descriptive, not part of the name:
+    // `align_splash_portrait.jpeg` is align's splash. The tool measures the
+    // aspect itself, so the word is redundant — but rejecting the file over it
+    // would be pedantry.
+    const cleaned = stem.replace(/[-_ ](portrait|landscape|square)$/i, "");
+    const m = /^(.*?)[-_ ]?(icon|cover|splash)(?:@(\d{1,3}))?$/i.exec(cleaned);
 
     if (IMAGE.has(ext) && m) {
       const [, rawId, rawKind, focus] = m;
       const id = aliases.get(slug(rawId));
       if (!id) {
-        skipped.push(`${file}: "${rawId}" matches no game id or title in src/registry.ts`);
+        // Suggest, never guess. `solitare` and `wyrde` both arrived as typos, and
+        // filing art against a fuzzy match would put the wrong picture on the
+        // wrong game — silently, and only visible to whoever notices later.
+        const near = nearest(slug(rawId), [...aliases.keys()]);
+        skipped.push(
+          `${file}: "${rawId}" matches no game id or title in src/registry.ts` +
+            (near ? ` — did you mean "${near}"?` : ""),
+        );
         continue;
       }
       // `cover` is accepted as a synonym; `icon` is the name that sticks, because

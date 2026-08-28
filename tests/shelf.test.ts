@@ -31,8 +31,8 @@ const GAMES = [
   { id: "solitaire", title: "Solitaire", emoji: "♠", status: "playable", group: "provable", daily: true },
   { id: "othello", title: "Othello", emoji: "⚫", status: "playable", group: "versus" },
   { id: "wyrdle", title: "Wyrdle", emoji: "🐉", status: "playable", group: "provable", daily: true },
-  { id: "astray", title: "Astray", emoji: "🔮", status: "playable", group: "wrapped", tier: 2,
-    attribution: { author: "wwwtyro", license: "The Unlicense", upstreamUrl: "https://example.invalid" } },
+  { id: "example-wrap", title: "Example Wrap", emoji: "🔮", status: "playable", group: "wrapped", tier: 2,
+    attribution: { author: "somebody else", license: "MIT", upstreamUrl: "https://example.invalid" } },
   { id: "cribbage", title: "Cribbage", emoji: "🎴", status: "soon", group: "versus" },
 ] as unknown as readonly GameEntry[];
 

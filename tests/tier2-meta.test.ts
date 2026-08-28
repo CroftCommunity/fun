@@ -15,7 +15,7 @@ import { REGISTRY } from "../src/registry.js";
 
 function validRaw(): unknown {
   return {
-    id: "astray",
+    id: "example-wrap",
     tier: 2,
     provenance: {
       upstreamUrl: "https://github.com/wwwtyro/Astray",
@@ -36,7 +36,7 @@ function validRaw(): unknown {
         {
           file: "vendor/index.html",
           change: "absolute texture paths /x.png -> relative",
-          reason: "vendored under /astray/, not the domain root",
+          reason: "vendored under /example-wrap/, not the domain root",
         },
       ],
     },
@@ -46,8 +46,8 @@ function validRaw(): unknown {
 
 describe("parseTier2Meta (fail-loud)", () => {
   it("parses a complete, well-formed meta", () => {
-    const meta = parseTier2Meta(validRaw(), "astray");
-    expect(meta.id).toBe("astray");
+    const meta = parseTier2Meta(validRaw(), "example-wrap");
+    expect(meta.id).toBe("example-wrap");
     expect(meta.tier).toBe(2);
     expect(meta.provenance.license).toBe("The Unlicense");
     expect(meta.posture.verifiable).toBe(false);
@@ -59,19 +59,19 @@ describe("parseTier2Meta (fail-loud)", () => {
   it("throws when a required provenance field is missing", () => {
     const raw = validRaw() as MutableRaw;
     delete raw.provenance.license;
-    expect(() => parseTier2Meta(raw, "astray")).toThrow(/license/i);
+    expect(() => parseTier2Meta(raw, "example-wrap")).toThrow(/license/i);
   });
 
   it("throws when posture.verifiable is not false (a wrap is never verifiable)", () => {
     const raw = validRaw() as MutableRaw;
     raw.posture.verifiable = true;
-    expect(() => parseTier2Meta(raw, "astray")).toThrow(/verifiable/i);
+    expect(() => parseTier2Meta(raw, "example-wrap")).toThrow(/verifiable/i);
   });
 
   it("throws when the egress posture is not the same-origin allowlist", () => {
     const raw = validRaw() as MutableRaw;
     raw.posture.egress = "anywhere";
-    expect(() => parseTier2Meta(raw, "astray")).toThrow(/egress/i);
+    expect(() => parseTier2Meta(raw, "example-wrap")).toThrow(/egress/i);
   });
 });
 

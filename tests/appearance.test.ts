@@ -123,7 +123,7 @@ describe("music selection", () => {
   });
 
   it("falls back to the shelf bed for a game that names nothing", () => {
-    expect(trackFor("astray")).toBe(SHELF_TRACK);
+    expect(trackFor("placeholder")).toBe(SHELF_TRACK);
     expect(trackFor("not-a-game")).toBe(SHELF_TRACK);
   });
 
