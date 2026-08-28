@@ -1,7 +1,7 @@
 # A skin layer for the shelf — two identities, one app
 
-**Status:** Pass 1 (shape). Not started. Three owner decisions recorded (D1–D3); four open
-questions (O1–O4), none blocking the first phase.
+**Status:** Pass 1 (shape). Not started. Four owner decisions recorded (D1–D4); three open
+questions remain (O1, O2, O4), none blocking the first phase. O3 settled 2026-08-27 → D4.
 
 **Owner decision (2026-08-27):** both mock directions are wanted, shipped together —
 **Gallery of Worlds is the default**, The Pond is selectable. Mocks that produced this:
@@ -158,6 +158,47 @@ light/dark came back as an axis.
 - **D3 — The a11y budget is decided on a measurement, not an estimate** (owner, 2026-08-27).
   Build the layer, measure the full matrix on CI, then choose. See "Verified assumptions".
 
+- **D4 — share the contract, not the code** (owner, 2026-08-27; settles O3). forage and fun
+  keep **independent implementations**; the shared artifact is the *model*, promoted to the
+  workspace layer, plus an audit check that enforces it.
+
+  *Why not a shared package.* forage has **no build step** — `package.json` declares no
+  `build`, and `index.html` loads `/js/main.js` raw as `<script type="module">` with absolute
+  paths and no resolver. fun is TypeScript through esbuild under a no-`any` rule. A shared
+  module would therefore have to be plain ESM JS that fun imports untyped and forage vendors
+  or path-aliases. Measured against that: `js/skins.js` is **151 lines of code across 22
+  exports**, of which only ten are portable — `familyOf`, `familyMembers`, `resolveInFamily`,
+  `families`, `prefersDensityFor`, `validateFamilies`, `siblingOf`, `resolveDefault`,
+  `declaredTokens`, `skinScan` — roughly sixty lines, every one already taking
+  `(registry, fams)` as defaulted parameters. The other twelve are storage, DOM and
+  `<link>` glue each repo must own regardless.
+
+  *And the requirements are already diverging.* forage has `prefersDensity` and a phpBB
+  importer; fun needs `prefersLayout` and the game-token guardrail. The token vocabularies
+  share nothing: forage's roles (`band-fill`, `row-odd`, `nav-fill`) are lifted from real
+  phpBB selectors, which is what makes its importer a near-identity mapping. Extracting a
+  common module at the moment two consumers visibly diverge is the abstraction this
+  workspace's own `DECISIONS.md` exists to prevent.
+
+  *What is shared, then.* The semantics: one skin one palette; family canonical with the
+  sibling derived; a skin assigns only declared tokens; a skin's preference is a suggestion
+  the user's explicit choice overrides. Those are already written — in `forage/docs/adr/
+  0003-skins-subsume-themes.md` and `forage/docs/SKINS.md` — and `DECISIONS.md` already
+  carries the `forage/0003` row. The workspace layer gains a **thin index doc pointing at
+  them**, following the established shape (`CI-PATTERN.md` → `croft-pwa/docs/CI.md`;
+  `WEB-TESTING.md` → `croft-pwa/docs/WEB-TESTING.md`), never a second copy of the rules.
+
+  *Checked, not just written.* `PATTERN.md` is explicit that a new cross-repo dimension is not
+  done until its rule has a check with harvested fixtures. So M0 adds one to
+  `.claude/bin/workspace-audit.sh` (28 checks today), asserting both repos use the same
+  vocabulary, that neither reintroduces a second theme axis, and that a family's members agree
+  on their preference field.
+
+  *Rejected alternative worth recording:* `forage/ledger/divergence.js` looked like the
+  cross-repo drift mechanism and is not — it tracks substrate and engine-variant parity
+  **inside** forage. Nothing in this workspace tracks repo-to-repo divergence except
+  `DECISIONS.md` and the audit script.
+
 ## Verified assumptions
 
 Checked in this repo at `e453afb`:
@@ -181,6 +222,12 @@ Explicitly **not** verified, and therefore not asserted anywhere above:
 
 ## Milestones
 
+- **M0 — declare the shared dimension** (D4). A thin `.claude/SKINS.md` index pointing at
+  forage's ADR-003 and `SKINS.md` as canonical, a row in the `CLAUDE.md` dimension table, and
+  the audit check with its fixtures. **Lands in `CroftC`, not here** — the orientation layer
+  is a separate repo and a contested surface, so it needs its own branch and claim per
+  `COORDINATION.md`. Do this before M2 writes fun's registry, so fun's implementation is
+  checked from its first commit rather than retrofitted.
 - **M1 — the token split.** Divide `tokens.css` into chrome roles and game palettes with a
   declared allowlist; port `skinScan` from `forage/js/skins.js` and gate it in `tests/`.
   Nothing user-visible changes. This is the phase that makes every later one safe.
@@ -208,10 +255,10 @@ Explicitly **not** verified, and therefore not asserted anywhere above:
   has one. If yes, allocate with `bash .claude/bin/next-id.sh adr fun` — **not by eye**, per
   `TRACKING.md` § ID discipline. Not allocated yet, deliberately: an id reserved for a plan that
   may not land is waste.
-- **O3 — is the skin mechanism itself shared code or parallel implementations?** Forage's is
-  JavaScript in `js/skins.js`; fun is TypeScript with a build step. Copying costs drift;
-  extracting costs a shared package neither repo has today. `ARCHITECTURE.md` would call an
-  unexamined answer here an undeclared edge.
+- ~~**O3 — is the skin mechanism itself shared code or parallel implementations?**~~
+  **Settled 2026-08-27 → D4:** independent implementations, shared contract, enforced by a new
+  audit check. The undeclared edge `ARCHITECTURE.md` warns about is closed by M0 rather than
+  left to imitation.
 - **O4 — does Ring Pop's rename land inside this plan or beside it?** The mocks call Match-3
   "Ring Pop" throughout on the owner's 2026-08-27 decision, but the rename touches the registry
   id, the how-to guide, seven campaign packs and every `?r=` share link. It is independent of
