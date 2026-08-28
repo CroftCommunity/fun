@@ -19,6 +19,7 @@
  */
 
 :root {
+  /* ===== SKINNABLE — chrome roles. A skin may assign these, and nothing else. ===== */
   /* --- Light theme (default): "the table by a sunny window" --- */
   --bg: #eef0e8;          /* soft sage page                       */
   --surface: #fbf7ee;     /* raised UI panels (header, drawer, cards) */
@@ -31,10 +32,27 @@
   --link: #2f6b45;        /* moss link on the page   (bg  5.52:1)  */
   --danger: #9b3016;      /* rust — a failed verification          */
   --danger-ink: #fbf7f0;  /* text/icon on --danger   (6.94:1)      */
-  --felt: #1f5c3f;        /* the felt table (board play surface)   */
-  --felt-ink: #eaf2ea;    /* labels/hints on felt    (felt 6.91:1) */
   --focus: #2f6b45;       /* focus ring — moss       (bg  5.52:1)  */
   --border: #c7bda6;      /* hairline dividers — decorative        */
+
+  /* Type roles (self-hostable display + system UI fallback). */
+  --font-display: "Fredoka", "Baloo 2", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Radii + layout scale. */
+  --radius: 10px;
+  --r-card: 8px;
+  --drawer-w: 16rem;
+
+  /* PWA/browser chrome colour — the felt, kept in sync by src/theme.ts. */
+  --theme-color: #1f5c3f;
+  /* ===== GAME-OWNED — never skinnable. A board is the game's own world, and
+     several of these are commitments a skin must not be able to undo: the Align
+     palette is an IP guardrail, and the shaped palettes carry colour-blind
+     safety where the glyph is the meaning and the hue only the second signal. ===== */
+  --felt: #1f5c3f;        /* the felt table (board play surface)   */
+  --felt-ink: #eaf2ea;    /* labels/hints on felt    (felt 6.91:1) */
   --card: #fbf7ee;        /* playing-card face                     */
   --suit-red: #b3123b;    /* ♦ ♥ on a card           (card 6.41:1) */
   --suit-black: #1b201c;  /* ♣ ♠ on a card           (card 15.47:1)*/
@@ -177,21 +195,10 @@
   --cs-plate: #6f6857;        /* bolt base plate                       */
   --cs-cap: #37503f;          /* the locked-tube cap                   */
 
-  /* Type roles (self-hostable display + system UI fallback). */
-  --font-display: "Fredoka", "Baloo 2", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-
-  /* Radii + layout scale. */
-  --radius: 10px;
-  --r-card: 8px;
-  --drawer-w: 16rem;
-
-  /* PWA/browser chrome colour — the felt, kept in sync by src/theme.ts. */
-  --theme-color: #1f5c3f;
 }
 
 [data-theme="dark"] {
+  /* ===== SKINNABLE — chrome roles. A skin may assign these, and nothing else. ===== */
   /* --- Dark theme: "the same table at night" — same roles, re-tuned. --- */
   --bg: #15130f;          /* deep warm black                      */
   --surface: #221f18;     /* raised UI panels                     */
@@ -204,10 +211,16 @@
   --link: #7fc79a;        /* moss link, lightened    (bg  9.31:1)  */
   --danger: #de6a48;      /* rust, lightened for dark              */
   --danger-ink: #15130f;  /* dark ink on --danger    (5.53:1)      */
-  --felt: #123f2b;        /* deeper felt                           */
-  --felt-ink: #dfeadf;    /* labels/hints on felt    (felt 9.58:1) */
   --focus: #d9b53c;       /* focus ring — gold       (bg  9.39:1)  */
   --border: #3a352b;      /* hairline dividers                     */
+
+  --theme-color: #123f2b;
+  /* ===== GAME-OWNED — never skinnable. A board is the game's own world, and
+     several of these are commitments a skin must not be able to undo: the Align
+     palette is an IP guardrail, and the shaped palettes carry colour-blind
+     safety where the glyph is the meaning and the hue only the second signal. ===== */
+  --felt: #123f2b;        /* deeper felt                           */
+  --felt-ink: #dfeadf;    /* labels/hints on felt    (felt 9.58:1) */
   --card: #ece4d3;        /* playing-card face (light, as real cards) */
   --suit-red: #a8113a;    /* ♦ ♥ on a card           (card 5.92:1) */
   --suit-black: #1b201c;  /* ♣ ♠ on a card           (card 13.07:1)*/
@@ -301,5 +314,4 @@
   --cs-plate: #4a4636;
   --cs-cap: #6f9079;
 
-  --theme-color: #123f2b;
 }
