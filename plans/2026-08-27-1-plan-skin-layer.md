@@ -1,7 +1,8 @@
 # A skin layer for the shelf — two identities, one app
 
-**Status:** Pass 1 (shape). Not started. Six decisions recorded (D1–D6); **one** open question
+**Status:** Pass 1 (shape). Not started. Seven decisions recorded (D1–D7); **one** open question
 remains (O4), which is independent of this plan. O1–O3 settled 2026-08-27 → D5, D6, D4.
+M0 was attempted 2026-08-27 and **deferred** on `PATTERN.md`'s own bar — see D7.
 
 **Owner decision (2026-08-27):** both mock directions are wanted, shipped together —
 **Gallery of Worlds is the default**, The Pond is selectable. Mocks that produced this:
@@ -192,7 +193,8 @@ light/dark came back as an axis.
   done until its rule has a check with harvested fixtures. So M0 adds one to
   `.claude/bin/workspace-audit.sh` (28 checks today), asserting both repos use the same
   vocabulary, that neither reintroduces a second theme axis, and that a family's members agree
-  on their preference field.
+  on their preference field. **M0 runs after M2, not first — see D7:** that same section of
+  `PATTERN.md` is why, because the fixtures cannot be harvested until fun has a registry.
 
   *Rejected alternative worth recording:* `forage/ledger/divergence.js` looked like the
   cross-repo drift mechanism and is not — it tracks substrate and engine-variant parity
@@ -235,6 +237,40 @@ light/dark came back as an axis.
   `bash .claude/bin/next-id.sh adr fun` — not now, and not by eye (`TRACKING.md` § ID
   discipline); an id reserved for a plan that may not land is waste.
 
+- **D7 — M0 is deferred until fun's skin layer exists** (2026-08-27, correcting this plan's
+  own sequencing). M0 was written to land *before* M2 so fun's registry would be checked from
+  its first commit. Attempting it surfaced that `PATTERN.md` refuses it, on two grounds, the
+  second decisive:
+
+  *The bar.* `PATTERN.md` § "When NOT to add a convention": "A concern with no second instance
+  yet is a note in the owning repo, not a workspace doc — the pattern here was extracted from
+  five applications, **not predicted from one**." The skin model has exactly one built
+  instance today. Fun's is planned and unstarted. croft-pwa shares fun's *token* architecture
+  but has no families, no one-palette skins, no preference-not-lock rule — so it is not a
+  second instance of this concern.
+
+  *The check cannot be validated.* `PATTERN.md` step 5 requires an audit check proven **RED on
+  known fixtures, then GREEN**, and is emphatic that "fixtures come from the shapes actually in
+  use, harvested — never invented", listing four checks that passed their invented fixtures
+  while proving nothing (check 12's pointer grep, the teardown check's empty branch, the
+  version check reading a declared range, the destructive-git guard's wrong-tree shape). The
+  check M0 proposes compares fun's skin vocabulary against forage's. **Fun has no vocabulary
+  yet**, so there is nothing to harvest and the only available fixtures would be invented —
+  precisely the failure mode that section documents. The check is unwritable today on the
+  pattern's own terms, not merely premature.
+
+  *What carries the load meanwhile, which turns out to be everything needed.* forage's
+  `docs/adr/0003-skins-subsume-themes.md` and `docs/SKINS.md` **are** the "note in the owning
+  repo" the bar prescribes, and `.claude/DECISIONS.md` already carries the `forage/0003` row —
+  the register agents are told to grep first before building a capability. D4's mechanism is
+  therefore already in place; nothing is missing today, and no `CroftC` change is warranted yet.
+
+  *Re-sequenced:* M0 runs **after M2**, when fun's registry exists and its shapes can be
+  harvested. The cost accepted is that fun's first registry commits are checked by fun's own
+  suite rather than by the workspace audit — which is the correct division anyway, since a
+  workspace check exists to catch *divergence between* two implementations and cannot mean
+  anything until both exist.
+
 ## Verified assumptions
 
 Checked in this repo at `e453afb`:
@@ -258,12 +294,15 @@ Explicitly **not** verified, and therefore not asserted anywhere above:
 
 ## Milestones
 
-- **M0 — declare the shared dimension** (D4). A thin `.claude/SKINS.md` index pointing at
-  forage's ADR-003 and `SKINS.md` as canonical, a row in the `CLAUDE.md` dimension table, and
-  the audit check with its fixtures. **Lands in `CroftC`, not here** — the orientation layer
-  is a separate repo and a contested surface, so it needs its own branch and claim per
-  `COORDINATION.md`. Do this before M2 writes fun's registry, so fun's implementation is
-  checked from its first commit rather than retrofitted.
+- ~~**M0 (as first sequenced, before M1)**~~ — struck 2026-08-27 per D7, not deleted, so the
+  reason survives: `PATTERN.md` refuses a workspace dimension predicted from one instance, and
+  its audit check has no harvested fixtures to be proven RED against until fun has a registry.
+  It now runs after M2 and carries `PATTERN.md`'s full five-surface funnel: the canonical
+  `.claude/SKINS.md` index pointing at forage's ADR-003 and `SKINS.md`, a compressed row in the
+  `CLAUDE.md` dimension table, a line in COORDINATION's layer listing, a line in the human
+  `README.md`, a `workspace/skins` row in `DECISIONS.md`, and the audit check proven RED first.
+  **Lands in `CroftC`, not here** — the orientation layer is a separate repo and a contested
+  surface, so it needs its own branch and a claim per `COORDINATION.md`.
 - **M1 — the token split.** Divide `tokens.css` into chrome roles and game palettes with a
   declared allowlist; reimplement `skinScan` in TypeScript (D4: independent implementation) and
   gate it in `tests/`. Carries fun's first ADR (D6), id allocated at write time. Nothing
@@ -280,6 +319,7 @@ Explicitly **not** verified, and therefore not asserted anywhere above:
   graded on its own terms.
 - **M5 — the picker.** Two family rows in the settings sheet, ☾/☀ keeps its place in the header.
 - **M6 — measure the a11y matrix, then decide D3.**
+- **M0 (re-sequenced, runs after M2)** — declare the shared dimension, per D7 above.
 
 ## Open questions
 
@@ -290,7 +330,7 @@ Explicitly **not** verified, and therefore not asserted anywhere above:
 - ~~**O3 — is the skin mechanism itself shared code or parallel implementations?**~~
   **Settled 2026-08-27 → D4:** independent implementations, shared contract, enforced by a new
   audit check. The undeclared edge `ARCHITECTURE.md` warns about is closed by M0 rather than
-  left to imitation.
+  left to imitation — after M2, per D7.
 - **O4 — does Ring Pop's rename land inside this plan or beside it?** The mocks call Match-3
   "Ring Pop" throughout on the owner's 2026-08-27 decision, but the rename touches the registry
   id, the how-to guide, seven campaign packs and every `?r=` share link. It is independent of
@@ -306,3 +346,11 @@ Explicitly **not** verified, and therefore not asserted anywhere above:
   conditional, so starting `docs/adr/` is a free choice and the only ADR-worthy decision here
   is the one with no upstream to point at. O4 stays open and is independent of this plan.
   Nothing has been executed.
+
+- **2026-08-27 — M0 attempted and deferred (D7).** Execution started with a state
+  reconstruction of `CroftC` (clean, `main` level with `origin/main`, three peer commits to
+  `.claude/` today) and a read of `PATTERN.md` before designing, per its step 1. That read
+  stopped the work: the dimension would be predicted from a single instance, and its audit
+  check has no shapes to harvest fixtures from until fun's registry exists. No `CroftC`
+  branch, claim or commit was made. Recorded because the plan's own sequencing was wrong and
+  improvising around `PATTERN.md` is, by its own words, how the pattern collapses.
