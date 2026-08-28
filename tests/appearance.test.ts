@@ -95,3 +95,50 @@ describe("the layout row makes the preference reachable", () => {
     expect(LAYOUT_KEY).toBe("fun-layout");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Music (pure parts). The runtime is deliberately best-effort and silent, so
+// what is worth asserting is the selection and the default — a track that
+// starts uninvited, or a page that fetches ~2MB from a visitor who never asked
+// for sound, are the two failures that matter.
+// ---------------------------------------------------------------------------
+
+import { SHELF_TRACK, TRACKS, isLoop, resolveMusic, trackFor, trackUrl } from "../src/music.js";
+
+describe("music selection", () => {
+  it("is OFF unless explicitly turned on — never starts uninvited", () => {
+    expect(resolveMusic(null)).toBe(false);
+    expect(resolveMusic("")).toBe(false);
+    expect(resolveMusic("yes")).toBe(false);
+    expect(resolveMusic("on")).toBe(true);
+  });
+
+  it("gives the shelf its own bed when no game is mounted", () => {
+    expect(trackFor(null)).toBe(SHELF_TRACK);
+  });
+
+  it("gives a game the track it names", () => {
+    expect(trackFor("match3")).toBe("gateway-to-the-spire");
+    expect(trackFor("solitaire")).toBe("sunset-at-the-harbor");
+  });
+
+  it("falls back to the shelf bed for a game that names nothing", () => {
+    expect(trackFor("astray")).toBe(SHELF_TRACK);
+    expect(trackFor("not-a-game")).toBe(SHELF_TRACK);
+  });
+
+  it("every named default is a track that exists", () => {
+    const ids = new Set(TRACKS.map((t) => t.id));
+    for (const t of TRACKS) expect(ids.has(trackFor(t.id) )).toBe(true);
+    expect(ids.has(SHELF_TRACK)).toBe(true);
+  });
+
+  it("loops loop and pieces do not — a 3-minute track restarting is not ambience", () => {
+    expect(isLoop(SHELF_TRACK)).toBe(true);
+    expect(isLoop("sunset-at-the-harbor")).toBe(false);
+  });
+
+  it("resolves to the shelf-level audio path, not a per-game one", () => {
+    expect(trackUrl("morning-miles")).toBe("/assets/audio/morning-miles.mp3");
+  });
+});

@@ -11,12 +11,10 @@
 //! only expresses a preference among them (`prefersLayout`), and the user's
 //! explicit choice wins in both directions.
 //!
-//! COVER ART IS NOT WIRED YET, on purpose. The design mocks use commissioned
-//! icons that are not in this repo, and the 40 shots in `assets/guide/` are
-//! full-page screenshots that read badly as tiles. Both layouts render the
-//! registry's emoji until proper per-game cover art lands — the structure is the
-//! deliverable here, and shipping ugly tiles to fill the hole would be worse
-//! than an honest placeholder. See `TODO/pwa.md` and the skin-layer plan.
+//! Cover art: a game declaring `cover: true` renders
+//! `/<id>/assets/cover.jpg`; the rest keep the registry emoji. Ten of twenty
+//! have art today, so both paths are live at once and the fallback is a real
+//! state rather than a theoretical one.
 
 import type { ShelfModel } from "./shelf.js";
 
@@ -31,12 +29,26 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
-/** A game tile: emoji, title, and a link to the game's own URL. */
-function tile(game: { id: string; title: string; icon: string }): HTMLElement {
+/** The cover image, or the emoji for a game that has no art yet. */
+function art(game: { id: string; icon: string; cover?: true }, cls: string): HTMLElement {
+  if (!game.cover) return el("span", { class: `${cls} is-emoji`, "aria-hidden": "true" }, game.icon);
+  return el("img", {
+    class: cls,
+    src: `/${game.id}/assets/cover.jpg`,
+    alt: "",
+    loading: "lazy",
+    decoding: "async",
+    width: "512",
+    height: "512",
+  });
+}
+
+/** A game tile: cover art or emoji, title, and a link to the game's own URL. */
+function tile(game: { id: string; title: string; icon: string; cover?: true }): HTMLElement {
   return el(
     "a",
     { href: `/${game.id}/`, class: "home-tile", "data-game-id": game.id },
-    el("span", { class: "home-tile-icon", "aria-hidden": "true" }, game.icon),
+    art(game, "home-tile-icon"),
     el("span", { class: "home-tile-title" }, game.title),
   );
 }
@@ -110,7 +122,7 @@ function renderShelf(root: HTMLElement, model: ShelfModel): void {
       const a = el(
         "a",
         { href: `/${g.id}/`, class: "home-row", "data-game-id": g.id },
-        el("span", { class: "home-row-icon", "aria-hidden": "true" }, g.icon),
+        art(g, "home-row-icon"),
         el("span", { class: "home-row-title" }, g.title),
       );
       const daily = model.today.find((t) => t.id === g.id);

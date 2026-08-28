@@ -223,6 +223,15 @@ else console.warn("note: blockdoku-daily-pack.json missing — blockdoku's daily
 const assets = join(root, "assets");
 if (await exists(assets)) await cp(assets, join(dist, "assets"), { recursive: true });
 
+// Per-game assets: src/games/<id>/assets -> dist/<id>/assets. A game's own art
+// lives with the game (CLAUDE.md "Game isolation"), unlike the shelf-level
+// assets/ tree above. tests/art.test.ts asserts the registry's `cover: true`
+// claims match what is actually on disk, in both directions.
+for (const id of GAME_PAGES.filter(Boolean)) {
+  const from = join(root, "src", "games", id, "assets");
+  if (await exists(from)) await cp(from, join(dist, id, "assets"), { recursive: true });
+}
+
 // Tier-2 vendored bundles: copy src/games/<id>/vendor -> dist/<id>/vendor so the
 // wrapped game's sandboxed iframe loads it same-origin (no runtime third-party
 // fetch — every asset is ours, served from our origin).

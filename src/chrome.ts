@@ -10,6 +10,7 @@ import { applySkin, currentSkin, isDark, setSkin, siblingOf, togglePalette } fro
 import { wrappedBanner } from "./wrapped-banner.js";
 import { renderHome } from "./home.js";
 import { appearanceSpec } from "./appearance.js";
+import { startMusic } from "./music.js";
 import { renderSettingsSheet } from "./settings-sheet.js";
 import {
   LAYOUT_KEY,
@@ -178,12 +179,22 @@ export function boot(root: HTMLElement = document.body): Chrome {
     hidden: "",
   });
 
+  // Lazy by construction: startMusic fetches nothing unless the stored
+  // preference is already "on". A visitor who never asks for sound pays no bytes.
+  const music = startMusic(gameId);
+
   const paintAppearance = (): void => {
     appearancePanel.replaceChildren(
       renderSettingsSheet(
         appearanceSpec({
           skin: currentSkin(),
           layout: readStored(LAYOUT_KEY),
+          gameId,
+          music: music.isEnabled(),
+          onMusic: (on) => {
+            music.setEnabled(on);
+            paintAppearance();
+          },
           onSkin: (id) => {
             setSkin(id);
             paintThemeBtn();

@@ -18,9 +18,15 @@
 import type { SettingsSheetSpec } from "./settings-sheet.js";
 import { FAMILIES, SKINS, resolveInFamily } from "./skins.js";
 import { LAYOUTS, prefersLayoutFor } from "./shelf.js";
+import { TRACKS, trackFor } from "./music.js";
 
 /** What the picker needs to know, and where its choices go. */
 export interface AppearanceDeps {
+  /** The game whose track would play, or null on the home page. */
+  readonly gameId?: string | null;
+  /** Whether music is currently on. */
+  readonly music?: boolean;
+  onMusic?(on: boolean): void;
   /** The running skin id. */
   readonly skin: string;
   /** The stored layout override, or null to follow the family's preference. */
@@ -31,7 +37,15 @@ export interface AppearanceDeps {
 }
 
 /** Build the appearance rows. */
-export function appearanceSpec({ skin, layout, onSkin, onLayout }: AppearanceDeps): SettingsSheetSpec {
+export function appearanceSpec({
+  skin,
+  layout,
+  onSkin,
+  onLayout,
+  gameId = null,
+  music = false,
+  onMusic,
+}: AppearanceDeps): SettingsSheetSpec {
   const current = SKINS[skin];
   const palette = current?.palette ?? "light";
   const family = current?.family ?? "";
@@ -67,6 +81,18 @@ export function appearanceSpec({ skin, layout, onSkin, onLayout }: AppearanceDep
           ...Object.entries(LAYOUTS).map(([id, l]) => ({ value: id, label: l.label })),
         ],
         onChange: onLayout,
+      },
+      {
+        kind: "toggle",
+        id: "music",
+        label: "Music",
+        // Named, because "Music" alone does not tell you that turning it on
+        // fetches a couple of megabytes. Nothing is downloaded until it is on.
+        hint: `Off by default. Turning it on plays ${
+          TRACKS.find((t) => t.id === trackFor(gameId))?.title ?? "a track"
+        }, downloaded then and not before.`,
+        value: music,
+        onChange: (on) => onMusic?.(on),
       },
     ],
   };

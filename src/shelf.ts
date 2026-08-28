@@ -136,9 +136,15 @@ export interface ShelfDeps {
 /** Games that ship a daily pack (`games/<id>/daily-pack.json`). */
 const DAILY = new Set(["solitaire", "wyrdle", "2048", "bubble", "align", "blockdoku", "color-sort"]);
 
+/** Dev-only entries the home page does not advertise (still reachable by URL). */
+const UNLISTED = new Set(["placeholder"]);
+
 /** Build the model both layouts consume. Pure. */
 export function buildShelfModel({ games, state, now }: ShelfDeps): ShelfModel {
-  const playable = games.filter((g) => g.status === "playable");
+  // `placeholder` exists to exercise the chrome. It was item #1 in the drawer
+  // and led the shelf; a dev artifact is not the first thing a player should
+  // meet. Still reachable at /placeholder/ and still in the drawer.
+  const playable = games.filter((g) => g.status === "playable" && !UNLISTED.has(g.id));
   const byId = new Map(playable.map((g) => [g.id, g]));
 
   const lastId = recentFirst(state).find((id) => byId.has(id));

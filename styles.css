@@ -4135,7 +4135,23 @@ body.fullscreen .le-stage {
   color: var(--ink);
   text-decoration: none;
 }
-.home-tile-icon { font-size: 1.5rem; line-height: 1; }
+/* Cover art where a game has it, emoji where it does not — both paths are live
+   (ten of twenty have art), so the fallback is a real state, not a theory. */
+.home-tile-icon {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--r-card);
+  display: block;
+}
+.home-tile-icon.is-emoji {
+  display: grid;
+  place-items: center;
+  font-size: 1.9rem;
+  line-height: 1;
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
 .home-tile-title { font-weight: 600; font-size: 0.92rem; }
 .home-tile:hover,
 .home-row:hover,
@@ -4179,7 +4195,20 @@ body.fullscreen .le-stage {
   text-decoration: none;
 }
 .home-list li:last-child .home-row { border-bottom: 1px solid var(--border); }
-.home-row-icon { font-size: 1.25rem; width: 1.6rem; text-align: center; }
+.home-row-icon {
+  width: 2.4rem;
+  height: 2.4rem;
+  flex: 0 0 auto;
+  border-radius: 7px;
+  object-fit: cover;
+  display: block;
+}
+.home-row-icon.is-emoji {
+  display: grid;
+  place-items: center;
+  font-size: 1.25rem;
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
 .home-row-title { flex: 1; font-family: var(--font-display); font-size: 1.02rem; }
 .home-row-note { font-size: 0.72rem; color: var(--ink-muted); }
 

@@ -49,6 +49,13 @@ interface BaseGameEntry {
    * `provable`. Only the adversarial games need to say so explicitly.
    */
   readonly group?: "provable" | "versus" | "wrapped";
+  /**
+   * This game ships `src/games/<id>/assets/cover.jpg`, which the build serves at
+   * `/<id>/assets/cover.jpg` and the home page shows instead of the emoji.
+   * Asserted against the filesystem by `tests/art.test.ts` in BOTH directions,
+   * so the claim cannot drift from the file.
+   */
+  readonly cover?: true;
   /** Construct a fresh module instance. Absent for `soon` games. */
   readonly load?: () => GameModule;
 }
