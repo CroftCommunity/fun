@@ -20,7 +20,7 @@ Name the file after the game id in `src/registry.ts` and the tool does the rest.
 | `<id>-cover.png\|jpg\|jpeg` | 512×512 JPEG, q82 | `src/games/<id>/assets/cover.jpg` |
 | `<id>-cover@57.png` | same, cropped around 57% down | `src/games/<id>/assets/cover.jpg` |
 | `<id>-splash.png\|jpg\|jpeg` | 1200px tall JPEG, q80 | `src/games/<id>/assets/splash.jpg` |
-| `<Any Track Name>.mp3\|wav\|m4a` | 96 kbps MP3 | `assets/audio/<any-track-name>.mp3` |
+| `<Any Track Name>.mp3\|wav\|m4a` | 64 kbps MP3 | `assets/audio/<any-track-name>.mp3` |
 
 **Per-game art lives with its game** (`src/games/<id>/assets/`), because that is
 where a game's own assets belong — `CLAUDE.md` § "Game isolation". The build
@@ -52,3 +52,8 @@ neither belongs in a repo that ships to GitHub Pages.
 
 Drops are left in place after a run, so a re-run is safe and you can clear them
 when you are satisfied.
+
+**Always re-encode audio from the master, never from a file already in
+`assets/audio/`** — re-encoding a lossy file is lossy twice. That is why masters
+are worth keeping even though they never enter the repo: the library was re-cut
+from 96 to 64 kbps on 2026-08-28 and went back to the originals to do it.

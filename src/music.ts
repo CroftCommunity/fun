@@ -8,7 +8,7 @@
 //! Three rules the implementation exists to keep:
 //!
 //! - **Lazy.** Nothing is fetched until the player turns music on. A silent
-//!   visitor pays zero bytes, which matters when the library is ~19 MB.
+//!   visitor pays zero bytes, which matters when the library is ~12.5 MB.
 //! - **Best-effort.** Every failure path is silent. Music is decoration; a
 //!   missing file, a denied autoplay, or a full cache must never break a game.
 //!   This is the one place the repo's "fail loud" rule is deliberately inverted,

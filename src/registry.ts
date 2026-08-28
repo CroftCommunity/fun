@@ -50,6 +50,7 @@ export const REGISTRY: readonly GameEntry[] = [
     title: "Astray",
     icon: "🔮",
     status: "playable",
+    cover: true,
     tier: 2,
     attribution: {
       author: "wwwtyro",
@@ -63,6 +64,7 @@ export const REGISTRY: readonly GameEntry[] = [
     title: "HexGL",
     icon: "🏎",
     status: "playable",
+    cover: true,
     tier: 2,
     attribution: {
       author: "Thibaut Despoulain (BKcore)",
@@ -76,6 +78,7 @@ export const REGISTRY: readonly GameEntry[] = [
     title: "Clumsy Bird",
     icon: "🐤",
     status: "playable",
+    cover: true,
     tier: 2,
     attribution: {
       author: "ellisonleao",

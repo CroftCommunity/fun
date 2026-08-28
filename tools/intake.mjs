@@ -25,10 +25,16 @@ const GO = process.argv.includes("--go");
 const IMAGE = new Set([".png", ".jpg", ".jpeg", ".webp"]);
 const AUDIO = new Set([".mp3", ".wav", ".m4a", ".aiff", ".flac"]);
 
-/** Audio target. 96 kbps CBR: measured 2.0 MB for a 2:57 track, 361 KB for a
- *  30s loop — about 19 MB for the current 16, which a Pages site carries
- *  comfortably. Drop to 64k to roughly halve it if that ever binds. */
-const AUDIO_KBPS = 96;
+/**
+ * Audio target. 64 kbps CBR (owner, 2026-08-28). Measured on the real library:
+ * a 2:57 track is 1.4 MB at 64k against 2.0 MB at 96k, taking the 16-track set
+ * from 18.8 MB to about 12.6 MB. These are ambient beds played under a game at
+ * 35% volume, which is what makes the trade cheap.
+ *
+ * Always re-encode from the MASTERS in `assets/new/`, never from a file already
+ * in `assets/audio/` — re-encoding a lossy file is lossy twice.
+ */
+const AUDIO_KBPS = 64;
 
 const sh = (cmd, args) => execFileSync(cmd, args, { stdio: ["ignore", "pipe", "pipe"] });
 const dims = (f) => {

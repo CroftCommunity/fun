@@ -87,7 +87,7 @@ export function appearanceSpec({
         id: "music",
         label: "Music",
         // Named, because "Music" alone does not tell you that turning it on
-        // fetches a couple of megabytes. Nothing is downloaded until it is on.
+        // fetches roughly a megabyte. Nothing is downloaded until it is on.
         hint: `Off by default. Turning it on plays ${
           TRACKS.find((t) => t.id === trackFor(gameId))?.title ?? "a track"
         }, downloaded then and not before.`,
