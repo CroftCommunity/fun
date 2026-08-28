@@ -1,8 +1,10 @@
 # Orchard Drop → Tier-1: a fixed-point deterministic fruit-merge core
 
-**Status:** Passes 1–3 complete, not started. Phase 0 (the solver spike) is the gate — every
-later phase is contingent on D1/D5, and the plan names its fallback if they fail. Two BLOCKING
-open questions await the owner's call before Phase 1.
+**Status:** Passes 1–3 complete. **Both BLOCKING questions confirmed by the owner 2026-08-28 —
+ready for execution, starting at Phase 0.** The direction is the hand-rolled fixed-point solver
+(`crates/pond-physics`), and the game ships a daily seed on 2048's pattern. Phase 0 remains the
+gate: everything below it is contingent on D1 (a stable pile) and D5 (it feels right), and the
+Rapier fallback stays written for the case where they fail.
 **Author cadence:** `/phase-plan` (three passes; all recorded in the Review Log).
 **Standards anchor:** `docs/BUILDING-GAMES.md` §§2–8 (Tier-1) — with §11 (Tier-3) as the
 explicitly-considered-and-rejected alternative.
@@ -749,15 +751,17 @@ position in any plan.
 
 ## Open Questions
 
-- [RECOMMENDED: BLOCKING] Is the fixed-point solver worth writing versus taking Rapier with
-  `enhanced-determinism`, which is already measured to work? *Phase 0 answers the empirical half
-  (D1/D5); the judgement half is the trade in § Reasoning — integer math has no untested-engine
-  exposure and honours the repo's no-floats-on-the-hashed-path rule, but Rapier is battle-tested
-  and much less work. The owner should confirm the direction before Phase 1, because Phase 0's
-  spike is cheap and Phase 1 is not.*
-- [RECOMMENDED: BLOCKING] Is the §§5–8 tax (Phase 4) acceptable? *It is roughly half the total
-  effort and buys accessibility and settings the wrap was exempt from — real value, but it is not
-  the physics work and it is easy to agree to the plan while only picturing the interesting part.*
+- **[CONFIRMED 2026-08-28 — BLOCKING, RESOLVED] Hand-rolled fixed-point, not Rapier.** The owner
+  chose `crates/pond-physics` over Rapier + `enhanced-determinism`, with the trade in § Reasoning
+  in view: no untested-engine exposure, honours the no-floats-on-the-hashed-path rule, and the
+  overflow envelope is already proven (3,560× headroom at shift-16). The cost accepted is that
+  stable stacking is unproven — **which is exactly what Phase 0's D1 and D5 measure, so this
+  choice does not pre-empt the gate.** If D1 or D5 fails, the Rapier fallback is still the answer
+  and this confirmation does not override that.
+- **[CONFIRMED 2026-08-28 — BLOCKING, RESOLVED] The §§5–8 tax is accepted**, implicitly by
+  choosing Tier-1: there is no Tier-1 without it. Recorded explicitly rather than left implied,
+  because Phase 4 is roughly half the total effort, carries no interesting problems, and is the
+  part it is easiest to agree to while picturing only the physics.
 - [RECOMMENDED: PHASE-GATED — Phase 2] Should the merge tie-break rule match the current game's
   observable behaviour, or is a clean rule enough? *Matter's pair order is an implementation
   detail we cannot faithfully reproduce, so a three-way contact may resolve differently than it
@@ -768,18 +772,25 @@ position in any plan.
   score }` — `won` is required, not optional. Orchard Drop's natural `won` is the milestone the
   current game already celebrates: `maxTierReached >= 10`, the vendor overlay's "🍉 Watermelon
   grown!". Score carries the real result. No new variant, no invention.
-- [RECOMMENDED: PHASE-GATED — Phase 2] Should Orchard Drop ship a **daily seed** at all, or only
-  free play? *Pass 2 found Pass 1 had omitted seed provenance entirely. Recommendation: yes,
-  follow 2048 — daily + free, no solver, since the game is never unwinnable. It is the shelf's
-  established shape for a score-chase and the pack machinery is ~100 lines. But a daily is a
-  product decision (it implies a leaderboard-shaped social object the shelf may not want for a
-  physics game), so it is the owner's call, not a mechanical one.*
+- **[CONFIRMED 2026-08-28 — PHASE-GATED (Phase 2), RESOLVED] Daily + free, following 2048.**
+  `crates/orchard-core/src/pack.rs` is a seeded shuffle with **no solver** (the game is never
+  unwinnable — the same class `twenty48-core/src/pack.rs` and wyrdle occupy), in a
+  `pond-docformat` `{ seeds, fixture }` envelope embedded in the wasm and indexed by UTC day, with
+  2048's daily/free toggle in the UI. Phases 2 and 4 already carry the work.
 - [RECOMMENDED: ADVISORY] Should `pond-physics` be built for Emoji Wars' needs, or strictly for
   Orchard Drop's? *Recommendation: strictly Orchard Drop's. Emoji Wars has not decided to adopt
   it and building for a hypothetical second consumer is how a 3-file solver becomes an engine.*
 
 ## Review Log
 
+- **2026-08-28 — Owner confirmation (post-Pass 3).** Both BLOCKING questions and the new
+  PHASE-GATED one were walked through and answered: **hand-rolled fixed-point** over Rapier, the
+  §§5–8 tax accepted with it, and **daily + free** seeding on 2048's pattern. Two open questions
+  remain and neither gates the start — the merge tie-break rule (PHASE-GATED, Phase 2) and
+  `pond-physics` scope (ADVISORY). **The plan is ready for execution at Phase 0.** Worth restating
+  because it is the thing a confirmation like this can quietly erode: choosing the fixed-point
+  direction is not the same as deciding it works. D1 and D5 are still the gate, and the Rapier
+  fallback is still live if they fail.
 - **2026-08-28 — Pass 1 (plan development).** Drafted from a read of the vendored bundle, the
   Tier-1/2/3 standards in `docs/BUILDING-GAMES.md`, the bubble fixed-point precedent, the 2048
   outcome precedent, and the rapier-determinism spike. Sixteen assumptions verified against the
