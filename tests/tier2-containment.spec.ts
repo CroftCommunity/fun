@@ -77,8 +77,19 @@ test.describe("Tier-2 containment/legibility gate", () => {
       // No top-window breakout: we are still on the game's own URL.
       expect(new URL(page.url()).pathname).toBe(`/${id}/`);
       // The opaque-origin frame cannot have written to OUR origin's storage.
-      const ourStorage = await page.evaluate(() => window.localStorage.length);
-      expect(ourStorage).toBe(0);
+      //
+      // This asserted `length === 0` until 2026-08-28. That was a PROXY, valid
+      // only while the shelf itself wrote nothing — and M3 made the shelf record
+      // which games you opened (`fun-shelf-state`), so the proxy started failing
+      // on a containment property that had not changed at all. The invariant is
+      // "no key the frame could have written", so check that: every key present
+      // belongs to the shelf's own `fun-` namespace. A breakout writing an
+      // arbitrary key still fails, and this no longer breaks when we legitimately
+      // store something.
+      const foreign = await page.evaluate(() =>
+        Object.keys(window.localStorage).filter((k) => !k.startsWith("fun-")),
+      );
+      expect(foreign, `keys not written by the shelf: ${foreign.join(", ")}`).toEqual([]);
     });
 
     test(`${id}: is legible in our chrome at desktop and 360px`, async ({ page }) => {

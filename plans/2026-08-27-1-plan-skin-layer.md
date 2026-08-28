@@ -1,6 +1,6 @@
 # A skin layer for the shelf — two identities, one app
 
-**Status:** Pass 1 (shape). Not started. Seven decisions recorded (D1–D7); **one** open question
+**Status:** M0–M6 COMPLETE (2026-08-28). Originally Pass 1 (shape). Seven decisions recorded (D1–D7); **one** open question
 remains (O4), which is independent of this plan. O1–O3 settled 2026-08-27 → D5, D6, D4.
 M0 was attempted 2026-08-27 and **deferred** on `PATTERN.md`'s own bar — see D7.
 
@@ -157,7 +157,35 @@ light/dark came back as an axis.
   untouchable, per the IP-guardrail and colour-blind-safety commitments above. Boards render
   identically in both skins.
 - **D3 — The a11y budget is decided on a measurement, not an estimate** (owner, 2026-08-27).
-  Build the layer, measure the full matrix on CI, then choose. See "Verified assumptions".
+  **Resolved 2026-08-28 → take the FULL matrix.** Measured locally (7 workers) rather than
+  estimated:
+
+  | | tests | local |
+  |---|---|---|
+  | e2e suite before | 507 | 66s |
+  | e2e suite with the full matrix | 531 | 83s |
+  | matrix alone | 24 | 20.2s |
+  | ├ shared surfaces × 4 skins | 16 | 7.3s |
+  | └ every game × 4 skins | 8 | 18.3s |
+
+  **+17s locally ≈ +1.4 min on CI** (`CLAUDE.md` records CI ≈ 4.9× local for the browser
+  half), taking `e2e` from roughly 5.4 to 6.8 minutes. It is the critical path, so that is
+  a real 25% on the longest job.
+
+  Taken anyway, because the standard is explicit — "every page × every theme/skin, zero
+  excluded rules by default" — and four palettes is precisely the situation it anticipates.
+  "It costs 84 seconds" is not a reason to grade three of four skins. The tempting
+  reduction (a representative game page instead of all twenty) is wrong on inspection: each
+  game renders its OWN controls into the play area using chrome tokens, so twenty pages
+  carry twenty different chrome surfaces, not one repeated.
+
+  *The lever, if CI time later becomes the binding constraint,* is the games half —
+  **18.3s of the 20.2s**, measured, so the trade can be made with a number attached rather
+  than by feel.
+
+  *And the estimate this replaces was wrong.* This plan predicted "roughly doubles the
+  scans … likely 4.5 → 8 min". The real numbers are 5.4 → 6.8. Same direction, wrong
+  magnitude — which is the entire reason D3 existed.
 
 - **D4 — share the contract, not the code** (owner, 2026-08-27; settles O3). forage and fun
   keep **independent implementations**; the shared artifact is the *model*, promoted to the
@@ -318,7 +346,12 @@ Explicitly **not** verified, and therefore not asserted anywhere above:
   `pond-dark`; rewrite `docs/DESIGN.md`'s contrast table from two columns to four, each palette
   graded on its own terms.
 - **M5 — the picker.** Two family rows in the settings sheet, ☾/☀ keeps its place in the header.
-- **M6 — measure the a11y matrix, then decide D3.**
+- ~~**M6 — measure the a11y matrix, then decide D3.**~~ **Done 2026-08-28.**
+  `tests/a11y-matrix.spec.ts` enumerates REGISTRY × SKINS in one place rather than
+  scattering the matrix across twenty specs. It found **a real bug that had shipped**: the
+  drawer's `<ul>` contained `<a>` elements directly, which axe's `list` rule fails. It
+  survived because every existing scan ran with the drawer CLOSED — and therefore
+  `hidden`, so axe skipped it entirely. Nobody had ever scanned the open drawer.
 - **M0 (re-sequenced, runs after M2)** — declare the shared dimension, per D7 above.
 
 ## Open questions
@@ -346,6 +379,14 @@ Explicitly **not** verified, and therefore not asserted anywhere above:
   conditional, so starting `docs/adr/` is a free choice and the only ADR-worthy decision here
   is the one with no upstream to point at. O4 stays open and is independent of this plan.
   Nothing has been executed.
+
+- **2026-08-28 — M1 through M6 executed; two real defects found by the new gates.**
+  M1's token split and M2's registry landed behaviour-preserving. M3's home layouts turned
+  up a contrast bug in code written the same hour — `--accent` used as text at **2.13:1**
+  in the light palette, legible in dark, which is exactly why each palette is graded on its
+  own terms. M6's matrix turned up the drawer `<ul>`/`<a>` violation described above,
+  which had shipped and was invisible to every prior scan. Both are now pinned by tests.
+  The a11y cost was measured, not estimated, and the plan's own estimate was wrong.
 
 - **2026-08-27 — M0 attempted and deferred (D7).** Execution started with a state
   reconstruction of `CroftC` (clean, `main` level with `origin/main`, three peer commits to

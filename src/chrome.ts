@@ -114,7 +114,11 @@ export function boot(root: HTMLElement = document.body): Chrome {
       link.setAttribute("aria-disabled", "false"); // still linkable to its page
     }
     if (g.id === gameId) link.setAttribute("aria-current", "page");
-    list.append(link);
+    // A <ul> may only directly contain <li>. The links were appended straight to
+    // the list, which axe's `list` rule fails — a real bug that shipped because
+    // every existing scan ran with the drawer CLOSED (and therefore `hidden`,
+    // so axe skipped it). Found by the M6 matrix, which opens it.
+    list.append(el("li", {}, link));
   }
   drawer.append(list);
 
