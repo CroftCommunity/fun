@@ -7,6 +7,7 @@
 
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { DEFAULT_SKIN, familyMembers, familyOf } from "../src/skins.js";
 
 async function ready(page: Page): Promise<void> {
   await expect(page.locator(".furrow-board")).toBeVisible();
@@ -198,12 +199,12 @@ test("a finished game holds every seed in the two stores", async ({ page }) => {
 // Identity + accessibility. The board is scenery plus twelve controls and two
 // readouts, so it is exactly the shape axe catches unlabelled targets in — and it
 // must clear the bar in both themes, not just the one the author happens to run.
-for (const theme of ["light", "dark"] as const) {
-  test(`no axe violations on the board (${theme})`, async ({ page }) => {
-    await page.addInitScript((t) => localStorage.setItem("fun-theme", t), theme);
+for (const skin of familyMembers(familyOf(DEFAULT_SKIN))) {
+  test(`no axe violations on the board (${skin})`, async ({ page }) => {
+    await page.addInitScript((t) => localStorage.setItem("fun-skin", t), skin);
     await page.goto("/furrow/?seed=7");
     await ready(page);
-    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+    await expect(page.locator("html")).toHaveAttribute("data-skin", skin);
     const results = await new AxeBuilder({ page }).include(".furrow-game").analyze();
     expect(results.violations).toEqual([]);
   });

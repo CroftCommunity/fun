@@ -6,7 +6,7 @@
 
 import type { GameModule, PresentationMode } from "./contract.js";
 import { findGame, REGISTRY } from "./registry.js";
-import { applyTheme, currentTheme, toggleTheme } from "./theme.js";
+import { applySkin, currentSkin, isDark, siblingOf, togglePalette } from "./skins.js";
 import { wrappedBanner } from "./wrapped-banner.js";
 
 /** Test-facing handle to the running chrome. */
@@ -81,20 +81,25 @@ export function boot(root: HTMLElement = document.body): Chrome {
 
   // Theme toggle (Phase E). Pre-paint set [data-theme]; sync the manifest colour
   // and reflect the current theme on the control.
-  applyTheme(currentTheme());
+  applySkin(currentSkin());
   const themeBtn = el("button", {
     class: "theme-toggle",
-    "aria-pressed": String(currentTheme() === "dark"),
+    "aria-pressed": String(isDark()),
     "aria-label": "Toggle light or dark theme",
   });
   const paintThemeBtn = (): void => {
-    const dark = currentTheme() === "dark";
+    const dark = isDark();
     themeBtn.textContent = dark ? "☀" : "☾";
     themeBtn.setAttribute("aria-pressed", String(dark));
+    // A family with one palette has nowhere to toggle to. Disable VISIBLY
+    // rather than letting the control look live and do nothing — a silent
+    // no-op from a working-looking button is the failure forage's ADR-003
+    // calls out, and the reason the disabled state is deliberate.
+    themeBtn.disabled = siblingOf(currentSkin()) === undefined;
   };
   paintThemeBtn();
   themeBtn.addEventListener("click", () => {
-    toggleTheme();
+    togglePalette();
     paintThemeBtn();
   });
 

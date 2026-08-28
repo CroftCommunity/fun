@@ -197,9 +197,10 @@
 
 }
 
-[data-theme="dark"] {
+[data-skin="table-dark"] {
   /* ===== SKINNABLE — chrome roles. A skin may assign these, and nothing else. ===== */
-  /* --- Dark theme: "the same table at night" — same roles, re-tuned. --- */
+  /* --- The Card table family, night side. Skins subsume themes: this is a
+     SKIN id, not a theme axis (src/skins.ts; forage ADR-003). --- */
   --bg: #15130f;          /* deep warm black                      */
   --surface: #221f18;     /* raised UI panels                     */
   --ink: #f2efe8;         /* primary text            (bg 16.16:1) */

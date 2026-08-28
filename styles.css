@@ -1,6 +1,6 @@
 /* fun.croft.ing components (front-plan Phase 2 / delivery Phase E).
    Colours come only from tokens.css via var() — no raw hex here (enforced by
-   tests/tokens.test.ts). Theme is driven by [data-theme] on <html>, set
+   tests/tokens.test.ts). Palette is driven by [data-skin] on <html>, set
    pre-paint by an inline script and toggled from the chrome header. */
 
 /* Self-hosted display face (SIL OFL — see assets/fonts/Fredoka-OFL.txt). Latin

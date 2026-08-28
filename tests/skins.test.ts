@@ -125,3 +125,92 @@ describe("skinScan: a skin restyles chrome and restructures nothing", () => {
     expect(r.ok).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// M2 — skins subsume themes. Light and dark stop being an axis and become
+// registry entries. A FAMILY is one visual identity; a SKIN is one palette
+// within it; the ☾/☀ toggle swaps to the family's other side. The sibling is
+// DERIVED from family + palette rather than declared, which makes asymmetric,
+// dangling and self-paired registries structurally impossible instead of merely
+// validated — forage reached the same shape and this mirrors it (plan D4).
+// ---------------------------------------------------------------------------
+
+import {
+  DEFAULT_SKIN,
+  FAMILIES,
+  SKINS,
+  familyMembers,
+  familyOf,
+  resolveSkin,
+  siblingOf,
+  validateFamilies,
+} from "../src/skins.js";
+
+describe("the registry", () => {
+  it("every skin names a family that exists, and carries exactly one palette", () => {
+    for (const [id, skin] of Object.entries(SKINS)) {
+      expect(FAMILIES[skin.family], `${id} names unknown family ${skin.family}`).toBeTruthy();
+      expect(["light", "dark"]).toContain(skin.palette);
+    }
+  });
+
+  it("validateFamilies passes on the real registry", () => {
+    expect(validateFamilies()).toEqual([]);
+  });
+
+  it("the default skin is a real entry", () => {
+    expect(SKINS[DEFAULT_SKIN]).toBeTruthy();
+  });
+
+  it("catches the one class deriving introduces: two same-palette skins in a family", () => {
+    // Deriving the sibling deletes asymmetric/dangling/self-paired by
+    // construction. It cannot delete this one, so it is the thing to check.
+    const bad = { a: { label: "A", palette: "light", family: "f" }, b: { label: "B", palette: "light", family: "f" } } as const;
+    const errs = validateFamilies({ f: { label: "F" } }, bad);
+    expect(errs.join(" ")).toMatch(/two .*light/i);
+  });
+
+  it("catches a family with no members", () => {
+    expect(validateFamilies({ ghost: { label: "Ghost" } }, {}).join(" ")).toMatch(/ghost/);
+  });
+});
+
+describe("siblings are derived, never declared", () => {
+  it("finds the opposite palette in the same family", () => {
+    const two = { "x-light": { label: "X", palette: "light", family: "x" }, "x-dark": { label: "X", palette: "dark", family: "x" } } as const;
+    expect(siblingOf("x-light", two)).toBe("x-dark");
+    expect(siblingOf("x-dark", two)).toBe("x-light");
+  });
+
+  it("returns undefined for a single-palette family — the toggle is disabled, not broken", () => {
+    const one = { "y-dark": { label: "Y", palette: "dark", family: "y" } } as const;
+    expect(siblingOf("y-dark", one)).toBeUndefined();
+  });
+
+  it("reports the family and its members", () => {
+    expect(familyOf(DEFAULT_SKIN)).toBe(SKINS[DEFAULT_SKIN]!.family);
+    expect(familyMembers(familyOf(DEFAULT_SKIN))).toContain(DEFAULT_SKIN);
+  });
+});
+
+describe("resolveSkin: the OS preference resolves THROUGH the registry", () => {
+  it("honours an explicit stored skin", () => {
+    for (const id of Object.keys(SKINS)) expect(resolveSkin(id, true)).toBe(id);
+  });
+
+  it("with no stored choice, follows the OS within the default family", () => {
+    const dark = resolveSkin(null, true);
+    const light = resolveSkin(null, false);
+    expect(SKINS[dark]!.palette).toBe("dark");
+    expect(SKINS[light]!.palette).toBe("light");
+    expect(familyOf(dark)).toBe(familyOf(DEFAULT_SKIN));
+    expect(familyOf(light)).toBe(familyOf(DEFAULT_SKIN));
+  });
+
+  it("ignores a stale or garbage stored id rather than rendering unstyled", () => {
+    // A retired skin id survives in localStorage long after the entry goes.
+    expect(SKINS[resolveSkin("felt", false)]).toBeTruthy();
+    expect(SKINS[resolveSkin("", true)]).toBeTruthy();
+    expect(SKINS[resolveSkin("table-mauve", true)]).toBeTruthy();
+  });
+});

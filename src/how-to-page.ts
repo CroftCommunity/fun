@@ -4,7 +4,7 @@
 
 import { renderGuide } from "./how-to.js";
 import { findGuide } from "./how-to-registry.js";
-import { applyTheme, currentTheme, toggleTheme } from "./theme.js";
+import { applySkin, currentSkin, isDark, siblingOf, togglePalette } from "./skins.js";
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -20,7 +20,7 @@ function el<K extends keyof HTMLElementTagNameMap>(
 const app = document.getElementById("app");
 if (!app) throw new Error("how-to: #app not found");
 
-applyTheme(currentTheme());
+applySkin(currentSkin());
 
 const gameId = new URLSearchParams(location.search).get("game");
 const guide = findGuide(gameId);
@@ -34,17 +34,20 @@ const back = el(
 );
 const themeBtn = el("button", {
   class: "theme-toggle",
-  "aria-pressed": String(currentTheme() === "dark"),
+  "aria-pressed": String(isDark()),
   "aria-label": "Toggle light or dark theme",
 });
 const paintThemeBtn = (): void => {
-  const dark = currentTheme() === "dark";
+  const dark = isDark();
   themeBtn.textContent = dark ? "☀" : "☾";
   themeBtn.setAttribute("aria-pressed", String(dark));
+  // A family with one palette has nowhere to toggle to — disable VISIBLY
+  // rather than looking live and doing nothing (forage ADR-003).
+  themeBtn.disabled = siblingOf(currentSkin()) === undefined;
 };
 paintThemeBtn();
 themeBtn.addEventListener("click", () => {
-  toggleTheme();
+  togglePalette();
   paintThemeBtn();
 });
 header.append(back, themeBtn);

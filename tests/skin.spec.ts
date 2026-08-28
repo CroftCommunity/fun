@@ -1,7 +1,12 @@
-//! Phase E wiring test: the chrome and the solitaire board wear the token
-//! palette, the header toggle flips light/dark and actually changes computed
-//! styles, and axe finds no contrast violations in EITHER theme (the edges, not
-//! one happy-path theme).
+//! Wiring test: the chrome and the solitaire board wear the token palette, the
+//! header control swaps to the family's other palette and actually changes
+//! computed styles, and axe finds no contrast violations in EITHER palette (the
+//! edges, not one happy-path side).
+//!
+//! Since M2, light and dark are not an axis — they are SKINS, stamped as
+//! `[data-skin]`. The control's aria-label is unchanged ("toggle light or dark
+//! theme") because it still describes what the user does, and nineteen other
+//! specs address it by that name.
 
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
@@ -10,8 +15,12 @@ async function toggleTheme(page: Page): Promise<void> {
   await page.getByRole("button", { name: /toggle light or dark theme/i }).click();
 }
 
-async function themeAttr(page: Page): Promise<string | null> {
-  return page.evaluate(() => document.documentElement.getAttribute("data-theme"));
+async function skinAttr(page: Page): Promise<string | null> {
+  return page.evaluate(() => document.documentElement.getAttribute("data-skin"));
+}
+
+async function bodyBg(page: Page): Promise<string> {
+  return page.evaluate(() => getComputedStyle(document.body).backgroundColor);
 }
 
 test("the chrome and the board consume the token palette", async ({ page }) => {
@@ -41,27 +50,34 @@ test("the header toggle flips the theme and changes computed styles", async ({ p
   await page.goto("/solitaire/?seed=0");
   await expect(page.locator(".sol-board")).toBeVisible();
 
-  const before = await themeAttr(page);
-  expect(before === "light" || before === "dark").toBe(true);
-  const bodyBgBefore = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  const before = await skinAttr(page);
+  expect(before, "no skin stamped pre-paint").toBeTruthy();
+  const bodyBgBefore = await bodyBg(page);
 
   await toggleTheme(page);
 
-  const after = await themeAttr(page);
+  const after = await skinAttr(page);
   expect(after).not.toBe(before);
-  const bodyBgAfter = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-  expect(bodyBgAfter).not.toBe(bodyBgBefore);
+  expect(await bodyBg(page)).not.toBe(bodyBgBefore);
 });
 
-test("home page has no axe violations in light AND dark themes", async ({ page }) => {
+test("home page has no axe violations in BOTH of the family's palettes", async ({ page }) => {
   await page.goto("/");
+  const first = await skinAttr(page);
+  const firstBg = await bodyBg(page);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+
   await toggleTheme(page);
-  expect(await themeAttr(page)).toBe("dark");
+
+  // Assert we are genuinely scanning a DIFFERENT palette and not the same one
+  // twice — the id changing is necessary, the rendered background changing is
+  // what proves it took effect.
+  expect(await skinAttr(page)).not.toBe(first);
+  expect(await bodyBg(page)).not.toBe(firstBg);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
 
-test("solitaire board has no axe violations in light AND dark themes", async ({ page }) => {
+test("solitaire board has no axe violations in BOTH of the family's palettes", async ({ page }) => {
   await page.goto("/solitaire/?seed=0");
   await expect(page.locator(".sol-board")).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);

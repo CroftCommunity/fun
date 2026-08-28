@@ -7,6 +7,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { DEFAULT_SKIN, SKINS } from "../src/skins.js";
+
 // Resolve from the repo root (vitest's cwd) rather than import.meta.url, which
 // the transform can rebase away from the real file.
 function read(rel: string): string {
@@ -43,10 +45,16 @@ function ratio(a: string, b: string): number {
 
 const css = read("tokens.css");
 
-function scope(name: "light" | "dark"): Record<string, string> {
-  const marker = '[data-theme="dark"]';
-  const block =
-    name === "light" ? css.slice(css.indexOf(":root"), css.indexOf(marker)) : css.slice(css.indexOf(marker));
+// Each SKIN carries exactly one palette (src/skins.ts). The default skin's
+// values sit on bare `:root` so the common case matches no extra selector; every
+// other skin is a `[data-skin="id"]` block. Grading is therefore per SKIN, not
+// per "theme" — light and dark stopped being an axis in M2.
+function scope(skin: string): Record<string, string> {
+  const own = `[data-skin="${skin}"]`;
+  const start = skin === DEFAULT_SKIN ? css.indexOf(":root") : css.indexOf(own);
+  expect(start, `no palette block for skin ${skin}`).toBeGreaterThanOrEqual(0);
+  const nextSelector = css.indexOf("[data-skin=", start + own.length);
+  const block = css.slice(start, nextSelector === -1 ? undefined : nextSelector);
   const map: Record<string, string> = {};
   for (const m of block.matchAll(/--([\w-]+):\s*(#[0-9a-fA-F]{6})/g)) {
     map[m[1] as string] = m[2] as string;
@@ -107,11 +115,11 @@ const PAIRS: ReadonlyArray<readonly [string, string, number]> = [
   ["fur-legal", "fur-well", 3],
 ];
 
-describe.each(["light", "dark"] as const)("tokens: %s theme clears WCAG AA", (name) => {
+describe.each(Object.keys(SKINS))("tokens: skin %s clears WCAG AA", (name) => {
   const map = scope(name);
   it.each(PAIRS)("%s on %s ≥ %s:1", (fg, bg, floor) => {
-    expect(map[fg], `missing --${fg} in ${name}`).toBeTruthy();
-    expect(map[bg], `missing --${bg} in ${name}`).toBeTruthy();
+    expect(map[fg], `missing --${fg} in skin ${name}`).toBeTruthy();
+    expect(map[bg], `missing --${bg} in skin ${name}`).toBeTruthy();
     expect(ratio(map[fg] as string, map[bg] as string)).toBeGreaterThanOrEqual(floor);
   });
 });

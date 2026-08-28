@@ -4,6 +4,7 @@
 // clean, shareable, new-tab-able URLs with no client router or Pages 404 hack.
 // A second bundle (how-to.js) powers the shared "How to play" page (`/how-to/`).
 import { build } from "esbuild";
+import { skinInit } from "./tools/skin-init.mjs";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,9 +20,12 @@ const GAME_PAGES = ["", "placeholder", "solitaire", "match3", "bubble", "wyrdle"
 // and is served at /<id>/vendor/ for the sandboxed iframe to load same-origin.
 const TIER2_VENDORS = ["astray", "hexgl", "clumsybird", "orchard-drop"];
 
-// Pre-paint theme resolution: set [data-theme] before first paint so the felt
-// table never flashes the wrong theme. Same rule as src/theme.ts resolveTheme.
-const THEME_INIT = `(function(){try{var s=localStorage.getItem('fun-theme');var d=(s==='light'||s==='dark')?s:(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',d);}catch(e){}})();`;
+// Pre-paint skin resolution: set [data-skin] before first paint so a palette
+// never flashes. GENERATED from src/skins.ts rather than hand-kept, because the
+// script and the module must agree on the answer and two hand-kept lists are
+// exactly the pair that drifts — tests/skin-init.test.ts runs the emitted script
+// and asserts it lands where resolveSkin does.
+const SKIN_INIT = skinInit(await readFile(join(root, "src/skins.ts"), "utf8"));
 
 function page({ title, dataAttr = "", base, script, appDiv = false }) {
   return `<!doctype html>
@@ -32,7 +36,7 @@ function page({ title, dataAttr = "", base, script, appDiv = false }) {
     <title>${title}</title>
     <meta name="description" content="fun.croft.ing — the Croft games pond, a determinism-first local-first game shelf." />
     <meta name="theme-color" content="#1f5c3f" />
-    <script>${THEME_INIT}</script>
+    <script>${SKIN_INIT}</script>
     <link rel="stylesheet" href="${base}styles.css" />
   </head>
   <body${dataAttr}>
