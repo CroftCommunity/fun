@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_SKIN, SKINS } from "../src/skins.js";
+import { SKINS } from "../src/skins.js";
 
 // Resolve from the repo root (vitest's cwd) rather than import.meta.url, which
 // the transform can rebase away from the real file.
@@ -45,19 +45,39 @@ function ratio(a: string, b: string): number {
 
 const css = read("tokens.css");
 
-// Each SKIN carries exactly one palette (src/skins.ts). The default skin's
-// values sit on bare `:root` so the common case matches no extra selector; every
-// other skin is a `[data-skin="id"]` block. Grading is therefore per SKIN, not
-// per "theme" — light and dark stopped being an axis in M2.
+// Each SKIN carries exactly one palette (src/skins.ts). Resolving one means
+// doing what the cascade does: start from `:root`, then apply every block whose
+// selector list names this skin, in source order.
+//
+// It is NOT a slice between two markers. Since M4 the game palettes are shared
+// by every dark skin through a GROUPED selector —
+// `[data-skin="worlds-dark"], [data-skin="pond-dark"]` — precisely so the dark
+// game values are not hand-synced across families, which is the drift ADR-003
+// removed. A slicing parser reads that group as an empty block and grades the
+// wrong thing while staying green.
+function blocks(source: string): Array<{ selector: string; decls: Record<string, string> }> {
+  const out: Array<{ selector: string; decls: Record<string, string> }> = [];
+  // Strip comments first: without this the "selector" captured for the first
+  // block is the whole file header, and `:root` never matches at its end.
+  const clean = source.replace(/\/\*[\s\S]*?\*\//g, "");
+  for (const m of clean.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
+    const decls: Record<string, string> = {};
+    for (const d of (m[2] as string).matchAll(/--([\w-]+):\s*(#[0-9a-fA-F]{6})/g)) {
+      decls[d[1] as string] = d[2] as string;
+    }
+    out.push({ selector: (m[1] as string).trim(), decls });
+  }
+  return out;
+}
+
+const BLOCKS = blocks(css);
+
 function scope(skin: string): Record<string, string> {
-  const own = `[data-skin="${skin}"]`;
-  const start = skin === DEFAULT_SKIN ? css.indexOf(":root") : css.indexOf(own);
-  expect(start, `no palette block for skin ${skin}`).toBeGreaterThanOrEqual(0);
-  const nextSelector = css.indexOf("[data-skin=", start + own.length);
-  const block = css.slice(start, nextSelector === -1 ? undefined : nextSelector);
   const map: Record<string, string> = {};
-  for (const m of block.matchAll(/--([\w-]+):\s*(#[0-9a-fA-F]{6})/g)) {
-    map[m[1] as string] = m[2] as string;
+  for (const b of BLOCKS) {
+    const isRoot = /(^|,)\s*:root\s*$/.test(b.selector);
+    const namesSkin = b.selector.includes(`[data-skin="${skin}"]`);
+    if (isRoot || namesSkin) Object.assign(map, b.decls);
   }
   return map;
 }

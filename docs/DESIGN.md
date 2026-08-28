@@ -4,7 +4,27 @@ The games pond's own **playful identity**, built on the same token architecture
 as croft-pwa (see that repo's `docs/DESIGN.md`) so the two read as one family.
 Front-plan Phase 2 / delivery-plan Phase E.
 
-## The idea: a card table in the Croft family
+## Two identities, one app (since M4)
+
+The shelf ships **two families**, chosen from Settings, with the ☾/☀ control
+picking the side within whichever is active:
+
+- **Gallery of Worlds** (default) — a near-black gallery ground so the boards and
+  the art are the only lit things on screen. Prefers the *today-first* home.
+- **The Pond** — warm paper, hairline rules, an umber accent and a serif display
+  face; the chrome contributes no colour of its own. Prefers the *shelf* home.
+
+`prefersLayout` is a **suggestion**, not a lock: the reader's explicit choice wins
+in both directions (`src/shelf.ts`). And a skin reaches **chrome roles only** —
+board surfaces and every per-game palette are game-owned and untouchable
+(`docs/adr/0001-chrome-and-game-tokens.md`), so a board looks the same under
+every skin and is graded once rather than four times.
+
+The card-table description below is the **origin** of the token roles and is kept
+because the roles still mean what it says they mean. It is no longer the only
+identity the shelf wears.
+
+## The idea it started from: a card table in the Croft family
 
 Croft's core identity is a "tectonic" stone palette (schist, granite, oatmeal,
 ruddy orange, moss). The games pond keeps the *roles* but re-casts them as a
@@ -50,24 +70,29 @@ board in **both** themes.
 | `--focus` | keyboard focus ring |
 | `--border` | hairline dividers (decorative, non-text) |
 
-### Recorded contrast (both must clear the floor)
+### Recorded contrast (all four skins must clear the floor)
 
-| Pair | Floor | Light | Dark |
-|------|------|-------|------|
-| `ink` on `bg` | 4.5 | 14.38 | 16.16 |
-| `ink-muted` on `bg` | 4.5 | 5.71 | 7.17 |
-| `ink` on `surface` | 4.5 | 15.47 | 14.32 |
-| `link` on `bg` | 4.5 | 5.52 | 9.31 |
-| `accent-ink` on `accent` | 4.5 | 6.75 | 9.39 |
-| `active-ink` on `active` | 4.5 | 5.94 | 5.49 |
-| `danger-ink` on `danger` | 4.5 | 6.95 | 5.53 |
-| `danger` on `surface` | 4.5 | 6.94 | 4.90 |
-| `suit-red` on `card` | 4.5 | 6.41 | 5.92 |
-| `suit-black` on `card` | 4.5 | 15.47 | 13.07 |
-| `felt-ink` on `felt` | 3 | 6.91 | 9.58 |
-| `active` on `bg` | 4.5 | 5.52 | 5.49 |
-| `active` on `surface` | 4.5 | 5.93 | 4.87 |
-| `focus` on `bg` | 3 | 5.52 | 9.39 |
+Since M4 the columns are **skins**, not themes. Two families — Gallery of Worlds
+and The Pond — each ship both palettes as first-class, so the ☾/☀ control is
+never a dead button. `tests/tokens.test.ts` iterates the registry, so a new skin
+is graded the moment it is added.
+
+| Pair | Floor | Worlds day | Worlds night | Pond day | Pond night |
+|------|------|------|------|------|------|
+| `ink` on `bg` | 4.5 | 15.02 | 17.68 | 15.69 | 15.76 |
+| `ink-muted` on `bg` | 4.5 | 5.36 | 7.46 | 5.30 | 6.04 |
+| `ink` on `surface` | 4.5 | 17.11 | 16.15 | 17.08 | 14.58 |
+| `link` on `bg` | 4.5 | 5.57 | 10.92 | 5.73 | 10.39 |
+| `accent-ink` on `accent` | 4.5 | 6.75 | 9.54 | 5.72 | 8.62 |
+| `active-ink` on `active` | 4.5 | 5.94 | 9.39 | 6.14 | 8.11 |
+| `danger-ink` on `danger` | 4.5 | 6.95 | 8.16 | 7.18 | 7.05 |
+| `danger` on `surface` | 4.5 | 7.43 | 7.65 | 7.30 | 6.53 |
+| `active` on `bg` | 4.5 | 5.57 | 9.39 | 5.73 | 8.11 |
+| `active` on `surface` | 4.5 | 6.34 | 8.57 | 6.24 | 7.51 |
+| `suit-red` on `card` | 4.5 | 6.41 | 5.92 | 6.41 | 5.92 |
+| `suit-black` on `card` | 4.5 | 15.47 | 13.07 | 15.47 | 13.07 |
+| `felt-ink` on `felt` | 3 | 6.91 | 9.58 | 6.91 | 9.58 |
+| `focus` on `bg` | 3 | 5.57 | 9.78 | 5.34 | 8.62 |
 
 (These are the asserted numbers; the exact values live in `tokens.css`.)
 

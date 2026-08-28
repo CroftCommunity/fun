@@ -182,20 +182,31 @@ export const SKIN_KEY = "fun-skin";
 
 /** The families the picker offers. */
 export const FAMILIES: Families = Object.freeze({
-  table: { label: "Card table", prefersLayout: "today-first" },
+  worlds: { label: "Gallery of Worlds", prefersLayout: "today-first" },
+  pond: { label: "The Pond", prefersLayout: "shelf" },
 });
 
 /**
- * Every skin. `table-light` is the default and its values live on bare `:root`
- * in `tokens.css`, so the common case matches no extra selector at all.
+ * Every skin. Two families, each with both palettes first-class (owner
+ * decision, 2026-08-27), so the palette toggle is never a dead control.
+ * `worlds-light` is the default and its values live on bare `:root` in
+ * `tokens.css`, so the common case matches no extra selector at all.
  */
 export const SKINS: Skins = Object.freeze({
-  "table-light": { label: "Card table (light)", palette: "light", family: "table" },
-  "table-dark": { label: "Card table (night)", palette: "dark", family: "table" },
+  "worlds-light": { label: "Gallery of Worlds (day)", palette: "light", family: "worlds" },
+  "worlds-dark": { label: "Gallery of Worlds (night)", palette: "dark", family: "worlds" },
+  "pond-light": { label: "The Pond (day)", palette: "light", family: "pond" },
+  "pond-dark": { label: "The Pond (night)", palette: "dark", family: "pond" },
 });
 
-/** The skin a fresh visitor with no OS preference lands on. */
-export const DEFAULT_SKIN = "table-light";
+/**
+ * The skin a fresh visitor with no OS preference lands on, and the one whose
+ * values sit on bare `:root` in `tokens.css`. Gallery of Worlds is the default
+ * family (owner, 2026-08-27); the OS preference picks the side through the
+ * registry, so a dark-preferring visitor gets `worlds-dark` without that id
+ * being hardcoded anywhere.
+ */
+export const DEFAULT_SKIN = "worlds-light";
 
 /** The family a skin belongs to. Throws on an unknown SKIN id. */
 export function familyOf(id: string, registry: Skins = SKINS): string {
