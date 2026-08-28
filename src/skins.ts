@@ -154,6 +154,17 @@ export type Palette = "light" | "dark";
 export interface Family {
   /** Names the STYLE, and must read for both sides — no palette word. */
   readonly label: string;
+  /**
+   * The home layout this identity suggests (`src/shelf.ts` LAYOUTS). It is a
+   * SUGGESTION: the user's explicit choice wins in both directions, and a skin
+   * is never handed layout properties — it picks from what the app already
+   * ships and the user can already reach.
+   *
+   * It lives HERE and not on the skin (plan D5). On the skin, two members of one
+   * family could disagree, and a disagreement means the palette toggle silently
+   * re-lays-out the page. One home deletes that class.
+   */
+  readonly prefersLayout?: string;
 }
 
 /** One palette within a family. */
@@ -171,7 +182,7 @@ export const SKIN_KEY = "fun-skin";
 
 /** The families the picker offers. */
 export const FAMILIES: Families = Object.freeze({
-  table: { label: "Card table" },
+  table: { label: "Card table", prefersLayout: "today-first" },
 });
 
 /**

@@ -43,6 +43,12 @@ interface BaseGameEntry {
   readonly title: string;
   readonly icon: string;
   readonly status: "playable" | "soon";
+  /**
+   * Which shelf group the home page files this under (`src/shelf.ts` GROUPS).
+   * Omitted means "by tier": Tier-2 wraps land in `wrapped`, everything else in
+   * `provable`. Only the adversarial games need to say so explicitly.
+   */
+  readonly group?: "provable" | "versus" | "wrapped";
   /** Construct a fresh module instance. Absent for `soon` games. */
   readonly load?: () => GameModule;
 }

@@ -76,6 +76,12 @@ const PAIRS: ReadonlyArray<readonly [string, string, number]> = [
   ["suit-red", "card", 4.5],
   ["suit-black", "card", 4.5],
   ["felt-ink", "felt", 3], // labels/hints on the felt table — UI/large floor
+  // The home page (M3) puts --active on both grounds as text: the shelf
+  // layout's group label, and the "opened today" mark on a surface pill.
+  // Recorded here because a pair nothing asserts is a pair that can rot —
+  // axe caught --accent used the same way at 2.13:1 in the light palette.
+  ["active", "bg", 4.5],
+  ["active", "surface", 4.5],
   ["focus", "bg", 3], // focus ring is a UI indicator
   ["gem-0", "surface", 3], // match-3 gem glyphs on their tile — large-glyph floor
   ["gem-1", "surface", 3],

@@ -8,6 +8,15 @@ import type { GameModule, PresentationMode } from "./contract.js";
 import { findGame, REGISTRY } from "./registry.js";
 import { applySkin, currentSkin, isDark, siblingOf, togglePalette } from "./skins.js";
 import { wrappedBanner } from "./wrapped-banner.js";
+import { renderHome } from "./home.js";
+import {
+  LAYOUT_KEY,
+  buildShelfModel,
+  noteOpened,
+  prefersLayoutFor,
+  resolveLayout,
+  type ShelfState,
+} from "./shelf.js";
 
 /** Test-facing handle to the running chrome. */
 export interface Chrome {
@@ -30,6 +39,41 @@ function el<K extends keyof HTMLElementTagNameMap>(
   for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
   for (const c of children) node.append(c);
   return node;
+}
+
+
+const SHELF_STATE_KEY = "fun-shelf-state";
+
+function readStored(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+/** The shelf's own record of what it has seen opened. Never a game's progress. */
+function readShelfState(): ShelfState {
+  try {
+    const raw = localStorage.getItem(SHELF_STATE_KEY);
+    const parsed: unknown = raw === null ? null : JSON.parse(raw);
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    // Storage is user-writable and survives releases; keep only string values
+    // rather than trusting the shape a previous version happened to write.
+    return Object.fromEntries(
+      Object.entries(parsed as Record<string, unknown>).filter(([, v]) => typeof v === "string"),
+    ) as ShelfState;
+  } catch {
+    return {};
+  }
+}
+
+function writeShelfState(state: ShelfState): void {
+  try {
+    localStorage.setItem(SHELF_STATE_KEY, JSON.stringify(state));
+  } catch {
+    // Storage denied: the shelf simply forgets. Never fail a launch for it.
+  }
 }
 
 /** Boot the chrome into `root` (defaults to `document.body`). */
@@ -133,8 +177,12 @@ export function boot(root: HTMLElement = document.body): Chrome {
   const mode: PresentationMode = gameId ? "standalone" : "drawer";
   const entry = gameId ? findGame(gameId) : undefined;
   if (!gameId) {
-    playArea.append(
-      el("div", { class: "welcome" }, "Pick a game from the drawer to play."),
+    // The home page. Was one sentence over an empty page; it is now the model
+    // rendered in whichever layout is in force (M3).
+    renderHome(
+      playArea,
+      buildShelfModel({ games: REGISTRY, state: readShelfState(), now: new Date() }),
+      resolveLayout(readStored(LAYOUT_KEY), prefersLayoutFor(currentSkin())),
     );
   } else if (!entry) {
     playArea.append(el("div", { class: "welcome" }, "Unknown game."));
@@ -149,6 +197,7 @@ export function boot(root: HTMLElement = document.body): Chrome {
     if (banner) playArea.append(banner);
     mounted = entry.load();
     mounted.mount(playArea, { mode });
+    writeShelfState(noteOpened(readShelfState(), entry.id, new Date()));
   }
 
   // --- drawer open/close + focus trap + ESC ---

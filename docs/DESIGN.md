@@ -65,9 +65,22 @@ board in **both** themes.
 | `suit-red` on `card` | 4.5 | 6.41 | 5.92 |
 | `suit-black` on `card` | 4.5 | 15.47 | 13.07 |
 | `felt-ink` on `felt` | 3 | 6.91 | 9.58 |
+| `active` on `bg` | 4.5 | 5.52 | 5.49 |
+| `active` on `surface` | 4.5 | 5.93 | 4.87 |
 | `focus` on `bg` | 3 | 5.52 | 9.39 |
 
 (These are the asserted numbers; the exact values live in `tokens.css`.)
+
+The last two rows arrived with the home page (M3) and are a caution worth
+keeping: `--accent` was used the same way first — as a group label on the page —
+and axe caught it at **2.13:1** in light. `--accent` is a **fill** role; its
+recorded pair is `accent-ink` on `accent`, and nothing licensed it as text. A
+colour that is legible in one palette and illegal in the other is exactly what
+grading each palette on its own terms exists to catch.
+
+Since M2 the columns are **skins**, not themes: light and dark are registry
+entries (`src/skins.ts`), and `tests/tokens.test.ts` iterates the registry, so a
+new skin is graded the moment it is added.
 
 ## Theme mechanics
 
