@@ -1,0 +1,317 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2760" height="680" viewBox="0 0 2760 680">
+<rect width="100%" height="100%" fill="#2b2b2b"/>
+<g transform="translate(0,20)">
+<rect width="440" height="640" fill="#FBEED2"/>
+<line x1="0" y1="112" x2="440" y2="112" stroke="#D8403F" stroke-dasharray="6 6"/>
+<circle cx="59" cy="607" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="59" y1="607" x2="88.9" y2="593.0" stroke="#00000066"/>
+<circle cx="226" cy="607" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="226" y1="607" x2="221.7" y2="574.3" stroke="#00000066"/>
+<circle cx="407" cy="607" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="407" y1="607" x2="399.3" y2="639.1" stroke="#00000066"/>
+<circle cx="179" cy="623" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="179" y1="623" x2="192.4" y2="612.5" stroke="#00000066"/>
+<circle cx="117" cy="577" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="117" y1="577" x2="102.6" y2="586.0" stroke="#00000066"/>
+<circle cx="374" cy="274" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="374" y1="274" x2="391.0" y2="274.0" stroke="#00000066"/>
+<circle cx="277" cy="74" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="277" y1="74" x2="294.0" y2="74.0" stroke="#00000066"/>
+<text x="6" y="632" font-family="monospace" font-size="13" fill="#5a4632">tick 200 · 7 fruit · max 640 px/s</text>
+</g>
+<g transform="translate(460,20)">
+<rect width="440" height="640" fill="#FBEED2"/>
+<line x1="0" y1="112" x2="440" y2="112" stroke="#D8403F" stroke-dasharray="6 6"/>
+<circle cx="36" cy="607" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="36" y1="607" x2="49.3" y2="576.8" stroke="#00000066"/>
+<circle cx="186" cy="607" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="186" y1="607" x2="159.5" y2="587.3" stroke="#00000066"/>
+<circle cx="407" cy="607" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="407" y1="607" x2="398.2" y2="638.8" stroke="#00000066"/>
+<circle cx="135" cy="623" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="135" y1="623" x2="118.1" y2="625.1" stroke="#00000066"/>
+<circle cx="99" cy="623" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="99" y1="623" x2="94.4" y2="639.4" stroke="#00000066"/>
+<circle cx="234" cy="623" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="234" y1="623" x2="222.9" y2="635.9" stroke="#00000066"/>
+<circle cx="267" cy="623" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="267" y1="623" x2="275.9" y2="637.5" stroke="#00000066"/>
+<circle cx="325" cy="590" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="325" y1="590" x2="354.3" y2="630.5" stroke="#00000066"/>
+<circle cx="251" cy="585" r="25" fill="#F2708B" stroke="#00000033"/>
+<line x1="251" y1="585" x2="257.7" y2="609.1" stroke="#00000066"/>
+<circle cx="49" cy="525" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="49" y1="525" x2="0.8" y2="538.4" stroke="#00000066"/>
+<circle cx="149" cy="533" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="149" y1="533" x2="188.1" y2="501.9" stroke="#00000066"/>
+<circle cx="236" cy="529" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="236" y1="529" x2="242.0" y2="561.5" stroke="#00000066"/>
+<circle cx="131" cy="435" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="131" y1="435" x2="180.5" y2="442.4" stroke="#00000066"/>
+<circle cx="40" cy="432" r="41" fill="#FFC24D" stroke="#00000033"/>
+<line x1="40" y1="432" x2="2.2" y2="416.2" stroke="#00000066"/>
+<circle cx="261" cy="413" r="41" fill="#FFC24D" stroke="#00000033"/>
+<line x1="261" y1="413" x2="302.0" y2="413.0" stroke="#00000066"/>
+<circle cx="368" cy="120" r="41" fill="#FFC24D" stroke="#00000033"/>
+<line x1="368" y1="120" x2="409.0" y2="120.0" stroke="#00000066"/>
+<text x="6" y="632" font-family="monospace" font-size="13" fill="#5a4632">tick 500 · 16 fruit · max 828 px/s</text>
+</g>
+<g transform="translate(920,20)">
+<rect width="440" height="640" fill="#FBEED2"/>
+<line x1="0" y1="112" x2="440" y2="112" stroke="#D8403F" stroke-dasharray="6 6"/>
+<circle cx="32" cy="607" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="32" y1="607" x2="42.3" y2="575.6" stroke="#00000066"/>
+<circle cx="187" cy="607" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="187" y1="607" x2="161.0" y2="586.7" stroke="#00000066"/>
+<circle cx="407" cy="607" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="407" y1="607" x2="397.6" y2="638.6" stroke="#00000066"/>
+<circle cx="118" cy="623" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="118" y1="623" x2="111.1" y2="638.6" stroke="#00000066"/>
+<circle cx="84" cy="623" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="84" y1="623" x2="93.4" y2="637.2" stroke="#00000066"/>
+<circle cx="234" cy="623" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="234" y1="623" x2="223.0" y2="635.9" stroke="#00000066"/>
+<circle cx="268" cy="623" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="268" y1="623" x2="276.7" y2="637.6" stroke="#00000066"/>
+<circle cx="325" cy="590" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="325" y1="590" x2="355.1" y2="630.0" stroke="#00000066"/>
+<circle cx="251" cy="584" r="25" fill="#F2708B" stroke="#00000033"/>
+<line x1="251" y1="584" x2="255.0" y2="608.7" stroke="#00000066"/>
+<circle cx="49" cy="526" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="49" y1="526" x2="0.6" y2="538.4" stroke="#00000066"/>
+<circle cx="149" cy="533" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="149" y1="533" x2="186.1" y2="499.5" stroke="#00000066"/>
+<circle cx="246" cy="527" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="246" y1="527" x2="244.4" y2="560.0" stroke="#00000066"/>
+<circle cx="131" cy="435" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="131" y1="435" x2="178.2" y2="451.6" stroke="#00000066"/>
+<circle cx="40" cy="436" r="41" fill="#FFC24D" stroke="#00000033"/>
+<line x1="40" y1="436" x2="-0.8" y2="432.1" stroke="#00000066"/>
+<circle cx="399" cy="534" r="41" fill="#FFC24D" stroke="#00000033"/>
+<line x1="399" y1="534" x2="358.2" y2="530.0" stroke="#00000066"/>
+<circle cx="316" cy="499" r="41" fill="#FFC24D" stroke="#00000033"/>
+<line x1="316" y1="499" x2="294.1" y2="464.3" stroke="#00000066"/>
+<circle cx="380" cy="462" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="380" y1="462" x2="408.4" y2="445.3" stroke="#00000066"/>
+<circle cx="244" cy="444" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="244" y1="444" x2="293.6" y2="437.4" stroke="#00000066"/>
+<circle cx="76" cy="352" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="76" y1="352" x2="125.5" y2="358.8" stroke="#00000066"/>
+<circle cx="321" cy="442" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="321" y1="442" x2="315.1" y2="457.9" stroke="#00000066"/>
+<circle cx="191" cy="404" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="191" y1="404" x2="174.5" y2="399.8" stroke="#00000066"/>
+<circle cx="349" cy="423" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="349" y1="423" x2="350.6" y2="406.1" stroke="#00000066"/>
+<circle cx="167" cy="351" r="41" fill="#FFC24D" stroke="#00000033"/>
+<line x1="167" y1="351" x2="202.8" y2="330.9" stroke="#00000066"/>
+<circle cx="128" cy="299" r="25" fill="#F2708B" stroke="#00000033"/>
+<line x1="128" y1="299" x2="123.9" y2="274.3" stroke="#00000066"/>
+<circle cx="24" cy="298" r="25" fill="#F2708B" stroke="#00000033"/>
+<line x1="24" y1="298" x2="14.6" y2="274.9" stroke="#00000066"/>
+<circle cx="66" cy="286" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="66" y1="286" x2="49.3" y2="282.6" stroke="#00000066"/>
+<circle cx="93" cy="226" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="93" y1="226" x2="139.5" y2="207.7" stroke="#00000066"/>
+<circle cx="256" cy="235" r="41" fill="#FFC24D" stroke="#00000033"/>
+<line x1="256" y1="235" x2="297.0" y2="235.0" stroke="#00000066"/>
+<circle cx="130" cy="67" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="130" y1="67" x2="180.0" y2="67.0" stroke="#00000066"/>
+<text x="6" y="632" font-family="monospace" font-size="13" fill="#5a4632">tick 900 · 29 fruit · max 578 px/s</text>
+</g>
+<g transform="translate(1380,20)">
+<rect width="440" height="640" fill="#FBEED2"/>
+<line x1="0" y1="112" x2="440" y2="112" stroke="#D8403F" stroke-dasharray="6 6"/>
+<circle cx="33" cy="607" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="33" y1="607" x2="43.5" y2="575.7" stroke="#00000066"/>
+<circle cx="187" cy="607" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="187" y1="607" x2="161.2" y2="586.4" stroke="#00000066"/>
+<circle cx="407" cy="607" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="407" y1="607" x2="397.6" y2="638.6" stroke="#00000066"/>
+<circle cx="118" cy="623" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="118" y1="623" x2="110.9" y2="638.4" stroke="#00000066"/>
+<circle cx="84" cy="623" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="84" y1="623" x2="93.2" y2="637.3" stroke="#00000066"/>
+<circle cx="234" cy="623" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="234" y1="623" x2="223.2" y2="636.1" stroke="#00000066"/>
+<circle cx="268" cy="623" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="268" y1="623" x2="276.6" y2="637.7" stroke="#00000066"/>
+<circle cx="326" cy="590" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="326" y1="590" x2="356.1" y2="629.9" stroke="#00000066"/>
+<circle cx="251" cy="584" r="25" fill="#F2708B" stroke="#00000033"/>
+<line x1="251" y1="584" x2="253.1" y2="608.9" stroke="#00000066"/>
+<circle cx="49" cy="526" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="49" y1="526" x2="0.8" y2="539.3" stroke="#00000066"/>
+<circle cx="149" cy="533" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="149" y1="533" x2="185.6" y2="498.9" stroke="#00000066"/>
+<circle cx="256" cy="527" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="256" y1="527" x2="246.2" y2="558.5" stroke="#00000066"/>
+<circle cx="131" cy="435" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="131" y1="435" x2="178.0" y2="451.9" stroke="#00000066"/>
+<circle cx="40" cy="436" r="41" fill="#FFC24D" stroke="#00000033"/>
+<line x1="40" y1="436" x2="-0.7" y2="431.2" stroke="#00000066"/>
+<circle cx="398" cy="534" r="41" fill="#FFC24D" stroke="#00000033"/>
+<line x1="398" y1="534" x2="357.1" y2="530.8" stroke="#00000066"/>
+<circle cx="324" cy="499" r="41" fill="#FFC24D" stroke="#00000033"/>
+<line x1="324" y1="499" x2="308.9" y2="460.9" stroke="#00000066"/>
+<circle cx="407" cy="460" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="407" y1="460" x2="438.4" y2="470.1" stroke="#00000066"/>
+<circle cx="252" cy="444" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="252" y1="444" x2="298.9" y2="426.8" stroke="#00000066"/>
+<circle cx="76" cy="352" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="76" y1="352" x2="125.3" y2="360.2" stroke="#00000066"/>
+<circle cx="319" cy="441" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="319" y1="441" x2="327.0" y2="456.0" stroke="#00000066"/>
+<circle cx="194" cy="411" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="194" y1="411" x2="177.0" y2="411.2" stroke="#00000066"/>
+<circle cx="358" cy="452" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="358" y1="452" x2="354.1" y2="468.5" stroke="#00000066"/>
+<circle cx="284" cy="359" r="41" fill="#FFC24D" stroke="#00000033"/>
+<line x1="284" y1="359" x2="249.2" y2="380.6" stroke="#00000066"/>
+<circle cx="175" cy="374" r="25" fill="#F2708B" stroke="#00000033"/>
+<line x1="175" y1="374" x2="171.8" y2="398.8" stroke="#00000066"/>
+<circle cx="24" cy="298" r="25" fill="#F2708B" stroke="#00000033"/>
+<line x1="24" y1="298" x2="12.7" y2="275.7" stroke="#00000066"/>
+<circle cx="64" cy="286" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="64" y1="286" x2="47.8" y2="291.0" stroke="#00000066"/>
+<circle cx="161" cy="300" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="161" y1="300" x2="184.3" y2="344.3" stroke="#00000066"/>
+<circle cx="357" cy="395" r="41" fill="#FFC24D" stroke="#00000033"/>
+<line x1="357" y1="395" x2="317.9" y2="407.4" stroke="#00000066"/>
+<circle cx="390" cy="310" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="390" y1="310" x2="350.3" y2="340.4" stroke="#00000066"/>
+<circle cx="97" cy="249" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="97" y1="249" x2="103.5" y2="216.6" stroke="#00000066"/>
+<text x="6" y="632" font-family="monospace" font-size="13" fill="#5a4632">tick 1400 · 30 fruit · max 0 px/s</text>
+</g>
+<g transform="translate(1840,20)">
+<rect width="440" height="640" fill="#FBEED2"/>
+<line x1="0" y1="112" x2="440" y2="112" stroke="#D8403F" stroke-dasharray="6 6"/>
+<circle cx="33" cy="607" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="33" y1="607" x2="43.5" y2="575.7" stroke="#00000066"/>
+<circle cx="187" cy="607" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="187" y1="607" x2="161.0" y2="586.6" stroke="#00000066"/>
+<circle cx="407" cy="607" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="407" y1="607" x2="397.6" y2="638.6" stroke="#00000066"/>
+<circle cx="119" cy="623" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="119" y1="623" x2="111.0" y2="638.0" stroke="#00000066"/>
+<circle cx="85" cy="623" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="85" y1="623" x2="93.3" y2="637.8" stroke="#00000066"/>
+<circle cx="234" cy="623" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="234" y1="623" x2="223.2" y2="636.2" stroke="#00000066"/>
+<circle cx="268" cy="623" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="268" y1="623" x2="276.6" y2="637.6" stroke="#00000066"/>
+<circle cx="326" cy="590" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="326" y1="590" x2="356.1" y2="629.9" stroke="#00000066"/>
+<circle cx="251" cy="584" r="25" fill="#F2708B" stroke="#00000033"/>
+<line x1="251" y1="584" x2="253.1" y2="608.9" stroke="#00000066"/>
+<circle cx="49" cy="526" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="49" y1="526" x2="0.8" y2="539.3" stroke="#00000066"/>
+<circle cx="149" cy="533" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="149" y1="533" x2="185.6" y2="498.9" stroke="#00000066"/>
+<circle cx="256" cy="527" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="256" y1="527" x2="246.2" y2="558.5" stroke="#00000066"/>
+<circle cx="131" cy="435" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="131" y1="435" x2="178.0" y2="451.9" stroke="#00000066"/>
+<circle cx="40" cy="436" r="41" fill="#FFC24D" stroke="#00000033"/>
+<line x1="40" y1="436" x2="-0.7" y2="431.2" stroke="#00000066"/>
+<circle cx="398" cy="534" r="41" fill="#FFC24D" stroke="#00000033"/>
+<line x1="398" y1="534" x2="357.1" y2="530.8" stroke="#00000066"/>
+<circle cx="324" cy="499" r="41" fill="#FFC24D" stroke="#00000033"/>
+<line x1="324" y1="499" x2="308.9" y2="460.9" stroke="#00000066"/>
+<circle cx="407" cy="460" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="407" y1="460" x2="438.4" y2="470.1" stroke="#00000066"/>
+<circle cx="252" cy="444" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="252" y1="444" x2="298.9" y2="426.8" stroke="#00000066"/>
+<circle cx="76" cy="352" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="76" y1="352" x2="125.3" y2="360.2" stroke="#00000066"/>
+<circle cx="319" cy="441" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="319" y1="441" x2="327.0" y2="456.0" stroke="#00000066"/>
+<circle cx="194" cy="411" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="194" y1="411" x2="177.0" y2="411.4" stroke="#00000066"/>
+<circle cx="358" cy="452" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="358" y1="452" x2="354.2" y2="468.6" stroke="#00000066"/>
+<circle cx="284" cy="359" r="41" fill="#FFC24D" stroke="#00000033"/>
+<line x1="284" y1="359" x2="249.2" y2="380.6" stroke="#00000066"/>
+<circle cx="175" cy="374" r="25" fill="#F2708B" stroke="#00000033"/>
+<line x1="175" y1="374" x2="171.9" y2="398.8" stroke="#00000066"/>
+<circle cx="24" cy="298" r="25" fill="#F2708B" stroke="#00000033"/>
+<line x1="24" y1="298" x2="12.6" y2="275.8" stroke="#00000066"/>
+<circle cx="64" cy="286" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="64" y1="286" x2="47.8" y2="291.1" stroke="#00000066"/>
+<circle cx="161" cy="300" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="161" y1="300" x2="184.3" y2="344.3" stroke="#00000066"/>
+<circle cx="357" cy="395" r="41" fill="#FFC24D" stroke="#00000033"/>
+<line x1="357" y1="395" x2="317.9" y2="407.4" stroke="#00000066"/>
+<circle cx="390" cy="310" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="390" y1="310" x2="350.3" y2="340.4" stroke="#00000066"/>
+<circle cx="97" cy="249" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="97" y1="249" x2="103.5" y2="216.6" stroke="#00000066"/>
+<text x="6" y="632" font-family="monospace" font-size="13" fill="#5a4632">tick 2000 · 30 fruit · max 0 px/s</text>
+</g>
+<g transform="translate(2300,20)">
+<rect width="440" height="640" fill="#FBEED2"/>
+<line x1="0" y1="112" x2="440" y2="112" stroke="#D8403F" stroke-dasharray="6 6"/>
+<circle cx="33" cy="607" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="33" y1="607" x2="43.5" y2="575.7" stroke="#00000066"/>
+<circle cx="187" cy="607" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="187" y1="607" x2="160.7" y2="587.0" stroke="#00000066"/>
+<circle cx="407" cy="607" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="407" y1="607" x2="397.6" y2="638.6" stroke="#00000066"/>
+<circle cx="126" cy="623" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="126" y1="623" x2="113.2" y2="634.2" stroke="#00000066"/>
+<circle cx="92" cy="623" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="92" y1="623" x2="94.5" y2="639.8" stroke="#00000066"/>
+<circle cx="234" cy="623" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="234" y1="623" x2="223.3" y2="636.2" stroke="#00000066"/>
+<circle cx="268" cy="623" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="268" y1="623" x2="276.8" y2="637.5" stroke="#00000066"/>
+<circle cx="326" cy="590" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="326" y1="590" x2="356.1" y2="629.9" stroke="#00000066"/>
+<circle cx="251" cy="584" r="25" fill="#F2708B" stroke="#00000033"/>
+<line x1="251" y1="584" x2="253.1" y2="608.9" stroke="#00000066"/>
+<circle cx="49" cy="526" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="49" y1="526" x2="0.8" y2="539.3" stroke="#00000066"/>
+<circle cx="149" cy="533" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="149" y1="533" x2="185.6" y2="498.9" stroke="#00000066"/>
+<circle cx="256" cy="527" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="256" y1="527" x2="246.3" y2="558.6" stroke="#00000066"/>
+<circle cx="131" cy="435" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="131" y1="435" x2="178.0" y2="451.9" stroke="#00000066"/>
+<circle cx="40" cy="436" r="41" fill="#FFC24D" stroke="#00000033"/>
+<line x1="40" y1="436" x2="-0.7" y2="431.2" stroke="#00000066"/>
+<circle cx="398" cy="534" r="41" fill="#FFC24D" stroke="#00000033"/>
+<line x1="398" y1="534" x2="357.1" y2="530.8" stroke="#00000066"/>
+<circle cx="324" cy="499" r="41" fill="#FFC24D" stroke="#00000033"/>
+<line x1="324" y1="499" x2="308.9" y2="460.9" stroke="#00000066"/>
+<circle cx="407" cy="460" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="407" y1="460" x2="438.4" y2="470.1" stroke="#00000066"/>
+<circle cx="252" cy="444" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="252" y1="444" x2="298.9" y2="426.8" stroke="#00000066"/>
+<circle cx="76" cy="352" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="76" y1="352" x2="125.3" y2="360.2" stroke="#00000066"/>
+<circle cx="319" cy="441" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="319" y1="441" x2="327.1" y2="455.9" stroke="#00000066"/>
+<circle cx="194" cy="411" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="194" y1="411" x2="177.0" y2="411.8" stroke="#00000066"/>
+<circle cx="358" cy="452" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="358" y1="452" x2="354.6" y2="468.7" stroke="#00000066"/>
+<circle cx="284" cy="359" r="41" fill="#FFC24D" stroke="#00000033"/>
+<line x1="284" y1="359" x2="249.4" y2="380.9" stroke="#00000066"/>
+<circle cx="175" cy="374" r="25" fill="#F2708B" stroke="#00000033"/>
+<line x1="175" y1="374" x2="172.1" y2="398.8" stroke="#00000066"/>
+<circle cx="24" cy="298" r="25" fill="#F2708B" stroke="#00000033"/>
+<line x1="24" y1="298" x2="12.4" y2="275.9" stroke="#00000066"/>
+<circle cx="64" cy="286" r="17" fill="#F26D6D" stroke="#00000033"/>
+<line x1="64" y1="286" x2="47.9" y2="291.4" stroke="#00000066"/>
+<circle cx="161" cy="300" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="161" y1="300" x2="184.3" y2="344.3" stroke="#00000066"/>
+<circle cx="357" cy="395" r="41" fill="#FFC24D" stroke="#00000033"/>
+<line x1="357" y1="395" x2="317.9" y2="407.4" stroke="#00000066"/>
+<circle cx="390" cy="310" r="50" fill="#FA9A4B" stroke="#00000033"/>
+<line x1="390" y1="310" x2="350.3" y2="340.4" stroke="#00000066"/>
+<circle cx="97" cy="249" r="33" fill="#B07DE0" stroke="#00000033"/>
+<line x1="97" y1="249" x2="103.5" y2="216.6" stroke="#00000066"/>
+<text x="6" y="632" font-family="monospace" font-size="13" fill="#5a4632">tick 3600 · 30 fruit · max 0 px/s</text>
+</g>
+</svg>

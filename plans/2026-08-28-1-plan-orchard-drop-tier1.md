@@ -1,10 +1,13 @@
 # Orchard Drop → Tier-1: a fixed-point deterministic fruit-merge core
 
-**Status:** Passes 1–3 complete. **Both BLOCKING questions confirmed by the owner 2026-08-28 —
-ready for execution, starting at Phase 0.** The direction is the hand-rolled fixed-point solver
-(`crates/pond-physics`), and the game ships a daily seed on 2048's pattern. Phase 0 remains the
-gate: everything below it is contingent on D1 (a stable pile) and D5 (it feels right), and the
-Rapier fallback stays written for the case where they fail.
+**Status:** **Phase 0 EXECUTED (2026-08-28) — D1, D2, D3, D4 and D6 pass; D5 is open and needs
+the owner.** The spike is `spike/orchard-physics/`, its findings are
+`spike/orchard-physics/RESULT.md`, and 11 tests pin them. A fixed-point circle solver holds a
+30-fruit Suika pile, matches native/wasm bit-for-bit across 10 digests, and replays a 4.7-minute
+game in 731 ms. **Phase 1 is unblocked except for D5**, which is a feel judgement no measurement
+can make: compare `spike/orchard-physics/pile.svg` against the live wrap at `/orchard-drop/`,
+which is only possible before Phase 4 deletes it. The Rapier fallback stays written and is now
+much less likely to be needed.
 **Author cadence:** `/phase-plan` (three passes; all recorded in the Review Log).
 **Standards anchor:** `docs/BUILDING-GAMES.md` §§2–8 (Tier-1) — with §11 (Tier-3) as the
 explicitly-considered-and-rejected alternative.
@@ -243,9 +246,25 @@ Added in Pass 2, by reading the code the plan had only named:
 | **No service worker or web manifest exists** — the PWA plan is Pass 1, not started, so there is no precache list to update | `plans/2026-08-11-pwa-install-per-game-and-shelf.md` — "status: **Pass 1 (shape).** Not started"; `grep -rln "serviceWorker\|manifest.webmanifest" src/ build.mjs tests/` → zero hits |
 | Fixed-point overflow is **not** the risk at shift-16 `i64` | Computed at plan time: worst-case separation in a 440×640 crate is 777 px → 5.09e7 fixed; `dist²` = 2.59e15 against `i64::MAX` 9.22e18 — **3,560× headroom**. `(r1+r2)²` max is 2.82e14. Mass ratio across the ladder is 56.7:1 (r=17 → 1.09, r=128 → 61.77 at density .0012) |
 
-**Unverified and deliberately so** — these are Phase 0's job, not Pass 1's: whether a hand-rolled
-fixed-point solver stacks 30 circles stably; the fixed-point precision envelope; replay cost for
-a full-length game; whether the result *feels* like the Matter version.
+**Measured in Phase 0** (2026-08-28) — these were Pass 1's four unknowns, now answered. Full
+detail and reproduction steps in `spike/orchard-physics/RESULT.md`:
+
+| Claim | Evidence |
+|---|---|
+| A fixed-point solver holds a 30-fruit pile | 2,534-tick quiet run (need 600), 0 escapes, 0 px/s at rest, 423px pile. `tests/discovery.rs::d1_a_thirty_fruit_pile_settles_and_stays_settled` |
+| **Cross-tick warm starting is not optional — it is the result.** Without it the pile sank at 23.4% penetration and never went quiet (best run 81 ticks); with it, 2.6% and 2,477 ticks, from one change | Both states measured; `world.rs::warm_start` doc comment carries the numbers |
+| **The plan's own D1 criterion was unsatisfiable** — "1% of radius" cannot be met across a 7.5:1 radius range against an absolute slop | 0.500px penetration is 2.9% of a cherry and 0.4% of a watermelon: the same correctly-resolved contact, passing or failing by which fruit you measure it against |
+| `ITERATIONS = 24`, set by the ill-conditioned pair and not by the pile | Sweep: the 30-fruit pile is stable at 12–64; a watermelon on a cherry **limit-cycles** at 12 (0.1px↔3.75px indefinitely) and converges at 20. `src/bin/sweep.rs` |
+| **Circles-only removes the inertia term entirely** — `cross(r, n) == 0` for the normal, and `r²·inv_I ≡ 2·inv_m` makes the tangent mass exactly `3·k_n` | `world.rs` module doc. Load-bearing, not tidiness: a watermelon's `inv_inertia` is 1.98e-6, which **underflows to 0** at shift-16 — pinned by `d2_inv_inertia_would_underflow…` |
+| Fixed-point precision is ample | `sqrt_raw` round-trips **exactly** for every whole pixel 1–900; the impulse divide at 56.7:1 loses **1 sub-unit in 6,553,600** |
+| `native == wasm`, bit-for-bit | 10/10 digests match (3 scenarios + 7 tick checkpoints), Node 22 / V8. Both rapier-spike believability guards hold: one sub-unit of spawn `x` moves the digest, and the scenario demonstrably does work |
+| A divergence is diagnosable, not just detectable | Bisect names **tick 140** as the first divergent tick on a deliberately order-broken build. `verify.mjs`, and `d6_breaking_contact_order_diverges…` |
+| Replay cost is linear at ~40 ms per 1,000 ticks | Cold, fresh process: 3,600 → 126 ms; 18,000 (4.7 min) → **731 ms**; 57,600 (15 min) → 2,339 ms |
+| **A long-lived wasm instance degrades across replays** | The same 18,000-tick call measured 1,206 ms, 797 ms and 731 ms depending on how many calls preceded it *in the same instance* — and the coldest was fastest, so it is not JIT warm-up. Likely allocator churn in a linear memory that never shrinks |
+| `dt = 1/64 s`, not `1/60` | A power-of-two timestep is exact in binary; `1/60` is not, and would inject a rounding error into every integration on the hashed path |
+
+**Still unverified:** whether it *feels* right (D5 — a judgement gate, see Status); behaviour on
+JavaScriptCore or x86_64; anything involving merges, which the spike does not simulate.
 
 ## Documentation Impact
 
@@ -310,7 +329,12 @@ never `git add -A` in that tree.
 
 ## Phases
 
-### Phase 0: Discovery — does a fixed-point circle solver hold a Suika pile?
+### Phase 0: Discovery — does a fixed-point circle solver hold a Suika pile? — **DONE (D5 open)**
+
+**Executed 2026-08-28.** `spike/orchard-physics/` (throwaway, not a workspace member, same posture
+as `spike/dots-solve`). Results: `spike/orchard-physics/RESULT.md`; 11 findings pinned in
+`tests/discovery.rs`; `cargo fmt`, `cargo clippy -- -D warnings` and the wasm cross-check all
+green. **D1, D2, D3, D4, D6 pass. D5 is open** and is the only thing between here and Phase 1.
 
 **Goal:** Resolve the one question that can invalidate the entire plan, before writing a crate.
 A Suika pile is ~30 circles in *sustained* contact, and the characteristic failure of a
@@ -425,20 +449,34 @@ wrap alone and record why.
 **Goal:** A workspace crate exposing a fixed-point 2D circle world: add static AABBs, add and
 remove dynamic circles, step by one tick, read body state, and report contacts made this tick.
 
+**What Phase 0 settled, so Phase 1 does not rediscover it** (detail in `RESULT.md`):
+
+- **Warm starting is a requirement, not a refinement.** Without it the pile sinks at 23.4%
+  penetration and never goes quiet. Store the accumulated impulses in a **key-sorted `Vec`, never
+  a `HashMap`** — hash iteration order is precisely the nondeterminism this crate exists to prevent.
+- **`ITERATIONS = 24`**, set by a watermelon resting on a cherry (which limit-cycles at 12), not
+  by the pile (stable at every count tried). No split impulses needed.
+- **Store no inertia term.** `cross(r, n) == 0` for circles, and `r²·inv_I ≡ 2·inv_m` makes the
+  tangent effective mass exactly `3·k_n`. A watermelon's `inv_inertia` underflows to **0** at
+  shift-16, so adding the "obvious" field back is a silent bug — carry the test that says so.
+- **`dt = 1/64 s`.** Exact in binary; `1/60` is not.
+- **Shift-16 `i64` confirmed**, with `i128` widening inside `div` only.
+
 **Changes:**
 - [ ] `crates/pond-physics/src/fixed.rs` — the fixed-point type, integer sqrt, and the overflow
   bounds D2 established. RED first, including the extreme-mass-ratio case.
 - [ ] `crates/pond-physics/src/body.rs` — circle + static AABB, canonical monotonic body ids
   (ids are the iteration order, so they are load-bearing, not bookkeeping).
 - [ ] `crates/pond-physics/src/world.rs` — `step()`, O(N²) broadphase, narrowphase, sequential
-  impulses, contact list.
+  impulses, **cross-tick warm starting**, contact list.
 - [ ] `crates/pond-physics/src/hash.rs` — canonical world serialisation for hashing, plus the
   per-tick digest D6 promoted. This is the crate's observability surface: when the Phase 6
   cross-check goes red, the per-tick digest is what turns "the hashes differ" into "tick 1,472,
   body 17." Costs nothing when unused (it is a read, not a side effect) and there is no runtime
   logging in a wasm core to lean on instead.
 - [ ] `crates/pond-physics/vectors/` — golden vectors: free fall, one bounce, a two-body rest, the
-  30-circle settle from D1.
+  30-circle settle from D1, and **the watermelon-on-cherry pair** — the case that set `ITERATIONS`,
+  and the vector that would have caught the limit cycle.
 - [ ] `crates/pond-physics/RULES.md` — the rules doc §2 requires.
 - [ ] `Cargo.toml` workspace member + `[workspace.dependencies]` entry.
 
@@ -504,12 +542,16 @@ mutation).* Every threshold below is a `>` that a mutant can flip to `>=`:
 
 | Threshold | Test at |
 |---|---|
-| Drop cooldown (520 ms → ticks) | the tick before, the exact tick, the tick after — a drop at the boundary tick either is or is not legal, and the core decides |
-| Born grace (1200 ms → ticks) | a fruit resting over the line at grace−1, grace, grace+1 |
-| Over-line dwell (900 ms → ticks) | dwell−1 (survives), dwell (survives or dies — pick and pin it), dwell+1 (dies) |
+| Drop cooldown (520 ms → **33 ticks** at 64 Hz) | the tick before, the exact tick, the tick after — a drop at the boundary tick either is or is not legal, and the core decides |
+| Born grace (1200 ms → **77 ticks**) | a fruit resting over the line at grace−1, grace, grace+1 |
+| Over-line dwell (900 ms → **58 ticks**) | dwell−1 (survives), dwell (survives or dies — pick and pin it), dwell+1 (dies) |
 | Contact test `dist² vs (r1+r2)²` | exactly touching, one sub-unit apart, one sub-unit overlapping |
 | Merge ladder top | two watermelons pop for the bonus and do **not** produce a tier-11 |
 | Spawn window `DROPPABLE = 5` | tier 4 spawns, tier 5 never spawns from the top |
+
+**The tick counts above are 64 Hz, not 60** (Phase 0's `dt = 1/64` finding). Quantise each one
+deliberately and write the rounding into `RULES.md`: 520 ms is 33.28 ticks, and which way that
+goes is a rule, not an artifact.
 
 **Merge-order determinism is the subtle correctness requirement.** When three same-tier fruit
 touch in one tick, which two merge decides the whole rest of the game. The current
@@ -551,6 +593,11 @@ resolver and the scoring table.
   every fallible path returns a status code or an empty buffer.
 - [ ] `tick_digest()` — the D6 debug export, so a divergence can be bisected from the browser side
   and from `check.mjs`, not only from a native test. *(Added in Pass 3.)*
+- [ ] **Do not accumulate heap across replays.** *(Added after Phase 0.)* The same 18,000-tick
+  replay measured 1,206 / 797 / 731 ms depending on how many calls preceded it *in one wasm
+  instance* — and the coldest was fastest, so it is not warm-up. Either reset the world's
+  allocations between replays or run each in a fresh instance. A re-verify that gets slower the
+  more you use it is a bug the user experiences as the page degrading.
 - [ ] `src/games/orchard-drop/orchard-wasm.ts` — the typed wrapper.
 - [ ] `tools/build-wasm.sh` — add `-p orchard-wasm` to the explicit `-p` list.
 
@@ -673,9 +720,15 @@ through the URL — not a unit test of the encoder.
 `src/games/orchard-drop/orchard-drop-howto.ts`, `assets/guide/`, `src/how-to-registry.ts`.
 **Shared-state contract:** `guide:shots` writes generated assets; regenerate rather than
 hand-edit.
-**Risks:** Share-URL length. A long run is many drops; each is a `(tick, x)` pair. Measure a
-10-minute game's deflated URL. If it exceeds a portable length, the fix is a tighter move
-encoding (delta-encoded ticks), decided against a measurement rather than pre-optimised.
+**Risks:** Two, both now sized rather than guessed.
+- **Replay cost past ~6 minutes.** Phase 0 measured replay at ~40 ms per 1,000 ticks cold: a
+  4.7-minute game re-verifies in 731 ms, but the 1-second bar breaks at about **24,000 ticks**,
+  and a 15-minute game costs **2.3 s** — the multi-second stall §3's one-tap re-verify cannot
+  have. The mitigation the plan named (a checkpointed hash) is now **required for long games
+  rather than contingent**, and it has a threshold to be designed against.
+- **Share-URL length.** A long run is many drops; each is a `(tick, x)` pair. Measure a 10-minute
+  game's deflated URL. If it exceeds a portable length, the fix is a tighter move encoding
+  (delta-encoded ticks), decided against a measurement rather than pre-optimised.
 **Done when:**
 1. **Behavioral:** Finishing a run yields a share link that, opened fresh, re-verifies and shows
    the same score — and a tampered link is rejected.
@@ -762,6 +815,14 @@ position in any plan.
   choosing Tier-1: there is no Tier-1 without it. Recorded explicitly rather than left implied,
   because Phase 4 is roughly half the total effort, carries no interesting problems, and is the
   part it is easiest to agree to while picturing only the physics.
+- **[NEW — BLOCKING, Phase 1] D5: does it feel right?** *Phase 0 answered everything a machine can
+  answer; this is the one gate left and it needs a person. Compare
+  `spike/orchard-physics/pile.svg` (six frames, each fruit drawn with a radius line so rotation is
+  visible) against the live wrap at `/orchard-drop/`. **This comparison is only possible before
+  Phase 4**, which deletes the vendor bundle. What can be said without judgement: fruit do rotate
+  and the rotations vary across the pile, so rolling is happening rather than absent — whether it
+  reads right is not something the spike can assert. A solver that is provably stable and
+  subjectively worse is still a legitimate reason to take the Rapier fallback.*
 - [RECOMMENDED: PHASE-GATED — Phase 2] Should the merge tie-break rule match the current game's
   observable behaviour, or is a clean rule enough? *Matter's pair order is an implementation
   detail we cannot faithfully reproduce, so a three-way contact may resolve differently than it
@@ -782,6 +843,55 @@ position in any plan.
   it and building for a hypothetical second consumer is how a 3-file solver becomes an engine.*
 
 ## Review Log
+
+### Phase 0 execution — 2026-08-28
+
+**Ran:** `spike/orchard-physics/` — a dependency-free crate, not a workspace member. `cargo fmt`
+clean, `cargo clippy --all-targets -- -D warnings` clean, 11 tests green, wasm cross-check green.
+Full write-up in `spike/orchard-physics/RESULT.md`.
+
+**Verdicts:** D1 PASS · D2 PASS · D3 PASS · D4 PASS to ~6 min of play · D6 PASS · **D5 OPEN**.
+
+**What the plan got wrong, and the corrections:**
+
+- **D1's success criterion was unsatisfiable.** "No circle penetrates another by more than 1% of
+  its radius" cannot be met across a 7.5:1 radius range against an *absolute* slop: the measured
+  0.500px is 2.9% of a cherry and 0.4% of a watermelon — one correctly-resolved contact, passing
+  or failing by which fruit you measure it against. Corrected to "penetration converges to the
+  slop." The solver was never the thing failing.
+- **D2b's scenario was impossible.** "A cherry pinned between two watermelons" cannot occur: two
+  watermelons do not fit side by side in a 440px crate (2 × 256 > 440). Replaced with a watermelon
+  resting *on* a cherry — the same 56.7:1 ratio through a single contact, and the case that turned
+  out to set the iteration count.
+- **D4 and D5 needed dispositions and one more probe.** D6 (the divergence bisect) was added in
+  Pass 3 and earned its place immediately: it is what turned "the digests differ" into "tick 140."
+
+**What was learned that the plan could not have known:**
+
+- **Warm starting is the whole D1 result.** The first solver, without it, sank at 23.4%
+  penetration with an 81-tick quiet run. Adding cross-tick impulse persistence took it to 2.6% and
+  2,477 ticks in a single change. Phase 1 now carries this as a requirement.
+- **The iteration count is set by the ill-conditioned pair, not by the pile.** The 30-fruit pile
+  is stable at 12 through 64 iterations. The watermelon-on-cherry pair *limit-cycles* at 12 —
+  oscillating between 0.1px and 3.75px forever, which is the failure mode that looks fine in a
+  screenshot — and converges at 20. `ITERATIONS = 24`. This was an iteration-budget problem, not a
+  formulation problem, which is the cheaper answer and was not the expected one.
+- **Circles-only removes the inertia term, and that is load-bearing.** A watermelon's `inv_inertia`
+  is 1.98e-6, which **underflows to exactly 0** at shift-16. The disc identities
+  (`cross(r, n) == 0`; `r²·inv_I ≡ 2·inv_m`) mean the solver never stores one — so the bug never
+  happens. A test now stands guard over the reasoning.
+- **`dt = 1/64`, not `1/60`.** A power-of-two timestep is exact in binary. Phase 2's tick
+  conversions changed accordingly (520 ms → 33 ticks, 1200 → 77, 900 → 58).
+- **A long-lived wasm instance degrades across replays** — 1,206 / 797 / 731 ms for the same call,
+  coldest fastest, so not warm-up. Phase 3 now owns not accumulating heap across replays.
+- **Replay cost is linear and the 1-second bar breaks at ~24,000 ticks** (~6 min of play). The
+  checkpointed hash is no longer a contingency; Phase 5 needs it, and now has a threshold.
+
+**Measurement hygiene note.** The first D4 number reported was 797 ms — taken after two dozen
+other calls in the same process. Re-measuring cold in a fresh process, which is the shape a
+one-tap re-verify actually has, gave 717–731 ms with a tight spread, and the first run of all had
+given 1,206 ms. Reporting either of the first two as "the" number would have been wrong in
+opposite directions.
 
 - **2026-08-28 — Owner confirmation (post-Pass 3).** Both BLOCKING questions and the new
   PHASE-GATED one were walked through and answered: **hand-rolled fixed-point** over Rapier, the
