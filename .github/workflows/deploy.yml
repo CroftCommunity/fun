@@ -128,17 +128,43 @@ jobs:
       - run: rustup target add wasm32-unknown-unknown
       - run: npm run test:xbuild
 
-  # The browser gate. Runs in PARALLEL with `build`, which is what makes it
-  # ~free: `build` is 225s of `npm run unit` against a 17s wasm compile, so an
-  # e2e job that finishes inside four minutes adds no wall clock to the run.
+  # The browser gate. It exists because `npm run unit` cannot see a board: every
+  # game's wiring test ("built means wired"), every axe check in every skin, and
+  # every `?r=` share round-trip lives here.
   #
-  # It exists because `npm run unit` cannot see a board. Every game's wiring test
-  # ("built means wired"), every axe check in both themes, and every `?r=` share
-  # round-trip live here — 418 tests that, until 2026-08-07, ran only on whichever
-  # machine the author happened to use.
+  # ONE JOB PER PLAYWRIGHT PROJECT, not one job for both (2026-08-29). Two
+  # reasons, in order of what actually drove it:
+  #
+  #   1. Attribution. Every e2e failure on main since 2026-08-27 has been a
+  #      30s timeout in `mobile-webkit`, and a different test each run — dots,
+  #      then a11y-matrix + othello, then dots + furrow. With both engines in one
+  #      job, "e2e failed" says nothing about WHICH engine, the logs interleave,
+  #      and one report artifact holds both. Split, the failing engine is the job
+  #      name, and `fail-fast: false` means the healthy engine still reports
+  #      instead of being cancelled with it.
+  #   2. Headroom. Each project now gets a whole runner for half the tests.
+  #      A GitHub runner gives Playwright 2 workers where a laptop gives 7, and
+  #      the suite has grown past the 4.5 min this file used to claim — green
+  #      runs were taking 6.5-7.5 min and the mobile tests were brushing the 30s
+  #      per-test ceiling. Halving the per-runner load is the fix that does not
+  #      involve raising the ceiling and calling it fixed.
+  #
+  # This costs a second runner for e2e. That is the trade: e2e was already the
+  # critical path, so the wall clock should improve even as total minutes rise.
   e2e:
+    name: e2e (${{ matrix.project }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      # A mobile-webkit failure must not cancel chromium — knowing whether the
+      # OTHER engine was fine is most of the diagnostic value of splitting.
+      fail-fast: false
+      matrix:
+        include:
+          - project: chromium
+            browser: chromium
+          - project: mobile-webkit
+            browser: webkit
     steps:
       - uses: actions/checkout@v4
       # Playwright's `webServer` runs `npm run build:wasm`, so this job needs the
@@ -163,7 +189,7 @@ jobs:
         id: browsers
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          key: playwright-${{ runner.os }}-${{ matrix.browser }}-${{ hashFiles('package-lock.json') }}
       # `--with-deps` installs the system libraries too; a cache hit still needs
       # it (the libs are not in the cached directory, and the runner is fresh
       # every run), but it is seconds.
@@ -180,7 +206,7 @@ jobs:
       - name: Install Playwright browsers + system deps (retried)
         run: |
           for attempt in 1 2 3; do
-            if timeout 300 npx playwright install --with-deps chromium webkit; then
+            if timeout 300 npx playwright install --with-deps ${{ matrix.browser }}; then
               exit 0
             fi
             echo "::warning::playwright install attempt $attempt failed or stalled; retrying"
@@ -188,12 +214,12 @@ jobs:
           done
           echo "::error::playwright install failed three times — suspect an apt/CDN outage, not this commit"
           exit 1
-      - run: npm run e2e
+      - run: npm run e2e -- --project=${{ matrix.project }}
       # A failed browser test is unreadable without its trace/screenshots.
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.project }}
           path: playwright-report/
           retention-days: 7
 
