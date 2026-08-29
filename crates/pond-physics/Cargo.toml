@@ -1,0 +1,15 @@
+[package]
+name = "pond-physics"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Deterministic fixed-point 2D circle physics for the pond. Discs against static axis-aligned boxes, sequential impulses with cross-tick warm starting, shift-16 i64 throughout — no floats on the hashed path, so a simulation replays byte-identically and native==wasm. Deliberately not a general engine: no polygons, no joints, no sleeping."
+
+[lints]
+workspace = true
+
+[dependencies]
+serde = { workspace = true }
+sha2.workspace = true
+hex.workspace = true
