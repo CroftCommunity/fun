@@ -1,0 +1,15 @@
+{
+  "total_ticks": 3600,
+  "scenario": "0x5009981db53e3f57",
+  "perturbed": "0xa3d2547c4f0d4a1c",
+  "broken": "0x69b5232eaa6edf66",
+  "checkpoints": {
+    "1": "0xe05994ddbb43da11",
+    "100": "0x895c30d88f6eae65",
+    "400": "0x21b8e4821feda30a",
+    "800": "0x55a68a491d1aa3d5",
+    "1200": "0x93375f65faaf790c",
+    "2400": "0x6baf9d15306ffc04",
+    "3600": "0x5009981db53e3f57"
+  }
+}
