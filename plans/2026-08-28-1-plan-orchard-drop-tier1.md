@@ -900,6 +900,43 @@ position in any plan.
 
 ## Review Log
 
+### Phase 1 execution — 2026-08-28 · `crates/pond-physics`
+
+**Done.** 42 tests, five golden vectors, `RULES.md`, gate green through
+`npm run test:rust` on the pinned toolchain (rustc 1.97.1 / clippy 0.1.97): fmt clean, clippy
+`--workspace --all-targets -D warnings` clean, **134 suites / 786 tests, 0 failed**.
+
+**The determinism test found a real bug on its first run.** Contacts were keyed by body id —
+correct — but the A/B roles were assigned by **array index**, so reversing insertion order flipped
+the contact normal's direction. The key sort looked right and the geometry underneath it was not.
+This is the class of defect a plan cannot find by reading, and the reason
+`insertion_order_does_not_change_the_result` was written before the solver rather than after.
+
+**One assertion was ported wrong, and the test was the thing at fault.** Phase 0 reported the
+settled pile at `max_speed_px: 0`; that figure was **truncated to whole pixels**, and in `Fx` the
+true residue is 0.36 px/s. A thirty-body pile carries creep a two-body stack does not. Asserting
+exact zero would have pinned the old measurement's rounding rather than the behaviour, so the
+threshold is now stated as "below 1 px/s" with the reason beside it.
+
+**Two departures from the spike**, both seams rather than fixes: `Body` has no `tier` (a game
+concept — Phase 2 keeps its own id→tier map), and `V2::normalize` returns `Option` rather than
+choosing a fallback, so the degenerate-contact decision sits where the context is.
+
+**Mutation audit (`cargo mutants -p pond-physics`), two rounds, committing the green state before
+each.** Round 1: 182 mutants, **141 caught, 14 missed**, 27 unviable. Round 2 after acting:
+171 mutants, **142 caught, 2 missed**, 27 unviable.
+
+| Survivor | Triage | Action |
+|---|---|---|
+| **11×** every operator in `remove_body`'s cache `retain` | **Inert code, not a test gap.** `step` clears and rebuilds the warm-start cache from each tick's own contacts, so a removed body's entries are never looked up and are discarded at the end of the next step regardless — the predicate could not change behaviour | **Deleted**, with the reasoning left in place so it is not re-added. Testing it would have locked in code that does nothing |
+| **1×** the degenerate-contact fallback normal | **Real gap.** The test asserted only "did not panic", leaving the separation *direction* untested — and a coin-flip there would diverge native from wasm | Pinned: normal points A→B, A is the lower id, so the **higher id rises** |
+| `point_vel`'s `radius * sign` → `radius / sign` | **Equivalent mutant.** `sign` is ±1, so multiply and divide are identical — unkillable by construction | Stands. Recorded |
+| `solve`'s `vn < -rest_threshold` → `<=` | **Real boundary, accepted.** Reachable only at one exact fixed-point velocity | Stands. A test contriving that value would pin the constant rather than the behaviour |
+
+The eleven-survivor cluster is the run's most useful finding, and it was not a missing test. Read
+that way, the audit deleted code rather than adding assertions — which is the outcome the
+"read the survivors, don't chase the score" rule exists to produce.
+
 ### Re-verification against `main` — 2026-08-28 (post-landing)
 
 **Why:** the plan's Pass 1 citations were read at `e453afb`. Between then and landing, a peer
