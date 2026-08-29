@@ -315,7 +315,10 @@ mod tests {
     /// afternoon — so it steps aside there and the hand-written scorer tests
     /// carry the mutants.
     #[test]
-    #[cfg_attr(debug_assertions, ignore = "minutes in debug; the release gate runs it")]
+    #[cfg_attr(
+        debug_assertions,
+        ignore = "minutes in debug; the release gate runs it"
+    )]
     fn every_hand_and_cut_reproduces_the_published_distribution() {
         let deck = crate::card::full_deck();
         let mut dist = [0u64; 30];
