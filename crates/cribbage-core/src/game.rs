@@ -196,6 +196,8 @@ pub struct GameState {
     pub(crate) hands: [Vec<Card>; 2],
     /// The four each seat kept, for the show.
     pub(crate) kept: [Vec<Card>; 2],
+    /// The two each seat threw (the crib, attributed).
+    pub(crate) thrown: [Vec<Card>; 2],
     pub(crate) crib: Vec<Card>,
     pub(crate) cut: Card,
     /// Cards since the count last reset, in play order.
@@ -204,8 +206,23 @@ pub struct GameState {
     pub(crate) played: Vec<(Seat, Card)>,
     pub(crate) go: [bool; 2],
     pub(crate) last_player: Option<Seat>,
+    /// The claims graded so far this deal, in show order.
+    pub(crate) shown: Vec<Shown>,
     /// What the last move scored, and for whom.
     pub(crate) last: Option<(Seat, Scored)>,
+}
+
+/// A hand that has been counted at the show.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Shown {
+    /// Which hand.
+    pub step: ShowStep,
+    /// What its owner claimed.
+    pub claimed: u8,
+    /// What it was worth.
+    pub actual: HandScore,
+    /// What the other seat took by muggins.
+    pub muggins: u8,
 }
 
 /// The terminal outcome.
@@ -241,12 +258,14 @@ impl GameState {
             scores: [0, 0],
             hands: [Vec::new(), Vec::new()],
             kept: [Vec::new(), Vec::new()],
+            thrown: [Vec::new(), Vec::new()],
             crib: Vec::new(),
             cut: Card { rank: 1, suit: 0 },
             stack: Vec::new(),
             played: Vec::new(),
             go: [false, false],
             last_player: None,
+            shown: Vec::new(),
             last: None,
         };
         s.deal();
@@ -269,12 +288,14 @@ impl GameState {
         }
         self.hands = hands;
         self.kept = [Vec::new(), Vec::new()];
+        self.thrown = [Vec::new(), Vec::new()];
         self.crib = Vec::new();
         self.cut = deck[12];
         self.stack = Vec::new();
         self.played = Vec::new();
         self.go = [false, false];
         self.last_player = None;
+        self.shown = Vec::new();
         self.phase = Phase::Discard;
         self.to_move = nd;
     }
@@ -395,6 +416,7 @@ impl GameState {
         let ca = hand.remove(a);
         self.crib.push(ca);
         self.crib.push(cb);
+        self.thrown[seat.idx()] = vec![ca, cb];
         self.kept[seat.idx()].clone_from(hand);
         if seat == self.dealer.other() {
             self.to_move = self.dealer;
@@ -432,6 +454,12 @@ impl GameState {
             actual,
             muggins,
         };
+        self.shown.push(Shown {
+            step,
+            claimed,
+            actual,
+            muggins,
+        });
         if self.award(seat, scored, what) {
             return Ok(());
         }
@@ -495,6 +523,11 @@ impl GameState {
     #[must_use]
     pub fn last_scored(&self) -> Option<(Seat, Scored)> {
         self.last
+    }
+    /// The two cards `seat` threw to the crib this deal (empty before it discards).
+    #[must_use]
+    pub fn thrown_by(&self, seat: Seat) -> &[Card] {
+        &self.thrown[seat.idx()]
     }
 
     /// The terminal outcome, if the game is over.
@@ -582,11 +615,13 @@ mod tests {
         s.hands = [a.to_vec(), b.to_vec()];
         s.kept = [a.to_vec(), b.to_vec()];
         s.crib = vec![c(2, 0), c(3, 0), c(8, 1), c(9, 1)];
+        s.thrown = [vec![c(2, 0), c(3, 0)], vec![c(8, 1), c(9, 1)]];
         s.cut = cut;
         s.stack.clear();
         s.played.clear();
         s.go = [false, false];
         s.last_player = None;
+        s.shown.clear();
         s
     }
 

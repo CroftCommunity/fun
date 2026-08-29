@@ -27,12 +27,18 @@
 
 pub mod card;
 pub mod game;
+pub mod hash;
+pub mod outcome;
 pub mod rng;
 pub mod score;
+pub mod view;
 
 pub use card::{Card, Rank, Suit, DECK_SIZE};
 pub use game::{
     apply, discard_pairs, legal_moves, GameState, Move, Outcome, Phase, RuleError, Scored, Seat,
-    ShowStep, DOUBLE_SKUNK_LINE, SKUNK_LINE, TARGET,
+    ShowStep, Shown, DOUBLE_SKUNK_LINE, SKUNK_LINE, TARGET,
 };
+pub use hash::state_hash;
+pub use outcome::{replay, Cribbage};
 pub use score::{score_hand, score_peg, HandScore, PegScore};
+pub use view::{Revealed, View};
