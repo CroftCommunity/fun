@@ -1,8 +1,8 @@
 # Cribbage vs the engine — the first hidden-information game
 
-**Status:** Phase 0 COMPLETE (2026-08-29, findings recorded below). O3 answered by
-measurement; O1, O2, O4 open with recommendations — O1 and O2 must be answered before
-Phase 1 writes a golden vector.
+**Status:** Phase 0 COMPLETE (2026-08-29, findings recorded below). **All four open
+questions answered** (O3 by measurement; O1, O2, O4 by the owner, 2026-08-29). Ready for
+Phase 1.
 
 **Owner decision (2026-08-29):** un-gate cribbage from the P2P transport + fair-reveal
 plan and ship it **against the computer opponent, on one device**. The two-human
@@ -573,7 +573,8 @@ test plays two deals and asserts the second view's `revealed` is empty until its
 - [ ] The peg board: 121 in two tracks, both pegs, front and back — the one piece of
   cribbage furniture that has to look like itself.
 - [ ] The opponent as a *who*: a turn bar naming both seats, the crib marker, whose
-  turn. Persona name per O4.
+  turn. `OPPONENT` = "The Engine 🤖" as shipped; the `LOCAL_AI_PERSONA` / `opponentKind`
+  shape from `furrow.ts` wired with the persona slot reserved (O4).
 - [ ] End screen: verification-forward, the game's value stated ("worth 2 games — a
   skunk"), `?r=` share that re-verifies.
 - [ ] The skunk line at 90 on the peg board (O2).
@@ -701,12 +702,14 @@ Everything in "Documentation Impact", plus the Review Log entries for every phas
 3. **O3 — Pegging engine: heuristic or expectimax?** **Answered by Phase 0
    (2026-08-29): expectimax-2.** +6 points of win rate over the heuristic at 10,000
    games; a third ply is indistinguishable (49.7% head-to-head) at 1.5× the cost.
-4. **O4 — The opponent's name.** Every shipped engine is "The Engine 🤖"; the
-   crofting-idiom persona names (Chip / Rowan / Alder / Bramble / Millet) belong to the
-   opt-in LLM hybrid, which this plan does not ship. Recommendation: **"The Engine"**
-   for the first ship, with a persona reserved for the LLM trial in `TODO/cribbage.md`;
-   the tile stays "Cribbage" (a generic name, no mark to collide with — the Trio Tumble
-   rename is the reason to check anyway).
+4. **O4 — The opponent's name.** **Answered by the owner (2026-08-29): match the other
+   implementations; the default stays "The Engine".** Concretely, Phase 6 mirrors
+   `src/games/furrow/furrow.ts`: an `OPPONENT = { name: "The Engine", avatar: "🤖" }`
+   constant as the shipped seat label, a `LOCAL_AI_PERSONA` constant in the Chip / Rowan /
+   Alder / Bramble / Millet line reserved for the opt-in local-AI opponent, and the same
+   `opponentKind` switch that picks between them — so the persona slot is wired and
+   empty, ready for the LLM trial in `TODO/cribbage.md` without a UI change. The persona
+   name itself is chosen when that trial ships, not now. The tile stays "Cribbage".
 
 ## Review Log
 
