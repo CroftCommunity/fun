@@ -35,7 +35,10 @@ fn parse(src: &str) -> Vector {
         .split(',')
         .map(str::trim)
         .filter(|s| !s.is_empty())
-        .map(|s| Move::from_code(s.parse::<u8>().expect("a move is a small integer")).expect("a real move code"))
+        .map(|s| {
+            Move::from_code(s.parse::<u8>().expect("a move is a small integer"))
+                .expect("a real move code")
+        })
         .collect();
     Vector {
         name: unquote(field(src, "name")),
@@ -79,7 +82,10 @@ fn the_game_vectors_really_finish_and_the_skunk_is_worth_two() {
     let out = full.outcome().expect("vector 2 reaches 121");
     assert_eq!(out.winner, Seat::B);
     assert_eq!(out.value, 1);
-    assert!(parse(VECTORS[1]).moves.contains(&Move::Go), "vector 2 declares a go");
+    assert!(
+        parse(VECTORS[1]).moves.contains(&Move::Go),
+        "vector 2 declares a go"
+    );
 
     let skunk = replay(5, &parse(VECTORS[2]).moves);
     let out = skunk.outcome().expect("vector 3 reaches 121");
@@ -95,7 +101,8 @@ fn every_move_in_the_corpus_was_legal_when_played() {
         let v = parse(src);
         let mut s = cribbage_core::GameState::new(v.seed);
         for (i, &m) in v.moves.iter().enumerate() {
-            s = cribbage_core::apply(&s, m).unwrap_or_else(|e| panic!("{}: move {i} ({m:?}) refused: {e}", v.name));
+            s = cribbage_core::apply(&s, m)
+                .unwrap_or_else(|e| panic!("{}: move {i} ({m:?}) refused: {e}", v.name));
         }
     }
 }

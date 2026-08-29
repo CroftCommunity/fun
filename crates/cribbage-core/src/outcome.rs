@@ -130,10 +130,14 @@ mod vector_gen {
     }
 
     #[test]
-    #[ignore]
+    #[ignore = "a generator, run by hand to re-lock the artefact"]
     fn gen_vectors() {
         for (seed, stride) in [(0, 0), (7, 7), (5, 11)] {
-            let moves = if stride == 0 { vec![] } else { game(seed, stride) };
+            let moves = if stride == 0 {
+                vec![]
+            } else {
+                game(seed, stride)
+            };
             let s = replay(seed, &moves);
             let codes: Vec<String> = moves.iter().map(|m| m.code().to_string()).collect();
             println!(

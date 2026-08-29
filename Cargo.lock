@@ -197,6 +197,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "cribbage-core"
+version = "0.0.0"
+dependencies = [
+ "hex",
+ "pond-outcome",
+ "rand",
+ "rand_chacha",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+]
+
+[[package]]
+name = "cribbage-solver"
+version = "0.0.0"
+dependencies = [
+ "cribbage-core",
+ "rand",
+ "rand_chacha",
+]
+
+[[package]]
 name = "crypto-common"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -762,6 +785,7 @@ dependencies = [
 name = "xbuild"
 version = "0.0.0"
 dependencies = [
+ "cribbage-core",
  "dots-core",
  "furrow-core",
  "solitaire-core",
