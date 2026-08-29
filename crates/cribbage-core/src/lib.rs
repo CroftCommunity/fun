@@ -26,8 +26,13 @@
 #![warn(missing_docs)]
 
 pub mod card;
+pub mod game;
 pub mod rng;
 pub mod score;
 
 pub use card::{Card, Rank, Suit, DECK_SIZE};
+pub use game::{
+    apply, discard_pairs, legal_moves, GameState, Move, Outcome, Phase, RuleError, Scored, Seat,
+    ShowStep, DOUBLE_SKUNK_LINE, SKUNK_LINE, TARGET,
+};
 pub use score::{score_hand, score_peg, HandScore, PegScore};

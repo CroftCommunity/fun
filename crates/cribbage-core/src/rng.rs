@@ -1,4 +1,4 @@
-//! Deterministic, seeded RNG for the deal — the same ChaCha20 primitive every
+//! Deterministic, seeded RNG for the deal — the same `ChaCha20` primitive every
 //! shelf core uses (`solitaire-core/src/rng.rs`), copied rather than imported so
 //! the game-isolation rule holds (a core depends on no other game's crate).
 

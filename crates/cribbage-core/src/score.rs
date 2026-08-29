@@ -2,10 +2,12 @@
 //! pure functions with a breakdown, so the UI narrates what the core counted
 //! rather than counting again.
 
+use serde::{Deserialize, Serialize};
+
 use crate::card::Card;
 
 /// The breakdown of a hand or crib scored against the cut.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct HandScore {
     /// Two per combination summing to fifteen.
     pub fifteens: u8,
@@ -28,7 +30,7 @@ impl HandScore {
 }
 
 /// The points the LAST card on the pegging stack earned.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct PegScore {
     /// Two for making fifteen.
     pub fifteen: u8,
