@@ -18,7 +18,11 @@ const GAME_PAGES = ["", "placeholder", "solitaire", "trio-tumble", "bubble", "wy
 
 // Tier-2 wrapped games: their vendored bundle ships under src/games/<id>/vendor/
 // and is served at /<id>/vendor/ for the sandboxed iframe to load same-origin.
-const TIER2_VENDORS = ["orchard-drop"];
+// Empty since Orchard Drop was rebuilt Tier-1 (2026-08-29). The machinery is
+// KEPT rather than deleted: §9 is a ratified standard that was applied four
+// times, and §11 has been a ratified standard with no implementation since it
+// was written — an empty tier is a normal state here, not a dead one.
+const TIER2_VENDORS = [];
 
 // Pre-paint skin resolution: set [data-skin] before first paint so a palette
 // never flashes. GENERATED from src/skins.ts rather than hand-kept, because the

@@ -57,7 +57,17 @@ at them and add what's specific to this repo. Git identity: chasemp
     (This bullet used to claim "`clippy::pedantic` clean" workspace-wide; nothing
     checked it and nothing ever had. It now says what is true.)
 - **`npm run gate` is the whole gate, and CI runs all of it.** `gate` =
-  `npm run test` (Rust + typecheck + lint + unit + build) + `npm run e2e`.
+  `npm run test` (Rust + **cross-build** + typecheck + lint + unit + build) +
+  `npm run e2e`.
+  - **`test:xbuild` was added 2026-08-29, and the finding is worth keeping.** The
+    cross-build determinism harness (`crates/xbuild`) replays golden scenarios
+    inside `wasm32` and asserts the hashes equal the natively-recorded ones — and
+    it **ran nowhere at all**: no npm script, no `tools/` caller, no CI
+    reference. It existed, was documented, and was executed by nothing, so
+    `native == wasm` — a claim this shelf makes to users — rested on a script
+    someone had to remember to run. It needs a node step after a wasm build,
+    which is why it never fitted the Rust-only job. Its `run.sh` also resolved
+    `--toolchain stable`, floating free of the pin, and that is fixed too.
   Measured 2026-08-07: **3m44s** locally, of which the browser half is ~55s.
   - CI runs the same three parts as **parallel jobs** (`build`, `rust`, `e2e`),
     and `deploy` needs all three — so a failing board blocks publication rather
@@ -143,7 +153,7 @@ at them and add what's specific to this repo. Git identity: chasemp
 - **Tier 1 — Croft-native (build-fresh).** Determinism-first Rust core → wasm,
   **verifiable outcome** (move-list replay → `state_hash`, re-verifying `?r=`
   share), tap-first with the core deciding legality. solitaire · Trio Tumble ·
-  bubble (in progress). This is the shelf's differentiator; build fresh when a
+  bubble · Orchard Drop (rebuilt from a wrap, 2026-08-29). This is the shelf's differentiator; build fresh when a
   game's rules are simpler than an integration.
 - **Tier 2 — opportunistic wrap/port.** Already-packaged **ethical** games taken
   as-is (client-side/static, non-extractive, redistribution-licensed, fits our
@@ -151,10 +161,12 @@ at them and add what's specific to this repo. Git identity: chasemp
   real-browser **containment/legibility** harness (untrusted code in our chrome).
   A large one-time download that then runs fully offline is an allowed class
   *with up-front size disclosure*. The wrapped-game standard is **ratified in
-  `docs/BUILDING-GAMES.md` §9**. **The tier has no third-party instance since
-  2026-08-28** — Astray, HexGL and Clumsy Bird were removed as not fitting the
-  shelf's model. Solitaire remains the Tier-1 reference. Every wrap ships a
-  `tier2.meta.json` (provenance + posture). Avoid the Emscripten + runtime-untar
+  `docs/BUILDING-GAMES.md` §9**. **The tier is EMPTY since 2026-08-29** — Astray,
+  HexGL and Clumsy Bird were removed as not fitting the shelf's model, and
+  Orchard Drop was rebuilt Tier-1. The machinery is kept, not deleted (§9's
+  status note says why); note the containment spec **skips** at zero wraps, so it
+  goes green by not running. Solitaire remains the Tier-1 reference. Every wrap
+  ships a `tier2.meta.json` (provenance + posture). Avoid the Emscripten + runtime-untar
   class (the SuperTuxKart cut, `plans/2026-07-31-supertuxkart-wrap.md`).
 
 - **Tier 3 — engine-backed original.** A game **we build** on a **third-party

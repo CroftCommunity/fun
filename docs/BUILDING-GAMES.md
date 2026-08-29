@@ -294,20 +294,27 @@ page (`/how-to/?game=<id>`). It follows the Croft user-guide pattern:
 ## 9. Tier-2 — wrapped games (the ratified addendum)
 
 
-> **Status, 2026-08-28: this tier has no third-party instance.** Astray, HexGL and
-> Clumsy Bird were removed at the owner's call — they did not fit the shelf's
-> model. What remains marked `tier: 2` is **Orchard Drop**, which is *ours* (the
-> Croft shelf, on @liabru's Matter.js), so it is a wrap of a physics engine rather
-> than of somebody else's game. By the definitions above that is closer to Tier 3.
+> **Status, 2026-08-29: this tier is empty.** Astray, HexGL and Clumsy Bird were
+> removed on 2026-08-28 as not fitting the shelf's model. **Orchard Drop left on
+> 2026-08-29**, rebuilt as a Tier-1 game on a deterministic fixed-point core
+> (`plans/2026-08-28-1-plan-orchard-drop-tier1.md`) — which resolves what the
+> previous note called out: it was *ours*, wrapping a physics engine rather than
+> somebody else's game, so `tier: 2` had always misdescribed it.
 >
-> The standard below is kept, not struck: it was ratified, it was applied four
-> times, and the containment harness and `tier2.meta.json` schema it produced are
-> still live and gate whatever carries a `tier2.meta.json`. But **nothing here is
-> currently demonstrated by a real opportunistic wrap**, and the next one to
-> arrive should expect to re-earn the reference-implementation role rather than
-> inherit it.
+> **The standard below is kept, not struck**, and that is a decision rather than
+> an oversight. §9 was ratified and applied four times; the containment harness,
+> the `tier2.meta.json` schema and the honest-representation banner all still
+> work and still gate anything that carries a `tier2.meta.json`. §11 has been a
+> ratified standard with **no** implementation since it was written, and this
+> repo says plainly that is a normal state — an empty tier is not a dead one.
 >
-> Whether Tier 2 survives as a category at all is an open owner decision.
+> One consequence is worth naming because it is quiet: with no `tier2.meta.json`
+> on disk, `tests/tier2-containment.spec.ts` **skips** rather than fails. It goes
+> green by not running. That is correct behaviour and it is also exactly the kind
+> of pass that hides a regression, so the next wrap to arrive should confirm the
+> harness actually exercises it rather than assuming a green board means it did.
+>
+> Whether Tier 2 survives as a category at all remains an open owner decision.
 
 A Tier-2 game is an **already-packaged, ethical game taken as-is**. We do **not**
 rebuild it and we do **not** fake a verifiable outcome. It earns a place by being

@@ -1,9 +1,13 @@
 # Orchard Drop → Tier-1: a fixed-point deterministic fruit-merge core
 
-**Status:** **Phase 0 EXECUTED and landed (`bc3a0b2`); re-verified against `main` after the skin
-landing (`b5c0399`). D1, D2, D3, D4 and D6 pass; D5 is open and needs the owner, and one new
-BLOCKING question arrived with the landing** (what becomes of the Tier-2 machinery — see Open
-Questions). The spike is `spike/orchard-physics/`, its findings are
+**Status:** **ALL PHASES COMPLETE (2026-08-29).** Orchard Drop is a Tier-1 game: a fixed-point
+deterministic core, a verifiable `pond-outcome` record, a `?r=` share that re-verifies before it
+displays, and `native == wasm` enforced by a cross-build check that now actually runs. The Tier-2
+wrap is retired and the tier is empty; its machinery is kept, with §9's status note saying why.
+
+Phases 0–6 landed in five merges (`bc3a0b2`, `a7e9808`, `95330ca`, `a207738`, and the Phase 4+5+6
+landing). Both BLOCKING questions were answered by the owner; D5 was accepted on the rendered
+plate; the Tier-2 machinery question was resolved on this plan's recorded recommendation. The spike is `spike/orchard-physics/`, its findings are
 `spike/orchard-physics/RESULT.md`, and 11 tests pin them. A fixed-point circle solver holds a
 30-fruit Suika pile, matches native/wasm bit-for-bit across 10 digests, and replays a 4.7-minute
 game in 731 ms. **Phase 1 is unblocked except for D5**, which is a feel judgement no measurement
@@ -860,7 +864,12 @@ position in any plan.
   choosing Tier-1: there is no Tier-1 without it. Recorded explicitly rather than left implied,
   because Phase 4 is roughly half the total effort, carries no interesting problems, and is the
   part it is easiest to agree to while picturing only the physics.
-- **[NEW — BLOCKING, Phase 4] When Orchard Drop leaves Tier-2, does the tier's machinery stay?**
+- **[RESOLVED 2026-08-29 — the machinery stays.]** Executed on this plan's recommendation: §9 is
+  kept and its status note updated in the same commit that emptied the tier, naming the quiet
+  consequence — with no `tier2.meta.json` on disk the containment spec **skips**, so it goes green
+  by not running. Whether Tier 2 survives as a *category* remains an open owner decision, which is
+  deliberately not settled by this plan.
+- ~~[BLOCKING, Phase 4] When Orchard Drop leaves Tier-2, does the tier's machinery stay?~~
   *Arrived with `b5c0399`, which removed the other three wraps and left this game as the last
   `tier: 2` entry — so Phase 4 empties the tier rather than trimming it. §9's own new status note
   says "whether Tier 2 survives as a category at all is an open owner decision," so this plan
@@ -871,7 +880,11 @@ position in any plan.
   over-reach. But the containment harness skipping silently at zero is a real trap, so whichever
   way this goes, §9's status note gets updated in the same commit. BLOCKING for Phase 4 only —
   Phases 1–3 touch none of it.*
-- **[NEW — BLOCKING, Phase 1] D5: does it feel right?** *Phase 0 answered everything a machine can
+- **[RESOLVED 2026-08-28 — accepted.]** The owner reviewed the rendered plate (six frames, the
+  wrap's own fruit art, rotation visible in the faces and stems) and accepted it. Recorded plainly
+  because it is the one gate no measurement could close, and because it was accepted on a
+  *rendering* rather than on side-by-side play.
+- ~~[BLOCKING, Phase 1] D5: does it feel right?~~ *Phase 0 answered everything a machine can
   answer; this is the one gate left and it needs a person. Compare
   `spike/orchard-physics/pile.svg` (six frames, each fruit drawn with a radius line so rotation is
   visible) against the live wrap at `/orchard-drop/`. **This comparison is only possible before
@@ -899,6 +912,37 @@ position in any plan.
   it and building for a hypothetical second consumer is how a 3-file solver becomes an engine.*
 
 ## Review Log
+
+### Phases 3–6 execution — 2026-08-29 · the game ships
+
+**Phase 3 · `crates/orchard-wasm`.** 21 Rust tests, 9 vitest boundary tests, a Node cross-check.
+`native == wasm` at the *binding* — a different claim from Phase 1's — over twelve checkpoints
+with a seed whose both halves are set. Mutation audit 26 → 3, all equivalent. Its lesson:
+`cargo mutants` runs `cargo test` and nothing else, so conversions covered only by the vitest were,
+from the crate's own point of view, uncovered. They became pure functions the crate tests itself.
+
+**Phases 4+5 · the game, landed together.** The wrap is gone and the wiring test asserts its
+*absence* — no iframe, no banner, no "no verifiable record" text. axe runs with **no exclusion**;
+§9's embedded-canvas exemption left with the iframe. Two of my own defects were caught rather than
+reasoned away: `paint()` also assigned `over`, so nothing ever saw the rising edge and the end
+screen never appeared (a derived flag written in two places reads as correct in both); and I put
+raw hex in `styles.css`, which the shelf confines to `tokens.css` and a unit test enforces.
+
+**Phase 6 · the cross-build check, and the finding that outlives this plan.** `xbuild` **ran
+nowhere at all** — no npm script, no `tools/` caller, no CI reference. It existed, was documented,
+and was executed by nothing, so `native == wasm`, a claim this shelf makes to users, rested on a
+script someone had to remember to run. It is now `npm run test:xbuild`, inside `npm run test` and
+inside CI's `rust` job, and its `run.sh` no longer floats free of the toolchain pin.
+
+The golden scenarios moved from `tests/` into `orchard_core::vectors` so three consumers share one
+definition — the crate's test, the cross-build check (which must replay them inside `wasm32` and
+cannot call test code), and anything later. The expected hashes moved to `vectors/*.json`, read by
+the Rust test and `check.mjs` alike, so the two harnesses cannot disagree about the right answer.
+
+**The check was proven to bite, and the first attempt to prove it failed.** Perturbing
+`ITERATIONS` 24 → 25 changed nothing: at 24 the solver has already converged, so that mutation is
+near-equivalent — the check was fine and the probe was weak. Gravity 1000 → 1001 turns it red with
+three mismatches, and restoring turns it green.
 
 ### Phase 2 execution — 2026-08-28 · `crates/orchard-core`
 

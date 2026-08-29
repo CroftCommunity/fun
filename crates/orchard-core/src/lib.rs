@@ -7,3 +7,4 @@ pub mod merge;
 pub mod outcome;
 pub mod pack;
 pub mod rng;
+pub mod vectors;
