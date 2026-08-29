@@ -12,6 +12,9 @@ earlier is in `git log`.
 
 ## 2026-08
 
+- 2026-08-29 **cribbage:** real art — the home tile shows the commissioned icon in place of
+  the placeholder sketch, and portrait + landscape splash sources are filed for the
+  launch-screen step when the manifest arrives (`TODO/pwa.md`).
 - 2026-08-29 **cribbage:** a settings panel opened while the engine is still moving no
   longer snaps shut when its move lands — the same re-render defect Dots had, now covered
   by the shared fix. (`plans/2026-08-29-plan-cribbage-vs-engine.md`, post-landing)
