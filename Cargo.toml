@@ -33,6 +33,7 @@ members = [
     "crates/pond-docformat",
     "crates/pond-physics",
     "crates/orchard-core",
+    "crates/orchard-wasm",
     "crates/pond-outcome",
     "crates/trio-tumble-wasm",
     "crates/solitaire-wasm",

@@ -408,6 +408,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "orchard-wasm"
+version = "0.0.0"
+dependencies = [
+ "orchard-core",
+ "pond-outcome",
+ "pond-physics",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "othello-core"
 version = "0.0.0"
 dependencies = [

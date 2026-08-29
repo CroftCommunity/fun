@@ -1,0 +1,18 @@
+{
+  "seed_lo": 305419896,
+  "seed_hi": 3735928559,
+  "final_hash": "d026e850a34c22c94b379768b974046d385747915fa9a8b1b840d4098ea16bd5",
+  "score": 34,
+  "tick": 864,
+  "fruit": 4,
+  "checkpoints": [
+    { "tick": 33, "hash": "3a25de62890045f169acdce277cef8da06ecf19f3b29a2c25aa757aaec04baeb" },
+    { "tick": 66, "hash": "590aa2bf90cb1cf5dc4fa8ee0c18826c981bdd257231a10fcf3d47474460578e" },
+    { "tick": 99, "hash": "e5110ed7c3f5202232a59693ee04fa172423e343db0b7cc79e0bd2166ecb209f" },
+    { "tick": 132, "hash": "64f03686b3537a0ff43df2bc00bb4643cf497a9b7f02098028942bed29cb923d" },
+    { "tick": 165, "hash": "b6eb2f7c0ac5cc61d70ca01977b4b23731db4204b8027907a12ae2a105f97549" },
+    { "tick": 198, "hash": "65356d307795b5416a5f26f71617da5cfbc5b02e639be72b73102644815c1a23" },
+    { "tick": 231, "hash": "1a1e4699fec87c2bcdf67c35f2ad6931966336083a0a5506aa3ccba276768355" },
+    { "tick": 264, "hash": "f828ae301747bd2f521e7c3233a53416c207f169c20c806840c5f0340fe24c15" }
+  ]
+}
