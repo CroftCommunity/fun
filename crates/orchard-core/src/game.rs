@@ -111,6 +111,31 @@ pub enum MoveError {
     GameOver,
 }
 
+/// The score a merge of two tier-`tier` fruit awards.
+///
+/// Extracted from the merge loop because the branch that matters most — two
+/// watermelons popping — is nearly unreachable from real play: it needs a run
+/// that climbs the entire ladder twice. Mutation testing reached it and no test
+/// did. A policy a test cannot reach in place is a policy worth lifting out.
+#[must_use]
+pub fn merge_award(tier: u8) -> u64 {
+    if tier == TOP {
+        POP_BONUS
+    } else {
+        ladder::merge_score(tier + 1)
+    }
+}
+
+/// Whether a fruit's top edge is above the danger line.
+///
+/// Extracted for the same reason as [`merge_award`]: the comparison's boundary
+/// is a single exact position that no plausible run lands on, so it can only be
+/// pinned as a function.
+#[must_use]
+pub fn is_above_line(centre_y: Fx, radius: Fx) -> bool {
+    centre_y - radius < from_px(LINE_Y)
+}
+
 /// Per-fruit bookkeeping the physics does not carry.
 #[derive(Clone, Copy, Debug)]
 struct Fruit {
@@ -232,13 +257,12 @@ impl Game {
             self.fruit.remove(&m.a);
             self.fruit.remove(&m.b);
 
+            self.score += merge_award(m.tier);
             if m.tier == TOP {
                 // Two watermelons pop rather than making a twelfth tier.
-                self.score += POP_BONUS;
                 continue;
             }
             let created = m.tier + 1;
-            self.score += ladder::merge_score(created);
             self.max_tier = self.max_tier.max(created);
             // A merged fruit counts for game-over immediately — no grace.
             self.spawn_at(created, mid, 0);
@@ -247,7 +271,6 @@ impl Game {
 
     fn check_over(&mut self) {
         let now = self.world.tick();
-        let line = from_px(LINE_Y);
         for (&id, f) in &mut self.fruit {
             let Some(b) = self.world.body(id) else {
                 continue;
@@ -256,7 +279,7 @@ impl Game {
                 f.dwell = 0;
                 continue;
             }
-            if b.pos.y - b.radius() < line {
+            if is_above_line(b.pos.y, b.radius()) {
                 f.dwell += 1;
                 if f.dwell > DWELL_TICKS {
                     self.over = true;
@@ -617,6 +640,158 @@ mod tests {
             }),
             Err(MoveError::GameOver)
         );
+    }
+
+    // ── the policies mutation testing found unreachable in place ───────────
+
+    #[test]
+    fn a_merge_awards_the_triangular_score_of_the_tier_it_creates() {
+        for tier in 0..TOP {
+            assert_eq!(
+                merge_award(tier),
+                crate::ladder::merge_score(tier + 1),
+                "merging two of tier {tier}"
+            );
+        }
+        // Spot-checked against the vendored table, not just the formula, so the
+        // test is not merely mirroring the implementation.
+        assert_eq!(merge_award(0), 1, "two cherries make a strawberry, worth 1");
+        assert_eq!(merge_award(8), 45, "two pineapples make a melon, worth 45");
+    }
+
+    #[test]
+    fn two_watermelons_pop_for_the_bonus_and_create_nothing() {
+        // The top of the ladder. Unreachable from any plausible run — it needs a
+        // climb of the whole ladder twice — which is why it is a function.
+        assert_eq!(merge_award(TOP), POP_BONUS);
+        assert_ne!(merge_award(TOP), crate::ladder::merge_score(TOP));
+    }
+
+    #[test]
+    fn the_danger_line_test_is_the_fruits_top_edge_and_its_boundary_is_exact() {
+        use pond_physics::fixed::from_px;
+        let r = from_px(50);
+        let line = from_px(LINE_Y);
+        // One sub-unit above the line: over it.
+        assert!(is_above_line(line + r - 1, r));
+        // Exactly on the line: NOT over it. The comparison is strict, so a fruit
+        // resting precisely at the line is safe.
+        assert!(!is_above_line(line + r, r));
+        // One sub-unit below: safe.
+        assert!(!is_above_line(line + r + 1, r));
+    }
+
+    #[test]
+    fn a_bigger_fruit_crosses_the_line_at_a_lower_centre() {
+        // The test is the top EDGE, not the centre — so radius has to matter.
+        use pond_physics::fixed::from_px;
+        let centre = from_px(LINE_Y + 30);
+        assert!(!is_above_line(centre, from_px(17)));
+        assert!(is_above_line(centre, from_px(50)));
+    }
+
+    // ── boundaries the physics cannot be steered to ────────────────────────
+
+    #[test]
+    fn the_grace_period_is_measured_from_the_drop_not_from_zero() {
+        // `tick + GRACE` and `tick * GRACE` agree at tick 0, which is where every
+        // other test drops. Shifting a whole run in time distinguishes them: the
+        // simulation is time-invariant, so an identical run started 500 ticks
+        // later must end exactly 500 ticks later.
+        let run_from = |offset: u32| {
+            let mut g = Game::new(5);
+            let mut t = offset;
+            for _ in 0..400 {
+                if g.is_over() {
+                    break;
+                }
+                let _ = g.apply(Move::Drop { tick: t, x: 220 });
+                let _ = g.apply(Move::Wait {
+                    tick: t + COOLDOWN_TICKS,
+                });
+                t += COOLDOWN_TICKS;
+            }
+            assert!(g.is_over(), "the run never ended");
+            g.tick()
+        };
+        assert_eq!(run_from(500), run_from(0) + 500);
+    }
+
+    #[test]
+    fn a_drop_off_the_left_edge_lands_exactly_where_a_clamped_drop_lands() {
+        // Pins the clamp's arithmetic, not just that clamping happened.
+        let mut off = Game::new(1);
+        let r = i32::try_from(crate::ladder::radius_px(off.held())).expect("radius fits");
+        let mut at = Game::new(1);
+        off.apply(Move::Drop { tick: 0, x: -500 })
+            .expect("legal drop");
+        at.apply(Move::Drop { tick: 0, x: r }).expect("legal drop");
+        off.apply(Move::Wait { tick: 300 }).expect("legal wait");
+        at.apply(Move::Wait { tick: 300 }).expect("legal wait");
+        assert_eq!(off.state_hash(), at.state_hash());
+    }
+
+    #[test]
+    fn a_drop_off_the_right_edge_lands_exactly_where_a_clamped_drop_lands() {
+        let mut off = Game::new(1);
+        let r = i32::try_from(crate::ladder::radius_px(off.held())).expect("radius fits");
+        let edge = i32::try_from(CRATE_W).expect("width fits") - r;
+        let mut at = Game::new(1);
+        off.apply(Move::Drop { tick: 0, x: 9999 })
+            .expect("legal drop");
+        at.apply(Move::Drop { tick: 0, x: edge })
+            .expect("legal drop");
+        off.apply(Move::Wait { tick: 300 }).expect("legal wait");
+        at.apply(Move::Wait { tick: 300 }).expect("legal wait");
+        assert_eq!(off.state_hash(), at.state_hash());
+    }
+
+    // ── the reporting surface ──────────────────────────────────────────────
+
+    #[test]
+    fn the_move_list_records_every_move_applied() {
+        // `moves()` had no test caller at all, which mutation testing noticed by
+        // replacing it with an empty slice. It is the proof a record replays
+        // from, so an empty one would be a silent catastrophe.
+        let mut g = Game::new(1);
+        let a = Move::Drop { tick: 0, x: 100 };
+        let b = Move::Wait { tick: 200 };
+        g.apply(a).expect("legal drop");
+        g.apply(b).expect("legal wait");
+        assert_eq!(g.moves(), &[a, b]);
+        // A refused move is not recorded.
+        assert_eq!(
+            g.apply(Move::Drop { tick: 1, x: 100 }),
+            Err(MoveError::TickWentBackwards)
+        );
+        assert_eq!(g.moves().len(), 2);
+    }
+
+    #[test]
+    fn max_tier_starts_at_zero_and_only_rises_on_a_merge() {
+        let mut g = Game::new(1);
+        assert_eq!(g.max_tier(), 0);
+        g.apply(Move::Drop { tick: 0, x: 220 }).expect("legal drop");
+        g.apply(Move::Wait { tick: 300 }).expect("legal wait");
+        assert_eq!(g.max_tier(), 0, "a single drop is not a merge");
+    }
+
+    #[test]
+    fn tiers_present_reports_what_is_actually_in_the_crate() {
+        let mut g = Game::new(1);
+        assert!(g.tiers_present().is_empty());
+        let first = g.held();
+        g.apply(Move::Drop { tick: 0, x: 100 }).expect("legal drop");
+        assert_eq!(g.tiers_present(), vec![first]);
+        let second = g.held();
+        g.apply(Move::Drop {
+            tick: COOLDOWN_TICKS,
+            x: 340,
+        })
+        .expect("legal drop");
+        let mut expected = vec![first, second];
+        expected.sort_unstable();
+        assert_eq!(g.tiers_present(), expected);
     }
 
     // ── the hash ───────────────────────────────────────────────────────────

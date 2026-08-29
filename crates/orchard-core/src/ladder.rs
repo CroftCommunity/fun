@@ -134,6 +134,17 @@ mod tests {
     }
 
     #[test]
+    fn the_top_of_the_ladder_is_the_watermelon() {
+        // TOP drives the watermelon pop and the `won` condition, and was
+        // derived from TIERS without ever being checked — mutating the
+        // subtraction changed it silently.
+        assert_eq!(TOP, 10);
+        assert_eq!(name(TOP), "watermelon");
+        assert_eq!(radius_px(TOP), 128);
+        assert_eq!(TOP as usize, TIERS - 1, "TOP is the last valid tier");
+    }
+
+    #[test]
     fn only_the_lowest_five_tiers_spawn_from_the_top() {
         // DROPPABLE = 5. Bigger fruit only ever appears by merging — the rule the
         // whole game rests on. Boundary at 4/5, not just a happy point.

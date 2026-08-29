@@ -169,6 +169,28 @@ mod tests {
     }
 
     #[test]
+    fn the_pack_is_a_recorded_schedule_not_merely_a_deterministic_one() {
+        // GOLDEN VECTOR. Every property test above ("no repeats", "not
+        // sequential", "regenerates identically") is satisfied by ANY decent
+        // scrambler, which is why mutating splitmix64's arithmetic survived nine
+        // ways. Only recorded output pins the generator — and it has to be
+        // pinned, because these seeds are the dailies people will play.
+        //
+        // The expected values were derived from an INDEPENDENT reimplementation
+        // of splitmix64 and Fisher-Yates (in Python), not recorded from this
+        // code's own output. A golden vector copied from the thing it checks
+        // pins that the code has not changed; one derived separately pins that
+        // the code is right.
+        let p = pack();
+        assert_eq!(
+            &p.seeds[..6],
+            &[823, 3807, 2003, 2490, 3369, 3025],
+            "the daily schedule changed — if that was intended, say so in the commit"
+        );
+        assert_eq!(p.fixture, p.seeds[0]);
+    }
+
+    #[test]
     fn the_fixture_is_one_of_the_pack_seeds() {
         let p = pack();
         assert!(p.seeds.contains(&p.fixture));
