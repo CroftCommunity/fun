@@ -1,0 +1,25 @@
+# Phase 0 discovery spike for plans/2026-08-28-1-plan-orchard-drop-tier1.md.
+#
+# Deliberately NOT a workspace member (same posture as spike/dots-solve): it is
+# throwaway measurement code and must not enter the Rust gate. The empty
+# [workspace] table detaches it from the parent workspace.
+#
+# Disposition per the plan: the solver body is `promote` (it becomes
+# crates/pond-physics in Phase 1, under TDD there); the harness around it is
+# `throwaway`.
+[package]
+name = "orchard-physics-spike"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+
+[profile.release]
+opt-level = 3
+debug = false
