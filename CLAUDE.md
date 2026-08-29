@@ -108,12 +108,45 @@ at them and add what's specific to this repo. Git identity: chasemp
   - Symptom worth recognising: `dyld: Library not loaded: libllhttp.9.3.dylib`
     from `node` means a Homebrew upgrade moved a dependency out from under the
     system Node. Under fnm that cannot happen to the pinned toolchain.
+- **A check must actually run, and its result must actually reach you.** Three
+  failure shapes, all observed here, all of which report the same green as a real
+  pass. Named because they are invisible by construction:
+  - **The result never arrives.** A pipeline exits with its LAST command's
+    status, so `npm run test:rust | tail -40` hands you `tail`'s exit code and
+    the tail of the log — the header, the failures and the counts are all above
+    the fold. `cargo clippy | grep -c error && git commit` commits whether or not
+    clippy passed, because `grep` succeeds either way. **Never pipe or chain a
+    verification.** `bash tools/check.sh <label> <cmd...>` does it correctly:
+    whole log to a file, tail printed, the command's own exit code returned.
+  - **The check never runs.** `crates/xbuild` — the harness backing
+    `native == wasm`, a claim this shelf makes to users — had no npm script, no
+    caller and no CI reference for months. Writing a guard for it immediately
+    found a second, `crates/solitaire-wasm/run.sh`, in the same state; both also
+    carried a floating `--toolchain stable`, because nothing ran either script to
+    notice. `tests/gate-reachability.test.ts` now makes unwired a red board.
+  - **The check runs but grades less than it looks like.** Measured: axe's
+    `.include(sel)` **throws** when the selector matches nothing; `.exclude(sel)`
+    is **silent** and scans everything. So a broken include fails instantly and a
+    stale exclude survives indefinitely — one did, for a day after its iframe
+    left the shelf. `tests/axe-scope.test.ts` requires an exclusion to prove its
+    target exists.
+
+  The through-line: **tests going red is not the failure mode to design against.
+  Checks going green without having run is.**
 - **Mutation-test the cores.** `cargo mutants --package <crate> -j 4` (installed;
   run it with the pinned toolchain on PATH, as `tools/rust-gate.sh` does). Expected
   when a determinism-critical crate goes green and **before calling its phase
   done** — the game cores are rules engines, encoders and searches, which is
   exactly where a green suite hides holes. Not a per-commit gate and **not in CI**:
   a run is minutes, and it is an audit, not a check.
+  - **Closing a survivor means watching the new test fail against it.** Twice in
+    one session a test was written to kill a mutant, asserted to kill it, and did
+    not — once because the mutated code was not the mechanism in play at all
+    (game-over is driven by *merged* fruit, which carry no grace, so a dropped
+    fruit's grace could be absurd and nothing noticed). Re-apply the mutation by
+    hand and watch the new test go red. A test written to close a survivor is
+    worth nothing until it has been seen to fail against that survivor — which is
+    the same rule as watching a RED phase, one level up.
   - Triage every survivor into **equivalent mutant** or **real gap**, and record
     which in the plan. Equivalent mutants are common and unkillable — measured on
     `checkers-core` 2026-08-05, 9 of 26 survivors were provably behaviour-preserving
