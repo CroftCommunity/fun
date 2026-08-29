@@ -95,8 +95,8 @@ and documents it revisable pre-users, exactly as B5 did for wrapped+wrapped.
 - [ ] regenerate packs; report which moved; full Rust gate.
 
 ### Phase 2 (B5.4b) — how-to + e2e + docs
-- [ ] `match3-howto.ts` — fish combos line.
-- [ ] `tests/match3.spec.ts` — drive a fish combo (probe a seed) + assert a big clear.
+- [ ] `trio-tumble-howto.ts` — fish combos line.
+- [ ] `tests/trio-tumble.spec.ts` — drive a fish combo (probe a seed) + assert a big clear.
 - [ ] roadmap + `TODO/trio-tumble.md`; regenerate guide shots if visual (no new badge — none
   expected). Full `npm run test` + `e2e`.
 

@@ -69,13 +69,13 @@ Goal: `/trio-tumble/` is a real, verifiable, accessible game meeting every stand
 - **M3 — trio-tumble-wasm binding + TS wrapper.** Raw C-ABI, holds Game + swap list:
   `new_game`, `board_json`, `legal_moves_json`, `play_swap(r1,c1,r2,c2)`,
   `score`, `moves_left`, `current_hash`, `is_won`, `outcome_json`. Never panics.
-  `build:wasm` builds it; `build.mjs` serves `/match3.wasm`.
-- **M4 — board UI (`match3.ts`).** 8×8 gem grid (6 accessible gem tokens in
+  `build:wasm` builds it; `build.mjs` serves `/trio-tumble.wasm`.
+- **M4 — board UI (`trio-tumble.ts`).** 8×8 gem grid (6 accessible gem tokens in
   `tokens.css`, AA in both themes), tap-to-swap with core-driven legal-swap
   glow, score/moves-left/target/stars HUD, cascade re-render, moves-out →
   verifiable result screen (stars + score + record + re-verify + share), hints
   (a legal swap) + shared settings, daily (date-seed) + free-play (`?seed=`).
-- **M5 — guide, registry, tests, deploy.** `match3-howto.ts` + registry +
+- **M5 — guide, registry, tests, deploy.** `trio-tumble-howto.ts` + registry +
   guide-shots; flip `registry.ts` to `playable`; unit + e2e (mechanics,
   target-score win, share round-trip, axe both themes, 360px fit);
   README/BUILDING-GAMES/TODO updates; full gate + deploy.

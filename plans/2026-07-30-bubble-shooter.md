@@ -241,7 +241,7 @@ wasm holds module-static single-game state (as trio-tumble-wasm does).
 buffer; the TS wrapper surfaces a decode failure to `console.error` (not a silent
 empty board).
 **Risks:** raw-pointer out-buffer + never-panic discipline; `seed_lo/hi` split
-must match match3's convention.
+must match Trio Tumble's convention.
 **Done when:** (1) JS starts a game, reads board/legal-targets/current-colour,
 shoots, reads score/shots-left/cleared, gets a verifiable `outcome_json`, and
 daily resolves via the pack. (2) `npm run build:wasm` builds `/bubble.wasm`;

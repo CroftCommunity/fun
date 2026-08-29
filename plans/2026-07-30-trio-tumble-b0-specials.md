@@ -402,14 +402,14 @@ board view; nothing panics; axe-clean; both e2e projects green.
 - [ ] e2e: `tests/e2e/` — a spec asserting a striped gem renders with its label
   after a scripted 4-match (chromium + mobile-webkit); axe stays clean.
 - [ ] `npm run build:wasm && npm run build && npm run guide:shots` → commit shots.
-**Call chain:** `board_json` → `board_view` → `BoardView.specials` → `match3.ts`
+**Call chain:** `board_json` → `board_view` → `BoardView.specials` → `trio-tumble.ts`
 render.
 **Wiring test:** the e2e spec that forms a 4-match and asserts the labelled
 striped tile in the DOM (through the real wasm binding).
 **Depends on:** Phase 4.
-**Read-set:** trio-tumble-wasm/src/lib.rs, src/games/trio-tumble.ts, match3-howto.ts.
-**Write-set:** 5a → trio-tumble-wasm/src/lib.rs (+ a wasm test); 5b → match3.ts,
-match3-howto.ts, tests/e2e/*, guide shots.
+**Read-set:** trio-tumble-wasm/src/lib.rs, src/games/trio-tumble.ts, trio-tumble-howto.ts.
+**Write-set:** 5a → trio-tumble-wasm/src/lib.rs (+ a wasm test); 5b → trio-tumble.ts,
+trio-tumble-howto.ts, tests/e2e/*, guide shots.
 **Shared-state contract:** none beyond the write-set (build artifacts are
 regenerated, not hand-edited).
 **Risks:** colour-only affordance (a11y fail) — mitigate with a text/aria label

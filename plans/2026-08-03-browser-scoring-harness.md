@@ -108,7 +108,7 @@ logic; this consumes what P1–P3 shipped.
   gate (`.github/workflows/deploy.yml`): `build:wasm → typecheck → lint → unit →
   build → Pages` — **no e2e, no GPU**.
 - **How a unit test loads the real wasm** (read `tests/solitaire-unit.test.ts:22-33`,
-  `tests/match3-unit.test.ts:12-17`) — **Pass 2, the concrete pattern P6 must use**:
+  `tests/trio-tumble-unit.test.ts:12-17`) — **Pass 2, the concrete pattern P6 must use**:
   the suite runs `build:wasm` in `preunit` (so `target/wasm32-unknown-unknown/release/
   <game>_wasm.wasm` exists), then a test shims `globalThis.fetch` to return a
   `Response` over the on-disk bytes (`readFile`) and calls `Game.load()` (which
@@ -385,7 +385,7 @@ scorer → 3 tournament → 4 trial + docs. 3 open questions, all ADVISORY/PHASE
 - **Wasm-in-vitest load pattern was assumed, not specified (the biggest factual
   risk).** `Drop4.load()` uses `fetch("/drop4.wasm")`, which does not resolve in
   the vitest `jsdom` env by itself. Read `tests/solitaire-unit.test.ts:22-33` +
-  `match3-unit.test.ts`: the real pattern is a `globalThis.fetch` shim serving the
+  `trio-tumble-unit.test.ts`: the real pattern is a `globalThis.fetch` shim serving the
   on-disk `target/.../<game>_wasm.wasm` via `readFile`, with `preunit` building the
   wasm first. Added this to Verified Assumptions and to Phase 1's wiring test so the
   executor uses the shim (path `…/drop4_wasm.wasm`) rather than discovering the fetch

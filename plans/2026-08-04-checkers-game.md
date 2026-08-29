@@ -2177,8 +2177,8 @@ baselines file covers three games.
 **Full gate, run for this phase:** `npm run test:rust` exits 0 (fmt + workspace
 tests in release + clippy `-D warnings`, on the pinned 1.97.1); `typecheck`,
 `lint` and `build` clean; `npx vitest run` 307 passed / 11 failed, all 11 the
-known Node-25 `localStorage.clear` failures in match3 (`.nvmrc` pins 22);
-`npx playwright test` 414 passed / 1 failed, that one the `match3.spec.ts`
+known Node-25 `localStorage.clear` failures in Trio Tumble (`.nvmrc` pins 22);
+`npx playwright test` 414 passed / 1 failed, that one the `trio-tumble.spec.ts`
 campaign-beat test that fails on `main` independently of this work.
 
 ### Phase 16 execution — 2026-08-06
@@ -2387,10 +2387,10 @@ rejected by that gate before it could ship.
 
 **Full-suite state after the phase.** `npm run unit`: 293 passed, 12 failed — 11
 are the known Node-25 `localStorage.clear` failures in `trio-tumble-campaign` /
-`match3-story` (`.nvmrc` pins 22; green on CI), and the 12th was
+`trio-tumble-story` (`.nvmrc` pins 22; green on CI), and the 12th was
 `chrome.test.ts`'s registry list, now updated. Full `npm run e2e`: 401 passed, 4
 failed, of which the two `drawer` failures are fixed here and the two
-`match3.spec.ts` campaign-beat failures **pre-exist on `main`** (verified by
+`trio-tumble.spec.ts` campaign-beat failures **pre-exist on `main`** (verified by
 stashing this phase's changes and re-running) and are unrelated to checkers.
 
 ### Phase 12 execution — 2026-08-06
@@ -2474,7 +2474,7 @@ than testing nothing.
 **Full `npm run unit` (required — this phase writes the shared
 `tools/build-wasm.sh`):** 272 passed, **11 failed**, all of them the known
 pre-existing Node-25 `localStorage.clear is not a function` failures in
-`trio-tumble-campaign` and `match3-story`. `.nvmrc` pins Node 22 and CI is green on it.
+`trio-tumble-campaign` and `trio-tumble-story`. `.nvmrc` pins Node 22 and CI is green on it.
 Nothing checkers-related failed, and every other game's wasm still builds.
 
 ### Phase 10 execution — 2026-08-05
@@ -2994,7 +2994,7 @@ and calls `pass()` before ever consulting `liveMove`), which is why it survived
 unnoticed; the harness has no such shield. Phase 3's adapter work is unchanged,
 but its risk is now retired at the source rather than worked around.
 
-**Pre-existing, unrelated:** 11 tests in `tests/match3-{story,campaign}.test.ts`
+**Pre-existing, unrelated:** 11 tests in `tests/trio-tumble-{story,campaign}.test.ts`
 fail locally with `TypeError: localStorage.clear is not a function` under Node
 25.9.0. Confirmed pre-existing by stashing all local work; CI (Node 20) is green
 on the same commit. `fun` pins no Node version — tracked in

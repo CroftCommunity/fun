@@ -161,21 +161,21 @@ deliverables are built in sequence: **Checklist (Phases 1–4)**, then **Obstacl
   exposes the target colour + the three (progress, target) pairs; `TrioTumbleChecklist`
   outcome (`trio-tumble-checklist`, replay re-accumulates progress); `outcome_json` arm.
 - [x] `trio-tumble-wasm.ts` (`Mode` union, BoardView checklist fields, `newChecklistGame`),
-  `match3-outcome.ts` (`CHECKLIST_KIND` + `verifyRecord` branch + verifier method).
+  `trio-tumble-outcome.ts` (`CHECKLIST_KIND` + `verifyRecord` branch + verifier method).
 - [x] a checklist verify-orchestration unit test (real wasm, seed-3 fixture): a completed
   checklist grades a verifiable `Won`, a tampered swap list is rejected.
 
 ### Phase 4 (checklist UI + how-to + e2e) — toggle, tally HUD, ?mode, shots — DONE
-- [x] `match3.ts` — an "Orders" objective toggle, a **tally HUD** (the target colour's
+- [x] `trio-tumble.ts` — an "Orders" objective toggle, a **tally HUD** (the target colour's
   shape glyph + `n/target`, striped + `n/target`, wrapped + `n/target`, each ticked ✓ when
   met — non-colour cues), `?mode=checklist`, the `startGame` branch + `PACK_URL` +
   `packSeed`; a checklist result headline; `build.mjs` serves the pack; `styles.css`
   `.m3-checklist-hud`/`.m3-goal` + **`flex-wrap` on `.m3-objectives`** (the 5th button
   overflowed 360px otherwise).
-- [x] `match3-howto.ts` — five objectives (lede + goal prose + objectives step + note).
-- [x] `tests/match3.spec.ts` — the tally HUD + a verifiable win via the seed-3 fixture
+- [x] `trio-tumble-howto.ts` — five objectives (lede + goal prose + objectives step + note).
+- [x] `tests/trio-tumble.spec.ts` — the tally HUD + a verifiable win via the seed-3 fixture
   (both projects incl. axe) + the narrow-phone overflow sweep extended to checklist.
-- [x] Guide shots regenerated for the new 5-button toggle (`match3-board`, `match3-select`);
+- [x] Guide shots regenerated for the new 5-button toggle (`trio-tumble-board`, `trio-tumble-select`);
   other games' shots reverted.
 - [x] Deploy + live-smoke `?mode=checklist` on fun.croft.ing (standalone Playwright):
   targets colour-3 ×12 / striped ×2 / wrapped ×1; the seed-3 fixture wins (`isWon`), the
@@ -217,15 +217,15 @@ deliverables are built in sequence: **Checklist (Phases 1–4)**, then **Obstacl
   reject). Full gate: 144 npm unit + 180 e2e; fmt + clippy clean. UI toggle pending (Phase 8).
 
 ### Phase 8 (obstacles UI + how-to + e2e) — toggle, tiles, HUD, ?mode, shots — DONE
-- [x] `match3.ts` — an "Obstacles" toggle; licorice + meringue tiles (meringue shows its
+- [x] `trio-tumble.ts` — an "Obstacles" toggle; licorice + meringue tiles (meringue shows its
   remaining layer count as a non-colour durability cue, with a "N layers left" a11y label);
   an obstacles-left HUD (reusing `clearHud` with the blocker counts); `?mode=obstacles`; the
   pack branch; `styles.css` `.m3-licorice`/`.m3-meringue`; **`build.mjs` serves the pack**
   (the missing copy 404'd the board in e2e until added).
-- [x] `match3-howto.ts` — six objectives (lede + goal prose + objectives step + note).
-- [x] `tests/match3.spec.ts` — the obstacles HUD (+ axe, both projects) + a verifiable clear
+- [x] `trio-tumble-howto.ts` — six objectives (lede + goal prose + objectives step + note).
+- [x] `tests/trio-tumble.spec.ts` — the obstacles HUD (+ axe, both projects) + a verifiable clear
   via the seed-72 fixture + the overflow sweep extended to obstacles.
-- [x] Guide shots: `guide:shots` produced no match3 change (the 6-button toggle renders within
+- [x] Guide shots: `guide:shots` produced no Trio Tumble change (the 6-button toggle renders within
   the captured region); unrelated churn reverted.
 - [x] Deploy + live-smoke `?mode=obstacles` (standalone Playwright): 3 licorice + 3 meringue;
   the seed-72 fixture clears all six in one swap (`isWon`, `blockersRemaining==0`); the result

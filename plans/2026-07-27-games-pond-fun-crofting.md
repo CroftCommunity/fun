@@ -430,7 +430,7 @@ match-3 as a clean, cross-build-verified core the shelf can later mount.
   dir, so it cannot collide with Phase 4's edits to the shared cross-build harness.
 
 **Call chain:** shelf loader (Phase 7) → `trio-tumble-wasm::new_game(seed)` → `Game` → `state_hash`.
-**Wiring test:** `test_match3_wasm_surface_roundtrips` — construct a game, play the golden-vector move
+**Wiring test:** `test_trio_tumble_wasm_surface_roundtrips` — construct a game, play the golden-vector move
 list through the wasm surface, assert the final hash matches the committed anchor (proves the *shelf-
 facing API*, not just the internal engine, reaches the right state).
 **Depends on:** Phase 2 (cross-build test + wasm crate exist).
