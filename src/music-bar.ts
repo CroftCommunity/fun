@@ -49,7 +49,15 @@ export function renderMusicBar(player: MusicPlayer): MusicBar {
   const nameText = el("span", { class: "music-name-text" });
   name.append(nameText, el("span", { class: "music-name-caret", "aria-hidden": "true" }, " ▾"));
 
-  const list = el("div", { id: "music-list", class: "music-list", hidden: "" });
+  // A named landmark, not a bare div: axe's `region` rule fails page content
+  // that belongs to no landmark, and this panel sits between the header and
+  // <main> exactly as the appearance panel does. Caught by the a11y matrix.
+  const list = el("section", {
+    id: "music-list",
+    class: "music-list",
+    "aria-label": "Music tracks",
+    hidden: "",
+  });
 
   // The mobile row: prev/next live here under 40rem, where the header has no
   // room for them beside the name. Duplicates of the bar's own, same handlers.

@@ -64,6 +64,12 @@ for (const skin of ALL_SKINS) {
     await page.locator(".drawer-close").click();
     await page.getByRole("button", { name: /appearance settings/i }).click();
     await scan(page);
+    // The music list, open: seventeen buttons and a checkbox the closed state
+    // hides from axe entirely — the same lesson as the drawer.
+    await page.getByRole("button", { name: /appearance settings/i }).click();
+    await page.locator(".music-name").click();
+    await expect(page.locator("#music-list")).toBeVisible();
+    await scan(page);
     await page.goto("/how-to/?game=solitaire");
     await scan(page);
   });
