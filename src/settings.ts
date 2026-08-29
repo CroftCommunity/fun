@@ -598,3 +598,40 @@ export function cribbageManualCount(): boolean {
 export function setCribbageManualCount(on: boolean): void {
   write(CRIBBAGE_MANUAL_KEY, on);
 }
+
+/** How cribbage shows the peg board: the full three-street board on the table,
+ *  two compact score bars, or no board during the deal and a recap animation of
+ *  the deal's pegging once it ends (a phone's screen is the reason it exists). */
+export type CribbageBoard = "board" | "bars" | "recap";
+const CRIBBAGE_BOARDS: readonly CribbageBoard[] = ["board", "bars", "recap"];
+const CRIBBAGE_BOARD_KEY = "fun-cribbage-board";
+const CRIBBAGE_SEATS_KEY = "fun-cribbage-seats-flipped";
+
+/** Pure resolver: a stored known board mode wins; otherwise the default. */
+export function resolveCribbageBoard(stored: string | null, fallback: CribbageBoard): CribbageBoard {
+  return CRIBBAGE_BOARDS.includes(stored as CribbageBoard) ? (stored as CribbageBoard) : fallback;
+}
+
+/** The peg board mode — the **full board by default**. */
+export function cribbageBoard(): CribbageBoard {
+  try {
+    return resolveCribbageBoard(localStorage.getItem(CRIBBAGE_BOARD_KEY), "board");
+  } catch {
+    return "board";
+  }
+}
+export function setCribbageBoard(mode: CribbageBoard): void {
+  try {
+    localStorage.setItem(CRIBBAGE_BOARD_KEY, mode);
+  } catch {
+    // Storage denied (private mode): the choice still applies for the session.
+  }
+}
+
+/** Your hand on top and the engine's below — **off by default** (you sit at the bottom). */
+export function cribbageSeatsFlipped(): boolean {
+  return read(CRIBBAGE_SEATS_KEY, false);
+}
+export function setCribbageSeatsFlipped(on: boolean): void {
+  write(CRIBBAGE_SEATS_KEY, on);
+}

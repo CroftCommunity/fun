@@ -22,18 +22,32 @@
 import type { GameModule } from "../../contract.js";
 import { captureUiState, restoreUiState } from "../../ui-state.js";
 import {
+  cribbageBoard,
   cribbageLevel,
   cribbageManualCount,
+  cribbageSeatsFlipped,
   cribbageTutorEnabled,
   declareAssistanceEnabled,
   hintsEnabled,
+  setCribbageBoard,
   setCribbageLevel,
   setCribbageManualCount,
+  setCribbageSeatsFlipped,
   setCribbageTutor,
   setDeclareAssistance,
   setHintsEnabled,
+  type CribbageBoard,
   type CribbageLevel,
 } from "../../settings.js";
+import {
+  advancePegs,
+  paintPegs,
+  pegSteps,
+  renderBoard,
+  scoreEvents,
+  type Pegs,
+  type ScoreEvent,
+} from "./cribbage-board.js";
 import {
   decodeRecord,
   encodeRecord,
@@ -96,8 +110,17 @@ const FAST_BEATS = { think: 16, settle: 16, show: 16, fanfare: 60 } as const;
 let beats: { think: number; settle: number; show: number; fanfare: number } = BEATS;
 
 const LEVELS: readonly CribbageLevel[] = ["Easy", "Medium", "Hard", "Expert"];
+const BOARD_MODES: readonly { value: CribbageBoard; label: string }[] = [
+  { value: "board", label: "Full board" },
+  { value: "bars", label: "Two score bars" },
+  { value: "recap", label: "Replay the pegging after each deal" },
+];
 const TARGET = 121;
 const SKUNK_LINE = 90;
+/** How long a peg rests in each hole as it walks; `?fast=1` and reduced motion jump. */
+const HOLE_MS = 45;
+/** How long the recap board stays up after its last peg comes to rest. */
+const RECAP_LINGER = 1600;
 
 const SUITS = ["♣", "♦", "♥", "♠"] as const;
 const RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"] as const;
@@ -312,6 +335,23 @@ export function cribbageModule(): GameModule {
   let pendingCoach: string | null = null;
   let endedEarly: string | null = null;
   let tutorView: { note: string; options: string[]; hash: string } | null = null;
+  // The board. `pegs` is each seat's pair at rest (the front peg IS the score);
+  // `shown` is where the front peg is drawn right now, behind `pegs` while a
+  // walk is under way; `back` is where the back peg is drawn — it leaps to the
+  // old score the moment a walk begins, which is the leapfrog on a real board.
+  const restPegs = (): { 1: Pegs; 2: Pegs } => ({ 1: { back: 0, front: 0 }, 2: { back: 0, front: 0 } });
+  let pegs: { 1: Pegs; 2: Pegs } = restPegs();
+  let shown: { 1: number; 2: number } = { 1: 0, 2: 0 };
+  let back: { 1: number; 2: number } = { 1: 0, 2: 0 };
+  let lastScores: [number, number] = [0, 0];
+  let lastDealNo = 1;
+  /** Score changes this deal, for the recap. */
+  let dealEvents: ScoreEvent[] = [];
+  /** Walks still to paint, in order. */
+  let walkQueue: ScoreEvent[] = [];
+  let walking = false;
+  let recap: { dealNo: number; events: ScoreEvent[] } | null = null;
+  let recapTimer = 0;
   // The persona slot is wired but empty (plan O4): the engine is the opponent.
   const opponentKind = "engine" as OpponentKind;
   const opponentIdentity = (): { name: string; avatar: string } =>
@@ -350,25 +390,146 @@ export function cribbageModule(): GameModule {
     );
   };
 
-  /** Two tracks to 121 with the skunk line at 90. */
-  const renderPegboard = (v: UiView): HTMLElement => {
-    const track = (seat: 1 | 2): HTMLElement => {
-      const score = seat === HUMAN ? v.scores[0] : v.scores[1];
-      const t = el(
+  const names = (): { 1: string; 2: string } => ({ 1: "You", 2: opponentIdentity().name });
+
+  /** The compact alternative: two bars to 121 with the skunk line at 90. */
+  const renderBars = (): HTMLElement => {
+    const track = (seat: 1 | 2): HTMLElement =>
+      el(
         "div",
-        { class: `crib-track ${seat === HUMAN ? "you" : "them"}`, role: "img", "aria-label": `${who(seat, opponentIdentity().name)}: ${score} of ${TARGET}` },
+        { class: `crib-track ${seat === HUMAN ? "you" : "them"}`, role: "img", "aria-label": `${names()[seat]}: ${shown[seat]} of ${TARGET}` },
         el("span", { class: "crib-skunk", "aria-hidden": "true", style: `left:${pegPercent(SKUNK_LINE)}%` }),
-        el("span", { class: "crib-peg", "aria-hidden": "true", style: `left:${pegPercent(score)}%` }),
+        el("span", { class: "crib-bar-peg", "aria-hidden": "true", "data-seat": String(seat), "data-hole": String(shown[seat]), style: `left:${pegPercent(shown[seat])}%` }),
       );
-      return t;
-    };
     return el(
       "div",
-      { class: "crib-pegboard", role: "group", "aria-label": "Peg board" },
+      { class: "crib-pegboard crib-bars", role: "group", "aria-label": "Peg board" },
       track(ENGINE),
       track(HUMAN),
       el("span", { class: "crib-skunk-label", "aria-hidden": "true" }, "skunk line"),
     );
+  };
+
+  /** The real board, pegs drawn where the walk has them. */
+  const renderLiveBoard = (): SVGSVGElement =>
+    renderBoard({
+      pegs: { 1: { back: back[1], front: pegs[1].front }, 2: { back: back[2], front: pegs[2].front } },
+      shown,
+      names: names(),
+    });
+
+  /** The board at rest for a finished game: the pegs on the final scores. */
+  const renderFinalBoard = (v: UiView): SVGSVGElement => {
+    const at = (seat: 1 | 2): Pegs => {
+      const score = Math.min(v.scores[seat - 1]!, TARGET);
+      return pegs[seat].front === score ? pegs[seat] : { back: score, front: score };
+    };
+    return renderBoard({ pegs: { 1: at(1), 2: at(2) }, shown: { 1: at(1).front, 2: at(2).front }, names: names() });
+  };
+
+  /** What sits in the board slot of the table: the board, the bars, the recap, or nothing. */
+  const renderBoardSlot = (): HTMLElement | SVGSVGElement | null => {
+    if (recap) {
+      return el(
+        "div",
+        { class: "crib-recap", role: "status" },
+        el("p", { class: "crib-recap-title" }, `Deal ${recap.dealNo} — the pegging`),
+        renderLiveBoard(),
+      );
+    }
+    const mode = cribbageBoard();
+    if (mode === "board") return renderLiveBoard();
+    if (mode === "bars") return renderBars();
+    return null;
+  };
+
+  /** Walk the queued score changes hole by hole, painting whichever board is on screen. */
+  const startWalk = (): void => {
+    if (walking) return;
+    walking = true;
+    const instant = (): boolean => beats === FAST_BEATS || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const tick = (): void => {
+      if (disposed) {
+        walking = false;
+        return;
+      }
+      const head = walkQueue[0];
+      if (!head) {
+        walking = false;
+        return;
+      }
+      const seat = head.seat;
+      if (shown[seat] === head.from) back = { ...back, [seat]: head.from };
+      const steps = pegSteps(shown[seat], head.to);
+      if (steps.length === 0) {
+        walkQueue = walkQueue.slice(1);
+        tick();
+        return;
+      }
+      const next = instant() ? steps[steps.length - 1]! : steps[0]!;
+      shown = { ...shown, [seat]: next };
+      if (container) paintPegs(container, seat, next, back[seat]);
+      window.setTimeout(tick, instant() ? 0 : HOLE_MS);
+    };
+    tick();
+  };
+
+  /** The deal is over: put the board up with the pegs where the deal began and replay it. */
+  const startRecap = (dealNo: number, events: ScoreEvent[]): void => {
+    const startOf = (seat: 1 | 2): number => events.find((e) => e.seat === seat)?.from ?? pegs[seat].front;
+    shown = { 1: startOf(1), 2: startOf(2) };
+    back = { ...shown };
+    walkQueue = [...events];
+    recap = { dealNo, events };
+    const holes = events.reduce((n, e) => n + (e.to - e.from), 0);
+    const fast = beats === FAST_BEATS;
+    window.clearTimeout(recapTimer);
+    recapTimer = window.setTimeout(
+      () => {
+        recap = null;
+        render();
+      },
+      fast ? 60 : holes * HOLE_MS + RECAP_LINGER,
+    );
+  };
+
+  /**
+   * Bring the board's model up to the view: advance the pegs for any score
+   * change, queue the walk (or bank it for the recap), and notice a deal ending.
+   */
+  const syncBoard = (v: UiView): void => {
+    const events = scoreEvents(lastScores, v.scores);
+    lastScores = v.scores;
+    for (const e of events) pegs = { ...pegs, [e.seat]: advancePegs(pegs[e.seat], e.to) };
+    const mode = cribbageBoard();
+    if (mode === "recap") {
+      dealEvents = [...dealEvents, ...events];
+      if (v.dealNo !== lastDealNo && dealEvents.length) startRecap(lastDealNo, dealEvents);
+      if (!recap) {
+        // Nothing to walk while the board is down: the pegs sit on the score.
+        shown = { 1: pegs[1].front, 2: pegs[2].front };
+        back = { 1: pegs[1].back, 2: pegs[2].back };
+      }
+    } else {
+      walkQueue = [...walkQueue, ...events];
+    }
+    if (v.dealNo !== lastDealNo) {
+      lastDealNo = v.dealNo;
+      dealEvents = [];
+    }
+    if (walkQueue.length) startWalk();
+  };
+
+  const resetBoard = (): void => {
+    pegs = restPegs();
+    shown = { 1: 0, 2: 0 };
+    back = { 1: 0, 2: 0 };
+    lastScores = [0, 0];
+    lastDealNo = 1;
+    dealEvents = [];
+    walkQueue = [];
+    recap = null;
+    window.clearTimeout(recapTimer);
   };
 
   const renderRevealed = (r: RevealedHand, interactive: boolean): HTMLElement => {
@@ -477,15 +638,13 @@ export function cribbageModule(): GameModule {
       actions.append(goBtn);
     }
 
-    return el(
-      "div",
-      { class: "crib-table", role: "group", "aria-label": "The table" },
-      opp,
-      el("div", { class: "crib-middle" }, cut, crib, stack, count),
-      ...(show ? [show] : []),
-      hand,
-      actions,
-    );
+    // Engine on top, the board across the middle, the played cards beside your
+    // hand, your hand at the bottom — or the mirror of that, on request.
+    const board = renderBoardSlot();
+    const middle = [el("div", { class: "crib-middle" }, cut, crib, stack, count), ...(show ? [show] : [])];
+    const slot = board ? [board] : [];
+    const order = cribbageSeatsFlipped() ? [hand, actions, ...middle, ...slot, opp] : [opp, ...slot, ...middle, hand, actions];
+    return el("div", { class: "crib-table", role: "group", "aria-label": "The table" }, ...order);
   };
 
   const renderControls = (): HTMLElement => {
@@ -511,6 +670,22 @@ export function cribbageModule(): GameModule {
       input.addEventListener("change", () => onChange((input as HTMLInputElement).checked));
       return el("label", { class: "crib-toggle" }, input, ` ${label}`);
     };
+    const boardMode = el("select", { class: "crib-board-mode", "aria-label": "Peg board" });
+    for (const m of BOARD_MODES) {
+      const opt = el("option", m.value === cribbageBoard() ? { selected: "selected" } : {}, m.label);
+      opt.setAttribute("value", m.value);
+      boardMode.append(opt);
+    }
+    boardMode.addEventListener("change", () => {
+      setCribbageBoard(boardMode.value as CribbageBoard);
+      // Whatever was mid-walk or mid-recap is dropped: the new mode starts at rest.
+      recap = null;
+      window.clearTimeout(recapTimer);
+      walkQueue = [];
+      shown = { 1: pegs[1].front, 2: pegs[2].front };
+      back = { 1: pegs[1].back, 2: pegs[2].back };
+      render();
+    });
     const details = el("details", { class: "sol-settings crib-settings" });
     details.append(
       el("summary", {}, "Settings"),
@@ -528,6 +703,11 @@ export function cribbageModule(): GameModule {
         render();
         void step();
       }),
+      toggle(cribbageSeatsFlipped(), "Your hand on top, the engine's below", "crib-set-seats", (on) => {
+        setCribbageSeatsFlipped(on);
+        render();
+      }),
+      el("label", { class: "crib-field crib-board-field" }, "Peg board ", boardMode),
     );
     return el("div", { class: "crib-controls" }, el("label", { class: "crib-field" }, "Difficulty ", select), fresh, action, details);
   };
@@ -598,6 +778,7 @@ export function cribbageModule(): GameModule {
   const render = (): void => {
     if (!game || !container || ending) return;
     const v = game.view();
+    syncBoard(v);
     const interactive = v.toMove === HUMAN && !busy && v.result === -1;
     // The player's open settings panel and focus survive the rebuild: the
     // engine's resting render lands at a moment nothing in the UI predicts, and
@@ -610,7 +791,6 @@ export function cribbageModule(): GameModule {
         { class: "crib-game" },
         renderTurnbar(v),
         renderControls(),
-        renderPegboard(v),
         renderTable(v, interactive),
         el("p", { class: "crib-turnline" }, turnLine(v, opponentIdentity().name)),
         ...(cribbageTutorEnabled() ? [renderTutorPanel()] : []),
@@ -734,20 +914,23 @@ export function cribbageModule(): GameModule {
   };
 
   const finalTable = (v: UiView): HTMLElement =>
-    el("div", { class: "crib-final" }, renderTurnbar(v), renderPegboard(v));
+    el("div", { class: "crib-final" }, renderTurnbar(v), renderFinalBoard(v));
 
   const finish = (): void => {
     if (!game || !container) return;
     ending = true;
     const v = game.view();
     const won = v.result === HUMAN;
+    window.clearTimeout(recapTimer);
+    recap = null;
+    walkQueue = [];
     container.replaceChildren(
       el(
         "div",
         { class: "crib-game" },
         renderTurnbar(v),
         el("p", { class: `crib-flash${won ? " win" : ""}`, role: "status" }, outcomeLabel(v, endedEarly)),
-        renderPegboard(v),
+        renderFinalBoard(v),
         el("p", { class: "crib-status", role: "status" }, status),
       ),
     );
@@ -785,6 +968,7 @@ export function cribbageModule(): GameModule {
     pendingCoach = null;
     endedEarly = null;
     tutorView = null;
+    resetBoard();
     seed = seedOverride ?? randomSeed();
     game.newGame(seed);
     setStatus("");
@@ -860,6 +1044,7 @@ export function cribbageModule(): GameModule {
     },
     unmount(): void {
       disposed = true;
+      window.clearTimeout(recapTimer);
       delete window.__cribbage;
       container?.replaceChildren();
       container = null;

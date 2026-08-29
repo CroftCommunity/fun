@@ -12,6 +12,12 @@ earlier is in `git log`.
 
 ## 2026-08
 
+- 2026-08-29 **cribbage:** a real peg board — three streets of forty holes across the middle
+  of the table, two pegs a side that leapfrog and walk hole by hole as the score ticks,
+  the engine's hand above and yours below (Settings can swap them), and the whole table
+  centred: a missing comment opener in the stylesheet had been swallowing the layout rule
+  since the game shipped. Settings → Peg board also offers two compact bars, or no board
+  during the deal and a replay of its pegging when the deal ends, for a phone's screen.
 - 2026-08-29 **cribbage:** real art — the home tile shows the commissioned icon in place of
   the placeholder sketch, and portrait + landscape splash sources are filed for the
   launch-screen step when the manifest arrives (`TODO/pwa.md`).

@@ -14,6 +14,7 @@ import {
   resolveCheckersLevel,
   resolveCheckersSide,
   resolveDotsLevel,
+  resolveCribbageBoard,
   resolveDotsSeat,
 } from "../src/settings.js";
 
@@ -164,5 +165,16 @@ describe("moveSpeedToMs (Align left/right sensitivity)", () => {
     expect(moveSpeedToMs(0)).toBe(moveSpeedToMs(1));
     expect(moveSpeedToMs(99)).toBe(moveSpeedToMs(10));
     expect(moveSpeedToMs(5.4)).toBe(moveSpeedToMs(5));
+  });
+});
+
+describe("resolveCribbageBoard (how the peg board is shown)", () => {
+  it("honours a stored valid mode", () => {
+    expect(resolveCribbageBoard("bars", "board")).toBe("bars");
+    expect(resolveCribbageBoard("recap", "board")).toBe("recap");
+  });
+  it("falls back to the full board for null or a garbage value", () => {
+    expect(resolveCribbageBoard(null, "board")).toBe("board");
+    expect(resolveCribbageBoard("tracks", "board")).toBe("board");
   });
 });
