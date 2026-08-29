@@ -5,6 +5,10 @@
 //! verification-forward end screen states the game's value and carries a
 //! re-verifying `?r=` share. And the one property no other shelf game has to
 //! prove through the UI: the engine's cards are never in the DOM.
+//!
+//! The tests that play many turns pass `?fast=1`, which collapses the engine's
+//! beats to a frame: they assert rules and wiring, not pacing, and at full
+//! pacing a game held a CI worker for over a minute per engine.
 
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
@@ -118,7 +122,7 @@ test("the engine's cards are never in the DOM", async ({ page }) => {
   // Play a few turns and, at every stop, check that no face-up card on screen
   // outside the show is one the human could not know. Card backs carry no
   // rank/suit; the only face-up cards are the human's, the cut, and plays.
-  await page.goto("/cribbage/?seed=11");
+  await page.goto("/cribbage/?seed=11&fast=1");
   await ready(page);
   for (let turn = 0; turn < 6; turn += 1) {
     await waitHumanOrOver(page);
@@ -160,7 +164,7 @@ test("the difficulty picker persists the chosen level", async ({ page }) => {
 
 test("a full game plays to a result stating its value; the share re-verifies", async ({ page }) => {
   test.setTimeout(300_000);
-  await page.goto("/cribbage/?seed=7");
+  await page.goto("/cribbage/?seed=7&fast=1");
   await ready(page);
   for (let turn = 0; turn < 400; turn += 1) {
     await waitHumanOrOver(page);
@@ -186,7 +190,7 @@ test("a full game plays to a result stating its value; the share re-verifies", a
 
 test("the show counts hands in order and narrates the breakdown", async ({ page }) => {
   test.setTimeout(120_000);
-  await page.goto("/cribbage/?seed=7");
+  await page.goto("/cribbage/?seed=7&fast=1");
   await ready(page);
   // With automatic counting the show is on screen only while the engine's beat
   // runs, so watch for a graded hand between human stops rather than at them.
@@ -225,7 +229,7 @@ test("the show counts hands in order and narrates the breakdown", async ({ page 
 test("with manual counting on, the show waits for your count and grades it", async ({ page }) => {
   test.setTimeout(120_000);
   await page.addInitScript(() => localStorage.setItem("fun-cribbage-manual-count", "on"));
-  await page.goto("/cribbage/?seed=7");
+  await page.goto("/cribbage/?seed=7&fast=1");
   await ready(page);
   // Play until it is the human's hand to count.
   for (let turn = 0; turn < 40; turn += 1) {
@@ -264,7 +268,7 @@ test("a hint names cards, and says it counts as assistance", async ({ page }) =>
 
 test("with hints off the control ends the game and reports the deal in progress", async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("fun-hints", "off"));
-  await page.goto("/cribbage/?seed=7");
+  await page.goto("/cribbage/?seed=7&fast=1");
   await ready(page);
   await waitHumanOrOver(page);
   await expect(page.locator(".crib-hint")).toHaveCount(0);

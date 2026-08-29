@@ -630,6 +630,16 @@ mod tests {
     }
 
     #[test]
+    fn the_accessors_report_the_seed_and_the_deal() {
+        // Mutation audit 2026-08-29: `seed()` had no test caller, so a stub
+        // returning 0 survived. A record's seed comes through here.
+        let s = GameState::new(42);
+        assert_eq!(s.seed(), 42);
+        assert_eq!(s.deal_no(), 1);
+        assert_eq!(GameState::new(7).seed(), 7);
+    }
+
+    #[test]
     fn move_codes_round_trip_and_reject_gaps() {
         for code in 0..=70u8 {
             match Move::from_code(code) {

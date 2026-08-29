@@ -96,6 +96,25 @@ mod tests {
     }
 
     #[test]
+    fn every_phase_hashes_to_its_own_byte() {
+        // Mutation audit 2026-08-29: `0x10 | step` survived `|` -> `&` because no
+        // two positions differ only in their show step. The bytes are pinned
+        // directly so the encoding cannot collapse the three show steps.
+        let bytes = [
+            phase_byte(Phase::Discard),
+            phase_byte(Phase::Peg),
+            phase_byte(Phase::Show(ShowStep::NonDealer)),
+            phase_byte(Phase::Show(ShowStep::Dealer)),
+            phase_byte(Phase::Show(ShowStep::Crib)),
+            phase_byte(Phase::Over),
+        ];
+        let mut sorted = bytes.to_vec();
+        sorted.sort_unstable();
+        sorted.dedup();
+        assert_eq!(sorted.len(), bytes.len(), "phase bytes collide: {bytes:?}");
+    }
+
+    #[test]
     fn every_transition_changes_the_hash_and_seeds_differ() {
         assert_ne!(
             state_hash(&GameState::new(3)),
