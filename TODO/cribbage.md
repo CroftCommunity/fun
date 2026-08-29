@@ -19,9 +19,8 @@ per-seat `View` that provably never peeks).
 
 ## Follow-ups (deferred out of the plan, in the order they were deferred)
 
-- [ ] **Manual counting** — the player states a total, the core grades it; optional
-      muggins against a counting engine. A second interaction model; the discard tutor's
-      exactness makes it a good one. (Plan O1.)
+- [ ] **Over-claim penalty** — manual counting ships in the plan (O1: a setting, off by
+      default); whether an over-claim should cost points is left as a Phase 8 UX call.
 - [ ] **Monte-Carlo engine** — deal out the unknowns, play out, average. The right second
       engine if measurement shows Expert is beatable by a good human; the plan's Phase 0
       ladder is its baseline. (Plan → "Alternatives considered".)

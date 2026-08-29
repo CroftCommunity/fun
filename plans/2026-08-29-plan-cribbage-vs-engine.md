@@ -160,8 +160,10 @@ rigs stay game-agnostic (`docs/HARNESS.md`, the first contract). Cribbage:
 | discard two of six | `0..14` | index into the fixed enumeration of 2-of-6 pairs |
 | peg a card | `16..19` | `16 + index into the current hand (0..3)` |
 | go | `20` | legal only when no card in hand plays under 31 |
+| claim a count at the show | `32..=61` | `32 + n`, n = 0..29; one per hand/crib, from the counting seat (O1) |
 
-The cut is not a move (the seed decides it); the show is not a move (it is forced). A
+The cut is not a move (the seed decides it); the show is three `Claim` moves (O1 —
+with manual counting off, the UI submits the true total so the record is identical). A
 record is therefore short — around 20–30 codes per deal, ~10 deals per game — and the
 core rejects any code that is not legal for the seat to move, so an illegal discard cannot
 enter a record.
@@ -602,6 +604,10 @@ measure element geometry — not `scrollWidth`.
 **Goal:** The shared assistance mechanism, plus the honest tutor.
 
 **Changes:**
+- [ ] **Manual counting** (O1): a per-game setting, off by default. On: at each of the
+  player's shows a number entry replaces the auto-count; the core grades it (under →
+  muggins to the engine, over → corrected). Off: the true total is submitted for them.
+  Same `Claim` move either way.
 - [ ] Standard settings wired (`src/settings.ts`): hints on by default → Hint marks the
   engine's top discard / suggested peg; hints off → no "I'm stuck" (cribbage always has
   a legal move, so the button is not offered — recorded as a deliberate deviation).
@@ -670,12 +676,16 @@ Everything in "Documentation Impact", plus the Review Log entries for every phas
 
 ## Open Questions
 
-1. **O1 — Automatic counting only, or offer manual counting now?** Recommendation:
-   **automatic in this plan**; manual counting (the player states a total, the core
-   grades it, with optional muggins against a counting engine) is the first follow-up in
-   `TODO/cribbage.md`. It is a genuine feature, and the tutor's exactness makes it a
-   good one, but it is a second interaction model on top of a first that does not exist
-   yet. Must be answered before Phase 1 (it changes whether the show is a move).
+1. **O1 — Automatic counting only, or offer manual counting now?** **Answered by the
+   owner (2026-08-29): both, as a setting, off by default.** Consequence for Phase 1:
+   **counting is a move.** Every show produces a `Claim(n)` move from the counting seat
+   (codes `32..=61`, n = 0..29), so one record format serves both settings — with the
+   setting off, the UI submits the true total on the player's behalf; the engine always
+   claims exactly. The core grades the claim: an under-claim scores what was claimed and
+   the engine pegs the difference (muggins); an over-claim scores the true total, no
+   penalty — the same rule most home tables use. Whether over-claiming should cost
+   something is a Phase 8 UX decision, not a rules decision, and the record does not
+   change either way. Manual counting is therefore in Phase 8, not the TODO.
 2. **O2 — Skunk: a flag, or a scored match?** Recommendation: **a flag on the record**,
    one game to 121 as the unit. Match play is a persistence feature, and the shelf has no
    cross-game persistence yet. Must be answered before Phase 1 (it is in the record).
