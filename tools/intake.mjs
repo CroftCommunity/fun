@@ -76,7 +76,7 @@ function squareBox(w, h, focus) {
   const s = Math.min(side, w, h);
   // `focus` is the drop's optional vertical hint (0-100). The default guess is
   // right for most sources but not all: measured on the first real batch, 8 of
-  // 10 landed well, 2048's hexagon was clipped and Ring Pop's tile sat too
+  // 10 landed well, 2048's hexagon was clipped and Trio Tumble's tile sat too
   // loose. A hint is cheaper than asking someone to pre-crop.
   const cy = focus !== undefined ? h * (focus / 100) : w / h < 0.8 ? h * 0.4 : h * 0.5;
   return { s, left: Math.max(0, Math.round(w / 2 - s / 2)), top: Math.max(0, Math.min(h - s, Math.round(cy - s / 2))) };

@@ -71,7 +71,7 @@ from the centre, biased for the aspect: a tall source is cropped around 40% down
 (where a logo usually sits), a wide one dead centre.
 
 Measured on the first real batch, that guess landed well for 8 of 10 — 2048's
-hexagon was clipped and Ring Pop's tile sat too loose. So a drop may carry an
+hexagon was clipped and Trio Tumble's tile sat too loose. So a drop may carry an
 explicit vertical hint: **`2048-cover@57.png`** crops around 57% down. The tool
 always prints the box it used, so a bad crop tells you what to pass.
 

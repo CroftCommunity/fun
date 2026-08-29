@@ -1,0 +1,31 @@
+{
+  "kind": "trio-tumble-campaign-pack",
+  "version": 1,
+  "payload": {
+    "levels": [
+      {
+        "id": 1,
+        "seed": 341,
+        "stars": [400, 900, 1600],
+        "hint": [3, 3, 3, 4],
+        "intro": "Swipe two candies to line them up in threes. Try the glowing swap first — watch what a big match does!"
+      },
+      {
+        "id": 2,
+        "seed": 245,
+        "stars": [450, 1000, 1700],
+        "hint": [6, 4, 7, 4],
+        "intro": "One good swap can set off a chain. Bigger chains, bigger score."
+      },
+      {
+        "id": 3,
+        "seed": 3,
+        "stars": [550, 1200, 2100],
+        "intro": "Line up four or five to make a special candy. Swap a special to fire it."
+      },
+      { "id": 4, "seed": 29, "stars": [650, 1400, 2400] },
+      { "id": 5, "seed": 7, "stars": [750, 1600, 2800] },
+      { "id": 6, "seed": 13, "stars": [900, 1900, 3200] }
+    ]
+  }
+}

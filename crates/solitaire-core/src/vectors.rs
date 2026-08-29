@@ -2,7 +2,7 @@
 //!
 //! A vector is a `(seed, move list)` plus, once locked, the recorded
 //! `final_state_hash` — a cross-build determinism + regression anchor. Unlike
-//! `match3-core`'s tiny boards, a 52-card shuffled deal has no practical
+//! `trio-tumble-core`'s tiny boards, a 52-card shuffled deal has no practical
 //! hand-computed step-0 expectation, so the anchor is the recorded hash and the
 //! move list is documented in `notes`.
 

@@ -1,6 +1,6 @@
 //! Deterministic, seeded RNG for tile spawns.
 //!
-//! Same primitive as `bubble-core`/`match3-core`: `ChaCha20` seeded from an
+//! Same primitive as `bubble-core`/`trio-tumble-core`: `ChaCha20` seeded from an
 //! explicit `u64`, so a game seed fully determines the spawn stream. Draws are
 //! counted so the RNG position folds into the state hash.
 

@@ -1,5 +1,5 @@
 //! Browser binding over [`bubble_core`] for the games shelf — raw C-ABI +
-//! serde-JSON, no `wasm-bindgen` (the `xbuild` pattern, like `match3-wasm`).
+//! serde-JSON, no `wasm-bindgen` (the `xbuild` pattern, like `trio-tumble-wasm`).
 //!
 //! The module holds **one game** (one board per tab): clear-the-board within a
 //! shot budget. Aim is a quantized [`Angle`] — the host reads `trajectory_json`

@@ -492,7 +492,7 @@ body.fullscreen .play-area {
   padding: 1rem 0;
 }
 
-/* --- match-3 board --- */
+/* --- Trio Tumble board --- */
 .m3-hud {
   display: flex;
   flex-wrap: wrap;
@@ -880,7 +880,7 @@ body.fullscreen .play-area {
   }
 }
 
-/* --- match-3 clear FX: bursts + escalating celebration --- */
+/* --- Trio Tumble clear FX: bursts + escalating celebration --- */
 /* The board sits in a positioned wrap so the decorative burst layer can overlay
    it while the board element itself is swapped frame-to-frame during a cascade. */
 .m3-board-wrap {

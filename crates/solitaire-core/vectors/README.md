@@ -19,7 +19,7 @@ Move encoding (serde): unit variants are plain strings (`"Draw"`,
 (`{"WasteToTableau":{"pile":2}}`, `{"TableauToFoundation":{"pile":3}}`,
 `{"TableauToTableau":{"from":0,"count":2,"to":3}}`).
 
-Unlike `match3-core`'s tiny hand-computable boards, a 52-card shuffled deal has
+Unlike `trio-tumble-core`'s tiny hand-computable boards, a 52-card shuffled deal has
 no practical hand-derived step-0 expectation, so the anchor is the recorded
 final hash; the move list's intent is documented in `notes`. Every move in a
 locked vector must replay legally (an illegal move = a regression).

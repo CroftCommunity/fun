@@ -1,7 +1,7 @@
 # bubble-core rules (Puzzle Bobble family) — the determinism + verifiability spec
 
 This is the source of truth the engine implements verbatim. Same discipline as
-`match3-core/RULES.md`: everything here is deterministic given a seed and a move
+`trio-tumble-core/RULES.md`: everything here is deterministic given a seed and a move
 list, so a finished game is verifiable by replay against the state hash.
 
 ## Board geometry — a staggered hex grid
@@ -94,8 +94,8 @@ the single adjacency relation used for both cluster-pop and floating-drop.
 
 `deal(seed, width, height, rows_filled, colors)` fills the top `rows_filled`
 rows with `Bubble(rng.index(colors))` and leaves the rest `Empty`. The RNG is
-ChaCha20 seeded from `seed` (the `match3-core` primitive); draws are counted and
-folded into the state hash. Unlike match-3, a starting cluster of same-colour
+ChaCha20 seeded from `seed` (the `trio-tumble-core` primitive); draws are counted and
+folded into the state hash. Unlike Trio Tumble, a starting cluster of same-colour
 bubbles is normal and allowed — the deal is a plain seeded fill.
 
 ## Aim — a quantized angle, fixed-point trajectory (v2)

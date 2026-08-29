@@ -1,6 +1,6 @@
 //! Deterministic, seeded RNG for the deal.
 //!
-//! Same primitive as `match3-core::rng`: `ChaCha20` seeded from an explicit `u64`,
+//! Same primitive as `trio-tumble-core::rng`: `ChaCha20` seeded from an explicit `u64`,
 //! so a game seed fully determines the deal. Draws are counted so the RNG
 //! position folds into the state hash.
 

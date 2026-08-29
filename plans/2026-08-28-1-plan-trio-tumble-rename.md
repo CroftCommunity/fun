@@ -154,9 +154,12 @@ Each phase ends green and gets its own commit (repo rule: commit at every stable
 - **Phase 3 — docs + backlog.** `TODO/match3.md` → `TODO/trio-tumble.md` (+ its README
   entry), `docs/MATCH3-STORY.md` → `docs/TRIO-TUMBLE-STORY.md`, `docs/BUILDING-GAMES.md`,
   `docs/DESIGN.md`, `docs/AI-PLAYERS.md`, `docs/RESPONSIVE-DESIGN.md`, `README.md`,
-  `CLAUDE.md`. Historical plan docs in `plans/` keep their filenames (they are a record
-  of what was done under the old name) but gain a one-line note at the top pointing
-  here. **Gate:** unit (the how-to sync tests read doc data).
+  `CLAUDE.md`. The 15 historical `plans/*-match3-*.md` docs are **renamed** to
+  `*-trio-tumble-*.md` and their identifier references updated; narrative use of
+  "match-3" as the genre stays. **This plan doc is excluded from every rename sed** —
+  its "From" column and Problem Statement must keep saying `match3`, and one sed pass
+  rewrote them to "rename `trio-tumble` to `trio-tumble`" before being restored.
+  **Gate:** unit (the how-to sync tests read doc data).
 - **Phase 4 — the `subtitle` contract field.** RED first: a test asserting the how-to
   page renders the subtitle, and a registry test asserting `subtitle` is optional and
   absent on the other 16 games. Then `readonly subtitle?: string` on `BaseGameEntry`,
@@ -204,6 +207,21 @@ Each phase ends green and gets its own commit (repo rule: commit at every stable
 - **2026-08-28 — owner, splash.** Chose **keep both orientations, extend intake** over
   picking one, having been shown that it is a tool change with its own tests beyond a
   pure rename.
+- **2026-08-28 — agent, plan filenames (reversal).** Phase 3 originally said the 15
+  historical `plans/*-match3-*.md` docs keep their filenames as a record of what was
+  done under the old name. Reversed during Phase 1: three of them are cited from Rust
+  doc comments, the Phase 1 sed rewrote those citations, and the result was three
+  dangling paths. Keeping the old filenames would have meant reverting citations to
+  point at files whose names no longer match any identifier in the tree — and a reader
+  grepping `trio-tumble` would find the game's code but not its history. Renamed all
+  15; git preserves the old names. Recorded as a reversal rather than edited silently,
+  because the first choice was written down and someone may have read it.
+- **2026-08-28 — agent, this doc is sed-excluded.** The Phase 3 doc sweep rewrote this
+  plan's own "From" column, turning the rename table into `trio-tumble` → `trio-tumble`
+  and the Problem Statement into a claim the game already had its new name. Restored
+  from the Phase 0 commit and the two later edits re-applied by hand. A document whose
+  job is to record what something *used to be called* cannot be inside the sweep that
+  renames it; every later sweep excludes this path explicitly.
 - **2026-08-28 — agent, hash prefix.** Decided unilaterally to leave `b"m3\x00"`
   unchanged; reasoning under "Why the hash prefix stays" above. Flagged here rather
   than buried because it is the one place this plan deliberately leaves the old name in

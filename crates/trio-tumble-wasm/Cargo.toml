@@ -1,0 +1,16 @@
+[package]
+name = "trio-tumble-wasm"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Browser binding over trio-tumble-core for the shelf: raw C-ABI + serde-JSON (no wasm-bindgen). Holds one game, typed play_swap export, board/legal-moves/hash/outcome JSON via an output buffer."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+trio-tumble-core = { workspace = true }
+pond-outcome = { workspace = true }
+serde = { workspace = true }
+serde_json.workspace = true

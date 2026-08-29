@@ -1,0 +1,13 @@
+[package]
+name = "trio-tumble-solver"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Build-time clear-the-blockers solver: a budgeted, blocker-damage-first DFS over trio-tumble-core that finds a swap line clearing every blocker if one exists within budget, used to generate a byte-identically-regenerable winnable-daily-seed pack (and the winning-line fixture the board UI's win-path E2E replays)."
+
+[dependencies]
+trio-tumble-core = { workspace = true }
+pond-docformat = { workspace = true }
+serde = { workspace = true }
+serde_json.workspace = true

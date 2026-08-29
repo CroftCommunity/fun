@@ -1,6 +1,6 @@
 //! Deterministic, seeded RNG for the deal shuffle.
 //!
-//! The same determinism primitive `match3-core` and
+//! The same determinism primitive `trio-tumble-core` and
 //! `alpha/Proofs/lineage-groups/.../rng.rs` use: ChaCha20 seeded from an
 //! explicit `u64`, so a game seed fully determines the shuffle. Draws are
 //! counted so the RNG position can be folded into the state hash.

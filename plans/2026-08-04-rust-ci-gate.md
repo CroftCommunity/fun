@@ -150,7 +150,7 @@ seen work.
   `needs: build`. **The only cache directive in the file is `cache: npm`.**
 - **`package.json:19`** — `"test": "npm run typecheck && npm run lint && npm run
   unit && npm run build"`. No Rust.
-- **`tools/build-wasm.sh`** — `cargo build -p solitaire-wasm -p match3-wasm -p
+- **`tools/build-wasm.sh`** — `cargo build -p solitaire-wasm -p trio-tumble-wasm -p
   bubble-wasm -p wyrdle-wasm -p twenty48-wasm -p drop4-wasm -p othello-wasm -p
   align-wasm -p blockdoku-wasm -p looseends-wasm -p color-sort-wasm --release
   --target wasm32-unknown-unknown`. Eleven crates + their dependency closure,
@@ -764,11 +764,11 @@ Consequences, all landed:
 - The `rust` job **prints `rustc`/`clippy`/`rustfmt` versions every run**, so the
   next divergence is one glance instead of three round trips.
 - With the matching toolchain the workspace had **four** real issues, not one:
-  `bubble-core` `needless_range_loop`, `match3-core` ×2 and `bubble-solver`
+  `bubble-core` `needless_range_loop`, `trio-tumble-core` ×2 and `bubble-solver`
   `unnecessary_sort_by`, and `bubble-solver` `manual_checked_ops`. All fixed.
   Both `sort_by` → `sort_by_key(Reverse(..))` rewrites are stable sorts over the
   same keys, so the equal-key ordering both call sites' comments rely on for
-  determinism is unchanged — verified by `match3-core`'s full suite (145 tests,
+  determinism is unchanged — verified by `trio-tumble-core`'s full suite (145 tests,
   golden vectors included) staying green.
 
 **Lesson worth keeping:** the plan predicted the *cost* question (profile) and the

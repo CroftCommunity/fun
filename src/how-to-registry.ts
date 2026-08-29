@@ -3,7 +3,7 @@
 
 import type { Guide } from "./how-to.js";
 import { SOLITAIRE_GUIDE } from "./games/solitaire-howto.js";
-import { MATCH3_GUIDE } from "./games/match3-howto.js";
+import { TRIO_TUMBLE_GUIDE } from "./games/trio-tumble-howto.js";
 import { BUBBLE_GUIDE } from "./games/bubble/bubble-howto.js";
 import { WYRDLE_GUIDE } from "./games/wyrdle/wyrdle-howto.js";
 import { TWENTY48_GUIDE } from "./games/2048/2048-howto.js";
@@ -20,7 +20,7 @@ import { ORCHARD_DROP_GUIDE } from "./games/orchard-drop/orchard-drop-howto.js";
 
 export const GUIDES: Readonly<Record<string, Guide>> = {
   solitaire: SOLITAIRE_GUIDE,
-  match3: MATCH3_GUIDE,
+  "trio-tumble": TRIO_TUMBLE_GUIDE,
   bubble: BUBBLE_GUIDE,
   wyrdle: WYRDLE_GUIDE,
   "2048": TWENTY48_GUIDE,

@@ -556,5 +556,5 @@ at P4); board-state schema → pinned at Phase 3 against the real core. None BLO
 
 ### Execution log
 - **2026-07-28 — execution started.** Beginning at master-plan **Phase 1** (create `CroftCommunity/fun`,
-  Cargo workspace, promote `match3-core`), since this front-end plan's Phases 1–2 depend on the repo +
+  Cargo workspace, promote `trio-tumble-core`), since this front-end plan's Phases 1–2 depend on the repo +
   web skeleton. Progress recorded below as phases complete.

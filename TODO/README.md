@@ -19,7 +19,7 @@ files are the running, checkbox-level worklist.
 ## Shipped — Tier-1 Croft-native (playable)
 
 - [solitaire.md](solitaire.md) — input/solver/a11y/identity follow-ups.
-- [match3.md](match3.md) — par-tuning/variants/specials follow-ups.
+- [trio-tumble.md](trio-tumble.md) — par-tuning/variants/specials follow-ups.
 - [bubble.md](bubble.md) — aim-preview/specials/ceiling-advance follow-ups.
 - [wyrdle.md](wyrdle.md) — word-list/daily follow-ups.
 - [2048.md](2048.md) — follow-ups.

@@ -127,8 +127,8 @@ Web Push, gated on iOS Home-Screen install (which P6 already requires for persis
 
 Confirmed firsthand this session (2026-07-27):
 
-- **`match3-core` is green and promotable.** `cargo test` → `19 passed, 1 ignored` (4 suites). Public
-  surface (`crates/match3-core/src/lib.rs:12-16`): `Board`, `Cell`, `Game`, `MoveReport`, `StepReport`,
+- **`trio-tumble-core` is green and promotable.** `cargo test` → `19 passed, 1 ignored` (4 suites). Public
+  surface (`crates/trio-tumble-core/src/lib.rs:12-16`): `Board`, `Cell`, `Game`, `MoveReport`, `StepReport`,
   `Pos`, `state_hash` (via `hash` module), plus `find_matches`/`clear_cells`/`apply_gravity`/`refill`/
   `swap_legal`. Move-list replay + state hash already exist — P8's primitive is present, not net-new.
 - **State-hash contract is specified** (`experiments/match3-p1/RULES.md:104-117`): SHA-256 over a
@@ -211,7 +211,7 @@ Every doc touched, and the phase that owns the change:
 ```
 Sequential spine:
   Phase 0 (Discovery)
-    → Phase 1 (repo + workspace scaffold; promote match3-core)
+    → Phase 1 (repo + workspace scaffold; promote trio-tumble-core)
       → Phase 2 (native+wasm cross-build determinism test)
         → [ Phase 3 (match-3 shelf-parity)  ||  Phase 4 (solitaire P1 core) ]
           → Phase 5 (P2 version policy — shared substrate crate)
@@ -222,10 +222,10 @@ Sequential spine:
 ```
 
 **Parallel set {Phase 3, Phase 4}:**
-- **Disjoint write-sets:** Phase 3 writes only `crates/match3-wasm/**` + `crates/match3-core/RULES.md`
+- **Disjoint write-sets:** Phase 3 writes only `crates/trio-tumble-wasm/**` + `crates/trio-tumble-core/RULES.md`
   (status line). Phase 4 writes `crates/solitaire-core/**` + `crates/solitaire-wasm/**` +
   `games/solitaire/**` + the solitaire vectors appended to `tests/cross_build/**`. No file overlap:
-  Phase 3's roundtrip test is crate-local (`crates/match3-wasm/tests/`), so it does not touch the
+  Phase 3's roundtrip test is crate-local (`crates/trio-tumble-wasm/tests/`), so it does not touch the
   shared workspace `tests/` dir that Phase 4 edits.
 - **Shared-state contract (invariants, not mechanisms):** Both run in isolated git worktrees off the
   `fun` feature branch (`worktrees/fun/<name>` per CroftC convention). Invariants each phase upholds:
@@ -262,11 +262,11 @@ insurance — a day of probes over days of rework.
 during planning — see Verified Assumptions / Open Questions; **do not re-run them.** The only live
 technical discovery task is **D1** (the wasm cross-build runner). Residuals: D4's `fun.croft.ing`
 DNS/registration (needed at Phase 7, not now) and the optional D5 feel-spike. D1 is resolvable with a
-cheap probe (`cargo build --target wasm32-unknown-unknown -p match3-core` + a node loader attempt) and
+cheap probe (`cargo build --target wasm32-unknown-unknown -p trio-tumble-core` + a node loader attempt) and
 should be the first thing done at execution start.
 
 - [ ] **D1: What is the cheapest native+wasm cross-build determinism runner available here?**
-  - **Probe:** Build `match3-core`'s corpus-replay to `wasm32-unknown-unknown` and attempt to run it
+  - **Probe:** Build `trio-tumble-core`'s corpus-replay to `wasm32-unknown-unknown` and attempt to run it
     under node (v25.9) via a thin loader; compare the emitted final `state_hash` per vector to the
     native `cargo test` hashes. If `unknown-unknown` needs too much glue, evaluate installing a WASI
     target + a runtime (wasmtime) as the alternative. Record which path produces byte-identical hashes
@@ -308,23 +308,23 @@ rules; each honors its declared Disposition; findings are recorded in this doc.
 
 ---
 
-### Phase 1: Standalone repo + Cargo/PWA workspace scaffold; promote match3-core
+### Phase 1: Standalone repo + Cargo/PWA workspace scaffold; promote trio-tumble-core
 
 **Goal:** `CroftC/fun` exists as its own git repo (remote `CroftCommunity/fun`) with a working Cargo
 workspace (game-core crates + shared substrate crate stubs registered as members) and a PWA app
-skeleton, CI wired, croft-pwa conventions borrowed, and `match3-core` moved in intact and still green.
+skeleton, CI wired, croft-pwa conventions borrowed, and `trio-tumble-core` moved in intact and still green.
 
 **Changes:**
 - [ ] `git init` a new repo at `CroftC/fun` with the **chasemp** identity (`gh auth switch --user
   chasemp` first; `chase@owasp.org`), remote `git@github-personal:CroftCommunity/fun`. Confirm chasemp
   has push access to the `CroftCommunity` org before the first push. Do **not** add it to the CroftC
   meta-repo (nested repos are git-ignored by design).
-- [ ] Cargo workspace `Cargo.toml` with `members`: `crates/match3-core`, `crates/solitaire-core`,
+- [ ] Cargo workspace `Cargo.toml` with `members`: `crates/trio-tumble-core`, `crates/solitaire-core`,
   `crates/pond-docformat`, `crates/pond-outcome`, plus a `crates/*-wasm` glue crate per game. **Create
   every member dir in this phase** with a minimal compiling `lib.rs` (no stubs of *behavior* — a crate
   that compiles and has a `//! purpose` doc and zero public API is not a behavioral stub; it is an
   empty-but-real member). This freezes the `members` list before the {3,4} parallel set.
-- [ ] Move `discovery/alpha/experiments/match3-p1/crates/match3-core` → `fun/crates/match3-core`
+- [ ] Move `discovery/alpha/experiments/match3-p1/crates/trio-tumble-core` → `fun/crates/trio-tumble-core`
   with its `RULES.md`, `vectors/`, tests, and pinned deps. Confirm `cargo test` stays green post-move.
 - [ ] PWA app skeleton (`app/` or `web/`) borrowing croft-pwa conventions: bundle-size budget,
   `@axe-core/playwright` a11y gate, telemetry hook, and a **GitHub Pages** PR-preview + deploy config
@@ -372,15 +372,15 @@ CroftC `.gitignore` must already ignore `fun/` (nested-repo rule) — verify it 
 
 ### Phase 2: Native+wasm cross-build determinism test
 
-**Goal:** The property that justified choosing Rust is now *enforced*: `match3-core`'s corpus replays
+**Goal:** The property that justified choosing Rust is now *enforced*: `trio-tumble-core`'s corpus replays
 to byte-identical `state_hash` values on a wasm build and on native, checked in CI. This becomes the
 reusable template every game core plugs into.
 
 **Changes:**
-- [ ] A `crates/match3-wasm` (or a `--target wasm32-*` build of a small replay binary, per D1) that
+- [ ] A `crates/trio-tumble-wasm` (or a `--target wasm32-*` build of a small replay binary, per D1) that
   exposes "replay this vector, return its final `state_hash`".
 - [ ] A test harness (the D1 runner: node-hosted wasm or wasmtime) that, for every vector in
-  `match3-core/vectors/`, runs the wasm build and asserts the hash equals the committed
+  `trio-tumble-core/vectors/`, runs the wasm build and asserts the hash equals the committed
   `final_state_hash` **and** equals the native replay's hash.
 - [ ] CI job runs the cross-build test on every push.
 - [ ] **Divergence diagnostics:** on any mismatch the harness emits the vector id, the native hash, the
@@ -394,8 +394,8 @@ replays each vector → compares hashes to native `Game` replay and to committed
 vector's wasm hash diverges from native. RED with a deliberately mismatched build flag (prove it can
 fail), GREEN with the real build.
 **Depends on:** Phase 0 (D1 runner), Phase 1 (workspace).
-**Read-set:** `crates/match3-core/**`, `crates/match3-core/vectors/**`.
-**Write-set:** `crates/match3-wasm/**`, `tests/cross_build/**`, CI config.
+**Read-set:** `crates/trio-tumble-core/**`, `crates/trio-tumble-core/vectors/**`.
+**Write-set:** `crates/trio-tumble-wasm/**`, `tests/cross_build/**`, CI config.
 **Shared-state contract:** Builds to a wasm target dir; runs a node/wasm subprocess bound to no port,
 reading only the repo's vectors. No shared mutable state beyond the file write-set.
 **Risks:** float/`usize`/endianness divergence between targets surfaces here — that is the *point* (it
@@ -419,23 +419,23 @@ and doc pointers are in place — without yet building its full game (levels/par
 match-3 as a clean, cross-build-verified core the shelf can later mount.
 
 **Changes:**
-- [ ] Finalize `crates/match3-wasm` public surface for the shelf (new-game(seed), play_move, current
+- [ ] Finalize `crates/trio-tumble-wasm` public surface for the shelf (new-game(seed), play_move, current
   state hash, serialize/deserialize a save — the last deferred to Phase 5's format).
-- [ ] Update the promoted `crates/match3-core/RULES.md` status line (a `fun`-repo edit, safe inside the
+- [ ] Update the promoted `crates/trio-tumble-core/RULES.md` status line (a `fun`-repo edit, safe inside the
   worktree). **All *discovery-repo* pointer edits (build-order roadmap row, `experiments/README`,
   ROADMAP_TODO E46) and the archive-vs-keep decision were moved to Phase 1** — they touch the shared
   discovery working tree, which lies outside the `fun` worktree's isolation, so they must not run inside
   a parallel worktree phase (Pass 3 concurrency fix).
-- [ ] Put the roundtrip test in `crates/match3-wasm/tests/` (crate-local), not the workspace `tests/`
+- [ ] Put the roundtrip test in `crates/trio-tumble-wasm/tests/` (crate-local), not the workspace `tests/`
   dir, so it cannot collide with Phase 4's edits to the shared cross-build harness.
 
-**Call chain:** shelf loader (Phase 7) → `match3-wasm::new_game(seed)` → `Game` → `state_hash`.
+**Call chain:** shelf loader (Phase 7) → `trio-tumble-wasm::new_game(seed)` → `Game` → `state_hash`.
 **Wiring test:** `test_match3_wasm_surface_roundtrips` — construct a game, play the golden-vector move
 list through the wasm surface, assert the final hash matches the committed anchor (proves the *shelf-
 facing API*, not just the internal engine, reaches the right state).
 **Depends on:** Phase 2 (cross-build test + wasm crate exist).
-**Read-set:** `crates/match3-core/**`, `crates/match3-wasm/**`.
-**Write-set:** `crates/match3-wasm/**` and `crates/match3-core/RULES.md` (status line only). **No
+**Read-set:** `crates/trio-tumble-core/**`, `crates/trio-tumble-wasm/**`.
+**Write-set:** `crates/trio-tumble-wasm/**` and `crates/trio-tumble-core/RULES.md` (status line only). **No
 discovery-repo files** (lifted to Phase 1); does not touch the shared workspace `tests/` dir.
 **Shared-state contract:** Worktree-isolated; touches only the two `fun`-repo paths above. Does **not**
 edit the **discovery repo** (its working tree is shared and outside this worktree's isolation), does
@@ -448,7 +448,7 @@ discovery file); worktree list as expected; no orphan `cargo` processes.
 **Done when:**
 1. **Behavioral:** The shelf-facing wasm API can start a match-3 game, accept moves, and report a
    verifiable state hash — enough for Phase 7 to mount it, with no level system yet.
-2. **Verification:** `cargo test -p match3-wasm` green including the roundtrip wiring test.
+2. **Verification:** `cargo test -p trio-tumble-wasm` green including the roundtrip wiring test.
 **Validation:** **Moderate.** Wiring test + confirm the public surface is what Phase 7 needs (review
 against the shelf loader contract sketched in Phase 7).
 
@@ -481,7 +481,7 @@ with a `state_hash` and the cross-build test (reusing Phase 2's harness). No UI 
   alternating-colour descending (reject same-colour / non-sequential); a move of or onto a face-down
   card is illegal; draw-1 waste cycling and the stock pass-limit boundary; win iff all 52 cards are on
   the foundations. Boundary cases on each threshold.
-- [ ] `crates/solitaire-wasm` glue mirroring `match3-wasm`.
+- [ ] `crates/solitaire-wasm` glue mirroring `trio-tumble-wasm`.
 - [ ] Solitaire wired into Phase 2's cross-build harness (its vectors added to the byte-identical
   wasm==native assertion).
 
@@ -491,7 +491,7 @@ shelf loader (Phase 7) → `solitaire-wasm::new_game(seed)` → `Game` → `stat
 regression) **and** solitaire added to `test_wasm_hashes_match_native` — the same cross-build assertion
 match-3 gets. RED before the engine exists, GREEN when the tie-break tables are fully implemented.
 **Depends on:** Phase 0 (D2 rules), Phase 2 (cross-build harness).
-**Read-set:** `crates/match3-core/**` (as the discipline template — read, not edited), Phase 2 harness.
+**Read-set:** `crates/trio-tumble-core/**` (as the discipline template — read, not edited), Phase 2 harness.
 **Write-set:** `crates/solitaire-core/**`, `crates/solitaire-wasm/**`, `games/solitaire/RULES.md`,
 `games/solitaire/vectors/**`.
 **Shared-state contract:** Worktree-isolated; disjoint from Phase 3's write-set. Does **not** edit
@@ -526,7 +526,7 @@ every game.
   (unknown fields preserved or explicitly rejected per a documented policy, not silently dropped);
   refuses to load a *newer major* it can't understand with a loud, typed error (fail-loud).
 - [ ] A fixture per (kind, version) checked in — the forever-fixture the P10 drill exercises.
-- [ ] Wire `match3-core` and `solitaire-core` saves/outcomes to go through the envelope.
+- [ ] Wire `trio-tumble-core` and `solitaire-core` saves/outcomes to go through the envelope.
 
 **Call chain:** game save/load and outcome emit → `pond-docformat::{write,read}` → typed round-trip.
 **Wiring test:** `test_old_fixture_loads_under_current_and_unknown_field_policy_holds` — load every
@@ -535,7 +535,7 @@ synthetic newer-major fixture is rejected with the loud typed error. RED before 
 and it exercises the crate through the *games'* save path, not the crate in isolation.
 **Depends on:** Phase 4 (at least one game core with a save/outcome to serialize) — sequenced after the
 {3,4} set so it wraps real document types, not hypothetical ones.
-**Read-set:** `crates/match3-core/**`, `crates/solitaire-core/**`.
+**Read-set:** `crates/trio-tumble-core/**`, `crates/solitaire-core/**`.
 **Write-set:** `crates/pond-docformat/**`, save/outcome call sites in both core crates, `fixtures/**`.
 **Shared-state contract:** No shared mutable state beyond the file write-set.
 **Risks:** Over-designing the envelope before three document types actually exist — keep it minimal;
@@ -672,7 +672,7 @@ with levels → play → `pond-outcome` clean-clear vs par.
 mounting match-3 with a generated level, playing to a clean clear, asserting the par comparison and
 verifiable record. RED before generation/par, GREEN after.
 **Depends on:** Phases 3, 6, 7 (match-3 core in the shelf + outcome record + shelf live).
-**Read-set:** `crates/match3-core/**`, `crates/pond-outcome/**`, the shelf app.
+**Read-set:** `crates/trio-tumble-core/**`, `crates/pond-outcome/**`, the shelf app.
 **Write-set:** `crates/match3-levels/**` (generator + bot), `app/**` (match-3 UI), pack fixtures.
 **Shared-state contract:** Bot runs are CPU-bound, no network, no shared state beyond output files.
 **Risks:** Bot-calibrated par diverges from human play (corpus caveat) — set generously, mark par

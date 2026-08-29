@@ -19,13 +19,13 @@ once and every game reuses it. Shelf order: **solitaire → match-3 → bubble �
 
 ```
 crates/
-  match3-core/       deterministic match-3 engine (promoted from the discovery spike; self-contained
+  trio-tumble-core/       deterministic match-3 engine (promoted from the discovery spike; self-contained
                      with its RULES.md + vectors/) — green, red-first
   solitaire-core/    Klondike draw-1 engine (master-plan Phase 4) — green
   solitaire-solver/  build-time Klondike solver + winnable-daily pack generator (Phase S) — green
   pond-docformat/    P2 versioned document envelope (saves / codes / outcomes) — built
   pond-outcome/      P8 verifiable-outcome record (replay → state hash)         — built
-  match3-wasm/       browser binding over match3-core (raw C-ABI + serde-JSON)   — built
+  trio-tumble-wasm/       browser binding over trio-tumble-core (raw C-ABI + serde-JSON)   — built
   solitaire-wasm/    browser binding over solitaire-core (raw C-ABI + serde-JSON) — built
   bubble-core/       deterministic bubble-shooter engine (hex board w/ parity-offset top-row
                      insert, quantized-angle aim → fixed-point landing, pop/drop; clear-board
@@ -72,7 +72,7 @@ re-verifies the shared result before display (deflated, so even a long win stays
 
 ## Match-3 (playable — Candy-Crush-style)
 
-`/match3/` is a target-score-in-moves game: an 8×8 board of big, glossy, distinctly-shaped candies
+`/trio-tumble/` is a target-score-in-moves game: an 8×8 board of big, glossy, distinctly-shaped candies
 (colour-blind safe), **swipe** a candy toward a neighbour to swap — or tap gem-then-neighbour, the
 accessible floor; only match-making swaps are legal (the core decides and they glow). A 20-swap budget
 graded into 0–3 stars. Clears hold long enough to read, spray a particle **burst**, and a multi-cascade
@@ -80,9 +80,9 @@ flashes an escalating **Nice/Sweet/Divine**. Moves out → a verifiable score+st
 a `?r=` share. New players land in a **level campaign** (curated levels over verifiable seeds; the first
 are gentle and Level 1 glows an opening move); best-stars progress and the in-progress board (as a move
 list) persist, so a reload resumes. A **skippable narrative overlay** (Biscuit's beats) rides a small
-game-event bus — placeholder now, real clips later (`docs/MATCH3-STORY.md`). Also: Today's board (date
-seed), free-play (`?seed=`), six objectives. Plans: `plans/2026-08-02-match3-gameplay-feel.md`,
-`plans/2026-07-30-match3-playable.md`.
+game-event bus — placeholder now, real clips later (`docs/TRIO-TUMBLE-STORY.md`). Also: Today's board (date
+seed), free-play (`?seed=`), six objectives. Plans: `plans/2026-08-02-trio-tumble-gameplay-feel.md`,
+`plans/2026-07-30-trio-tumble-playable.md`.
 
 ## Bubble (playable — aim-and-shoot, leveled)
 
@@ -330,7 +330,7 @@ It ends with a new-game checklist. Screenshots regenerate from the built app via
 ## Build
 
 ```sh
-cargo test --workspace     # game cores (match3-core: 19 tests green)
+cargo test --workspace     # game cores (trio-tumble-core: 19 tests green)
 cargo fmt --all --check
 cargo clippy --workspace --all-targets
 npm run build              # static site -> dist/  (esbuild toolchain lands in the front-end plan)
@@ -345,4 +345,4 @@ and `Cargo.lock` is committed. See `plans/` for the governing phase-plans:
 - `2026-07-27-games-pond-fun-crofting.md` — the pond master plan (Rust/determinism spine).
 - `2026-07-28-games-drawer-solitaire-ui.md` — the front-end plan (drawer UX + solitaire, first game).
 
-Provenance: `match3-core` was promoted from `discovery/alpha/experiments/match3-p1/` (2026-07-28).
+Provenance: `trio-tumble-core` was promoted from `discovery/alpha/experiments/match3-p1/` (2026-07-28).

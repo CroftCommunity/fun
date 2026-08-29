@@ -1,0 +1,113 @@
+//! Trio Tumble — a deterministic, headless match-3 engine (P1).
+//!
+//! The determinism foundation from the per-pond build discipline. See RULES.md
+//! for the rules and the tie-break tables this crate implements verbatim.
+
+pub mod board;
+pub mod checklist;
+pub mod engine;
+pub mod hash;
+pub mod rng;
+pub mod vectors;
+
+pub use board::{Board, BoardError, Cell, Obstacle, SpecialKind};
+pub use checklist::{checklist_targets, ChecklistProgress, ChecklistTargets};
+
+/// Target-score mode parameters, shared by the binding and the par-table
+/// generator so play-time and the baked par agree.
+pub mod target_score_mode {
+    /// Board width.
+    pub const WIDTH: usize = 8;
+    /// Board height.
+    pub const HEIGHT: usize = 8;
+    /// Gem colours.
+    pub const COLORS: usize = 6;
+    /// Legal-swap budget.
+    pub const MOVE_BUDGET: usize = 20;
+}
+
+/// Clear-the-blockers mode parameters, shared by the deal, the solver's winnable
+/// pack, and the wasm binding so all three agree on the same daily boards.
+pub mod blockers_mode {
+    /// Board width.
+    pub const WIDTH: usize = 8;
+    /// Board height.
+    pub const HEIGHT: usize = 8;
+    /// Gem colours.
+    pub const COLORS: usize = 6;
+    /// Single-layer blockers placed in a deal.
+    pub const BLOCKERS: usize = 6;
+    /// Swap budget: the objective is met by clearing every blocker within this.
+    pub const MOVE_BUDGET: usize = 30;
+}
+
+/// Clear-the-jelly mode parameters, shared by the deal, the solver's winnable
+/// pack, and the wasm binding so all three agree on the same daily boards.
+pub mod jelly_mode {
+    /// Board width.
+    pub const WIDTH: usize = 8;
+    /// Board height.
+    pub const HEIGHT: usize = 8;
+    /// Gem colours.
+    pub const COLORS: usize = 6;
+    /// Single-layer jellied cells placed in a deal.
+    pub const JELLY: usize = 6;
+    /// Swap budget: the objective is met by scrubbing every jelly within this.
+    pub const MOVE_BUDGET: usize = 30;
+}
+
+/// Clear-the-ingredients mode parameters (Track D), shared by the deal, the
+/// solver's winnable pack, and the wasm binding so all three agree on the same
+/// daily boards.
+pub mod ingredients_mode {
+    /// Board width.
+    pub const WIDTH: usize = 8;
+    /// Board height.
+    pub const HEIGHT: usize = 8;
+    /// Gem colours.
+    pub const COLORS: usize = 6;
+    /// Ingredients placed in the top row of a deal (they must fall to the bottom).
+    pub const INGREDIENTS: usize = 3;
+    /// Swap budget: the objective is met by dropping every ingredient within this.
+    pub const MOVE_BUDGET: usize = 30;
+}
+
+/// Mixed/order **Checklist** mode parameters (Track D), shared by the deal (a
+/// normal gem deal), the solver's winnable pack, and the wasm binding. The
+/// checklist goals themselves come from [`crate::checklist::checklist_targets`].
+pub mod checklist_mode {
+    /// Board width.
+    pub const WIDTH: usize = 8;
+    /// Board height.
+    pub const HEIGHT: usize = 8;
+    /// Gem colours.
+    pub const COLORS: usize = 6;
+    /// Swap budget: every checklist goal must be reached within this.
+    pub const MOVE_BUDGET: usize = 30;
+}
+
+/// Clear-the-**obstacles** mode parameters (Track D, T7), shared by the deal, the
+/// solver's winnable pack, and the wasm binding. Two distinct obstacle tiles —
+/// single-layer licorice and durable multi-layer meringue — both `Blocker` cells
+/// cleared by adjacency; the objective is met when none remain.
+pub mod obstacles_mode {
+    /// Board width.
+    pub const WIDTH: usize = 8;
+    /// Board height.
+    pub const HEIGHT: usize = 8;
+    /// Gem colours.
+    pub const COLORS: usize = 6;
+    /// Single-layer licorice tiles placed in a deal.
+    pub const LICORICE: usize = 3;
+    /// Durable multi-layer (2–3) meringue tiles placed in a deal.
+    pub const MERINGUE: usize = 3;
+    /// Swap budget: the objective is met by clearing every obstacle within this.
+    pub const MOVE_BUDGET: usize = 30;
+}
+pub use engine::{
+    apply_gravity, blockers_remaining, clear_cells, collect_ingredients, deal, deal_blockers,
+    deal_ingredients, deal_jelly, deal_obstacles, find_matches, has_legal_move,
+    ingredients_remaining, jelly_remaining, legal_swaps, random_score, reference_score,
+    reference_score_beam, reference_score_specials, refill, reshuffle_if_dead, swap_legal,
+    ClearOutcome, Game, MoveReport, Pos, StepReport,
+};

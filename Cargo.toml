@@ -4,7 +4,7 @@
 # and the plans under plans/: determinism-first, red-first. Versions are pinned
 # exactly (`=x.y.z`) and Cargo.lock is committed, matching alpha/Proofs/lineage-groups.
 #
-# Members: per-game deterministic cores (match3-core promoted from the discovery
+# Members: per-game deterministic cores (trio-tumble-core promoted from the discovery
 # spike; solitaire-core is the first new game) + their wasm browser bindings +
 # shared substrate crates (pond-docformat = P2 version policy, pond-outcome = P8
 # verifiable outcomes). Substrate + solitaire crates start as compiling
@@ -28,14 +28,14 @@ members = [
     "crates/wyrdle-wasm",
     "crates/bubble-solver",
     "crates/bubble-wasm",
-    "crates/match3-core",
+    "crates/trio-tumble-core",
     "crates/solitaire-core",
     "crates/pond-docformat",
     "crates/pond-outcome",
-    "crates/match3-wasm",
+    "crates/trio-tumble-wasm",
     "crates/solitaire-wasm",
     "crates/solitaire-solver",
-    "crates/match3-solver",
+    "crates/trio-tumble-solver",
     "crates/adversary-core",
     "crates/adversary-solver",
     "crates/dots-core",
@@ -85,7 +85,7 @@ looseends-core = { path = "crates/looseends-core" }
 color-sort-core = { path = "crates/color-sort-core" }
 color-sort-solver = { path = "crates/color-sort-solver" }
 wyrdle-core = { path = "crates/wyrdle-core" }
-match3-core = { path = "crates/match3-core" }
+trio-tumble-core = { path = "crates/trio-tumble-core" }
 solitaire-core = { path = "crates/solitaire-core" }
 pond-docformat = { path = "crates/pond-docformat" }
 pond-outcome = { path = "crates/pond-outcome" }
