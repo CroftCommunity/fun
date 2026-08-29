@@ -1,7 +1,9 @@
 # Orchard Drop → Tier-1: a fixed-point deterministic fruit-merge core
 
-**Status:** **Phase 0 EXECUTED (2026-08-28) — D1, D2, D3, D4 and D6 pass; D5 is open and needs
-the owner.** The spike is `spike/orchard-physics/`, its findings are
+**Status:** **Phase 0 EXECUTED and landed (`bc3a0b2`); re-verified against `main` after the skin
+landing (`b5c0399`). D1, D2, D3, D4 and D6 pass; D5 is open and needs the owner, and one new
+BLOCKING question arrived with the landing** (what becomes of the Tier-2 machinery — see Open
+Questions). The spike is `spike/orchard-physics/`, its findings are
 `spike/orchard-physics/RESULT.md`, and 11 tests pin them. A fixed-point circle solver holds a
 30-fruit Suika pile, matches native/wasm bit-for-bit across 10 digests, and replays a 4.7-minute
 game in 731 ms. **Phase 1 is unblocked except for D5**, which is a feel judgement no measurement
@@ -56,6 +58,20 @@ Four concrete costs follow from the current classification:
    is "circles fall into a box."
 4. **It blocks a substrate the shelf will want twice.** `TODO/emojiwars.md` is the shelf's other
    physics game and is stalled at the same question.
+
+**The shelf's own standards doc now says the same thing** (added to §9 in `b5c0399`, by a peer
+session, independently of this plan):
+
+> *"What remains marked `tier: 2` is **Orchard Drop**, which is *ours* (the Croft shelf, on
+> @liabru's Matter.js), so it is a wrap of a physics engine rather than of somebody else's game.
+> By the definitions above that is closer to Tier 3. … Whether Tier 2 survives as a category at
+> all is an open owner decision."*
+
+Two things follow. The misclassification argument above is no longer only this plan's reading —
+it is recorded in the standard. And **Orchard Drop is now the shelf's last Tier-2 entry**: Astray,
+HexGL and Clumsy Bird were removed on 2026-08-28, so this plan does not merely reclassify one
+game, it **empties the tier**. That is a new decision this plan must surface rather than cause by
+accident; see Open Questions.
 
 ## Approach
 
@@ -245,6 +261,22 @@ Added in Pass 2, by reading the code the plan had only named:
 | The how-to shot-sync test asserts each referenced shot exists on disk | `tests/how-to.test.ts:36` — "every screenshot it references exists on disk", checking `assets/guide/<name>.jpg` |
 | **No service worker or web manifest exists** — the PWA plan is Pass 1, not started, so there is no precache list to update | `plans/2026-08-11-pwa-install-per-game-and-shelf.md` — "status: **Pass 1 (shape).** Not started"; `grep -rln "serviceWorker\|manifest.webmanifest" src/ build.mjs tests/` → zero hits |
 | Fixed-point overflow is **not** the risk at shift-16 `i64` | Computed at plan time: worst-case separation in a 440×640 crate is 777 px → 5.09e7 fixed; `dist²` = 2.59e15 against `i64::MAX` 9.22e18 — **3,560× headroom**. `(r1+r2)²` max is 2.82e14. Mass ratio across the ladder is 56.7:1 (r=17 → 1.09, r=128 → 61.77 at density .0012) |
+
+**Re-verified 2026-08-28 against `main` at `bc3a0b2`**, after the skin/asset landing (`b5c0399`,
+409 files) moved ground under the Pass 1 citations. Four rows changed:
+
+| Claim | Then (`e453afb`) | Now (`bc3a0b2`) |
+|---|---|---|
+| Tier-2 games on the shelf | four | **one — Orchard Drop.** Astray, HexGL and Clumsy Bird removed. `ls src/games/*/tier2.meta.json` |
+| The drawer-count assertion | hardcoded `toHaveCount(20)` | `toHaveCount(REGISTRY.length)` (`tests/drawer.spec.ts:13`) — the plan's "no count moves" note is now automatic rather than something to check |
+| `build.mjs` `TIER2_VENDORS` | four ids | `["orchard-drop"]` — Phase 4 empties the array rather than shortening it |
+| The a11y bar | "axe clean in both themes" | **"axe clean across the skin registry."** Skins subsumed themes in `M2`: `SKINS` is four entries in two families (`worlds-light/dark`, `pond-light/dark`), and `tests/skin.spec.ts` is the pattern — scan, switch palette, scan again |
+
+**Unchanged and re-confirmed:** `src/wrapped-banner.ts:16` still gates on `tier !== 2`;
+`src/contract.ts` is still the `tier?: 1` / `tier: 2` union with no `attribution` on Tier-1;
+`tools/guide-shots.mjs` and `assets/guide/` both survive; `tests/chrome.test.ts:79` still carries
+`orchard-drop` in the drawer-id list; `tests/tier2-containment.spec.ts` still auto-enrols from
+`tier2.meta.json` and still skips at zero.
 
 **Measured in Phase 0** (2026-08-28) — these were Pass 1's four unknowns, now answered. Full
 detail and reproduction steps in `spike/orchard-physics/RESULT.md`:
@@ -634,20 +666,33 @@ native module, and the containment harness would enrol a game that no longer has
   (`ctx` gradients per `kind`), plus crate, danger line, and next-fruit preview. Off-hash.
 - [ ] Tap-first input (§4): drag-to-aim + release, arrow keys + Space, 44px targets, the core
   deciding legality (the cooldown is a core rule, not a UI timer).
-- [ ] Tokens + WCAG AA across the whole surface (§5); standard settings wired (§6).
+- [ ] Tokens + WCAG AA across the whole surface (§5); standard settings wired (§6). **Tokens now
+  means the skin layer** — `M1` split the vocabulary into skinnable chrome roles and non-skinnable
+  game palettes, so a game's own colours are *not* skinned and the chrome around it is. Read
+  `src/skins.ts` and `tokens.css` before picking a single value.
 - [ ] **Delete the axe exemption.** `tests/orchard-drop.spec.ts` currently scans with
   `.exclude("iframe.wrapped-game-frame")` — §9's embedded-canvas exemption, made concrete. Phase 4
-  removes the exclusion and adopts `tests/2048.spec.ts:114`'s shape: scan, toggle the theme, scan
-  again, `violations` empty both times. *(Pass 2: axe enrolment here is per-spec and hand-written,
-  not registry-driven — flipping the tier scans nothing automatically, so nothing forces this. It
-  is the single most skippable item in the plan and is therefore its own line.)*
+  removes the exclusion and adopts **`tests/skin.spec.ts`**'s shape: scan, switch palette, scan
+  again, `violations` empty in both. *(Re-verified 2026-08-28: the bar is now "across the skin
+  registry", not "in both themes" — light and dark are registry entries since `M2`, not an axis.
+  Axe enrolment is still per-spec and hand-written, not registry-driven, so flipping the tier
+  scans nothing automatically and nothing forces this. It remains the most skippable item in the
+  plan and is therefore its own line.)*
 - [ ] **Daily / free mode toggle**, on `src/games/2048/2048.ts`'s pattern (`mode: "daily" | "free"`,
   `startGame(mode, seedOverride?)`), reading Phase 2's pack. *(Added in Pass 2 with the pack.)*
 - [ ] **Delete** `vendor/index.html`, `vendor/LICENSE.txt`, `tier2.meta.json`. Licensing is
   clean on deletion (verified, see below): `vendor/LICENSE.txt` only *points at* the top-level
   `LICENSE` for the first-party half, and the Matter.js MIT notice it reproduces leaves with the
   Matter.js code it covers.
-- [ ] `build.mjs` — drop `"orchard-drop"` from `TIER2_VENDORS`; it stays in `GAME_PAGES`.
+- [ ] `build.mjs` — `TIER2_VENDORS` becomes **empty**, not shorter: Orchard Drop is its only
+  remaining entry. `GAME_PAGES` keeps the id.
+- [ ] **Decide, don't drift: what happens to the Tier-2 machinery.** When this game leaves the
+  tier, `src/wrapped-banner.ts`, `src/tier2-meta.ts`, `tests/tier2-containment.spec.ts`,
+  `tests/tier2-meta.test.ts`, `tests/tier2.spec.ts`, `tests/tier2.test.ts`, the `Tier2GameEntry`
+  variant and §9 itself all have **zero consumers**, and the containment spec's
+  `test.skip(GAMES.length === 0)` means it goes quietly green-by-skipping rather than failing.
+  That silence is the hazard. See the Open Question — this is the owner's call, and the phase
+  should record whichever way it goes.
 - [ ] `src/registry.ts` — remove `tier: 2` **and the entire `attribution` object**: `Tier1GameEntry`
   has no `attribution` field, so the type forbids carrying credit there at all (verified in Pass 2).
   The Suika-homage credit therefore loses its registry home and lives **only** in the how-to guide
@@ -815,6 +860,17 @@ position in any plan.
   choosing Tier-1: there is no Tier-1 without it. Recorded explicitly rather than left implied,
   because Phase 4 is roughly half the total effort, carries no interesting problems, and is the
   part it is easiest to agree to while picturing only the physics.
+- **[NEW — BLOCKING, Phase 4] When Orchard Drop leaves Tier-2, does the tier's machinery stay?**
+  *Arrived with `b5c0399`, which removed the other three wraps and left this game as the last
+  `tier: 2` entry — so Phase 4 empties the tier rather than trimming it. §9's own new status note
+  says "whether Tier 2 survives as a category at all is an open owner decision," so this plan
+  should not settle it silently by deleting the last instance. Recommendation: **keep the
+  machinery, record the state.** §9 was ratified and applied four times; §11 (Tier-3) has been a
+  ratified standard with no implementation since it was written, and the repo says plainly that is
+  a normal state. Deleting a standard's implementation because it momentarily has no instances is
+  over-reach. But the containment harness skipping silently at zero is a real trap, so whichever
+  way this goes, §9's status note gets updated in the same commit. BLOCKING for Phase 4 only —
+  Phases 1–3 touch none of it.*
 - **[NEW — BLOCKING, Phase 1] D5: does it feel right?** *Phase 0 answered everything a machine can
   answer; this is the one gate left and it needs a person. Compare
   `spike/orchard-physics/pile.svg` (six frames, each fruit drawn with a radius line so rotation is
@@ -843,6 +899,33 @@ position in any plan.
   it and building for a hypothetical second consumer is how a 3-file solver becomes an engine.*
 
 ## Review Log
+
+### Re-verification against `main` — 2026-08-28 (post-landing)
+
+**Why:** the plan's Pass 1 citations were read at `e453afb`. Between then and landing, a peer
+session put **409 files** onto `main` (`b5c0399` — the skin layer, the asset pipeline, and three
+removals). Checks that were true when run are the workspace's named hazard, so the plan was
+re-read against the tree it will actually execute on rather than the tree it was written on.
+
+**The landing helps the plan more than it hurts it.** §9 gained a status note, written
+independently of this work, saying Orchard Drop "is *ours* … so it is a wrap of a physics engine
+rather than of somebody else's game. By the definitions above that is closer to Tier 3." That is
+the plan's central argument, arrived at from the other direction and now recorded in the standard.
+
+**Four citations moved** (table in Verified Assumptions): Tier-2 games four → **one**; the drawer
+count assertion hardcoded → `REGISTRY.length`; `TIER2_VENDORS` four ids → one; and the a11y bar
+"both themes" → **"across the skin registry"**, since `M2` made light and dark registry entries
+rather than an axis. Six other citations re-confirmed unchanged.
+
+**One new BLOCKING question, and it is a consequence rather than a discovery.** Orchard Drop is
+now the shelf's *last* Tier-2 entry, so Phase 4 empties the tier instead of trimming it — leaving
+`wrapped-banner.ts`, `tier2-meta.ts`, four test files, the `Tier2GameEntry` variant and §9 with no
+consumers. The containment spec would go green **by skipping**, which is the quiet failure mode
+this plan exists to avoid elsewhere. Recommendation recorded: keep the machinery, update §9's
+status note in the same commit, and let the owner decide the category's fate separately.
+
+**Nothing in Phases 0–3 changed.** The spike does not touch `src/`, and its findings are
+independent of the shelf's chrome.
 
 ### Phase 0 execution — 2026-08-28
 
