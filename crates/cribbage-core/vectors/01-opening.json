@@ -1,0 +1,7 @@
+{
+  "name": "opening",
+  "note": "Seed 0 dealt, nobody has discarded. The hash covers both hands and the cut, so it locks the deal itself.",
+  "seed": 0,
+  "moves": [],
+  "final_state_hash": "6a94285570b78f646f0e0e423d0a018e618b1507c00f3ac8d07d89aebe166e13"
+}

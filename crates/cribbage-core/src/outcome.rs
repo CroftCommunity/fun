@@ -107,3 +107,44 @@ mod tests {
         assert!(serde_json::from_str::<Vec<Move>>("[15]").is_err());
     }
 }
+
+#[cfg(test)]
+mod vector_gen {
+    //! `cargo test -p cribbage-core --release -- --ignored --nocapture gen_vectors`
+    //! prints the corpus in `vectors/` so a rules change re-locks deliberately.
+    use super::*;
+    use crate::game::legal_moves;
+
+    fn game(seed: u64, stride: usize) -> Vec<Move> {
+        let mut s = GameState::new(seed);
+        let mut moves = Vec::new();
+        let mut n = 0usize;
+        while s.outcome().is_none() {
+            let legal = legal_moves(&s);
+            let m = legal[(n * stride) % legal.len()];
+            moves.push(m);
+            s = apply(&s, m).unwrap();
+            n += 1;
+        }
+        moves
+    }
+
+    #[test]
+    #[ignore]
+    fn gen_vectors() {
+        for (seed, stride) in [(0, 0), (7, 7), (5, 11)] {
+            let moves = if stride == 0 { vec![] } else { game(seed, stride) };
+            let s = replay(seed, &moves);
+            let codes: Vec<String> = moves.iter().map(|m| m.code().to_string()).collect();
+            println!(
+                "seed {seed} stride {stride} moves {} deals {} scores {:?} outcome {:?}\n{}\n[{}]",
+                moves.len(),
+                s.deal_no(),
+                s.scores(),
+                s.outcome(),
+                state_hash(&s),
+                codes.join(",")
+            );
+        }
+    }
+}
