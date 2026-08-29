@@ -483,6 +483,38 @@ verdict. The game-agnostic TS harness (`src/harness/*`) reuses unchanged; only t
 Rust core/solver/tutor and the front-end wrapper are new. See `docs/AI-PLAYERS.md`
 → "Generality: a second game (Othello)".
 
+**Variation — hidden information (cribbage).** Everything above assumes both
+sides see the whole position; `adversary-core` says so in its first line, and the
+band's class floor, the tutor's `exact` and the rig's oracle-grading all read it
+that way. Cribbage is the first game where that is false, and the honest shape is
+to **not** implement `Adversary` rather than to bend it (landed 2026-08-29,
+`plans/2026-08-29-plan-cribbage-vs-engine.md`). What replaces each piece:
+
+- **The state is not the observation.** The core keeps a full `GameState` and
+  hands out a per-seat `View` (`cribbage_core::View::for_seat`). The solver's
+  public functions take a `View` and nothing else — a test reads the crate's own
+  source and fails if `GameState` appears outside `#[cfg(test)]`. The wasm binding
+  has **no state export**: `view_json` is the human's view, and a test asserts no
+  engine card code is in it.
+- **Strength is expectation, not search.** A throw's value is the kept hand's
+  mean over the 46 possible cuts ± a build-time crib table; pegging is a two-ply
+  expectimax over the unseen ranks. There is no class floor because no move has
+  a class; difficulty is noise over the ranked options, with the same
+  RNG-untouched-at-zero property the shared selector pins.
+- **`exact` means exhaustive, not proven.** A discard verdict is exact (the
+  expectation is complete); a pegging verdict never is (the other hand is a
+  model). `coach_line` is bound to the flag in Rust, as in every other game.
+- **The rig is Rust, not `GameOracle`.** `GameOracle.board()` exposes the whole
+  position, so any `Player` plugged into `runMatch` sees the other hand. Cribbage
+  measures itself in `crates/cribbage-solver/tests/rig.rs`: self-play by level,
+  the discard-oracle check (Expert's throw equals the exhaustive optimum, every
+  deal), and the **peek check** — a test-only player given the full state must
+  beat the honest Expert by a wide margin (measured 81%). A leak makes the honest
+  engine *stronger*, so the symptom to fear is that margin shrinking.
+- **Counting is a move.** The show is three `Claim(n)` codes per deal, graded by
+  the core; automatic counting submits the exact claim, manual counting submits
+  the player's, and the record is the same shape either way.
+
 What is the same, and what is new:
 
 - **Rules as code — the `Adversary` trait** (`crates/adversary-core`): `initial`
@@ -695,6 +727,14 @@ Reference implementations: **Drop 4** (solvable), **Othello** (heuristic Oracle)
 
 See §10's "Recipe — adding an AI opponent to a new adversarial game" for what
 reuses vs what is new.
+
+**For a hidden-information game** (cribbage is the reference) the items above that
+name `Adversary`, `select_in_band`, the `GameOracle` rig and `baselines.test.ts` do
+**not** apply; what replaces them is the "Variation — hidden information" block:
+a `View` type, a solver whose public surface takes only a `View` (source-pinned),
+a binding with no state export (leak-tested), and a Rust rig with the discard-
+oracle and peek checks. The verifiable record, the honest `exact`, the identity
+and the assistance standards apply unchanged.
 
 ## 11. Tier-3 — engine-backed originals
 

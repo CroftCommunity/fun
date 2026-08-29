@@ -1,0 +1,15 @@
+[package]
+name = "cribbage-solver"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Cribbage engine over a per-seat View — never the full state. Exhaustive discard expectation (15 keeps × 46 cuts) with a build-time crib table, expectimax-2 pegging over the unseen cards, a difficulty band that is noise over expected value (no class floor: nothing in cribbage has a class), and a tutor whose exact flag is true for discards and never for pegging."
+
+[lints]
+workspace = true
+
+[dependencies]
+cribbage-core = { path = "../cribbage-core" }
+rand = { workspace = true }
+rand_chacha = { workspace = true }

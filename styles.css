@@ -4271,6 +4271,217 @@ body.fullscreen .le-stage {
 .sheet-choice-input { width: 1.05rem; height: 1.05rem; accent-color: var(--accent); }
 .sheet-choice-hint { margin-left: auto; color: var(--ink-muted); font-size: 0.75rem; }
 
+   Cribbage. The felt is the table; cards reuse the solitaire card language
+   (`--card`, the suit inks, `--r-card`) so the shelf has one card, not two.
+   Layout is column-first: the peg board, then the table (opponent backs /
+   middle / show / your hand / actions), so a 360px phone stacks it without a
+   horizontal scroll. Cards are ≥44px tall for the tap floor.
+   =========================================================================== */
+.crib-game {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  align-items: center;
+}
+.crib-turnbar {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.crib-seat {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  font-variant-numeric: tabular-nums;
+}
+.crib-seat.you.active { border-color: var(--crib-peg-a); }
+.crib-seat.them.active { border-color: var(--crib-peg-b); }
+.crib-controls {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.crib-field { display: inline-flex; align-items: center; gap: 0.35rem; }
+.crib-toggle { display: block; margin-block: 0.25rem; }
+
+/* The peg board: two tracks to 121, a peg on each, the skunk line at 90. */
+.crib-pegboard {
+  inline-size: min(100%, 32rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  position: relative;
+  padding-block-end: 1rem;
+}
+.crib-track {
+  position: relative;
+  block-size: 0.9rem;
+  border-radius: 999px;
+  background: var(--crib-track);
+}
+.crib-peg {
+  position: absolute;
+  top: 50%;
+  inline-size: 0.9rem;
+  block-size: 0.9rem;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: left 300ms ease-out;
+}
+.crib-track.you .crib-peg { background: var(--crib-peg-a); }
+.crib-track.them .crib-peg { background: var(--crib-peg-b); }
+.crib-skunk {
+  position: absolute;
+  top: -0.15rem;
+  bottom: -0.15rem;
+  inline-size: 2px;
+  background: var(--crib-skunk);
+  transform: translateX(-50%);
+}
+.crib-skunk-label {
+  position: absolute;
+  bottom: 0;
+  left: calc(90% / 1.21);
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  color: var(--crib-skunk);
+}
+
+/* The table. */
+.crib-table {
+  inline-size: min(100%, 32rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.6rem;
+  border-radius: 0.75rem;
+  background: var(--felt);
+  color: var(--felt-ink);
+}
+.crib-opp, .crib-hand, .crib-cards, .crib-stack {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.crib-middle {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.crib-crib {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  position: relative;
+}
+.crib-crib .crib-card.back + .crib-card.back { margin-inline-start: -1.6rem; }
+.crib-crib-label { font-size: 0.8rem; margin-inline-start: 0.35rem; }
+.crib-count {
+  margin: 0;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  min-inline-size: 5rem;
+  text-align: center;
+}
+
+/* A card: the solitaire card, sized for a hand of six on a phone. */
+.crib-card {
+  inline-size: 2.8rem;
+  block-size: 3.9rem;
+  border-radius: var(--r-card);
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--suit-black);
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0.2rem 0.3rem;
+  position: relative;
+}
+.crib-card.red { color: var(--suit-red); }
+.crib-card.black { color: var(--suit-black); }
+.crib-card .crib-rank { font-weight: 700; line-height: 1; }
+.crib-card .crib-suit { align-self: flex-end; font-size: 1.1rem; line-height: 1; }
+.crib-card.back {
+  background: repeating-linear-gradient(45deg, var(--crib-back) 0 4px, color-mix(in srgb, var(--crib-back) 70%, white) 4px 8px);
+  border-color: var(--crib-back);
+}
+.crib-card.slot {
+  background: transparent;
+  border: 1px dashed var(--felt-ink);
+}
+.crib-card.cut { box-shadow: 0 0 0 2px var(--accent); }
+.crib-hand .crib-card { cursor: pointer; }
+.crib-hand .crib-card[aria-disabled="true"] { cursor: default; }
+.crib-card.legal { box-shadow: inset 0 0 0 3px var(--crib-legal); }
+.crib-card.selected {
+  box-shadow: inset 0 0 0 3px var(--crib-selected);
+  transform: translateY(-0.4rem);
+}
+.crib-actions { display: flex; gap: 0.5rem; min-block-size: 2.4rem; }
+
+/* The show: each hand face up in order, with its count. */
+.crib-show {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  inline-size: 100%;
+}
+.crib-revealed {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: center;
+  padding: 0.35rem;
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+}
+.crib-revealed.you { border-color: var(--crib-peg-a); }
+.crib-revealed.them { border-color: var(--crib-peg-b); }
+.crib-revealed-owner, .crib-breakdown { margin: 0; font-size: 0.9rem; text-align: center; }
+.crib-breakdown.pending { font-style: italic; }
+.crib-claim-row { display: flex; gap: 0.4rem; align-items: center; }
+.crib-claim-input { inline-size: 4rem; font: inherit; padding: 0.3rem; }
+
+.crib-turnline, .crib-status {
+  margin: 0;
+  text-align: center;
+  max-width: 32rem;
+}
+.crib-flash {
+  margin: 0;
+  text-align: center;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+.crib-final { display: flex; flex-direction: column; gap: 0.5rem; align-items: center; }
+
+/* Assistance: the tutor panel reuses the shared settings chrome. */
+.crib-tutor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: center;
+  max-width: 32rem;
+  text-align: center;
+}
+.crib-tutor-note, .crib-tutor-coach { margin: 0; }
+.crib-tutor-options { margin: 0; padding-inline-start: 1.1rem; text-align: start; }
+
+@media (max-width: 24rem) {
+  .crib-card { inline-size: 2.5rem; block-size: 3.5rem; }
+  .crib-opp .crib-card { inline-size: 1.6rem; block-size: 2.3rem; }
+  .crib-table { padding: 0.4rem; }
+}
+=======
 /* ── Orchard Drop ────────────────────────────────────────────────────────────
    The crate's colours are skin tokens (chrome roles are skinnable, per M1) and
    live in tokens.css with the rest of the palette. The eleven FRUIT colours are
@@ -4342,3 +4553,5 @@ body.fullscreen .le-stage {
   color: var(--ink-muted);
 }
 .orch-result-rows dd { margin: 0; font-weight: 700; font-size: 1.3rem; }
+
+/* ====================================================================

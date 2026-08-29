@@ -19,6 +19,7 @@ import { blockdokuModule } from "./games/blockdoku/blockdoku.js";
 import { looseendsModule } from "./games/looseends/looseends.js";
 import { colorSortModule } from "./games/color-sort/color-sort.js";
 import { orchardDropModule } from "./games/orchard-drop/orchard-drop.js";
+import { cribbageModule } from "./games/cribbage/cribbage.js";
 
 export const REGISTRY: readonly GameEntry[] = [
   {
@@ -54,7 +55,7 @@ export const REGISTRY: readonly GameEntry[] = [
     // The Suika-lineage credit lives in the how-to guide instead.
     load: orchardDropModule,
   },
-  { id: "cribbage", title: "Cribbage", emoji: "🎴", status: "soon" },
+  { id: "cribbage", title: "Cribbage", emoji: "🎴", status: "playable", icon: true, group: "versus", load: cribbageModule },
 ];
 
 /** Look up a catalog entry by id. */

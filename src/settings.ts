@@ -547,3 +547,54 @@ export function furrowTutorEnabled(): boolean {
 export function setFurrowTutor(on: boolean): void {
   write(FURROW_TUTOR_KEY, on);
 }
+
+// ---------- Cribbage ----------
+
+/** Cribbage difficulty. Expert is exact-expectation discards and two-ply
+ *  pegging with no noise — not "Perfect": pegging has no such thing, and the
+ *  crib term is an expectation (see `crates/cribbage-core/RULES.md`). */
+export type CribbageLevel = "Easy" | "Medium" | "Hard" | "Expert";
+const CRIBBAGE_LEVELS: readonly CribbageLevel[] = ["Easy", "Medium", "Hard", "Expert"];
+const CRIBBAGE_LEVEL_KEY = "fun-cribbage-level";
+
+/** Pure resolver: a stored known cribbage level wins; otherwise the default. */
+export function resolveCribbageLevel(stored: string | null, fallback: CribbageLevel): CribbageLevel {
+  return CRIBBAGE_LEVELS.includes(stored as CribbageLevel) ? (stored as CribbageLevel) : fallback;
+}
+
+export function cribbageLevel(): CribbageLevel {
+  try {
+    return resolveCribbageLevel(localStorage.getItem(CRIBBAGE_LEVEL_KEY), "Medium");
+  } catch {
+    return "Medium";
+  }
+}
+export function setCribbageLevel(level: CribbageLevel): void {
+  try {
+    localStorage.setItem(CRIBBAGE_LEVEL_KEY, level);
+  } catch {
+    // Storage denied (private mode): the choice still applies for the session.
+  }
+}
+
+const CRIBBAGE_TUTOR_KEY = "fun-cribbage-tutor";
+
+/** Show the engine-grounded tutor panel in cribbage — **off by default**. */
+export function cribbageTutorEnabled(): boolean {
+  return read(CRIBBAGE_TUTOR_KEY, false);
+}
+export function setCribbageTutor(on: boolean): void {
+  write(CRIBBAGE_TUTOR_KEY, on);
+}
+
+const CRIBBAGE_MANUAL_KEY = "fun-cribbage-manual-count";
+
+/** Count your own hands at the show (the core grades the claim; an under-count
+ *  is the engine's by muggins) — **off by default**: the app counts and shows
+ *  its work (plan O1, owner decision 2026-08-29). */
+export function cribbageManualCount(): boolean {
+  return read(CRIBBAGE_MANUAL_KEY, false);
+}
+export function setCribbageManualCount(on: boolean): void {
+  write(CRIBBAGE_MANUAL_KEY, on);
+}

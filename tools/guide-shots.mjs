@@ -870,6 +870,94 @@ const SHOTS = [
       await page.waitForTimeout(300);
     },
   },
+  {
+    name: "cribbage-table",
+    clip: ".crib-game",
+    async run(page) {
+      await page.goto(`${origin}/cribbage/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".crib-table");
+      await page.waitForFunction(() => Boolean(window.__cribbage));
+      // The human is to throw at seed 7 once the engine has (or first); wait for
+      // the throw control, then select two cards so the shot shows a selection.
+      await page.waitForFunction(() => {
+        const h = window.__cribbage;
+        return !h.busy() && h.game.view().phase === "discard" && h.game.view().toMove === 1;
+      });
+      const cards = page.locator(".crib-hand .crib-card");
+      await cards.nth(1).click();
+      await cards.nth(4).click();
+      await page.waitForSelector(".crib-hand .crib-card.selected");
+    },
+  },
+  {
+    name: "cribbage-pegging",
+    clip: ".crib-game",
+    async run(page) {
+      await page.goto(`${origin}/cribbage/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".crib-table");
+      await page.waitForFunction(() => Boolean(window.__cribbage));
+      const human = async () =>
+        page.waitForFunction(() => {
+          const h = window.__cribbage;
+          const v = h.game.view();
+          return !h.busy() && (v.result !== -1 || (v.toMove === 1 && v.legal.length > 0 && !v.phase.startsWith("show")));
+        });
+      await human();
+      const cards = page.locator(".crib-hand .crib-card");
+      await cards.nth(0).click();
+      await cards.nth(1).click();
+      await page.locator(".crib-throw").click();
+      await human();
+      // One play each, so the count and a played card are on the table.
+      await page.locator(".crib-hand .crib-card.legal").first().click();
+      await human();
+      await page.waitForSelector(".crib-stack .crib-card");
+    },
+  },
+  {
+    name: "cribbage-show",
+    clip: ".crib-game",
+    async run(page) {
+      // Manual counting holds the show still: with automatic counting each hand
+      // is on the table for under a second, which is not a shot. Play to the
+      // human's claim, submit the true count through the hook, and the graded
+      // hand sits there with its breakdown.
+      await page.addInitScript(() => localStorage.setItem("fun-cribbage-manual-count", "on"));
+      await page.goto(`${origin}/cribbage/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".crib-table");
+      await page.waitForFunction(() => Boolean(window.__cribbage));
+      const human = async () =>
+        page.waitForFunction(() => {
+          const h = window.__cribbage;
+          const v = h.game.view();
+          return !h.busy() && (v.result !== -1 || (v.toMove === 1 && v.legal.length > 0));
+        });
+      for (let i = 0; i < 40; i += 1) {
+        await human();
+        const v = await page.evaluate(() => window.__cribbage.game.view());
+        if (v.result !== -1 || v.phase.startsWith("show")) break;
+        if (v.phase === "discard") {
+          const cards = page.locator(".crib-hand .crib-card");
+          await cards.nth(0).click();
+          await page.waitForSelector(".crib-hand .crib-card.selected");
+          await cards.nth(1).click();
+          await page.waitForFunction(() => document.querySelectorAll(".crib-hand .crib-card.selected").length === 2);
+          await page.locator(".crib-throw").click();
+        } else if (v.legal.length === 1 && v.legal[0] === 20) {
+          await page.locator(".crib-go").click();
+        } else {
+          await page.locator(".crib-hand .crib-card.legal").first().click();
+        }
+      }
+      await page.evaluate(() => {
+        const h = window.__cribbage;
+        const claim = h.game.autoClaim();
+        if (claim !== null) h.game.play(claim);
+        h.refresh();
+      });
+      await page.waitForSelector(".crib-revealed.graded");
+    },
+  },
 ];
 
 // Optional filter: `npm run guide:shots -- orchard` regenerates only the shots

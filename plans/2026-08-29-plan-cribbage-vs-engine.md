@@ -1,8 +1,8 @@
 # Cribbage vs the engine — the first hidden-information game
 
-**Status:** Phase 0 COMPLETE (2026-08-29, findings recorded below). **All four open
-questions answered** (O3 by measurement; O1, O2, O4 by the owner, 2026-08-29). Ready for
-Phase 1.
+**Status:** SHIPPED 2026-08-29 — every phase executed the same day (Review Log below);
+`npm run gate` green (Rust gate, 622 unit, 551 e2e); landed on `fun/main`. Phase 4's
+mutation audit ran last and its triage is recorded in the Review Log's final entry.
 
 **Owner decision (2026-08-29):** un-gate cribbage from the P2P transport + fair-reveal
 plan and ship it **against the computer opponent, on one device**. The two-human
@@ -713,5 +713,144 @@ Everything in "Documentation Impact", plus the Review Log entries for every phas
 
 ## Review Log
 
-*(Execution notes go here, one entry per phase, in the shape the mancala plan uses:
-what was measured, what the measurement refuted, and what changed as a result.)*
+### Phase 1 (2026-08-29) — the core, and where the tests were wrong rather than the rules
+
+Three commits: cards + RNG + scorer, the state machine, then `View` + hash +
+`pond_outcome::Game`; 45 unit tests, 4 vector tests. The scorer is pinned by the full
+enumeration from Phase 0 — every one of the 12,994,800 (hand, cut) pairs, 0.3 s in
+release, asserted against the published distribution — which is why the two unit
+tests that failed on first run were the tests: a missed 5+K fifteen and a missed
+2+4+9. The enumeration cannot be wrong that way.
+
+The state machine's first run failed 7 of 19 tests and **four were test setups**:
+three consecutive tens are a pair royal, and a 4-3-2 finish is a run. The fixtures
+were rewritten with 10 / K / Q (value ten, distinct ranks, no run) — worth knowing for
+anyone writing pegging fixtures. One was a real defect: the muggins award overwrote
+`last` with the other seat, so the UI would have narrated a claim as the wrong seat's
+event. Fixed so the claim stays the claimant's even when muggins ends the game.
+
+Two design points the plan did not spell out and the tests forced: a **go is a move
+only when the other seat can still play** — when neither can, the core resolves the
+go point itself (no move in the record), which matches how a table plays it; and the
+**crib is attributed** (`thrown[seat]`) so a seat's `View` can carry its own two
+throws without a way to reach the other's. The `View` leak test walks the JSON for
+card objects and checks every one against the hidden set, at every phase — including
+that the crib stays face down until its step and that deal 2 starts clean.
+
+Golden vectors: the opening, a 12-deal game with gos and muggins both ways (159
+codes), and a skunk (value 2). A fourth test replays each vector move-by-move through
+`apply` to prove no corpus move leans on replay's skip-if-refused.
+
+### Phase 2 (2026-08-29) — native == wasm, nothing to report
+
+`xbuild` enrolled cribbage with a seed-taking export; the input buffer grew from 64
+to 256 bytes (a full game is ~160 codes, the longest list enrolled). All three vectors
+hash identically under `wasm32-unknown-unknown`.
+
+### Phase 3 (2026-08-29) — the solver, and the crib table is a 0.4-second artefact
+
+21 tests. The crib table (392 entries, hundredths) regenerates from 20,000 samples in
+0.4 s and a test asserts the checked-in copy equals the regeneration byte for byte.
+`select` reproduces the shared selector's load-bearing property (RNG untouched at 0%)
+with a test that reads the stream before and after. The source-reading test that pins
+"no public function takes `GameState`" had to learn to stop at `#[cfg(test)]` — the
+fixtures legitimately build one.
+
+One test was wrong on first run for a reason worth recording: it asked for the
+dealer's discard options on a fresh deal and got none, because **the dealer is not to
+move until the non-dealer has thrown**. Off-turn options are empty by design.
+
+### Phase 5 (2026-08-29) — the binding, and a leak test that leaked itself
+
+6 tests. The binding's leak test checked `"code":N` as a substring and reported engine
+card 3 in the view — because `"code":3` matches `"code":30`. Tightened to
+`"code":N}` (the code is the card's last field). The real property held throughout.
+
+### Phases 6–8 (2026-08-29) — the front end, and two defects only a browser could find
+
+The module mirrors `furrow.ts` in shape (turn bar, controls, the settings `<details>`,
+the tutor panel, the verification-forward end screen) with the table in between: the
+engine's backs drawn from a *count*, the cut slot and crib pile, the stack and count,
+the show as each hand comes face up, and your hand. A throw is two taps and a confirm
+(one tap is not a move); a peg is one tap with the core deciding what plays; a go is a
+button that exists only when the core says it is the only move. With manual counting
+on, the counting seat gets a number box (Enter submits); off, the UI submits the core's
+exact claim after a 900 ms beat so the hand can be seen before it is counted.
+
+The unit tests (12, on the pure helpers) and the Rust suites were green before the
+browser suite ran, and the browser suite found two defects none of them could see:
+
+1. **A trailing re-render rebuilt the DOM under the player's first tap.** After the
+   engine's last move the loop painted the resting view, slept 260 ms, then painted it
+   again on exit. A tap in that window selected a card on a node the second paint
+   detached; the second tap then registered alone. The snapshot showed exactly one card
+   selected — the second.
+2. **The settle window let a second engine loop start.** With `busy` released before
+   the settle beat, a tap in that window ran `applyMove → step()` while the first loop
+   was still asleep; both then drove the engine, re-rendering under every tap. WebKit
+   reported it as "element is not stable" for two minutes straight.
+
+Both fixed in one change: `step()` holds `busy` for its whole run, a `stepping` guard
+refuses a second loop, and the resting view is painted once, at exit. The e2e helper
+was also made idempotent (tap only what is not already selected, confirm each
+registers) — a real player cannot tap faster than a render, but a test can.
+
+Two axe findings, both the same rule: a labelled `<div>` needs a role (`role="img"` on
+face-up cards and the cut slot, `role="group"` on the peg board). And one shelf rule I
+did not know: `styles.css` may not carry raw hex — a `var(--brass, #b8860b)` fallback
+failed `tokens.test.ts`; it is `var(--accent)`.
+
+### Phase 9 (2026-08-29) — three shots, and the one that could not be taken
+
+`cribbage-table` (two cards selected for the throw) and `cribbage-pegging` (a count, a
+played card, the playable cards ringed) came straight off the UI. `cribbage-show` could
+not: with automatic counting each hand is on the table for under a second, which is not
+a photograph. The shot turns manual counting on, plays to the human's claim, submits the
+true count through the e2e hook, and the graded hands sit still — the engine's hand
+with its breakdown, yours with yours, the crib waiting with the number box. The alt text
+was rewritten to describe that, not the picture I had imagined.
+
+The first `cribbage-table` shot also exposed a binding defect: the crib pile showed no
+backs after the engine had thrown, because `crib_count` credited the engine's two cards
+only once the cut was showing. The number of backs the engine holds is public, so the
+crib count is too; fixed, and the shot retaken.
+
+### Phase 11 (2026-08-29) — documentation
+
+As listed under "Documentation Impact", plus `tests/chrome.test.ts`, which had used
+cribbage as its example of a "soon" game; with every tile playable it now mocks one.
+
+### Phase 10 (2026-08-29) — the rig moved to Rust, and the numbers
+
+The plan's Phase 10 put the peek check behind a feature-flagged wasm export absent
+from the shipped binary. It is in Rust instead (`crates/cribbage-solver/tests/rig.rs`):
+a test cannot be compiled into a `cdylib`, so the peeking code cannot exist in the
+shipped module at all, which is a stronger form of the same guarantee with no build
+step to get wrong. Measured, 300–400 games a pair, 0.7 s total:
+
+| pair | candidate wins | pts/deal |
+|---|---|---|
+| Expert vs random-legal | **99.0%** | 13.4 vs 8.4 |
+| Expert vs Easy | 92.3% | |
+| Easy vs random-legal | 83.0% | |
+| Medium vs Easy | 79.7% | |
+| Hard vs Medium | 75.3% | |
+| Expert vs Hard | 56.7% | |
+| **Peek vs Expert** | **81.0%** | 14.0 vs 11.8 |
+
+Expert's discard equalled the exhaustive optimum on every graded deal (the
+discard-oracle check). The peeker here is simpler than Phase 0's (one-ply pegging
+minimax, and it knows the other throw only when that seat has already thrown), which
+is why 81% rather than 93%; the assertion floor is 60%. The levels are ordered; the
+Expert–Hard gap is the narrowest (Hard already uses the full expectation with 25%
+noise), which is a tuning observation, not a defect — filed in `TODO/cribbage.md`.
+
+### Phase 12 (2026-08-29) — gate and landing
+
+`npm run gate` (the repo's declared gate, named): the Rust gate on rustc/clippy 1.97.1,
+typecheck, lint, 622 unit tests, the build, and 551 browser tests across chromium and
+mobile WebKit — exit 0. Two earlier runs failed on things the Rust and unit suites do
+not see: `cargo fmt --check` on three lines edited after the last format pass, and the
+shelf's "no raw hex in `styles.css`" rule. Both fixed and the gate rerun from the top.
+The one step this session cannot do is the phone: playing a game to 121 from the live
+URL is the owner's, after CI deploys.
