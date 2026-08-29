@@ -848,29 +848,40 @@ const SHOTS = [
   },
   {
     name: "orchard-crate",
-    clip: ".wrapped-game-frame",
+    clip: ".orch-surface",
     async run(page) {
-      await page.goto(`${origin}/orchard-drop/`, { waitUntil: "networkidle" });
-      await page.waitForSelector(".wrapped-game-frame");
-      const frame = page.frameLocator(".wrapped-game-frame");
-      await frame.locator("#gameCanvas").waitFor({ state: "attached", timeout: 15000 });
-      // Drop a run of fruit across the crate so the shot shows a lived-in pile
-      // with merges, not an empty box. Aim varies so the fruit spreads and stacks.
-      const box = await page.locator(".wrapped-game-frame").boundingBox();
-      if (box) {
-        for (let i = 0; i < 22; i += 1) {
-          const x = box.x + box.width * (0.2 + 0.6 * ((i * 7) % 10) / 10);
-          const y = box.y + box.height * 0.35;
-          await page.mouse.move(x, y);
-          await page.mouse.down();
-          await page.mouse.up();
-          await page.waitForTimeout(560); // just over the 520ms drop cooldown
+      // The native game, not the wrap: drive it through the same test hook the
+      // e2e spec uses, so the shot shows the real core playing rather than a
+      // gesture-timing approximation of it.
+      await page.goto(`${origin}/orchard-drop/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".orch-canvas");
+      await page.waitForFunction(() => Boolean(window.__orchard));
+      await page.evaluate(() => {
+        const o = window.__orchard;
+        // A run of drops spread across the crate, so the shot shows a lived-in
+        // pile with merges rather than an empty box.
+        for (let i = 0; i < 22 && !o.over(); i += 1) {
+          o.aim(60 + 320 * (((i * 7) % 10) / 10));
+          o.release();
+          o.fastForward(40);
         }
-      }
-      await page.waitForTimeout(1200); // let the last fruit settle and merges resolve
+        o.fastForward(400); // let the pile settle and merges resolve
+      });
+      await page.waitForTimeout(300);
     },
   },
 ];
+
+// Optional filter: `npm run guide:shots -- orchard` regenerates only the shots
+// whose name contains "orchard". Without it every game's JPEG is rewritten, and
+// unrelated re-encodes then have to be reverted by hand — which CLAUDE.md warns
+// about and which is easy to get wrong at the `git add` step.
+const only = process.argv[2] ?? "";
+const selected = only ? SHOTS.filter((s) => s.name.includes(only)) : SHOTS;
+if (only && selected.length === 0) {
+  console.error(`guide-shots: no shot name contains "${only}"`);
+  process.exit(1);
+}
 
 const server = spawn("node", [join(root, "tools", "serve.mjs")], { stdio: "ignore" });
 await new Promise((r) => setTimeout(r, 700)); // let the server bind (fixed wait)
@@ -884,7 +895,7 @@ const browser = await chromium.launch(
     : {},
 );
 try {
-  for (const shot of SHOTS) {
+  for (const shot of selected) {
     const context = await browser.newContext({
       viewport: { width: 900, height: 820 },
       deviceScaleFactor: 2,
