@@ -1,7 +1,9 @@
 # A skin layer for the shelf — two identities, one app
 
-**Status:** M0–M6 COMPLETE (2026-08-28). Originally Pass 1 (shape). Seven decisions recorded (D1–D7); **one** open question
-remains (O4), which is independent of this plan. O1–O3 settled 2026-08-27 → D5, D6, D4.
+**Status:** M0–M6 COMPLETE (2026-08-28). Originally Pass 1 (shape). Seven decisions recorded (D1–D7);
+**no open questions remain.** O1–O3 settled 2026-08-27 → D5, D6, D4. O4 settled 2026-08-28: the rename
+landed beside this plan (`plans/2026-08-28-2-plan-trio-tumble-rename.md`), and the name changed from
+Ring Pop to **Trio Tumble: Jewel Drop** on a trademark collision.
 M0 was attempted 2026-08-27 and **deferred** on `PATTERN.md`'s own bar — see D7.
 
 **Owner decision (2026-08-27):** both mock directions are wanted, shipped together —
@@ -364,10 +366,18 @@ Explicitly **not** verified, and therefore not asserted anywhere above:
   **Settled 2026-08-27 → D4:** independent implementations, shared contract, enforced by a new
   audit check. The undeclared edge `ARCHITECTURE.md` warns about is closed by M0 rather than
   left to imitation — after M2, per D7.
-- **O4 — does Ring Pop's rename land inside this plan or beside it?** The mocks call Match-3
-  "Ring Pop" throughout on the owner's 2026-08-27 decision, but the rename touches the registry
-  id, the how-to guide, seven campaign packs and every `?r=` share link. It is independent of
-  the skin layer and probably wants its own plan.
+- ~~**O4 — does Ring Pop's rename land inside this plan or beside it?**~~ **Settled
+  2026-08-28: beside it, and the name itself changed.** Its own plan,
+  `plans/2026-08-28-2-plan-trio-tumble-rename.md`. Two things moved after this question was
+  written. First, **the name is not Ring Pop** — RING POP is a live Topps / Bazooka Candy
+  Brands mark, and the art applied it to a candy-matching game depicting a gem ring, which is
+  the mark used for the thing the mark names. The owner chose **Trio Tumble: Jewel Drop** and
+  supplied replacement art. Second, this entry's "the mocks call Match-3 Ring Pop throughout"
+  is **no longer true**: the mocks, their brand art filenames and their prose were renamed as
+  part of that plan, so no Ring Pop reference survives outside the two docs that record the
+  decision (this line and the rename plan). The scope estimate here held — registry id, how-to
+  guide, packs and every `?r=` share link — and the rename additionally took the three Rust
+  crates, the outcome kinds and the pack kinds.
 
 ## Review Log
 
@@ -377,7 +387,8 @@ Explicitly **not** verified, and therefore not asserted anywhere above:
   shared package" to "share the contract". O1 and O2 then settled from the record rather than
   from preference: O1 by forage's own `prefersDensity` argument, O2 by audit check 11 being
   conditional, so starting `docs/adr/` is a free choice and the only ADR-worthy decision here
-  is the one with no upstream to point at. O4 stays open and is independent of this plan.
+  is the one with no upstream to point at. O4 stayed open and was settled on 2026-08-28 in its own plan — beside this one, and
+  with the name changed from Ring Pop to Trio Tumble on a trademark collision.
   Nothing has been executed.
 
 - **2026-08-28 — M1 through M6 executed; two real defects found by the new gates.**

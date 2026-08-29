@@ -189,7 +189,7 @@ harness is two layers:
   arg move exports (`move_(dir)`), status codes (`0 applied / 1 illegal /
   2 over`); **never panics**; typed TS wrapper decodes the buffer. `#[no_mangle]
   extern "C"`. Embedded daily pack via `include_bytes!`.
-- **Solver crate shape** — read `crates/match3-solver/src/lib.rs:1-60`.
+- **Solver crate shape** — read `crates/trio-tumble-solver/src/lib.rs:1-60`.
   Build-time budgeted DFS with node budgets + state-hash memoization +
   move ordering; returns a line or `None`; `generate_pack` walks a deterministic
   seed stream. The classic engine/solver for Drop 4 follows this crate shape
@@ -662,7 +662,7 @@ Base plan: Phase 0 discovery + Drop 4 core/solver/wasm + reusable TS harness
 (Player/AIRuntime/Oracle ports, MatchRunner, Scorer, Tournament) + Drop 4 shelf
 game with selectable opponents + optional second runtime; checkers/chess named
 as follow-on plans. Grounded in firsthand reads of `pond-outcome`, `twenty48-wasm`,
-`match3-solver`, `contract.ts`, `registry.ts`, `BUILDING-GAMES.md`. Web research
+`trio-tumble-solver`, `contract.ts`, `registry.ts`, `BUILDING-GAMES.md`. Web research
 on WebLLM / Prompt API / transformers.js / Stockfish.wasm / chess.js / LLM-chess
 scoring recorded in Verified Assumptions (firsthand confirmation deferred to
 Phase 0).
@@ -677,7 +677,7 @@ Phase 0).
   Documentation Impact + Phase 1/4/5 work, not a trailing docs phase.
 - The existing `-solver` crates are *single-player win-finders*; adversarial
   negamax is new logic (same crate packaging) — called out in Reasoning + Phase 2
-  risks so it isn't mistaken for a copy of match3-solver.
+  risks so it isn't mistaken for a copy of trio-tumble-solver.
 - The LLM forces a Rust/TS split; made explicit (oracle has a wasm adapter for
   Drop 4/checkers and a Stockfish-worker adapter for chess).
 - Non-determinism of LLM play would break a naive "verifiable outcome" claim —

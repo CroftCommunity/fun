@@ -1,6 +1,6 @@
 //! Deterministic, seeded RNG for the deal shuffle.
 //!
-//! The shelf's shared determinism primitive (`solitaire-core`/`match3-core`/…):
+//! The shelf's shared determinism primitive (`solitaire-core`/`trio-tumble-core`/…):
 //! `ChaCha20` seeded from an explicit `u64`, so a deal seed fully determines the
 //! shuffle. Draws are counted so the RNG position could fold into a hash; the
 //! sort puzzle hashes the tube contents directly, but the counter keeps the

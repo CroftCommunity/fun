@@ -64,7 +64,7 @@ export const SHELF_TRACK = "morning-miles";
  * — the file stays in the shelf's library and any game may name the same piece.
  */
 const BY_GAME: Readonly<Record<string, string>> = {
-  match3: "gateway-to-the-spire",
+  "trio-tumble": "gateway-to-the-spire",
   solitaire: "sunset-at-the-harbor",
   bubble: "gravity-glass",
   wyrdle: "six-sides-of-logic",

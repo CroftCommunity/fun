@@ -103,7 +103,7 @@ const PAIRS: ReadonlyArray<readonly [string, string, number]> = [
   ["active", "bg", 4.5],
   ["active", "surface", 4.5],
   ["focus", "bg", 3], // focus ring is a UI indicator
-  ["gem-0", "surface", 3], // match-3 gem glyphs on their tile — large-glyph floor
+  ["gem-0", "surface", 3], // Trio Tumble gem glyphs on their tile — large-glyph floor
   ["gem-1", "surface", 3],
   ["gem-2", "surface", 3],
   ["gem-3", "surface", 3],

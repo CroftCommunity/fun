@@ -52,3 +52,19 @@ test("the how-to page has no axe violations in light and dark", async ({ page })
   await page.getByRole("button", { name: /toggle light or dark theme/i }).click();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
+
+test("a game with a subtitle shows its whole name, and one without shows no empty slot", async ({
+  page,
+}) => {
+  // Trio Tumble's tile and drawer entry stay "Trio Tumble" (11 chars, inside the
+  // width the shelf has actually rendered). This page has room, so it is where
+  // the full name appears — in the tab title and as an eyebrow above the guide.
+  await page.goto("/how-to/?game=trio-tumble");
+  await expect(page.locator(".how-to-fullname")).toHaveText("Trio Tumble: Jewel Drop");
+  await expect(page).toHaveTitle(/Trio Tumble: Jewel Drop/);
+
+  // Solitaire has no subtitle: the element must be absent, not present-and-blank.
+  await page.goto("/how-to/?game=solitaire");
+  await expect(page.locator(".how-to-fullname")).toHaveCount(0);
+  await expect(page).toHaveTitle(/Solitaire/);
+});

@@ -1,6 +1,6 @@
 # TODO — cribbage
 
-Status: **not started, gated.** Third on the shelf (solitaire → match-3 →
+Status: **not started, gated.** Third on the shelf (solitaire → Trio Tumble →
 **cribbage**). Unlike the single-player games, cribbage is two-player, so it is
 **gated to its own plan** on the P2P transport + a fair-reveal primitive
 (master-plan Phase 9). Not yet in the registry.

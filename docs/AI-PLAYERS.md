@@ -183,7 +183,7 @@ must not become one, for three reasons that are all load-bearing here:
 The honest cost: a node budget bounds *work*, not latency. Slow hardware is still
 slow — predictably rather than pathologically. Nodes are a proxy for time, so
 **calibrate the proxy by measurement per game** and record the table beside the
-constant. `bubble-solver`, `color-sort-solver` and `match3-solver` already took
+constant. `bubble-solver`, `color-sort-solver` and `trio-tumble-solver` already took
 `node_budget` for the same reason; the adversarial games were the outliers.
 
 ### Measure the distribution before choosing a mechanism

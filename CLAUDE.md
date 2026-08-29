@@ -91,7 +91,7 @@ at them and add what's specific to this repo. Git identity: chasemp
     workspace standard, `croft-pwa/docs/CI.md` §6.
   - This is not hypothetical tidiness. Node **25** ships its own placeholder
     `globalThis.localStorage` — no `clear`, no `key`, no `length` — which outranks
-    the `Storage` vitest's jsdom environment installs, and 11 match-3 tests failed
+    the `Storage` vitest's jsdom environment installs, and 11 Trio Tumble tests failed
     locally for a day while CI was green. `tests/setup/webstorage.ts` repairs it
     when broken and is inert on 22, but the repair exists because the versions
     diverged; running the pinned version is the actual fix.
@@ -142,7 +142,7 @@ at them and add what's specific to this repo. Git identity: chasemp
 
 - **Tier 1 — Croft-native (build-fresh).** Determinism-first Rust core → wasm,
   **verifiable outcome** (move-list replay → `state_hash`, re-verifying `?r=`
-  share), tap-first with the core deciding legality. solitaire · match-3 ·
+  share), tap-first with the core deciding legality. solitaire · Trio Tumble ·
   bubble (in progress). This is the shelf's differentiator; build fresh when a
   game's rules are simpler than an integration.
 - **Tier 2 — opportunistic wrap/port.** Already-packaged **ethical** games taken

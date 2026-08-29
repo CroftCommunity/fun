@@ -118,7 +118,7 @@ describe("music selection", () => {
   });
 
   it("gives a game the track it names", () => {
-    expect(trackFor("match3")).toBe("gateway-to-the-spire");
+    expect(trackFor("trio-tumble")).toBe("gateway-to-the-spire");
     expect(trackFor("solitaire")).toBe("sunset-at-the-harbor");
   });
 

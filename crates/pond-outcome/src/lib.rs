@@ -66,7 +66,7 @@ impl Replayed {
 
 /// How a game ended. `Won` is verifiable (replay + the game's win check);
 /// `Stuck` / `Abandoned` are declared metadata; `Lost` is a completed run that
-/// did not meet its goal (e.g. a match-3 move budget spent under target — also
+/// did not meet its goal (e.g. a Trio Tumble move budget spent under target — also
 /// verifiable by replay).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Outcome {

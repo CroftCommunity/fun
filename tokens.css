@@ -59,7 +59,7 @@
   --suit-red: #b3123b;    /* ♦ ♥ on a card           (card 6.41:1) */
   --suit-black: #1b201c;  /* ♣ ♠ on a card           (card 15.47:1)*/
 
-  /* match-3 gem glyphs, each also carrying a distinct shape (colour-blind
+  /* Trio Tumble gem glyphs, each also carrying a distinct shape (colour-blind
      safe). Rendered on --surface tiles; every one clears ≥4.8:1 there. */
   --gem-0: #c62828;       /* red     (surface 5.26:1) */
   --gem-1: #15539f;       /* blue    (surface 7.09:1) */
@@ -215,7 +215,7 @@
   --suit-red: #a8113a;    /* ♦ ♥ on a card           (card 5.92:1) */
   --suit-black: #1b201c;  /* ♣ ♠ on a card           (card 13.07:1)*/
 
-  /* match-3 gems, lightened for the dark tile surface (≥6:1 there). */
+  /* Trio Tumble gems, lightened for the dark tile surface (≥6:1 there). */
   --gem-0: #ef7a7a;       /* red     (surface 6.06:1) */
   --gem-1: #7fb0f0;       /* blue    (surface 7.34:1) */
   --gem-2: #7fce85;       /* green   (surface 8.67:1) */

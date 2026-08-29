@@ -61,7 +61,7 @@ pack. Plans: `plans/2026-07-31-bubble-shooter-rebuild.md` (aim rebuild),
 - [ ] **Specials.** Bomb bubble (clears a radius), rainbow bubble (matches any
       colour) — owner balance decisions; new golden vectors.
 - [ ] **Score balance / stars.** v1 surfaces raw score, no stars. If a graded
-      ladder is wanted, add per-seed thresholds (like match-3's par table).
+      ladder is wanted, add per-seed thresholds (like Trio Tumble's par table).
 - [ ] **Solver strength / speed.** The reachable-landing greedy DFS certifies
       ~20% of seeds winnable in the aim model (vs tap-anywhere); the per-node fan
       scan makes full-pack generation slow (~7 min). A stronger/faster solver

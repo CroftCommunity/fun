@@ -39,9 +39,10 @@ The originals are **not in this repo** — they live in `~/Downloads/fun_images/
 been separated out of the images folder. `brand/` holds derived, web-sized copies
 only, ~3.4 MB total:
 
-- `brand/icon/` — 512² JPEGs. Seven come straight from square 2048² sources; the
-  2048, Ring Pop and Align icons are cropped out of portrait/landscape sources,
-  because the `_icon` / `_splash` filenames do not match the actual aspect ratios.
+- `brand/icon/` — 512² JPEGs. Most come straight from square sources; the 2048 and
+  Align icons are cropped out of portrait/landscape sources, because the `_icon` /
+  `_splash` filenames do not match the actual aspect ratios. Trio Tumble's was
+  re-shot square (1024²) with the 2026-08-28 rename art, so it is no longer cropped.
 - `brand/splash/` — 1200px-tall portrait JPEGs.
 - `brand/wide/` — the three landscape sources.
 - `brand/audio/` — four tracks at 96 kbps via `afconvert` + `lame` (the installed
@@ -53,10 +54,12 @@ for a mock rather than for production.
 
 ## Open questions these mocks do not answer
 
-- **Ring Pop.** Its splash reads "GEM MATCH MASTERPIECE" — it is Match-3
-  rebranded, and the mocks call it Ring Pop throughout. The registry id, how-to
-  guide, campaign packs and `?r=` share links all still say `match3`; renaming
-  touches all of them.
+- ~~**The rename.**~~ **Settled 2026-08-28.** These mocks were drawn calling the game
+  Ring Pop. It is not called that — RING POP is a live Topps / Bazooka Candy Brands
+  mark, and the art applied it to a candy-matching game depicting a gem ring. The game
+  is **Trio Tumble: Jewel Drop**, the mocks and their brand art were renamed with it,
+  and the code rename is done (registry id, URL, crates, outcome kinds, pack kinds).
+  Plan: `plans/2026-08-28-2-plan-trio-tumble-rename.md`.
 - **Art coverage.** Ten of twenty games have commissioned art. Solitaire has a
   splash but no icon file (the mocks use its square splash as one). Checkers,
   Drop 4, Dots and Boxes, Furrow, Blockdoku and the four Tier-2 wraps have

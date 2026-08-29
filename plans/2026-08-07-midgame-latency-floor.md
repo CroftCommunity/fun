@@ -92,7 +92,7 @@ them consult a clock:
 ```
 bubble-solver      find_win(seed, node_budget: u64)
 color-sort-solver  find_win(state, node_budget: u64)
-match3-solver      "within node_budget search nodes"
+trio-tumble-solver      "within node_budget search nodes"
 ```
 
 So the convention exists; the adversarial games are the ones that never adopted
@@ -224,7 +224,7 @@ Checked against the code on 2026-08-07, not assumed:
    `drop4-solver/src/live.rs:325`, `othello-solver/src/search.rs:303`). Adding a
    clock to a search would be a first, in both senses.
 2. **`node_budget` is an existing repo idiom.** `bubble-solver::find_win`,
-   `color-sort-solver::find_win` and `match3-solver` all take `node_budget: u64`.
+   `color-sort-solver::find_win` and `trio-tumble-solver` all take `node_budget: u64`.
 3. **The baselines re-run the engine and assert exact counts.**
    `tests/baselines.test.ts` asserts `games/wins/draws/losses/scoredMoves/optimal/
    preserving/blunders/skippedEarly/abortedGames/llmMoves/fallbackMoves` and

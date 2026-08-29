@@ -388,39 +388,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "match3-core"
-version = "0.0.0"
-dependencies = [
- "hex",
- "rand",
- "rand_chacha",
- "serde",
- "serde_json",
- "sha2",
- "thiserror",
-]
-
-[[package]]
-name = "match3-solver"
-version = "0.0.0"
-dependencies = [
- "match3-core",
- "pond-docformat",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "match3-wasm"
-version = "0.0.0"
-dependencies = [
- "match3-core",
- "pond-outcome",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "memchr"
 version = "2.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -665,6 +632,39 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "trio-tumble-core"
+version = "0.0.0"
+dependencies = [
+ "hex",
+ "rand",
+ "rand_chacha",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+]
+
+[[package]]
+name = "trio-tumble-solver"
+version = "0.0.0"
+dependencies = [
+ "pond-docformat",
+ "serde",
+ "serde_json",
+ "trio-tumble-core",
+]
+
+[[package]]
+name = "trio-tumble-wasm"
+version = "0.0.0"
+dependencies = [
+ "pond-outcome",
+ "serde",
+ "serde_json",
+ "trio-tumble-core",
 ]
 
 [[package]]

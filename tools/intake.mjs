@@ -16,7 +16,7 @@
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readdirSync, existsSync, statSync } from "node:fs";
 import { basename, extname, join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const DROP = join(root, "assets", "new");
@@ -52,16 +52,25 @@ const dims = (f) => {
  * a person says it — `dots_and_boxes_icon.png` for the game whose id is `dots`.
  * Demanding the internal id would be asking the drop-off to know the codebase.
  */
-function gameAliases() {
+export function gameAliases() {
   const src = sh("cat", [join(root, "src", "registry.ts")]).toString();
   const body = src.slice(src.indexOf("export const REGISTRY"));
-  const ids = [...body.matchAll(/id:\s*"([^"]+)"/g)].map((m) => m[1]);
-  const titles = [...body.matchAll(/title:\s*"([^"]+)"/g)].map((m) => m[1]);
+  // Read each entry AS A UNIT rather than collecting ids and titles into two
+  // lists and zipping them by index. The zip was silently order-dependent, and
+  // the first `subtitle:` in the registry broke it: `title:` matches inside the
+  // word `subtitle`, so the titles list gained a phantom entry and every game
+  // after it took its neighbour's name — `dots_and_boxes` resolved to `furrow`.
+  // Matching within one object literal cannot drift that way.
+  const ENTRY =
+    /\bid:\s*"([^"]+)"[^}]*?\btitle:\s*"([^"]+)"(?:[^}]*?\bsubtitle:\s*"([^"]+)")?/g;
   const map = new Map();
-  ids.forEach((id, i) => {
+  for (const [, id, title, subtitle] of body.matchAll(ENTRY)) {
     map.set(id, id);
-    if (titles[i]) map.set(slug(titles[i]), id);
-  });
+    map.set(slug(title), id);
+    // A game with a subtitle may also be dropped under its whole name, because
+    // that is what the art itself says: `trio_tumble_jewel_drop_icon.png`.
+    if (subtitle) map.set(slug(`${title} ${subtitle}`), id);
+  }
   return map;
 }
 
@@ -76,7 +85,7 @@ function squareBox(w, h, focus) {
   const s = Math.min(side, w, h);
   // `focus` is the drop's optional vertical hint (0-100). The default guess is
   // right for most sources but not all: measured on the first real batch, 8 of
-  // 10 landed well, 2048's hexagon was clipped and Ring Pop's tile sat too
+  // 10 landed well, 2048's hexagon was clipped and Trio Tumble's tile sat too
   // loose. A hint is cheaper than asking someone to pre-crop.
   const cy = focus !== undefined ? h * (focus / 100) : w / h < 0.8 ? h * 0.4 : h * 0.5;
   return { s, left: Math.max(0, Math.round(w / 2 - s / 2)), top: Math.max(0, Math.min(h - s, Math.round(cy - s / 2))) };
@@ -120,7 +129,7 @@ function toTrack(src, dest) {
 }
 
 /** `Morning Miles.mp3` → `morning-miles` */
-const slug = (name) =>
+export const slug = (name) =>
   name
     .replace(/\.[^.]+$/, "")
     .replace(/[_\s]+/g, "-")
@@ -128,6 +137,52 @@ const slug = (name) =>
     .replace(/-+/g, "-")
     .toLowerCase()
     .replace(/^-|-$/g, "");
+
+/**
+ * Shape words a person adds to describe the art, which are never part of the
+ * game's name. The tool MEASURES the aspect itself (see `splashDest`), so the
+ * word carries no information — it is stripped wherever it appears, not only at
+ * the end. `trio_tumble_horizontal_splash.png` arrived with the word in the
+ * middle and was rejected as a game called "trio tumble horizontal".
+ */
+const SHAPE_WORDS = /^(portrait|landscape|square|horizontal|vertical)$/i;
+
+/**
+ * Decide what a dropped filename is: which game it names, and whether it is an
+ * icon or a splash. Pure — no filesystem, no registry — so it is unit-tested
+ * directly. Returns `null` when the name carries no kind word at all.
+ *
+ * Deliberately forgiving. The first real batch arrived as `blockdoku_icon`,
+ * `Drop4Splash` and `dots_and_boxes_icon` — underscores, no separator at all,
+ * mixed case, and "icon" for what this calls a cover. A drop-off that rejects
+ * the names a person actually types is a drop-off nobody uses.
+ */
+export function parseDropName(file) {
+  const stem = basename(file, extname(file));
+  // Drop shape words, but never a LEADING one: that token is the start of the
+  // game's name, and a game legitimately called "Square …" must keep it.
+  const parts = stem.split(/[-_ ]+/).filter(Boolean);
+  const kept = parts.filter((p, i) => i === 0 || !SHAPE_WORDS.test(p));
+  const m = /^(.*?)[-_ ]?(icon|cover|splash)(?:@(\d{1,3}))?$/i.exec(kept.join("_"));
+  if (!m) return null;
+  const [, rawId, rawKind, focus] = m;
+  if (!rawId) return null;
+  // `cover` is accepted as a synonym; `icon` is the name that sticks, because it
+  // is what the drop was called and what a web manifest calls it.
+  const kind = rawKind.toLowerCase() === "cover" ? "icon" : rawKind.toLowerCase();
+  return { rawId, kind, ...(focus === undefined ? {} : { focus: Number(focus) }) };
+}
+
+/**
+ * Where a splash source lands, decided by MEASURING it rather than by trusting
+ * a word in the filename. A landscape source gets its own file so it cannot
+ * overwrite the portrait one — a game may supply both, and `TODO/pwa.md` notes
+ * a PWA splash is not one image anyway (iOS wants exact per-device sizes in
+ * both orientations).
+ */
+export function splashDest(dir, w, h) {
+  return join(dir, w > h ? "splash-landscape.jpg" : "splash.jpg");
+}
 
 /** Levenshtein distance, for suggesting a near-miss rather than guessing one. */
 function distance(a, b) {
@@ -170,20 +225,10 @@ function main() {
   const skipped = [];
   for (const file of drops) {
     const ext = extname(file).toLowerCase();
-    const stem = basename(file, extname(file));
-    // Deliberately forgiving. The first real batch arrived as `blockdoku_icon`,
-    // `Drop4Splash` and `dots_and_boxes_icon` — underscores, no separator at
-    // all, mixed case, and "icon" for what this calls a cover. A drop-off that
-    // rejects the names a person actually types is a drop-off nobody uses.
-    // A trailing shape word is descriptive, not part of the name:
-    // `align_splash_portrait.jpeg` is align's splash. The tool measures the
-    // aspect itself, so the word is redundant — but rejecting the file over it
-    // would be pedantry.
-    const cleaned = stem.replace(/[-_ ](portrait|landscape|square)$/i, "");
-    const m = /^(.*?)[-_ ]?(icon|cover|splash)(?:@(\d{1,3}))?$/i.exec(cleaned);
+    const m = parseDropName(file);
 
     if (IMAGE.has(ext) && m) {
-      const [, rawId, rawKind, focus] = m;
+      const { rawId, kind, focus } = m;
       const id = aliases.get(slug(rawId));
       if (!id) {
         // Suggest, never guess. `solitare` and `wyrde` both arrived as typos, and
@@ -196,14 +241,20 @@ function main() {
         );
         continue;
       }
-      // `cover` is accepted as a synonym; `icon` is the name that sticks, because
-      // it is what the drop was called and what a web manifest calls it.
-      const kind = rawKind.toLowerCase() === "cover" ? "icon" : rawKind.toLowerCase();
       const dir = join(root, "src", "games", id, "assets");
+      // A splash's destination depends on its measured aspect, so a game can
+      // supply both orientations without one silently overwriting the other.
+      const dest =
+        kind === "splash"
+          ? (() => {
+              const { w, h } = dims(join(DROP, file));
+              return splashDest(dir, w, h);
+            })()
+          : join(dir, `${kind}.jpg`);
       planned.push({
         file,
         kind,
-        dest: join(dir, `${kind}.jpg`),
+        dest,
         dir,
         ...(focus === undefined ? {} : { focus: Number(focus) }),
       });
@@ -245,4 +296,6 @@ function main() {
   if (GO) console.log("\ndrops left in assets/new/ — clear them when you are satisfied");
 }
 
-main();
+// Run only when invoked as a script. The parser and its helpers are exported
+// for tests, and importing this module must not start filing art.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();

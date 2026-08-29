@@ -76,7 +76,7 @@ Goal: `/bubble/` is a real, verifiable, accessible game meeting every standard i
   `Replayed { score: Some(s), stars: None, .. }` directly. `Outcome::{Won,Lost}`
   + `Record`'s `skip_serializing_if` optional `score` cover clear-the-board.
   (Read 2026-07-30.)
-- **match3-wasm gives the exact C-ABI shape to mirror** (`new_game(lo,hi)`,
+- **trio-tumble-wasm gives the exact C-ABI shape to mirror** (`new_game(lo,hi)`,
   `board_json`, `legal_moves_json`, `current_hash`, `score`, `moves_left`,
   `is_won`, `play_swap->u32`, `mark_assistance`, `outcome_json(declare)`,
   `out_len`, `target_daily_seed(u32)`); raw C-ABI + serde-JSON out-buffer, never
@@ -231,12 +231,12 @@ the logged acceptance-rate sanity check.
 **Test edges:** `shoot` on an illegal target returns a non-zero status and leaves
 `current_hash` unchanged; `out_len`/`board_json` round-trip a known board.
 **Depends on:** B3, B4.
-**Read-set:** `crates/bubble-core/**`, `crates/match3-wasm/src/lib.rs`,
+**Read-set:** `crates/bubble-core/**`, `crates/trio-tumble-wasm/src/lib.rs`,
 `games/bubble/daily-pack.json`, `build.mjs`.
 **Write-set:** `crates/bubble-wasm/{Cargo.toml,src/lib.rs}`,
 `src/games/bubble/bubble-wasm.ts`, `Cargo.toml`, `build.mjs`, `Cargo.lock`.
 **Shared-state contract:** edits shared `Cargo.toml`+`build.mjs` (merge-time);
-wasm holds module-static single-game state (as match3-wasm does).
+wasm holds module-static single-game state (as trio-tumble-wasm does).
 **Observability:** every fallible C-ABI path returns a status code / empty
 buffer; the TS wrapper surfaces a decode failure to `console.error` (not a silent
 empty board).
@@ -270,7 +270,7 @@ tap changes nothing (legality lives in the core, not the UI).
 UI-invented targets); 360px hex fit; theme toggle no-flash.
 **Depends on:** B5.
 **Read-set:** `src/{contract,chrome,settings,theme,how-to}.ts`,
-`src/games/match3.ts` (reference), `tokens.css`.
+`src/games/trio-tumble.ts` (reference), `tokens.css`.
 **Write-set:** `src/games/bubble/bubble.ts`, `tokens.css`, `styles.css`,
 `src/games/bubble/*` assets.
 **Shared-state contract:** append-only bubble tokens/classes in

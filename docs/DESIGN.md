@@ -143,5 +143,5 @@ the verifiable `final_hash`.
 
 ## Not in this phase
 
-- Match-3 / cribbage board styling (those games arrive later and reuse these
+- Trio Tumble / cribbage board styling (those games arrive later and reuse these
   tokens).

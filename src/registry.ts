@@ -1,11 +1,11 @@
-//! The game catalog the drawer lists. Solitaire is playable (front-plan Phase 4);
-//! match-3 is `soon` until its module lands (front-plan Phase 7); the placeholder
-//! is playable to exercise the chrome.
+//! The game catalog the drawer lists. Every entry with a `load` is playable;
+//! `soon` entries have no module yet. The placeholder is playable to exercise
+//! the chrome.
 
 import type { GameEntry } from "./contract.js";
 import { placeholderModule } from "./games/placeholder.js";
 import { solitaireModule } from "./games/solitaire.js";
-import { match3Module } from "./games/match3.js";
+import { trioTumbleModule } from "./games/trio-tumble.js";
 import { bubbleModule } from "./games/bubble/bubble.js";
 import { wyrdleModule } from "./games/wyrdle/wyrdle.js";
 import { twenty48Module } from "./games/2048/2048.js";
@@ -29,7 +29,7 @@ export const REGISTRY: readonly GameEntry[] = [
     load: placeholderModule,
   },
   { id: "solitaire", title: "Solitaire", emoji: "♠", status: "playable", icon: true, load: solitaireModule },
-  { id: "match3", title: "Match-3", emoji: "🍬", status: "playable", icon: true, load: match3Module },
+  { id: "trio-tumble", title: "Trio Tumble", subtitle: "Jewel Drop", emoji: "💎", status: "playable", icon: true, load: trioTumbleModule },
   { id: "bubble", title: "Bubble", emoji: "🫧", status: "playable", icon: true, load: bubbleModule },
   { id: "wyrdle", title: "Wyrdle", emoji: "🐉", status: "playable", icon: true, load: wyrdleModule },
   { id: "2048", title: "2048", emoji: "🔢", status: "playable", icon: true, load: twenty48Module },

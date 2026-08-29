@@ -19,7 +19,7 @@ files are the running, checkbox-level worklist.
 ## Shipped — Tier-1 Croft-native (playable)
 
 - [solitaire.md](solitaire.md) — input/solver/a11y/identity follow-ups.
-- [match3.md](match3.md) — par-tuning/variants/specials follow-ups.
+- [trio-tumble.md](trio-tumble.md) — par-tuning/variants/specials follow-ups.
 - [bubble.md](bubble.md) — aim-preview/specials/ceiling-advance follow-ups.
 - [wyrdle.md](wyrdle.md) — word-list/daily follow-ups.
 - [2048.md](2048.md) — follow-ups.
@@ -137,6 +137,17 @@ field:
    (and the Emscripten + runtime-untar class is discouraged, `docs/BUILDING-GAMES.md`).
 
 ## Cross-game open threads (span more than one game)
+
+- [ ] **Every game page's `<title>` is a slug, not a name.** `build.mjs` emits
+  `Croft · fun — ${id}`, so the browser tab reads "Croft · fun — color-sort" and
+  "Croft · fun — trio-tumble" on all 18 pages. Noticed during the 2026-08-28
+  rename, which added `displayName()` to `src/contract.ts` and used it for the
+  how-to page's tab title — the game pages are the other half and were left
+  alone deliberately, because changing them touches every page and wants its own
+  check. The obstacle is that `build.mjs` is a Node script and cannot import the
+  TS registry; it would read `src/registry.ts` as text the way `tools/intake.mjs`
+  and the pre-paint skin script already do. Note that `gameAliases()` did exactly
+  that and had an index-zip bug for it, so parse each entry as a unit.
 
 - [ ] **Nothing in this repo's workflow compiles the solvers with overflow checks
   on.** The gate runs `cargo test --workspace --release`, for the documented

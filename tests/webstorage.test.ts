@@ -4,7 +4,7 @@
 //! `--localstorage-file` it is an empty placeholder object rather than a
 //! `Storage`. It wins over the one vitest's jsdom environment would install, so
 //! on a Node-25 machine every test that touches storage saw an object with no
-//! `clear`/`key`/`length` — 11 match-3 tests failed locally with
+//! `clear`/`key`/`length` — 11 Trio Tumble tests failed locally with
 //! `localStorage.clear is not a function` while CI (Node 22, per `.nvmrc`) was
 //! green. A test suite that only passes on the pinned Node hides real failures
 //! behind noise, so `tests/setup/webstorage.ts` repairs the global when it is

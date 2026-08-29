@@ -80,34 +80,34 @@ const SHOTS = [
     },
   },
   {
-    name: "match3-board",
+    name: "trio-tumble-board",
     clip: ".m3-board",
     async run(page) {
-      await page.goto(`${origin}/match3/?seed=7`, { waitUntil: "networkidle" });
+      await page.goto(`${origin}/trio-tumble/?seed=7`, { waitUntil: "networkidle" });
       await page.waitForSelector(".m3-board");
     },
   },
   {
-    name: "match3-select",
+    name: "trio-tumble-select",
     clip: ".m3-board",
     async run(page) {
-      await page.goto(`${origin}/match3/?seed=7`, { waitUntil: "networkidle" });
+      await page.goto(`${origin}/trio-tumble/?seed=7`, { waitUntil: "networkidle" });
       await page.waitForSelector(".m3-board");
-      await page.waitForFunction(() => Boolean(window.__match3));
-      const from = await page.evaluate(() => window.__match3.game.legalMoves()[0]);
+      await page.waitForFunction(() => Boolean(window.__trioTumble));
+      const from = await page.evaluate(() => window.__trioTumble.game.legalMoves()[0]);
       await page.click(`.m3-gem[data-r="${from[0]}"][data-c="${from[1]}"]`);
       await page.waitForSelector(".legal-target");
     },
   },
   {
-    name: "match3-win",
+    name: "trio-tumble-win",
     clip: ".sol-result",
     async run(page) {
-      await page.goto(`${origin}/match3/?seed=7`, { waitUntil: "networkidle" });
+      await page.goto(`${origin}/trio-tumble/?seed=7`, { waitUntil: "networkidle" });
       await page.waitForSelector(".m3-board");
-      await page.waitForFunction(() => Boolean(window.__match3));
+      await page.waitForFunction(() => Boolean(window.__trioTumble));
       await page.evaluate(() => {
-        const h = window.__match3;
+        const h = window.__trioTumble;
         for (let i = 0; i < 20; i += 1) {
           const m = h.game.legalMoves();
           if (m.length === 0) break;

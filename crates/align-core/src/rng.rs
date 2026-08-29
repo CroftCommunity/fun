@@ -1,6 +1,6 @@
 //! Deterministic, seeded RNG for the 7-bag shuffle.
 //!
-//! Same primitive as `bubble-core`/`match3-core`/`twenty48-core`: `ChaCha20`
+//! Same primitive as `bubble-core`/`trio-tumble-core`/`twenty48-core`: `ChaCha20`
 //! seeded from an explicit `u64`, so a game seed fully determines the piece
 //! stream. Draws are counted so the RNG position folds into the state hash.
 

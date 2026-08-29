@@ -14,7 +14,7 @@ const dist = join(root, "dist");
 
 // Game entry pages: "" is the home/drawer page (no game mounted); the rest carry
 // <body data-game> so the chrome knows what to mount.
-const GAME_PAGES = ["", "placeholder", "solitaire", "match3", "bubble", "wyrdle", "2048", "drop4", "othello", "checkers", "dots", "furrow", "align", "blockdoku", "looseends", "color-sort", "orchard-drop", "cribbage"];
+const GAME_PAGES = ["", "placeholder", "solitaire", "trio-tumble", "bubble", "wyrdle", "2048", "drop4", "othello", "checkers", "dots", "furrow", "align", "blockdoku", "looseends", "color-sort", "orchard-drop", "cribbage"];
 
 // Tier-2 wrapped games: their vendored bundle ships under src/games/<id>/vendor/
 // and is served at /<id>/vendor/ for the sandboxed iframe to load same-origin.
@@ -114,9 +114,9 @@ const wasm = join(root, "target/wasm32-unknown-unknown/release/solitaire_wasm.wa
 if (await exists(wasm)) await cp(wasm, join(dist, "solitaire.wasm"));
 else console.warn("note: solitaire.wasm not built yet — run `npm run build:wasm` (Phase D needs it)");
 
-const m3wasm = join(root, "target/wasm32-unknown-unknown/release/match3_wasm.wasm");
-if (await exists(m3wasm)) await cp(m3wasm, join(dist, "match3.wasm"));
-else console.warn("note: match3.wasm not built yet — run `npm run build:wasm` (match-3 needs it)");
+const m3wasm = join(root, "target/wasm32-unknown-unknown/release/trio_tumble_wasm.wasm");
+if (await exists(m3wasm)) await cp(m3wasm, join(dist, "trio-tumble.wasm"));
+else console.warn("note: trio-tumble.wasm not built yet — run `npm run build:wasm` (Trio Tumble needs it)");
 
 const bwasm = join(root, "target/wasm32-unknown-unknown/release/bubble_wasm.wasm");
 if (await exists(bwasm)) await cp(bwasm, join(dist, "bubble.wasm"));
@@ -170,33 +170,33 @@ const pack = join(root, "games/solitaire/daily-pack.json");
 if (await exists(pack)) await cp(pack, join(dist, "daily-pack.json"));
 else console.warn("note: daily-pack.json missing — solitaire's daily mode needs it (Phase S)");
 
-// The match-3 clear-the-blockers winnable-daily pack (served static so the
+// The Trio Tumble clear-the-blockers winnable-daily pack (served static so the
 // blockers daily mode and its E2E win-path fixture can fetch it).
-const m3pack = join(root, "games/match3/blockers-pack.json");
-if (await exists(m3pack)) await cp(m3pack, join(dist, "match3-blockers-pack.json"));
-else console.warn("note: match3-blockers-pack.json missing — match-3's clear-the-blockers daily needs it");
+const m3pack = join(root, "games/trio-tumble/blockers-pack.json");
+if (await exists(m3pack)) await cp(m3pack, join(dist, "trio-tumble-blockers-pack.json"));
+else console.warn("note: trio-tumble-blockers-pack.json missing — Trio Tumble's clear-the-blockers daily needs it");
 
-const m3jpack = join(root, "games/match3/jelly-pack.json");
-if (await exists(m3jpack)) await cp(m3jpack, join(dist, "match3-jelly-pack.json"));
-else console.warn("note: match3-jelly-pack.json missing — match-3's clear-the-jelly daily needs it");
+const m3jpack = join(root, "games/trio-tumble/jelly-pack.json");
+if (await exists(m3jpack)) await cp(m3jpack, join(dist, "trio-tumble-jelly-pack.json"));
+else console.warn("note: trio-tumble-jelly-pack.json missing — Trio Tumble's clear-the-jelly daily needs it");
 
-const m3ipack = join(root, "games/match3/ingredients-pack.json");
-if (await exists(m3ipack)) await cp(m3ipack, join(dist, "match3-ingredients-pack.json"));
-else console.warn("note: match3-ingredients-pack.json missing — match-3's ingredients daily needs it");
+const m3ipack = join(root, "games/trio-tumble/ingredients-pack.json");
+if (await exists(m3ipack)) await cp(m3ipack, join(dist, "trio-tumble-ingredients-pack.json"));
+else console.warn("note: trio-tumble-ingredients-pack.json missing — Trio Tumble's ingredients daily needs it");
 
-const m3cpack = join(root, "games/match3/checklist-pack.json");
-if (await exists(m3cpack)) await cp(m3cpack, join(dist, "match3-checklist-pack.json"));
-else console.warn("note: match3-checklist-pack.json missing — match-3's checklist (orders) daily needs it");
+const m3cpack = join(root, "games/trio-tumble/checklist-pack.json");
+if (await exists(m3cpack)) await cp(m3cpack, join(dist, "trio-tumble-checklist-pack.json"));
+else console.warn("note: trio-tumble-checklist-pack.json missing — Trio Tumble's checklist (orders) daily needs it");
 
-const m3opack = join(root, "games/match3/obstacles-pack.json");
-if (await exists(m3opack)) await cp(m3opack, join(dist, "match3-obstacles-pack.json"));
-else console.warn("note: match3-obstacles-pack.json missing — match-3's clear-the-obstacles daily needs it");
+const m3opack = join(root, "games/trio-tumble/obstacles-pack.json");
+if (await exists(m3opack)) await cp(m3opack, join(dist, "trio-tumble-obstacles-pack.json"));
+else console.warn("note: trio-tumble-obstacles-pack.json missing — Trio Tumble's clear-the-obstacles daily needs it");
 
-// The match-3 campaign ladder (curated levels over verifiable seeds) — served
+// The Trio Tumble campaign ladder (curated levels over verifiable seeds) — served
 // static so the campaign mode and its E2E can fetch it.
-const m3campaign = join(root, "games/match3/campaign-pack.json");
-if (await exists(m3campaign)) await cp(m3campaign, join(dist, "match3-campaign-pack.json"));
-else console.warn("note: match3-campaign-pack.json missing — match-3's campaign needs it");
+const m3campaign = join(root, "games/trio-tumble/campaign-pack.json");
+if (await exists(m3campaign)) await cp(m3campaign, join(dist, "trio-tumble-campaign-pack.json"));
+else console.warn("note: trio-tumble-campaign-pack.json missing — Trio Tumble's campaign needs it");
 
 // The bubble-shooter clear-the-board winnable-daily pack (served static so the
 // daily mode and its E2E win-path fixture can fetch it).

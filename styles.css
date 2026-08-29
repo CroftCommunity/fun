@@ -492,7 +492,7 @@ body.fullscreen .play-area {
   padding: 1rem 0;
 }
 
-/* --- match-3 board --- */
+/* --- Trio Tumble board --- */
 .m3-hud {
   display: flex;
   flex-wrap: wrap;
@@ -880,7 +880,7 @@ body.fullscreen .play-area {
   }
 }
 
-/* --- match-3 clear FX: bursts + escalating celebration --- */
+/* --- Trio Tumble clear FX: bursts + escalating celebration --- */
 /* The board sits in a positioned wrap so the decorative burst layer can overlay
    it while the board element itself is swapped frame-to-frame during a cascade. */
 .m3-board-wrap {
@@ -1081,6 +1081,16 @@ body.fullscreen .play-area {
   margin-top: 0;
   font-family: var(--font-display);
   font-weight: 600;
+}
+/* The game's whole name, on a page that has room for it. Tiles and the drawer
+   show the short title; see src/contract.ts `subtitle`. */
+.how-to-fullname {
+  margin: 0 0 0.75rem;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
 }
 .guide-toc ul {
   list-style: none;

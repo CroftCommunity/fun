@@ -33,7 +33,7 @@ The seed's only consumer is the shuffle; the deal is then a fixed procedure over
 
 1. **Build the ordered deck** `0..=51` (card index order above).
 2. **Shuffle** with one `ChaCha20Rng` seeded from the `u64` seed — the same determinism primitive
-   `match3-core` and `alpha/Proofs/lineage-groups` use. The shuffle is an in-place **Fisher–Yates from
+   `trio-tumble-core` and `alpha/Proofs/lineage-groups` use. The shuffle is an in-place **Fisher–Yates from
    the top index down**: for `i` from `51` down to `1`, draw `j = rng.gen_range(0..=i)` and swap
    `deck[i]` and `deck[j]`. This fixed order is what makes the deal cross-build-stable; changing it is a
    determinism break.
@@ -130,11 +130,11 @@ This is the property `pond-outcome` (P8 verifiable clean-clear) and the follow-c
 `vectors/*.json` — each vector is a hand-authored `(seed, move list)` plus hand-computable step-0
 expectations (the dealt board) and, once the engine is green, a recorded `final_state_hash` (a
 regression + cross-build determinism anchor; by construction a recorded output, not hand-derived).
-Schema mirrors `match3-core/vectors/README.md`.
+Schema mirrors `trio-tumble-core/vectors/README.md`.
 
 ## Out of P1 (explicit not-yet set)
 
 Scoring/points; timed play; alternate variants (draw-3, Vegas, Spider); winnable-deal classification /
-minimum-move par (needs a solver — a deferred owner decision, agent rec = match-3-only); saves + share
+minimum-move par (needs a solver — a deferred owner decision, agent rec = Trio Tumble only); saves + share
 codes (their format is `pond-docformat`, P2/master Phase 5); the outcome record (`pond-outcome`, P8);
 undo/hints UX (front-end plan Phase 4); anything network. P1 is a pure, headless, deterministic core.

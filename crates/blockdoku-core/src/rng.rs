@@ -1,6 +1,6 @@
 //! Deterministic, seeded RNG for the piece deal.
 //!
-//! Same primitive as `twenty48-core`/`bubble-core`/`match3-core`: `ChaCha20`
+//! Same primitive as `twenty48-core`/`bubble-core`/`trio-tumble-core`: `ChaCha20`
 //! seeded from an explicit `u64`, so the game seed fully determines the deal
 //! stream. Draws are counted so the RNG position folds into the state hash, and
 //! index sampling goes through a fixed-width `u32` range so native == wasm.

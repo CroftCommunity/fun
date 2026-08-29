@@ -6,7 +6,7 @@
 //! placeholder object — no `clear`, no `key`, no `length`. It takes precedence
 //! over the `Storage` vitest's jsdom environment would otherwise install, so on
 //! Node 25 every storage-touching test failed with `localStorage.clear is not a
-//! function` (11 of them, in match-3) while CI stayed green on the Node 22 that
+//! function` (11 of them, in Trio Tumble) while CI stayed green on the Node 22 that
 //! `.nvmrc` pins.
 //!
 //! The honest fix is not "only run tests on Node 22": a suite that fails on the
