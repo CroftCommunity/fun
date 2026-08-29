@@ -558,22 +558,64 @@ mod tests {
     }
 
     #[test]
-    fn the_daily_seed_halves_are_not_the_same_number() {
-        // `daily_seed_hi -> 0` and a shifted `>>` both survive a test that only
-        // reassembles the halves without looking at them.
+    fn every_daily_seed_fits_in_the_low_half_which_is_why_hi_is_always_zero() {
+        // A FINDING, pinned rather than papered over. The pool is 0..4096, so
+        // every daily seed fits in 32 bits and `daily_seed_hi` structurally
+        // returns 0 — which makes its mutants equivalent *given that pool*.
+        //
+        // "Equivalent given a constant" is fragile: widen the pool and the gap
+        // reappears silently. So the assumption is asserted. If someone makes
+        // dailies full-width, this fails and points straight at the untested
+        // crossing rather than letting it slip through.
         let _guard = serial();
-        let lo = daily_seed_lo(0);
-        let hi = daily_seed_hi(0);
-        let seed = (u64::from(hi) << 32) | u64::from(lo);
-        assert_eq!(
-            seed,
-            orchard_core::pack::daily_seed(&orchard_core::pack::default_pack(), 0)
-        );
-        // At least one day in the year has a non-zero high half, or the pool is
-        // too small for the crossing to be exercised at all.
+        let pack = orchard_core::pack::default_pack();
         assert!(
-            (0..366).any(|d| daily_seed_hi(d) != 0) || (0..366).all(|d| daily_seed_lo(d) != 0),
-            "the seed pool never exercises both halves"
+            pack.seeds.iter().all(|&s| u32::try_from(s).is_ok()),
+            "a daily seed now needs the high half — daily_seed_hi has stopped \
+             being structurally zero, and its mutants have stopped being equivalent"
+        );
+        for day in [0u32, 1, 200, 365, 366, u32::MAX] {
+            let hi = daily_seed_hi(day);
+            assert_eq!(hi, 0, "day {day} needs a high half");
+            let seed = (u64::from(hi) << 32) | u64::from(daily_seed_lo(day));
+            assert_eq!(seed, orchard_core::pack::daily_seed(&pack, u64::from(day)));
+        }
+    }
+
+    #[test]
+    fn is_over_reports_a_run_that_actually_ended() {
+        // Asserting `is_over() == 0` on a fresh game is equally satisfied by a
+        // function that always returns 0. This is the other half.
+        let _guard = serial();
+        new_game(5, 0);
+        let mut t = 0;
+        for _ in 0..400 {
+            if is_over() == 1 {
+                return;
+            }
+            drop_at(t, 220);
+            wait_until(t + 33);
+            t += 33;
+        }
+        panic!("the crate never overflowed, so is_over() was never observed true");
+    }
+
+    #[test]
+    fn the_tick_digest_applies_moves_up_to_the_tick_and_no_further() {
+        // Exercises `included_in_digest` THROUGH tick_digest rather than only as
+        // a function: inverting its use is a different mutation from changing
+        // the comparison, and only a test that runs the export catches it.
+        let _guard = serial();
+        new_game(7, 0);
+        drop_at(100, 220);
+        let with_drop = read(tick_digest(100));
+
+        new_game(7, 0);
+        wait_until(100);
+        let without_drop = out();
+        assert_ne!(
+            with_drop, without_drop,
+            "the digest at tick 100 did not include the drop landing at 100"
         );
     }
 
