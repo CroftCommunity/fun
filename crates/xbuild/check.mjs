@@ -5,15 +5,15 @@
 // solitaire-core/vectors/. Byte-identical hashes across targets = the Rust->wasm
 // determinism property. Exits non-zero on any mismatch.
 //
-// Usage: node check.mjs <xbuild.wasm> <solitaire-vectors> <dots-vectors> <furrow-vectors>
+// Usage: node check.mjs <xbuild.wasm> <solitaire-vectors> <dots-vectors> <furrow-vectors> <cribbage-vectors>
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-const [wasmPath, vectorsDir, dotsVectorsDir, furrowVectorsDir] =
+const [wasmPath, vectorsDir, dotsVectorsDir, furrowVectorsDir, cribbageVectorsDir] =
   process.argv.slice(2);
-if (!wasmPath || !vectorsDir || !dotsVectorsDir || !furrowVectorsDir) {
+if (!wasmPath || !vectorsDir || !dotsVectorsDir || !furrowVectorsDir || !cribbageVectorsDir) {
   console.error(
-    "usage: node check.mjs <xbuild.wasm> <solitaire-vectors-dir> <dots-vectors-dir> <furrow-vectors-dir>",
+    "usage: node check.mjs <xbuild.wasm> <solitaire-vectors-dir> <dots-vectors-dir> <furrow-vectors-dir> <cribbage-vectors-dir>",
   );
   process.exit(2);
 }
@@ -31,6 +31,7 @@ const {
   dots_in_ptr,
   dots_in_cap,
   furrow_replay_hash,
+  cribbage_replay_hash,
   move_in_ptr,
   move_in_cap,
 } = instance.exports;
@@ -98,6 +99,29 @@ for (const file of [
   cases.push({
     name: `furrow ${v.name}`,
     wasm: () => furrowHash(v.moves),
+    goldenValue: v.final_state_hash,
+  });
+}
+
+// Cribbage: the seed reshuffles every deal, so the seed crosses too (as two
+// u32 halves, the same way solitaire's does). A full game is ~160 codes.
+for (const file of [
+  "01-opening.json",
+  "02-full-game-with-gos-and-muggins.json",
+  "03-skunk.json",
+]) {
+  const v = await vectorFrom(cribbageVectorsDir, file);
+  const seed = BigInt(v.seed);
+  const lo = Number(seed & 0xffffffffn);
+  const hi = Number(seed >> 32n);
+  cases.push({
+    name: `cribbage ${v.name}`,
+    wasm: () => {
+      if (v.moves.length > move_in_cap())
+        throw new Error("move list exceeds the wasm input buffer");
+      new Uint8Array(memory.buffer, move_in_ptr(), v.moves.length).set(v.moves);
+      return readHash(cribbage_replay_hash(lo, hi, v.moves.length));
+    },
     goldenValue: v.final_state_hash,
   });
 }

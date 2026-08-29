@@ -10,6 +10,7 @@ description = "Native+wasm cross-build determinism harness (master-plan Phase 2)
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+cribbage-core = { path = "../cribbage-core" }
 dots-core = { path = "../dots-core" }
 furrow-core = { path = "../furrow-core" }
 solitaire-core = { workspace = true }

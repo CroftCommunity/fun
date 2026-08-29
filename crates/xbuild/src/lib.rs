@@ -10,6 +10,9 @@
 //! static 64-byte buffer; the host reads 64 bytes at that pointer. `hash_len`
 //! reports the length.
 
+use cribbage_core::{
+    replay as cribbage_replay, state_hash as cribbage_state_hash, Move as CribMove,
+};
 use dots_core::{apply_move, legal_edges, state_hash as dots_state_hash, Board, Edge};
 use furrow_core::{
     apply_move as furrow_apply, legal_pits, state_hash as furrow_state_hash, Board as FurrowBoard,
@@ -108,6 +111,28 @@ pub extern "C" fn furrow_replay_hash(len: u32) -> *const u8 {
     write_hash(&furrow_state_hash(&pos))
 }
 
+/// Cribbage: the state hash after replaying the first `len` bytes of the input
+/// buffer as move codes from `seed` (vectors `cribbage-core/vectors/*.json`).
+///
+/// The first core enrolled whose deal is **reshuffled from the seed every
+/// deal** and whose moves include declarations (a go, a claim) as well as
+/// cards. A `usize` reaching the RNG index or the hash would show here as a
+/// different deal, not a different cell.
+#[no_mangle]
+pub extern "C" fn cribbage_replay_hash(seed_lo: u32, seed_hi: u32, len: u32) -> *const u8 {
+    let seed = (u64::from(seed_hi) << 32) | u64::from(seed_lo);
+    let n = (len as usize).min(IN_CAP);
+    // SAFETY: single-threaded wasm; the host fills IN before this call and does
+    // not touch it during. Raw pointers avoid the `static_mut_refs` lint.
+    let codes: [u8; IN_CAP] = unsafe { *core::ptr::addr_of!(IN) };
+    // An unknown code is dropped, as a refused move is: replay is skip-if-refused.
+    let moves: Vec<CribMove> = codes[..n]
+        .iter()
+        .filter_map(|&c| CribMove::from_code(c))
+        .collect();
+    write_hash(&cribbage_state_hash(&cribbage_replay(seed, &moves)))
+}
+
 /// Pointer to the shared move-input buffer, under its game-neutral name.
 ///
 /// The same bytes [`dots_in_ptr`] returns: one buffer serves every enrolled
@@ -125,7 +150,8 @@ pub extern "C" fn move_in_cap() -> u32 {
     IN_CAP as u32
 }
 
-const IN_CAP: usize = 64;
+// 256: a full cribbage game is ~160 move codes (the longest list enrolled).
+const IN_CAP: usize = 256;
 static mut IN: [u8; IN_CAP] = [0; IN_CAP];
 
 static mut BUF: [u8; 64] = [0; 64];
