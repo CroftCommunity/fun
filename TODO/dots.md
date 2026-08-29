@@ -79,7 +79,7 @@ was deferred.
   added, the chain/loop (Berlekamp) endgame decomposition becomes the right
   answer and this becomes a real project rather than a constant change.
 - ~~**The tutor panel's list resets on every re-render**~~ — **fixed 2026-08-29**
-  (`plans/2026-08-29-1-plan-rerender-state.md`). Half of this entry was a bug and half
+  (`plans/2026-08-29-plan-rerender-state.md`). Half of this entry was a bug and half
   was correct, and the difference is whether the *board* changed: a band of reasonable
   edges is true until an edge is drawn and stale the instant one is. The reading is now
   held with the state hash it was computed for and repainted only while that matches, so
