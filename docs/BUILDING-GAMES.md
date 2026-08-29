@@ -232,6 +232,40 @@ reason. The full layout playbook + running lessons log is `docs/RESPONSIVE-DESIG
   each board in both themes. The shelf identity is a **felt table + ivory cards**;
   see `docs/DESIGN.md`.
 
+### Re-rendering: the model owns the board, the player owns the panel
+
+Every game renders with `container.replaceChildren(…)` — fourteen of them do, measured
+2026-08-29. Rebuilding the whole subtree from the game model is the right shape and should
+stay: it is simple, it has no diffing to get wrong, and everything the model owns is
+correct by construction.
+
+**It is wrong for the few things the model does not own.** Whether the player opened the
+settings panel, where their focus was, and where the caret sat are not in the model, so a
+rebuild silently discards them. Wrap the replacement:
+
+```ts
+const ui = captureUiState(container);   // src/ui-state.ts
+container.replaceChildren(/* … */);
+restoreUiState(container, ui);
+```
+
+**Any asynchronous work that calls `render()` can race the player.** Four games probe for
+a WebGPU adapter and re-render when it resolves — at a moment nothing in the UI predicts.
+On a CI runner that landed between a test opening the settings panel and clicking a
+checkbox inside it: the checkbox was detached, its replacement arrived inside a closed
+panel, and `main` did not deploy for two days. A player on a slow device sees a panel that
+shuts by itself. The probe is not special; it is only the async caller that exists today.
+
+**State the tutor computes is app state, not DOM state.** A band of reasonable moves is
+*true* until a move is made and *stale* the instant one is, so hold it **with the state
+hash it was computed for** and repaint it only while that still matches (`tutorView` in
+furrow, `tutorReading` in the others). Restoring it unconditionally trades a lost answer
+for a wrong one.
+
+As of 2026-08-29 the four adversarial games with a probe are wrapped; the other ten are
+not, because nothing yet re-renders them asynchronously. Adding any async re-render to a
+game means wrapping it first.
+
 ## 6. Standard settings (shared, persisted) — `src/settings.ts`
 
 Settings are shared across games and persisted; both default **on**:
