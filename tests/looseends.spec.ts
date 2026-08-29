@@ -30,7 +30,7 @@ test("mounts at its own URL and shows the home screen", async ({ page }) => {
   await expect(page.locator(".le-home-actions")).toContainText(/daily puzzle/i);
 });
 
-test("a level renders the canvas board, HUD, droplets, and hint", async ({ page }) => {
+test("a level renders the canvas board, HUD, droplets, and hint", { tag: "@smoke" }, async ({ page }) => {
   await page.goto("/looseends/");
   await ready(page);
   await openLevel(page, 6);

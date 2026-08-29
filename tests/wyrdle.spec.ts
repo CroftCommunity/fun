@@ -17,7 +17,7 @@ async function typeWord(page: Page, word: string): Promise<void> {
   await page.locator('.wy-key[data-key="enter"]').click();
 }
 
-test("the grid, keyboard, and HUD render", async ({ page }) => {
+test("the grid, keyboard, and HUD render", { tag: "@smoke" }, async ({ page }) => {
   await page.goto("/wyrdle/?seed=7");
   await ready(page);
   await expect(page.locator(".wy-grid")).toBeVisible();

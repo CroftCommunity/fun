@@ -17,7 +17,7 @@ const filled = (page: Page): Promise<number> =>
     window.__t2048!.game.board().cells.flat().filter((v: number) => v !== 0).length,
   );
 
-test("the board, arrow pad, and HUD render", async ({ page }) => {
+test("the board, arrow pad, and HUD render", { tag: "@smoke" }, async ({ page }) => {
   await page.goto("/2048/?seed=7");
   await ready(page);
   await expect(page.locator(".t48-board")).toBeVisible();

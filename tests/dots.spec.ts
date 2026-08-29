@@ -29,7 +29,7 @@ const waitHumanOrOver = (page: Page): Promise<unknown> =>
     return b.result !== -1 || (b.toMove === human && b.legal.length > 0);
   }, HUMAN);
 
-test("the lattice, turn bar, and pickers render", async ({ page }) => {
+test("the lattice, turn bar, and pickers render", { tag: "@smoke" }, async ({ page }) => {
   await page.goto("/dots/?seed=7");
   await ready(page);
   // 24 edges and 16 dots on a 3x3-box board; 9 boxes.
@@ -102,7 +102,7 @@ test("the difficulty picker persists the chosen level", async ({ page }) => {
   expect(await page.evaluate(() => localStorage.getItem("fun-dots-level"))).toBe("Hard");
 });
 
-test("a full game plays to a result; the final board shows; the share re-verifies", async ({
+test("a full game plays to a result; the final board shows; the share re-verifies", { tag: "@long" }, async ({
   page,
 }) => {
   await page.goto("/dots/?seed=7");

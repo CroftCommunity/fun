@@ -71,8 +71,14 @@ const HYBRID_SYSTEM = [
   "You add a short, in-character line of banter — never analysis, never move lists.",
 ].join(" ");
 
-const THINK_MS = 420;
-const FANFARE_MS = 1200;
+/**
+ * The beats: the engine's think and the fanfare before the result. `?fast=1`
+ * collapses them to a frame — for the browser suite, whose full-game test
+ * asserts rules and wiring, not pacing (plans/2026-08-29-plan-e2e-shards-and-smoke.md, D3).
+ */
+const BEATS = { think: 420, fanfare: 1200 } as const;
+const FAST_BEATS = { think: 16, fanfare: 60 } as const;
+let beats: { think: number; fanfare: number } = BEATS;
 const BOARD = 8;
 const LEVELS: readonly CheckersLevel[] = ["Easy", "Medium", "Hard", "Expert"];
 
@@ -381,7 +387,7 @@ export function checkersModule(): GameModule {
         }
         step();
       })();
-    }, THINK_MS);
+    }, beats.think);
   };
 
   /** A tap on a playable square: pick a piece up, extend a chain, or commit. */
@@ -829,7 +835,7 @@ export function checkersModule(): GameModule {
     window.setTimeout(() => {
       if (disposed) return;
       void presentResult();
-    }, FANFARE_MS);
+    }, beats.fanfare);
   };
 
   const presentResult = async (): Promise<void> => {
@@ -925,6 +931,7 @@ export function checkersModule(): GameModule {
         }
         if (disposed) return;
         const url = new URL(location.href);
+        beats = url.searchParams.get("fast") === "1" ? FAST_BEATS : BEATS;
         const shared = url.searchParams.get("r");
         if (shared) {
           await showShared(shared);

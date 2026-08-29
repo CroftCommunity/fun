@@ -27,7 +27,7 @@ const waitHumanOrOver = (page: Page): Promise<unknown> =>
     return b.toMove === 1 || b.result !== -1;
   });
 
-test("the board, columns, turn bar, and options render", async ({ page }) => {
+test("the board, columns, turn bar, and options render", { tag: "@smoke" }, async ({ page }) => {
   await page.goto("/drop4/?seed=7");
   await ready(page);
   await expect(page.locator(".drop4-board")).toBeVisible();
@@ -103,7 +103,7 @@ test("choosing the ○ mark makes the player's discs ○", async ({ page }) => {
   expect(await page.evaluate(() => localStorage.getItem("fun-drop4-mark"))).toBe("o");
 });
 
-test("a full game plays to a terminal result; the final board + winning line show; share re-verifies", async ({ page }) => {
+test("a full game plays to a terminal result; the final board + winning line show; share re-verifies", { tag: "@long" }, async ({ page }) => {
   await page.goto("/drop4/?seed=7");
   await ready(page);
   // Play a real game through the UI: each turn tap the leftmost legal column and

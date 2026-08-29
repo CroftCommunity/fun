@@ -16,7 +16,7 @@ async function ready(page: Page): Promise<void> {
   await page.waitForFunction(() => Boolean(window.__orchard));
 }
 
-test("the crate renders natively — no iframe, no borrowed chrome", async ({ page }) => {
+test("the crate renders natively — no iframe, no borrowed chrome", { tag: "@smoke" }, async ({ page }) => {
   await page.goto("/orchard-drop/?seed=7");
   await ready(page);
 

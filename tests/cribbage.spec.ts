@@ -59,7 +59,7 @@ async function humanMove(page: Page): Promise<void> {
   await page.locator(".crib-hand .crib-card.legal").first().click();
 }
 
-test("the table, the peg board and the pickers render", async ({ page }) => {
+test("the table, the peg board and the pickers render", { tag: "@smoke" }, async ({ page }) => {
   await page.goto("/cribbage/?seed=7");
   await ready(page);
   // At seed 7 the engine is the non-dealer and throws first, so by the time a
@@ -168,7 +168,7 @@ test("the difficulty picker persists the chosen level", async ({ page }) => {
   expect(await page.evaluate(() => localStorage.getItem("fun-cribbage-level"))).toBe("Hard");
 });
 
-test("a full game plays to a result stating its value; the share re-verifies", async ({ page }) => {
+test("a full game plays to a result stating its value; the share re-verifies", { tag: "@long" }, async ({ page }) => {
   test.setTimeout(300_000);
   await page.goto("/cribbage/?seed=7&fast=1");
   await ready(page);

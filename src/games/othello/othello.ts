@@ -100,9 +100,15 @@ export const coachFor = (
     : null;
 };
 
-const THINK_MS = 450;
-const PASS_MS = 950;
-const FANFARE_MS = 1200;
+/**
+ * The beats: the engine's think, the pass beat, the fanfare before the result.
+ * `?fast=1` collapses them to a frame — for the browser suite, whose full-game
+ * test asserts rules and wiring, not pacing, and held a CI worker for ~20 s per
+ * engine at full pace (plans/2026-08-29-plan-e2e-shards-and-smoke.md, D3).
+ */
+const BEATS = { think: 450, pass: 950, fanfare: 1200 } as const;
+const FAST_BEATS = { think: 16, pass: 16, fanfare: 60 } as const;
+let beats: { think: number; pass: number; fanfare: number } = BEATS;
 const LEVELS: readonly OthelloLevel[] = ["Easy", "Medium", "Hard", "Expert"];
 const LEVEL_LABELS: Record<OthelloLevel, string> = {
   Easy: "Easy",
@@ -302,7 +308,7 @@ export function othelloModule(): GameModule {
           thinking = false;
           lastMove = null;
           step();
-        }, PASS_MS);
+        }, beats.pass);
         return;
       }
       thinking = false;
@@ -335,7 +341,7 @@ export function othelloModule(): GameModule {
         }
         step();
       })();
-    }, b.mustPass ? PASS_MS : THINK_MS);
+    }, b.mustPass ? beats.pass : beats.think);
   };
 
   const playCell = (idx: number): void => {
@@ -681,7 +687,7 @@ export function othelloModule(): GameModule {
     window.setTimeout(() => {
       if (disposed) return;
       void presentResult();
-    }, FANFARE_MS);
+    }, beats.fanfare);
   };
 
   const presentResult = async (): Promise<void> => {
@@ -771,6 +777,7 @@ export function othelloModule(): GameModule {
         }
         if (disposed) return;
         const url = new URL(location.href);
+        beats = url.searchParams.get("fast") === "1" ? FAST_BEATS : BEATS;
         const shared = url.searchParams.get("r");
         if (shared) {
           await showShared(shared);

@@ -18,7 +18,7 @@ const activeMinX = (page: Page): Promise<number> =>
     return Math.min(...a.cells.map((c) => c[0]));
   });
 
-test("the board, touch pad, and HUD render with an active piece", async ({ page }) => {
+test("the board, touch pad, and HUD render with an active piece", { tag: "@smoke" }, async ({ page }) => {
   await page.goto("/align/?seed=7");
   await ready(page);
   await expect(page.locator(".al-board")).toBeVisible();

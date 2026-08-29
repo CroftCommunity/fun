@@ -13,7 +13,7 @@ async function ready(page: Page): Promise<void> {
   await page.waitForFunction(() => Boolean(window.__trioTumble));
 }
 
-test("the board renders an 8×8 deal with the HUD", async ({ page }) => {
+test("the board renders an 8×8 deal with the HUD", { tag: "@smoke" }, async ({ page }) => {
   await page.goto("/trio-tumble/?seed=7");
   await ready(page);
   await expect(page.locator(".m3-gem")).toHaveCount(64);

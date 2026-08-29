@@ -84,6 +84,22 @@ at them and add what's specific to this repo. Git identity: chasemp
     path now — if the suite grows, that is where it shows up.
   - Run `gate` locally anyway before pushing. CI catching it is a slower, more
     public way to learn the same thing.
+  - **The browser suite is sharded on CI** (2026-08-29): a `wasm` job builds the
+    modules once, and three shards per engine download them and run
+    `npm run e2e -- --project=… --shard=i/3`. The job name carries engine and
+    shard. `build.mjs` treats a missing module as an ERROR under `CI`, so a shard
+    that lost its artifact goes red instead of serving an engineless shelf.
+    Sharding was chosen over a longer per-test timeout for the reason the
+    workflow's comment block records: the timeout buried a real hang once.
+  - **`npm run smoke`** (one engine, `@smoke`: every game's wiring test and the
+    a11y matrix, ~a minute) is the human's quick red/green. It is a command, not
+    a CI job — a smoke job that passes beside a failing shard is a green tick
+    that means less than what is next to it.
+  - **A browser test over ~20 s is a smell**, and the fix is a seam, not a longer
+    timeout. A test that plays a game asserts rules and wiring, not pacing:
+    cribbage, Othello and checkers read `?fast=1` and collapse the engine's beats
+    to a frame; their full-game tests (`@long`) pass it. Cribbage's full game
+    went from 72 s per engine to 5 s.
 
 - **Node is pinned by `.nvmrc` (22) — use a version manager, not the system Node.**
   The same rule as `rust-toolchain.toml`: the repo pins the toolchain, CI reads

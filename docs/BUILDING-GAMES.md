@@ -323,6 +323,12 @@ page (`/how-to/?game=<id>`). It follows the Croft user-guide pattern:
 
 ---
 
+**Pacing is not a thing the browser suite asserts.** A full-game test asserts rules
+and wiring; at the engine's real pace it holds a CI worker for a minute per engine
+doing nothing. A game with beats (think, settle, fanfare) reads `?fast=1` and collapses
+them to a frame, and its game-playing tests — tagged `@long` — pass it. Tag the wiring
+test `@smoke`; `npm run smoke` is the human's quick check. (2026-08-29, the shards plan.)
+
 ## 9. Tier-2 — wrapped games (RETIRED 2026-08-29)
 
 **This tier no longer exists.** The standard, its containment harness, its

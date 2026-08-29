@@ -45,7 +45,7 @@ async function scan(page: Page): Promise<void> {
 
 // --- the shared surfaces: chrome, both home layouts, how-to, the picker -------
 for (const skin of ALL_SKINS) {
-  test(`${skin}: both home layouts are clean`, async ({ page }) => {
+  test(`${skin}: both home layouts are clean`, { tag: "@smoke" }, async ({ page }) => {
     for (const layout of ["today-first", "shelf"]) {
       await withSkin(page, skin, [LAYOUT_KEY, layout]);
       await page.goto("/");
@@ -54,7 +54,7 @@ for (const skin of ALL_SKINS) {
     }
   });
 
-  test(`${skin}: the drawer, the picker and how-to are clean`, async ({ page }) => {
+  test(`${skin}: the drawer, the picker and how-to are clean`, { tag: "@smoke" }, async ({ page }) => {
     await withSkin(page, skin);
     await page.goto("/");
     await page.getByRole("button", { name: /open games drawer/i }).click();
@@ -82,7 +82,7 @@ const PLAYABLE = REGISTRY.filter((g) => g.status === "playable").map((g) => g.id
 // the axis an axe violation actually belongs to, since the skins are shared
 // chrome and the boards are not.
 for (const id of PLAYABLE) {
-  test(`${id}: entry state is clean under every skin`, async ({ page }) => {
+  test(`${id}: entry state is clean under every skin`, { tag: "@smoke" }, async ({ page }) => {
     for (const skin of ALL_SKINS) {
       await withSkin(page, skin);
       await page.goto(`/${id}/`);
