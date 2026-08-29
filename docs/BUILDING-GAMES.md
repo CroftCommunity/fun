@@ -83,7 +83,7 @@ Emoji Wars (`levelforge`) is Tier-3's reference implementation.
 - A thin typed TS wrapper (`src/games/<game>-wasm.ts`) presents the API the UI
   calls. The UI never re-implements rules.
 - **Adding a new board state (the overlay pattern).** When a game grows a new
-  per-cell facet (match-3's jelly, then its special candies), model it as a
+  per-cell facet (Trio Tumble's jelly, then its special candies), model it as a
   **parallel overlay grid** beside `cells`, and append it to `state_hash`
   **only when some cell carries it** (`if any: marker || per-cell bytes`). A
   gem-only / overlay-free board then hashes byte-identically to before, so
@@ -94,13 +94,13 @@ Emoji Wars (`levelforge`) is Tier-3's reference implementation.
   match/legality (a special candy still matches/swaps/falls as its colour), so the
   determinism-critical core stays untouched. If the new state changes scoring or
   clearing, remember it also shifts any committed solver/par packs — regenerate
-  and re-lock them in the same commit (see the match-3 B0 plan). An overlay can sit
-  on a non-gem cell too: match-3's **obstacle flavour** (Track D — licorice / meringue)
+  and re-lock them in the same commit (see the Trio Tumble B0 plan). An overlay can sit
+  on a non-gem cell too: Trio Tumble's **obstacle flavour** (Track D — licorice / meringue)
   is an overlay on a `Blocker`, giving two distinct, mechanically-separate tiles that
   reuse the blocker's clear mechanic while rendering distinctly (the flavour is
   additive to `state_hash`, so no pre-obstacle vector re-locks).
 - **When the new state is a new *kind* of cell, not a facet of a gem, add a `Cell`
-  variant instead of an overlay.** match-3's **ingredient** (Track D) is a non-gem
+  variant instead of an overlay.** Trio Tumble's **ingredient** (Track D) is a non-gem
   object that occupies a cell and *falls* — no gem lives under it, so an overlay
   cannot model it. A new `Cell::Ingredient` with an **additive hash tag** (a byte no
   pre-existing board carries) keeps the additive property — gem-only boards hash
@@ -108,7 +108,7 @@ Emoji Wars (`levelforge`) is Tier-3's reference implementation.
   checks guide the edits. Gate matching/legality on `Cell::Gem` so the new kind is
   inert there (an ingredient never matches or swaps), and generalize gravity to the
   behaviour you want (an ingredient *falls* like a gem; a blocker stays a fixed
-  shelf). Same pack-regeneration rule applies if it shifts play (see the match-3
+  shelf). Same pack-regeneration rule applies if it shifts play (see the Trio Tumble
   Track D ingredients plan).
 
 ## 3. Verifiable outcomes — the pond property
@@ -136,14 +136,14 @@ Emoji Wars (`levelforge`) is Tier-3's reference implementation.
 - **Board-state vs path-accumulated objectives.** Most win checks are a function of
   the *current* board (clear every blocker / scrub all jelly / drop all ingredients).
   An objective can instead be **path-accumulated** — met by what the run has produced,
-  not any single board — like match-3's **order/mixed checklist** (clear N of a colour,
+  not any single board — like Trio Tumble's **order/mixed checklist** (clear N of a colour,
   make N striped + N wrapped). Model it with a small **progress accumulator** in the
   core, fed by **neutral, off-hash per-move report signals** (never add it to
   `state_hash` — it is not board state), and derive the per-seed targets from a
   deterministic seed template. Share that accumulator + target fn across the binding,
   the solver, and outcome replay so all three agree bit-for-bit; the solver then needs a
   progress-carrying search (memoize on `(state_hash, progress)`), not the board-state
-  one. Winnability is still a solver-filtered pack (see the match-3 Track D checklist plan).
+  one. Winnability is still a solver-filtered pack (see the Trio Tumble Track D checklist plan).
 - **Verifiable share vs spoiler.** The `?r=` record contains the move list (it
   must, to replay), so opening it reveals the solution — it is a *completed-result*
   artifact, honestly a spoiler for that seed. Where the game's social object is

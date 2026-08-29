@@ -1,4 +1,4 @@
-# Match-3 — story bible & event taxonomy
+# Trio Tumble — story bible & event taxonomy
 
 Narrative direction for `/trio-tumble/`. **Phase 2 ships the scaffold** (a game-event
 bus + a skippable beat-overlay with placeholder cards). **Phase 3 fills it** with

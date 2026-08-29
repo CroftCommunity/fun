@@ -1,6 +1,11 @@
 # Plan — match-3 becomes Trio Tumble: Jewel Drop
 
-**Status:** Phase 0 complete (survey + decisions recorded). Phases 1–7 not started.
+**Status:** Phases 0–7 COMPLETE (2026-08-28) — `npm run gate` exit 0 against the final
+tree: 131 Rust suites, 598 unit, 521 e2e, toolchain resolved through `rustup which`.
+**Not landed** — the branch is ready to merge and the owner has not been asked yet
+(`fun/CLAUDE.md`: don't push unless asked).
+Commits: `8041d1b` plan · `d2c21ee` the rename · `b4b46ae` subtitle + intake + art ·
+this one, docs + the typecheck fix.
 
 Owner decisions taken 2026-08-28, recorded in the Review Log below. Branch
 `claude/trio-tumble-rename`; claim `CroftC/.coordination/claims/fun--trio-tumble-rename.md`.
@@ -207,6 +212,34 @@ Each phase ends green and gets its own commit (repo rule: commit at every stable
 - **2026-08-28 — owner, splash.** Chose **keep both orientations, extend intake** over
   picking one, having been shown that it is a tool change with its own tests beyond a
   pure rename.
+- **2026-08-28 — execution, what the tooling got wrong.** Four mechanical traps, all
+  caught, recorded because each would repeat on the next bulk rename:
+  1. **zsh does not word-split unquoted parameters.** `for f in $FILES` passed the whole
+     newline-joined list as one filename. The loop reported success and edited nothing,
+     and the verification grep in the same command failed the same way — so the run
+     printed "0 remaining" from a grep that had never opened a file. Use `git ls-files -z
+     | xargs -0`.
+  2. **BSD `sed` has no `\b`.** `s/\bM3Game\b/TtGame/g` silently matched nothing, so the
+     import alias was renamed and its fourteen usages were not. Caught by the compiler,
+     but it is the class of thing that survives when the identifier is a string.
+  3. **`sed -i` over a JPEG aborts the whole `xargs` batch** with "RE error: illegal byte
+     sequence", leaving a `.!pid!name` temp file behind and the substitution half
+     applied. Filter by extension; `LC_ALL=C` for the rest.
+  4. **`file --mime-type` pads its output**, so a `': text/'` filter matched 1 of 268
+     files. The filter looked like it worked because the command exited 0.
+  And one that is not about tooling: **a piped exit code is the pipe's.** `npm run
+  test:rust 2>&1 | tail -30` reported success while `cargo fmt --check` was failing
+  underneath it. Twice the gate was read as green before it had finished running at all.
+- **2026-08-28 — the typecheck I ran did not cover the file I wrote.** `npx tsc --noEmit`
+  was run and reported 0 during Phase 4, and that result was carried forward as
+  "typecheck clean" into the Phase 5 commit message. But `tests/intake.test.ts` did not
+  exist yet when it ran, and it imports `tools/intake.mjs` — a plain `.mjs` with no
+  declarations, which is `TS7016` under this repo's `strict`. The full gate caught it and
+  exited 2 before e2e ever started. Fixed with `tools/intake.d.mts` declaring only the
+  pure exported surface (the script stays JavaScript because `npm run intake` runs it
+  with `node` directly). The lesson is the plain one: a check is evidence for the tree it
+  ran against, and adding a file after it invalidates it — the same failure as the piped
+  exit code above, one level up.
 - **2026-08-28 — agent, plan filenames (reversal).** Phase 3 originally said the 15
   historical `plans/*-match3-*.md` docs keep their filenames as a record of what was
   done under the old name. Reversed during Phase 1: three of them are cited from Rust

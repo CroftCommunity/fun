@@ -1,8 +1,21 @@
-# TODO — match-3
+# TODO — Trio Tumble: Jewel Drop
 
 Status: **playable** at `/trio-tumble/` (v1: Candy-Crush target-score-in-moves with
 star thresholds). Plan: `plans/2026-07-30-trio-tumble-playable.md`. Standards:
 `docs/BUILDING-GAMES.md`.
+
+Named on 2026-08-28 (`plans/2026-08-28-1-plan-trio-tumble-rename.md`). It shipped as
+"Match-3" — its genre — until then. Where this file says *match-3* below it means the
+genre; the game is Trio Tumble.
+
+## Follow-ups from the rename
+
+- [ ] **The front-end is loose files, not a game directory.** `src/games/trio-tumble.ts`
+  plus eight `trio-tumble-*.ts` siblings, where `docs/BUILDING-GAMES.md` § "Game
+  isolation" and `CLAUDE.md` both specify `src/games/<game>/`. Solitaire has the same
+  shape — they are the two oldest games and predate the convention. The rename moved
+  the files but deliberately did not restructure them, because consolidating is a
+  separate change with its own import churn and no behavioural test to anchor it.
 
 ## Shipped (v1)
 - [x] `trio-tumble-core` deal generator (seeded, no initial matches, ≥1 legal swap).

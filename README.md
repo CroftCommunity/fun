@@ -13,7 +13,7 @@ a portable artifact addressable at its own URL.
 `fun.croft.ing` presents games in a **slide-out drawer** over a persistent play area; each game can
 also go **full-screen** or **open in its own tab** (so every game has its own URL). A game is a module
 that implements one contract and renders chrome-agnostically into a mount point — the drawer is built
-once and every game reuses it. Shelf order: **solitaire → match-3 → bubble → wyrdle → 2048 → drop 4 → align → blockdoku → loose ends → cribbage**.
+once and every game reuses it. Shelf order: **solitaire → trio tumble → bubble → wyrdle → 2048 → drop 4 → align → blockdoku → loose ends → cribbage**.
 
 ## Layout
 
@@ -70,7 +70,7 @@ with a verification-forward screen — "Cleared clean ✓ — verifiable" — th
 moves-to-clear, one-tap re-verify (replays the record through the core), and a `?r=` share link that
 re-verifies the shared result before display (deflated, so even a long win stays a portable URL).
 
-## Match-3 (playable — Candy-Crush-style)
+## Trio Tumble: Jewel Drop (playable — Candy-Crush-style)
 
 `/trio-tumble/` is a target-score-in-moves game: an 8×8 board of big, glossy, distinctly-shaped candies
 (colour-blind safe), **swipe** a candy toward a neighbour to swap — or tap gem-then-neighbour, the
