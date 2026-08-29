@@ -1,0 +1,59 @@
+37 | impl Card {
+...
+41 |     fn idx(self) -> usize {
+  12994800 (hand, cut) pairs in 0.2s = 19 ns/hand
+  score  0:   1009008
+  score  1:     99792
+  score  2:   2813796
+  score  3:    505008
+  score  4:   2855676
+  score  5:    697508
+  score  6:   1800268
+  score  7:    751324
+  score  8:   1137236
+  score  9:    361224
+  score 10:    388740
+  score 11:     51680
+  score 12:    317340
+  score 13:     19656
+  score 14:     90100
+  score 15:      9168
+  score 16:     58248
+  score 17:     11196
+  score 18:      2708
+  score 19:         0
+  score 20:      8068
+  score 21:      2496
+  score 22:       444
+  score 23:       356
+  score 24:      3680
+  score 25:         0
+  score 26:         0
+  score 27:         0
+  score 28:        76
+  score 29:         4
+  published distribution reproduced: YES
+  hand-only (15 keeps x 46 cuts): 19.2 us per decision
+  build: 0.0s (random opp), 0.4s (hand-only opp), 20k samples each
+  random-opp vs hand-only-opp: max |diff| 0.80 pts, mean 0.17 pts
+  same policy, two seeds (noise floor): max 0.40, mean 0.11
+  e.g. throw 5-5: 9.04   K-10: 3.21   (hand-only opp)
+  full-expect (with table lookup): 20.6 us per decision
+  peg random vs heuristic                    win  34.8%   pts/deal 12.05 vs 13.02   (0.4s)
+  peg heuristic vs heuristic                 win  48.4%   pts/deal 12.81 vs 12.93   (0.4s)
+  peg expectimax-2 vs heuristic              win  53.3%   pts/deal 12.86 vs 12.61   (0.4s)
+  peg expectimax-3 vs heuristic              win  52.9%   pts/deal 12.96 vs 12.74   (0.6s)
+  peg PEEK vs heuristic                      win  71.6%   pts/deal 13.23 vs 11.87   (0.8s)
+  discard random vs full-expect              win   3.8%   pts/deal  9.32 vs 13.35   (0.2s)
+  discard hand-only vs full-expect           win  48.9%   pts/deal 12.88 vs 13.10   (0.4s)
+  discard full-expect vs full-expect         win  53.4%   pts/deal 12.98 vs 12.92   (0.4s)
+  discard PEEK vs full-expect                win  79.7%   pts/deal 13.96 vs 12.06   (0.2s)
+  random/random vs random/random             win  48.6%   pts/deal  9.01 vs  9.08   (0.0s)
+  full-expect/em2 vs random/random           win  99.5%   pts/deal 13.51 vs  8.40   (0.3s)
+  PEEK/PEEK vs full-expect/em2               win  92.8%   pts/deal 13.99 vs 10.85   (0.7s)
+== 7. the pairs that were inside the noise at 1000 games, at 10000 (95% CI ±1%) ==
+  full-expect/heur vs SAME (seat bias)       win  50.2%   pts/deal 12.89 vs 12.91   (3.5s)
+  discard hand-only vs full-expect           win  45.1%   pts/deal 12.78 vs 13.12   (3.6s)
+  peg expectimax-2 vs heuristic              win  56.4%   pts/deal 12.94 vs 12.59   (4.1s)
+  peg expectimax-3 vs heuristic              win  56.8%   pts/deal 13.08 vs 12.70   (5.5s)
+  peg expectimax-3 vs expectimax-2           win  49.7%   pts/deal 12.69 vs 12.75   (6.1s)

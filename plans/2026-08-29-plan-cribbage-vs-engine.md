@@ -1,8 +1,8 @@
 # Cribbage vs the engine — the first hidden-information game
 
-**Status:** Pass 1 (shape), 2026-08-29. Not started. Four open questions (O1–O4),
-each with a recommendation; O1 and O2 must be answered before Phase 1 writes a golden
-vector, O3 and O4 can wait for Phase 6.
+**Status:** Phase 0 COMPLETE (2026-08-29, findings recorded below). O3 answered by
+measurement; O1, O2, O4 open with recommendations — O1 and O2 must be answered before
+Phase 1 writes a golden vector.
 
 **Owner decision (2026-08-29):** un-gate cribbage from the P2P transport + fair-reveal
 plan and ship it **against the computer opponent, on one device**. The two-human
@@ -302,6 +302,104 @@ writes the real one test-first from the rules doc, not by copying the spike.
 
 **Validation:** Broad — this phase is validation.
 
+### Phase 0 findings (measured 2026-08-29, `spike/cribbage-solve/`, results in `results.txt`)
+
+Machine: darwin/arm64, release build, Rust 1.97.1. Every ladder pair alternates the
+first dealer; win rates at 1,000 games carry a 95% interval of about ±3%, at 10,000
+about ±1% — the second run exists because the first could not separate several rungs.
+
+**The scorer was verified before any number was trusted.** Enumerating every
+(four-card hand, cut) — 12,994,800 pairs, 0.2 s — reproduced the published score
+distribution exactly: 29 × 4, 28 × 76, 0 × 1,009,008, and 19/25/26/27 unreachable.
+Two of the spike's own unit tests were wrong on first run (a missed 5+K fifteen; a
+missed 2+4+9), the scorer was not. That is the expected direction and the reason the
+enumeration, not the hand-written tests, is the verification.
+
+#### 1. Cost is not a design input — everything is instant
+
+| decision | cost |
+|---|---|
+| score one hand | 19 ns |
+| exhaustive discard, hand term only (15 × 46) | 19 µs |
+| exhaustive discard with crib-table lookup | 21 µs |
+| crib table, 20k Monte-Carlo samples | 0.4 s |
+| expectimax-3 pegging, whole game of self-play | ~0.5 ms |
+
+The plan's Phase 0 question "is the crib table a build-time artefact or a runtime
+computation" has a boring answer: the *table* is cheap enough to build at startup, and
+the *lookup* costs nothing. Ship it as a build-time artefact anyway, for the reason the
+solitaire pack is one — byte-identical regeneration is a test, and a table computed at
+runtime is a table nobody diffs.
+
+#### 2. Discard is the whole game; the crib term is real but small
+
+| discard policy (peg fixed = heuristic) | vs full-expect | pts/deal |
+|---|---|---|
+| random | **3.8%** | 9.3 vs 13.4 |
+| hand-only expectation (ignore the crib) | 45.1% (10k) | 12.8 vs 13.1 |
+| full expectation (hand ± crib table) | 50.2% (10k, self, the seat-bias check) | 12.9 vs 12.9 |
+
+Random discarding loses 24 of 25 games; getting the hand term right closes almost all
+of that; the crib term is worth about **5 points of win rate** — clearly present at 10k
+games, invisible at 1k. The crib table's sensitivity to the assumed opponent policy is
+smaller still: random-opponent vs hand-only-opponent tables differ by 0.17 pts mean,
+0.80 max, against a same-policy two-seed noise floor of 0.11 / 0.40. **The table's
+opponent policy is not a decision worth agonizing over**; build it under the shipped
+policy and move on.
+
+#### 3. Pegging lookahead buys ~6 points; three plies buy nothing over two
+
+| peg policy (discard fixed = full-expect) | vs heuristic | pts/deal |
+|---|---|---|
+| random | 34.8% | 12.1 vs 13.0 |
+| heuristic (points, avoid 5/21, lead low) | 50.2% (self) | — |
+| expectimax-2 | **56.4%** (10k) | 12.9 vs 12.6 |
+| expectimax-3 | 56.8% (10k) | 13.1 vs 12.7 |
+| expectimax-3 vs expectimax-2 | 49.7% (10k) | 12.7 vs 12.8 |
+
+**O3 is answered: expectimax-2.** The third ply is indistinguishable from the second at
+10,000 games and costs 50% more. The plan's prior ("2-ply beats the heuristic by a few
+points per deal and 3-ply buys nothing") was right in shape — and the shelf's record made
+that a coin flip, so it was worth the run. Note the pts/deal margin is 0.3–0.4 for a
+6-point win-rate gain: cribbage games are close enough that a third of a point per deal
+decides one game in fifteen.
+
+#### 4. The peek margin is large, which is what makes the honesty check testable
+
+| cheat | vs the honest equivalent | pts/deal |
+|---|---|---|
+| peeking discard (knows the cut + opponent's throw) | **79.7%** | 14.0 vs 12.1 |
+| peeking pegging (minimax over the real hand) | **71.6%** | 13.2 vs 11.9 |
+| both | **92.8%** vs full-expect / expectimax-2 | 14.0 vs 10.9 |
+
+This is Phase 10's sensitivity target: a test-only peeking engine must beat the honest
+Expert by a margin of this order (≥ 20 points of win rate at 1,000 games is a safe floor
+against a 92.8% measurement). An honest engine that leaks the cut or the opponent's hand
+would show up as the peeking margin *shrinking* — a leak makes the honest engine
+stronger, not weaker, so "Expert got better" is the symptom to fear, not celebrate.
+
+#### 5. The ends of the ladder
+
+random/random vs itself: 48.6% (sanity). The best honest engine (full-expect +
+expectimax-2) beats random/random **99.5%** of the time at 13.5 vs 8.4 points per deal.
+So the difficulty ladder has real room: the gap between "a player who has never seen the
+game" and Expert is nearly the whole interval, and Easy/Medium/Hard can be placed in it
+by *how much* of the discard expectation is thrown away rather than by pegging depth.
+
+#### What this changes in the plan
+
+- **Phase 3 ships expectimax-2 for pegging**, not the heuristic and not 3-ply (O3).
+- **The crib table is built under the shipped discard policy**, one table, no policy knob.
+- **Difficulty is a discard knob first.** Random discard is 3.8%; hand-only is 45%; that
+  gap is where Easy and Medium live. Pegging sloppiness is the finer adjustment.
+- **The self-play rig needs 10,000 games, not 1,000**, to make a strength claim between
+  adjacent levels; at 19 µs a decision that is seconds, so Phase 10's baseline test can
+  afford it.
+- **The pegging model in the spike is approximate** (go/reset inside the lookahead is
+  simplified). Phase 1's core will implement the real pegging state machine; Phase 3
+  should re-run this ladder on the real core before the numbers above are quoted as the
+  shipped engine's.
+
 ### Phase 1: `cribbage-core` — rules, `View`, hash, verifiable outcome
 
 **Goal:** The complete game as a pure state machine with a replayable record and a
@@ -581,10 +679,9 @@ Everything in "Documentation Impact", plus the Review Log entries for every phas
 2. **O2 — Skunk: a flag, or a scored match?** Recommendation: **a flag on the record**,
    one game to 121 as the unit. Match play is a persistence feature, and the shelf has no
    cross-game persistence yet. Must be answered before Phase 1 (it is in the record).
-3. **O3 — Pegging engine: heuristic or expectimax?** Deliberately unanswered until
-   Phase 0's ladder exists. The plan's prior is that 2-ply expectimax beats the heuristic
-   by a few points per deal and 3-ply buys nothing more — and the shelf's record says
-   priors like that are wrong about half the time.
+3. **O3 — Pegging engine: heuristic or expectimax?** **Answered by Phase 0
+   (2026-08-29): expectimax-2.** +6 points of win rate over the heuristic at 10,000
+   games; a third ply is indistinguishable (49.7% head-to-head) at 1.5× the cost.
 4. **O4 — The opponent's name.** Every shipped engine is "The Engine 🤖"; the
    crofting-idiom persona names (Chip / Rowan / Alder / Bramble / Millet) belong to the
    opt-in LLM hybrid, which this plan does not ship. Recommendation: **"The Engine"**

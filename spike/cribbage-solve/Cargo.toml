@@ -1,0 +1,19 @@
+# Phase 0 discovery spike for plans/2026-08-29-plan-cribbage-vs-engine.md.
+#
+# Deliberately NOT a workspace member: throwaway measurement code that must not
+# enter the Rust gate. The empty [workspace] table detaches it from the parent.
+[package]
+name = "cribbage-solve-spike"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+rand = { version = "=0.8.6", default-features = false }
+rand_chacha = { version = "=0.3.1", default-features = false }
+
+[profile.release]
+opt-level = 3
+debug = false
