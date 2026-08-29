@@ -913,6 +913,41 @@ position in any plan.
 
 ## Review Log
 
+### Post-completion — 2026-08-29 · the checkpoint mitigation is NOT needed
+
+**Phase 5 recorded a required mitigation that should not be built.** The risk
+said: replay costs ~40 ms per 1,000 ticks, the 1-second bar breaks at ~24,000
+ticks, and a 15-minute game costs 2.3 s — so a checkpointed hash is *required
+for long games rather than contingent*.
+
+That was measured on **synthetic** runs. Real ones cannot get there, because the
+crate overflows first and the run ends. Measured through the shipped binding,
+across three playing strategies and six seeds:
+
+| strategy | drops | ticks | minutes | record | verify |
+|---|---|---|---|---|---|
+| one column | 11 | 365 | 0.1 | 750 B | **1 ms** |
+| greedy (aim at a matching fruit) | 20–28 | 673–943 | 0.2 | ~1.4 KB | **3–7 ms** |
+| spread | 78 | 2,651 | 0.7 | 4.3 KB | **62 ms** |
+
+The worst real run verifies in **62 ms against a 1,000 ms bar** — sixteen times
+under it. Building the checkpoint would have been dead code guarding a case the
+game cannot produce, and it would have looked prudent right up until someone
+tried to test it.
+
+**What this does not establish.** All three players are weak; a skilled human
+merges far better and survives longer. Reaching 1,000 ms needs a run about 16×
+the best I could produce — around eleven minutes of continuous play without an
+overflow — which I cannot rule out and did not observe. If verify ever does get
+slow, the checkpointed hash is the known fix and this table is the baseline to
+compare against. The right call now is to record the measurement, not to build
+against a number nothing reached.
+
+The other flagged item, `daily_seed_hi` being structurally zero because the pool
+is 4,096, **stands as recorded**: it is pinned by a test that fails the moment a
+daily needs its high half, which is the cheap half of the fix. Widening the pool
+would re-lock the pack's golden vector for no behavioural gain.
+
 ### Phases 3–6 execution — 2026-08-29 · the game ships
 
 **Phase 3 · `crates/orchard-wasm`.** 21 Rust tests, 9 vitest boundary tests, a Node cross-check.
