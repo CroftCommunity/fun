@@ -16,17 +16,17 @@ export const CRIBBAGE_GUIDE: Guide = {
       blocks: [
         {
           kind: "prose",
-          text: "First to 121 points wins. Points come from three places every deal: the cut (a jack is two for the dealer), pegging (the play to 31), and the show (counting your hand, the dealer's hand, and the crib). The two tracks above the table are the peg board; the marker near the end is the skunk line.",
+          text: "First to 121 points wins. Points come from three places every deal: the cut (a jack is two for the dealer), pegging (the play to 31), and the show (counting your hand, the dealer's hand, and the crib). The board across the middle of the table is the peg board: three streets of forty holes, The Engine's lane above yours, two pegs a side that leapfrog as you score. The red marker on the last street is the skunk line.",
         },
         {
           kind: "prose",
-          text: "Your cards are along the bottom. The Engine's are the face-down backs at the top — you only ever see how many it holds. In the middle sit the cut card, the crib (marked with whose it is), and the cards played in the current count.",
+          text: "Your cards are along the bottom. The Engine's are the face-down backs at the top — you only ever see how many it holds (Settings can swap the two). Between the board and your hand sit the cut card, the crib (marked with whose it is), and the cards played in the current count.",
         },
         {
           kind: "shot",
           name: "cribbage-table",
-          alt: "A cribbage game: a turn bar naming You and The Engine with scores, a difficulty picker, two peg tracks to 121 with a skunk-line marker, The Engine's cards face down, the cut slot and crib in the middle, and six face-up cards along the bottom with two selected.",
-          caption: "The turn bar, the peg board, and the table. Two cards are selected for the throw.",
+          alt: "A cribbage game: a turn bar naming You and The Engine with scores, a difficulty picker, then the table — The Engine's cards face down at the top, a three-street peg board with two pegs a side and a skunk-line marker, the cut slot and crib below it, and six face-up cards along the bottom with two selected.",
+          caption: "The turn bar and the table: the engine's hand, the peg board, the middle, your hand. Two cards are selected for the throw.",
         },
       ],
     },
@@ -111,6 +111,10 @@ export const CRIBBAGE_GUIDE: Guide = {
         {
           kind: "note",
           text: "Hints are on by default and point at the engine's preferred throw or play; using one marks the record as assisted. The optional tutor explains your options: exact for a throw, hedged for pegging, because the other hand is unknown.",
+        },
+        {
+          kind: "note",
+          text: "On a small screen the board can give way: Settings → Peg board offers two compact score bars, or no board during the deal and a replay of the deal's pegging once it ends. The scores in the turn bar stay either way.",
         },
       ],
     },

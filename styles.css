@@ -4271,10 +4271,12 @@ body.fullscreen .le-stage {
 .sheet-choice-input { width: 1.05rem; height: 1.05rem; accent-color: var(--accent); }
 .sheet-choice-hint { margin-left: auto; color: var(--ink-muted); font-size: 0.75rem; }
 
+/* ===========================================================================
    Cribbage. The felt is the table; cards reuse the solitaire card language
    (`--card`, the suit inks, `--r-card`) so the shelf has one card, not two.
-   Layout is column-first: the peg board, then the table (opponent backs /
-   middle / show / your hand / actions), so a 360px phone stacks it without a
+   Layout is column-first on the table: the engine's backs, the peg board, the
+   middle (cut / crib / played / count), the show, your hand, actions — or the
+   mirror when the seats are swapped — so a 360px phone stacks it without a
    horizontal scroll. Cards are ≥44px tall for the tap floor.
    =========================================================================== */
 .crib-game {
@@ -4282,6 +4284,8 @@ body.fullscreen .le-stage {
   flex-direction: column;
   gap: 0.6rem;
   align-items: center;
+  inline-size: 100%;
+  margin-inline: auto;
 }
 .crib-turnbar {
   display: flex;
@@ -4307,33 +4311,88 @@ body.fullscreen .le-stage {
 .crib-field { display: inline-flex; align-items: center; gap: 0.35rem; }
 .crib-toggle { display: block; margin-block: 0.25rem; }
 
-/* The peg board: two tracks to 121, a peg on each, the skunk line at 90. */
-.crib-pegboard {
-  inline-size: min(100%, 32rem);
+/* The peg board — a real one, as SVG: three streets of forty holes in fives,
+   down and back and down, the engine's lane above yours, two pegs a side. The
+   drawing scales with the table (viewBox), so a 360px phone gets the same board
+   smaller; Settings offers two bars or an end-of-deal recap instead. */
+.crib-board {
+  inline-size: 100%;
+  block-size: auto;
+  display: block;
+  font-family: var(--font-body);
+}
+.crib-board-wood {
+  fill: var(--crib-track);
+  stroke: color-mix(in srgb, var(--crib-track) 70%, black);
+  stroke-width: 1;
+}
+.crib-hole {
+  fill: color-mix(in srgb, var(--crib-track) 55%, black);
+}
+.crib-game-hole {
+  fill: var(--crib-skunk);
+  fill-opacity: 0.35;
+  stroke: color-mix(in srgb, var(--crib-track) 40%, black);
+  stroke-width: 1;
+}
+.crib-board .crib-peg {
+  stroke: color-mix(in srgb, var(--crib-track-ink) 40%, transparent);
+  stroke-width: 0.8;
+}
+.crib-board .crib-track.you .crib-peg { fill: var(--crib-peg-a); }
+.crib-board .crib-track.them .crib-peg { fill: var(--crib-peg-b); }
+.crib-board .crib-peg-back { fill-opacity: 0.75; }
+.crib-board .crib-skunk {
+  stroke: var(--crib-skunk);
+  stroke-width: 1.5;
+}
+.crib-board .crib-skunk-label {
+  fill: var(--crib-skunk);
+  font-size: 8px;
+  letter-spacing: 0.04em;
+}
+.crib-board-name, .crib-board-score {
+  fill: var(--crib-track-ink);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+.crib-board-score { font-weight: 700; font-size: 11px; }
+.crib-recap {
+  inline-size: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: center;
+}
+.crib-recap-title { margin: 0; font-size: 0.9rem; font-weight: 700; }
+
+/* The compact alternative: two bars to 121, a peg on each, the skunk line at 90. */
+.crib-pegboard.crib-bars {
+  inline-size: 100%;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
   position: relative;
   padding-block-end: 1rem;
 }
-.crib-track {
+.crib-bars .crib-track {
   position: relative;
   block-size: 0.9rem;
   border-radius: 999px;
   background: var(--crib-track);
 }
-.crib-peg {
+.crib-bar-peg {
   position: absolute;
   top: 50%;
   inline-size: 0.9rem;
   block-size: 0.9rem;
   border-radius: 50%;
   transform: translate(-50%, -50%);
-  transition: left 300ms ease-out;
+  transition: left 120ms linear;
 }
-.crib-track.you .crib-peg { background: var(--crib-peg-a); }
-.crib-track.them .crib-peg { background: var(--crib-peg-b); }
-.crib-skunk {
+.crib-bars .crib-track.you .crib-bar-peg { background: var(--crib-peg-a); }
+.crib-bars .crib-track.them .crib-bar-peg { background: var(--crib-peg-b); }
+.crib-bars .crib-skunk {
   position: absolute;
   top: -0.15rem;
   bottom: -0.15rem;
@@ -4341,7 +4400,7 @@ body.fullscreen .le-stage {
   background: var(--crib-skunk);
   transform: translateX(-50%);
 }
-.crib-skunk-label {
+.crib-bars .crib-skunk-label {
   position: absolute;
   bottom: 0;
   left: calc(90% / 1.21);
@@ -4350,9 +4409,9 @@ body.fullscreen .le-stage {
   color: var(--crib-skunk);
 }
 
-/* The table. */
+/* The table: engine / board / the middle / your hand, top to bottom. */
 .crib-table {
-  inline-size: min(100%, 32rem);
+  inline-size: min(100%, 40rem);
   display: flex;
   flex-direction: column;
   gap: 0.6rem;

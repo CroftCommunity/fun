@@ -70,8 +70,8 @@ test("the table, the peg board and the pickers render", { tag: "@smoke" }, async
   const backs = await page.evaluate(() => window.__cribbage!.game.view().opponentCards);
   expect(backs).toBe(4);
   await expect(page.locator(".crib-opp .crib-card.back")).toHaveCount(backs);
-  await expect(page.locator(".crib-track")).toHaveCount(2);
-  await expect(page.locator(".crib-skunk")).toHaveCount(2);
+  await expect(page.locator(".crib-board .crib-track")).toHaveCount(2);
+  await expect(page.locator(".crib-board .crib-skunk")).toHaveCount(2);
   await expect(page.locator(".crib-turnbar")).toContainText(/you/i);
   await expect(page.locator(".crib-turnbar")).toContainText(/the engine/i);
   await expect(page.locator(".crib-turnbar")).toContainText(/crib/i);
@@ -182,7 +182,7 @@ test("a full game plays to a result stating its value; the share re-verifies", {
   await expect(result).toBeVisible({ timeout: 30_000 });
   await expect(result.locator(".sol-verify-badge.ok")).toBeVisible();
   await expect(result).toContainText(/worth \d game/);
-  await expect(result.locator(".crib-pegboard")).toBeVisible();
+  await expect(result.locator(".crib-board")).toBeVisible();
 
   const shareHref = await result.locator(".sol-share").getAttribute("href");
   expect(shareHref).toContain("?r=");
@@ -299,6 +299,83 @@ test("the tutor panel is off by default, appears when enabled, and is exact for 
   await page.locator(".crib-tutor-explain").click();
   await expect(page.locator(".crib-tutor-note")).toContainText(/Exact/);
   await expect(page.locator(".crib-tutor-options li").first()).toContainText(/throw .* — \d+\.\d/);
+});
+
+test("the table reads engine, board, middle, your hand — and the seats can be swapped", async ({ page }) => {
+  await page.goto("/cribbage/?seed=7");
+  await ready(page);
+  const order = () =>
+    page.evaluate(() =>
+      [...document.querySelector(".crib-table")!.children].map((c) => (c.getAttribute("class") ?? "").split(" ")[0]),
+    );
+  const initial = await order();
+  expect(initial.indexOf("crib-opp")).toBeLessThan(initial.indexOf("crib-board"));
+  expect(initial.indexOf("crib-board")).toBeLessThan(initial.indexOf("crib-hand"));
+  await expect(page.locator(".crib-board .crib-track")).toHaveCount(2);
+  await expect(page.locator(".crib-board .crib-peg-front")).toHaveCount(2);
+  await page.locator(".crib-settings summary").click();
+  await page.locator(".crib-set-seats").check();
+  const flipped = await order();
+  expect(flipped.indexOf("crib-hand")).toBeLessThan(flipped.indexOf("crib-board"));
+  expect(flipped.indexOf("crib-board")).toBeLessThan(flipped.indexOf("crib-opp"));
+  expect(await page.evaluate(() => localStorage.getItem("fun-cribbage-seats-flipped"))).toBe("on");
+});
+
+test("the pegs walk to the score, and the board's score ticks with them", async ({ page }) => {
+  await page.goto("/cribbage/?seed=7&fast=1");
+  await ready(page);
+  // Play until somebody has scored, then the front pegs must come to rest on the scores.
+  for (let turn = 0; turn < 40; turn += 1) {
+    await waitHumanOrOver(page);
+    const v = await page.evaluate(() => window.__cribbage!.game.view());
+    if (v.result !== -1 || v.scores[0] + v.scores[1] > 0) break;
+    await humanMove(page);
+  }
+  await page.waitForFunction(() => {
+    const v = window.__cribbage!.game.view();
+    const at = (seat: number) => Number(document.querySelector(`.crib-peg-front[data-seat="${seat}"]`)?.getAttribute("data-hole"));
+    return at(1) === Math.min(v.scores[0], 121) && at(2) === Math.min(v.scores[1], 121);
+  });
+  const v = await page.evaluate(() => window.__cribbage!.game.view());
+  expect(v.scores[0] + v.scores[1]).toBeGreaterThan(0);
+  await expect(page.locator('.crib-board-score[data-seat="1"]')).toHaveText(String(v.scores[0]));
+  await expect(page.locator('.crib-board-score[data-seat="2"]')).toHaveText(String(v.scores[1]));
+  // The back peg trails the front one: it is where the score last was.
+  const back = await page.locator('.crib-peg-back[data-seat="1"]').getAttribute("data-hole");
+  expect(Number(back)).toBeLessThanOrEqual(v.scores[0]);
+});
+
+test("the board can be two compact bars instead", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("fun-cribbage-board", "bars"));
+  await page.goto("/cribbage/?seed=7");
+  await ready(page);
+  await expect(page.locator(".crib-board")).toHaveCount(0);
+  await expect(page.locator(".crib-bars .crib-track")).toHaveCount(2);
+  await expect(page.locator(".crib-bars .crib-skunk")).toHaveCount(2);
+  await expect(page.locator(".crib-bars .crib-bar-peg")).toHaveCount(2);
+  await expect(page.locator(".crib-board-mode")).toHaveValue("bars");
+});
+
+test("in recap mode the board is absent during the deal and replays the pegging when the deal ends", async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.addInitScript(() => localStorage.setItem("fun-cribbage-board", "recap"));
+  await page.goto("/cribbage/?seed=7&fast=1");
+  await ready(page);
+  await expect(page.locator(".crib-board")).toHaveCount(0);
+  await expect(page.locator(".crib-bars")).toHaveCount(0);
+  // Play through the first deal; the recap appears once deal 2 begins.
+  const recap = page.locator(".crib-recap");
+  for (let turn = 0; turn < 60; turn += 1) {
+    if ((await recap.count()) > 0) break;
+    await waitHumanOrOver(page);
+    if ((await recap.count()) > 0) break;
+    const v = await page.evaluate(() => window.__cribbage!.game.view());
+    if (v.result !== -1) break;
+    await humanMove(page);
+  }
+  await expect(recap).toBeVisible();
+  await expect(recap).toContainText(/deal 1/i);
+  await expect(recap.locator(".crib-board")).toBeVisible();
 });
 
 for (const skin of familyMembers(familyOf(DEFAULT_SKIN))) {
