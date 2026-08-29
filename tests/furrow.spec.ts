@@ -420,3 +420,27 @@ test("the settings panel stays open when something re-renders the board", async 
 
   await expect(panel).toHaveAttribute("open", "");
 });
+
+test("the tutor's explained options survive a re-render on the same position", async ({ page }) => {
+  // TODO/dots.md:81 — the reading used to live only in the DOM, so any render()
+  // erased it. Hiding and re-showing the tutor is the board-neutral re-render
+  // this game actually exposes: the panel is genuinely destroyed and rebuilt, and
+  // the position has not changed, so the reading is still true and must come back.
+  // The other half — that it CLEARS once a move is played, rather than describing
+  // a position that no longer exists — is pinned in dots.spec.ts, where a legal
+  // move is one click away.
+  await page.addInitScript(() => localStorage.setItem("fun-furrow-tutor", "on"));
+  await page.goto("/furrow/?seed=7");
+  await ready(page);
+  await page.locator(".furrow-tutor-explain").click();
+  const items = page.locator(".furrow-tutor-options li");
+  await expect(items.first()).toBeVisible();
+  const before = await items.count();
+
+  await page.locator(".furrow-settings summary").click();
+  await page.locator(".furrow-set-tutor").click(); // hide  -> render()
+  await expect(page.locator(".furrow-tutor")).toHaveCount(0);
+  await page.locator(".furrow-set-tutor").click(); // show  -> render()
+
+  await expect(items).toHaveCount(before);
+});

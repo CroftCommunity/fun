@@ -291,3 +291,36 @@ test("the settings panel stays open when something re-renders the board", async 
   // exact assertion CI times out on.
   await expect(page.locator(".dots-set-tutor")).toBeVisible();
 });
+
+test("the tutor's explained options survive a re-render, and clear when the board moves on", async ({
+  page,
+}) => {
+  // TODO/dots.md:81 — "the tutor panel's list resets on every re-render, so
+  // playing a move clears the options it just explained." Half of that is a bug
+  // and half is correct, and the difference is whether the BOARD changed: a list
+  // of reasonable edges is still true after toggling a setting, and is stale the
+  // moment an edge is drawn. Both halves are asserted here.
+  await page.addInitScript(() => localStorage.setItem("fun-dots-tutor", "on"));
+  await page.goto("/dots/?seed=7");
+  await ready(page);
+  await waitHumanOrOver(page);
+
+  await page.locator(".dots-tutor-explain").click();
+  const items = page.locator(".dots-tutor-options li");
+  await expect(items.first()).toBeVisible();
+  const before = await items.count();
+  const note = await page.locator(".dots-tutor-note").textContent();
+
+  // A re-render that does NOT change the board must keep the reading. Note the
+  // toggle has to be one that actually re-renders: "Declare assistance" only
+  // writes a setting, so using it proved nothing and passed against the bug.
+  await page.locator(".dots-settings summary").click();
+  await page.locator(".dots-set-hints").click(); // setHintsEnabled() -> render()
+  await expect(items).toHaveCount(before);
+  await expect(page.locator(".dots-tutor-note")).toHaveText(note ?? "");
+
+  // Drawing an edge DOES change the board, so the reading is stale and must go
+  // rather than sit there describing a position that no longer exists.
+  await page.locator(".dots-edge.legal").first().click();
+  await expect(items).toHaveCount(0);
+});

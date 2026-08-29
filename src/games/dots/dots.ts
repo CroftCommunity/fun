@@ -243,6 +243,20 @@ export function dotsModule(): GameModule {
   // Engine-grounded coaching for the human's last move, surfaced once the
   // engine has replied (so it does not spoil the reply). Cleared each turn.
   let coachMsg: string | null = null;
+  /**
+   * The tutor's last reading, held WITH the position it was computed for.
+   *
+   * It used to live only in the DOM, so every `render()` erased it — the player
+   * asked "explain my options", read two lines, toggled a setting, and the answer
+   * vanished (TODO/dots.md). Holding it here is half the fix; the state hash is the
+   * other half, because a list of reasonable edges is *true* until an edge is drawn
+   * and *stale* the instant one is. Restoring it unconditionally would trade a lost
+   * answer for a wrong one.
+   *
+   * Furrow already does exactly this (`tutorView`) — it shipped last and solved the
+   * problem the other three inherited. This is that solution, brought back.
+   */
+  let tutorReading: { note: string; items: string[]; at: string } | null = null;
   let pendingCoach: string | null = null;
   /** Set when the player ends the match themselves — the honest report. */
   let endedEarly: string | null = null;
@@ -677,14 +691,22 @@ export function dotsModule(): GameModule {
         const band = report.moves
           .filter((m) => m.quality !== "blunder")
           .sort((x, y) => y.value - x.value);
-        note.textContent = report.exact ? "Solved from here:" : "Reading ahead (not yet certain):";
-        optionsEl.replaceChildren(
-          ...band
-            .slice(0, 6)
-            .map((m) => el("li", {}, `${edgeLabel(m.col, b.rows, b.cols)} — ${m.idea}`)),
-        );
+        const heading = report.exact ? "Solved from here:" : "Reading ahead (not yet certain):";
+        const items = band
+          .slice(0, 6)
+          .map((m) => `${edgeLabel(m.col, b.rows, b.cols)} — ${m.idea}`);
+        note.textContent = heading;
+        optionsEl.replaceChildren(...items.map((line) => el("li", {}, line)));
+        tutorReading = { note: heading, items, at: g.currentHash() };
       }, 0);
     });
+    // Repaint the last reading if it still describes the position on screen.
+    // `coachMsg` below has always worked this way; the reading simply never had
+    // anywhere to be repainted from.
+    if (game && tutorReading && tutorReading.at === game.currentHash()) {
+      note.textContent = tutorReading.note;
+      optionsEl.replaceChildren(...tutorReading.items.map((line) => el("li", {}, line)));
+    }
     const coach = el("p", { class: "dots-tutor-coach", role: "status", "aria-live": "polite" });
     if (coachMsg) coach.textContent = coachMsg;
     panel.append(explain, note, optionsEl, coach);
