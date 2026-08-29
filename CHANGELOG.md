@@ -12,6 +12,9 @@ earlier is in `git log`.
 
 ## 2026-08
 
+- 2026-08-29 **cribbage:** a settings panel opened while the engine is still moving no
+  longer snaps shut when its move lands — the same re-render defect Dots had, now covered
+  by the shared fix. (`plans/2026-08-29-plan-cribbage-vs-engine.md`, post-landing)
 - 2026-08-29 **cribbage:** the first hidden-information game, played against the engine —
   The Engine by default, a persona slot wired as in furrow; a game is worth 1, a skunk 2, a
   double skunk 3; manual counting is a setting and counting is a Claim move. Phase 4 closed
