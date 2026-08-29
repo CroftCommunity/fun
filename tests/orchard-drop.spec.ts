@@ -16,13 +16,14 @@ async function ready(page: Page): Promise<void> {
   await page.waitForFunction(() => Boolean(window.__orchard));
 }
 
-test("the crate renders natively — no iframe, no wrapped-game banner", async ({ page }) => {
+test("the crate renders natively — no iframe, no borrowed chrome", async ({ page }) => {
   await page.goto("/orchard-drop/?seed=7");
   await ready(page);
 
-  // The wrap is gone, not hidden.
+  // The wrap is gone, not hidden. The `.wrapped-banner` assertion that used to
+  // sit here was dropped when Tier 2 was purged: nothing can emit that class any
+  // more, so the check could never fail and was no longer evidence of anything.
   await expect(page.locator("iframe")).toHaveCount(0);
-  await expect(page.locator(".wrapped-banner")).toHaveCount(0);
   await expect(page.getByText(/no verifiable record/i)).toHaveCount(0);
 
   // ... and the native surface is here.

@@ -34,12 +34,12 @@ async function withSkin(page: Page, skin: string, extra?: [string, string]): Pro
 }
 
 async function scan(page: Page): Promise<void> {
-  // Tier-2 wraps are taken as-is and run in a sandboxed iframe; their internal
-  // markup is not ours to fix and is not graded against our bar. This is the
-  // repo's existing convention, not a new exclusion — tests/tier2.spec.ts and
-  // tests/orchard-drop.spec.ts both scope their scans the same way. What IS
-  // graded is our chrome around the frame, including the attribution banner.
-  const results = await new AxeBuilder({ page }).exclude("iframe.wrapped-game-frame").analyze();
+  // No exclusion. There used to be one for Tier-2's sandboxed iframe — markup
+  // that was not ours to fix — and it outlived the tier by a day. An exclusion
+  // that excludes nothing is dead weight at best, and at worst a hole waiting
+  // for something to fall into it: the next iframe on the shelf would have been
+  // silently ungraded. Every surface here is ours now and answers for itself.
+  const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations).toEqual([]);
 }
 

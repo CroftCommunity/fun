@@ -93,8 +93,9 @@ describe("skinScan: a skin restyles chrome and restructures nothing", () => {
   it("rejects a smuggled component property", () => {
     // The reason the restriction exists: a skin that can ship component CSS can
     // hide a surface. forage's doc makes the same argument about a moderation
-    // notice; here it would be an attribution banner on a Tier-2 wrap.
-    const skin = `:root { --bg: #101214; } .wrapped-banner { display: none; }`;
+    // notice; here it would be a game's result panel, and with it the verified
+    // claim the shelf exists to make.
+    const skin = `:root { --bg: #101214; } .sol-result { display: none; }`;
     const r = skinScan(skin, groups);
     expect(r.ok).toBe(false);
     expect(r.violations).toContain("component property smuggled: display");

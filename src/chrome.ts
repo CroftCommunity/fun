@@ -7,7 +7,6 @@
 import type { GameModule, PresentationMode } from "./contract.js";
 import { findGame, REGISTRY } from "./registry.js";
 import { applySkin, currentSkin, isDark, setSkin, siblingOf, togglePalette } from "./skins.js";
-import { wrappedBanner } from "./wrapped-banner.js";
 import { renderHome } from "./home.js";
 import { appearanceSpec } from "./appearance.js";
 import { startMusic } from "./music.js";
@@ -273,10 +272,6 @@ export function boot(root: HTMLElement = document.body): Chrome {
       el("div", { class: "welcome" }, `${entry.title} is coming soon.`),
     );
   } else {
-    // Tier-2 wraps carry no verifiable record; the shelf says so, honestly,
-    // above the game (in our chrome, never inside the game's own frame).
-    const banner = wrappedBanner(entry);
-    if (banner) playArea.append(banner);
     mounted = entry.load();
     mounted.mount(playArea, { mode });
     writeShelfState(noteOpened(readShelfState(), entry.id, new Date()));

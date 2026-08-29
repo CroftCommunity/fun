@@ -89,22 +89,14 @@ export const GROUPS: ReadonlyArray<readonly [string, GroupCopy]> = [
       blurb: "Opponents that tell you, honestly, when they already know they have won.",
     },
   ],
-  [
-    "wrapped",
-    {
-      label: "Shelf three",
-      headline: "Wrapped, with thanks",
-      blurb:
-        "Games other people made, included as-is and credited. No verifiable record — we say so rather than faking one.",
-    },
-  ],
 ];
 
-/** The group a game belongs to, defaulting by tier when the entry omits it. */
+/** The group a game belongs to, defaulting when the entry omits it. */
 function groupOf(game: GameEntry): string {
   const declared = (game as { group?: string }).group;
-  if (declared) return declared;
-  return game.tier === 2 ? "wrapped" : "provable";
+  // Every game on the shelf is now provable — the "wrapped" default went with
+  // Tier 2 on 2026-08-29. An entry can still declare a group explicitly.
+  return declared ?? "provable";
 }
 
 // ---------------------------------------------------------------------------
