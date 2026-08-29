@@ -20,3 +20,4 @@ rand_chacha.workspace = true
 
 [dev-dependencies]
 pond-docformat.workspace = true
+serde_json.workspace = true

@@ -1,0 +1,6 @@
+{
+  "index": 4,
+  "name": "05-to-game-over",
+  "note": "One column until the crate overflows. Locks the grace and the dwell.",
+  "final_state_hash": "38d82d08243f88e883d36aa4575a2caf808c35227b94bcb42ef937c57529b05c"
+}

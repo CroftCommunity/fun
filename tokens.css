@@ -61,6 +61,12 @@
 
   /* Trio Tumble gem glyphs, each also carrying a distinct shape (colour-blind
      safe). Rendered on --surface tiles; every one clears ≥4.8:1 there. */
+  /* Orchard Drop's crate. Chrome roles, so they follow the skin; the fruit
+     themselves are the game's identity and are not skinned. */
+  --orchard-crate: #fbeed2;
+  --orchard-wood: #c68b59;
+  --orchard-danger: #d8403f;
+
   --gem-0: #c62828;       /* red     (surface 5.26:1) */
   --gem-1: #15539f;       /* blue    (surface 7.09:1) */
   --gem-2: #2e7d32;       /* green   (surface 4.80:1) */
@@ -216,6 +222,12 @@
   --suit-black: #1b201c;  /* ♣ ♠ on a card           (card 13.07:1)*/
 
   /* Trio Tumble gems, lightened for the dark tile surface (≥6:1 there). */
+  /* The crate at night: a darker timber so the fruit still read as the
+     brightest thing in the frame. */
+  --orchard-crate: #2a2114;
+  --orchard-wood: #6d4b2f;
+  --orchard-danger: #e4635a;
+
   --gem-0: #ef7a7a;       /* red     (surface 6.06:1) */
   --gem-1: #7fb0f0;       /* blue    (surface 7.34:1) */
   --gem-2: #7fce85;       /* green   (surface 8.67:1) */

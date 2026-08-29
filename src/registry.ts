@@ -48,13 +48,10 @@ export const REGISTRY: readonly GameEntry[] = [
     emoji: "🍉",
     status: "playable",
     icon: true,
-    tier: 2,
-    attribution: {
-      author: "the Croft shelf, with physics by @liabru's Matter.js",
-      license: "AGPL-3.0 (game) · MIT (Matter.js)",
-      upstreamUrl: "https://github.com/CroftCommunity/fun",
-      basedOn: "Suika Game (Watermelon Game)",
-    },
+    // Tier-1 as of the rebuild: a deterministic fixed-point core, a verifiable
+    // record, a re-checkable `?r=` share. No `tier` key — Tier-1 is the default
+    // — and no `attribution`, which `Tier1GameEntry` does not have a field for.
+    // The Suika-lineage credit lives in the how-to guide instead.
     load: orchardDropModule,
   },
   { id: "cribbage", title: "Cribbage", emoji: "🎴", status: "soon" },
