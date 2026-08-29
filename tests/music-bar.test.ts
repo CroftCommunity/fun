@@ -259,6 +259,24 @@ describe("the music bar in the header", () => {
     expect(name().textContent).toContain(titleOf(start));
   });
 
+  it("the phone form: a ♪ button opens the same list, whose top row carries prev, the name, and next", () => {
+    boot();
+    const open = bar().querySelector<HTMLButtonElement>(".music-open")!;
+    expect(open.getAttribute("aria-expanded")).toBe("false");
+    open.click();
+    const list = document.getElementById("music-list")!;
+    expect(list.hidden).toBe(false);
+    expect(open.getAttribute("aria-expanded")).toBe("true");
+    expect(name().getAttribute("aria-expanded")).toBe("true");
+    const row = list.querySelector(".music-list-transport")!;
+    expect(row.querySelector(".music-prev")).not.toBeNull();
+    expect(row.querySelector(".music-next")).not.toBeNull();
+    expect(row.querySelector(".music-list-name")!.textContent).toContain(titleOf(SHELF_TRACK));
+    row.querySelector<HTMLButtonElement>(".music-next")!.click();
+    expect(row.querySelector(".music-list-name")!.textContent).toContain(titleOf(stepTrack(SHELF_TRACK, 1)));
+    expect(list.hidden).toBe(false); // stepping does not close the list
+  });
+
   it("Escape and a click elsewhere close the list", () => {
     boot();
     name().click();

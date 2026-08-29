@@ -1,6 +1,6 @@
 # Plan — a music transport in the shelf header
 
-**Status:** Phase 0 (plan) — in progress, 2026-08-29.
+**Status:** Phases 0–3 COMPLETE (2026-08-29); Phase 4 (gate + PR) in progress.
 
 Branch `claude/music-bar`; worktree `CroftC/worktrees/music-bar/fun`.
 
@@ -33,7 +33,9 @@ the next track when music is on (a transport with next/prev that stops dead at t
 of a piece would read as broken).
 
 Mobile: the header already holds six controls. Under 40rem the bar keeps play/pause and
-a truncated name; prev/next move into the top row of the dropdown.
+one ♪ button that opens the same panel; ⏮ · *name* · ⏭ become the panel's top row, and
+the header wraps (it was at its limit before the bar arrived — "How to play" was
+wrapping inside its own button on a 390px phone).
 
 ## Reasoning
 
@@ -68,3 +70,9 @@ a truncated name; prev/next move into the top row of the dropdown.
 ## Review Log
 
 - 2026-08-29 — opened.
+- 2026-08-29 — Phase 3 changed the phone form after a screenshot: the first cut kept the
+  name in the header and it collapsed under the ☾ button on a game page. Measured, not
+  predicted — the e2e "prev/next in the list on a phone" test passed on the HOME page
+  while the game page overlapped, because the game page carries two more header links.
+  The a11y matrix also caught the panel needing to be a landmark (`region`), the same
+  finding the appearance panel recorded.

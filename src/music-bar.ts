@@ -52,6 +52,15 @@ export function renderMusicBar(player: MusicPlayer): MusicBar {
   // A named landmark, not a bare div: axe's `region` rule fails page content
   // that belongs to no landmark, and this panel sits between the header and
   // <main> exactly as the appearance panel does. Caught by the a11y matrix.
+  // The phone form (≤40rem, by CSS): the header keeps ▶ and this one ♪ button;
+  // prev · name · next move to the panel's top row. Same list, same handlers.
+  const openBtn = el("button", {
+    class: "music-open",
+    "aria-expanded": "false",
+    "aria-controls": "music-list",
+    "aria-haspopup": "true",
+  }, "♪");
+
   const list = el("section", {
     id: "music-list",
     class: "music-list",
@@ -61,9 +70,10 @@ export function renderMusicBar(player: MusicPlayer): MusicBar {
 
   // The mobile row: prev/next live here under 40rem, where the header has no
   // room for them beside the name. Duplicates of the bar's own, same handlers.
-  const mobilePrev = el("button", { class: "music-prev", "aria-label": "Previous track" }, "⏮ Previous");
-  const mobileNext = el("button", { class: "music-next", "aria-label": "Next track" }, "Next ⏭");
-  const transport = el("div", { class: "music-list-transport" }, mobilePrev, mobileNext);
+  const mobilePrev = el("button", { class: "music-prev", "aria-label": "Previous track" }, "⏮");
+  const mobileNext = el("button", { class: "music-next", "aria-label": "Next track" }, "⏭");
+  const listName = el("span", { class: "music-list-name" });
+  const transport = el("div", { class: "music-list-transport" }, mobilePrev, listName, mobileNext);
 
   const coupleInput = el("input", { type: "checkbox", id: "music-couple" });
   const couple = el(
@@ -90,6 +100,7 @@ export function renderMusicBar(player: MusicPlayer): MusicBar {
     open = o;
     list.hidden = !open;
     name.setAttribute("aria-expanded", String(open));
+    openBtn.setAttribute("aria-expanded", String(open));
   };
 
   const paint = (): void => {
@@ -99,8 +110,10 @@ export function renderMusicBar(player: MusicPlayer): MusicBar {
     play.setAttribute("aria-label", on ? "Pause music" : "Play music");
     const id = player.current();
     nameText.textContent = titleOf(id);
+    listName.textContent = titleOf(id);
     name.setAttribute("aria-label", `Track: ${titleOf(id)}. Choose a track`);
     name.title = titleOf(id);
+    openBtn.setAttribute("aria-label", `Music: ${titleOf(id)}. Choose a track`);
     coupleInput.checked = player.isCoupled();
     for (const [tid, b] of trackButtons) {
       if (tid === id) b.setAttribute("aria-current", "true");
@@ -114,6 +127,7 @@ export function renderMusicBar(player: MusicPlayer): MusicBar {
   mobileNext.addEventListener("click", () => player.next());
   play.addEventListener("click", () => player.setEnabled(!player.isEnabled()));
   name.addEventListener("click", () => setOpen(!open));
+  openBtn.addEventListener("click", () => setOpen(!open));
   coupleInput.addEventListener("change", () => player.setCoupled(coupleInput.checked));
   list.addEventListener("keydown", (e: KeyboardEvent) => {
     if (e.key !== "Escape") return;
@@ -129,7 +143,15 @@ export function renderMusicBar(player: MusicPlayer): MusicBar {
     setOpen(false);
   });
 
-  const bar = el("div", { class: "music-bar", role: "group", "aria-label": "Music" }, prev, play, name, next);
+  const bar = el(
+    "div",
+    { class: "music-bar", role: "group", "aria-label": "Music" },
+    prev,
+    play,
+    name,
+    next,
+    openBtn,
+  );
   player.subscribe(paint);
   paint();
   return { bar, list, paint };

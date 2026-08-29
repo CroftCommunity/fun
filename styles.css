@@ -4262,8 +4262,10 @@ body.fullscreen .le-stage {
   display: inline-flex;
   align-items: center;
   max-width: 14rem;
+  overflow: hidden;
   font-family: var(--font-display);
 }
+.chrome-header .music-open { display: none; }
 .music-name-text {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -4325,18 +4327,24 @@ body.fullscreen .le-stage {
 .music-track:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
 @media (max-width: 40rem) {
+  /* The header was at its limit before the bar arrived (six controls, "How to
+     play" wrapping inside its own button). Let it wrap: row one is the shelf's
+     controls, row two the game's links. */
+  .chrome-header { flex-wrap: wrap; row-gap: 0.4rem; }
+  .chrome-header .how-to-link { white-space: nowrap; }
   .chrome-header .music-bar > .music-prev,
-  .chrome-header .music-bar > .music-next { display: none; }
-  .chrome-header .music-name { max-width: 7rem; }
+  .chrome-header .music-bar > .music-next,
+  .chrome-header .music-bar > .music-name { display: none; }
+  .chrome-header .music-open { display: inline-block; }
   .music-list-transport {
     display: flex;
-    justify-content: space-between;
+    align-items: center;
     gap: 0.5rem;
     max-width: 40rem;
     margin: 0 auto 0.4rem;
   }
   .music-list-transport button {
-    flex: 1;
+    min-width: 44px;
     min-height: 44px;
     font: inherit;
     color: var(--ink);
@@ -4344,6 +4352,16 @@ body.fullscreen .le-stage {
     border: 1px solid var(--border);
     border-radius: var(--radius);
     cursor: pointer;
+  }
+  .music-list-name {
+    flex: 1;
+    min-width: 0;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-display);
+    font-weight: 600;
   }
 }
 
