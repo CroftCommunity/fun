@@ -122,6 +122,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(debug_assertions, ignore = "20k samples take minutes in debug; the release gate runs it")]
     fn the_shipped_table_is_the_generator_output() {
         // 20,000 samples, seed 1 — the numbers the generator test prints.
         assert_eq!(CribTable::generate(20_000, 1), CribTable::shipped());
