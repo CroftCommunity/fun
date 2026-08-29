@@ -62,8 +62,14 @@ async function humanMove(page: Page): Promise<void> {
 test("the table, the peg board and the pickers render", async ({ page }) => {
   await page.goto("/cribbage/?seed=7");
   await ready(page);
+  // At seed 7 the engine is the non-dealer and throws first, so by the time a
+  // slow runner gets here it holds four, not six. The invariant is that the
+  // backs on the table are the count the view reports — never the cards.
+  await waitHumanOrOver(page);
   await expect(page.locator(".crib-hand .crib-card")).toHaveCount(6);
-  await expect(page.locator(".crib-opp .crib-card.back")).toHaveCount(6);
+  const backs = await page.evaluate(() => window.__cribbage!.game.view().opponentCards);
+  expect(backs).toBe(4);
+  await expect(page.locator(".crib-opp .crib-card.back")).toHaveCount(backs);
   await expect(page.locator(".crib-track")).toHaveCount(2);
   await expect(page.locator(".crib-skunk")).toHaveCount(2);
   await expect(page.locator(".crib-turnbar")).toContainText(/you/i);
