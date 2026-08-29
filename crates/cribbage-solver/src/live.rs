@@ -176,6 +176,17 @@ mod tests {
     }
 
     #[test]
+    fn level_codes_map_in_order_and_saturate_to_expert() {
+        assert_eq!(Level::from_code(0), Level::Easy);
+        assert_eq!(Level::from_code(1), Level::Medium);
+        assert_eq!(Level::from_code(2), Level::Hard);
+        assert_eq!(Level::from_code(3), Level::Expert);
+        assert_eq!(Level::from_code(99), Level::Expert);
+        assert_eq!(band_for(Level::Expert).discard_sloppiness_pct, 0);
+        assert!(band_for(Level::Easy).discard_top_k > band_for(Level::Hard).discard_top_k);
+    }
+
+    #[test]
     fn zero_sloppiness_takes_the_best_and_does_not_touch_the_rng() {
         let mut rng = ChaCha20Rng::seed_from_u64(1);
         let before = rng.next_u32();

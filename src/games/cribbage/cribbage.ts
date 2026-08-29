@@ -80,14 +80,19 @@ type OpponentKind = "engine" | "local-ai";
 const HUMAN = 1 as const;
 const ENGINE = 2 as const;
 
-/** How long the engine appears to think before a move. */
-const THINK_MS = 420;
-/** The pause after a scoring event so its line can be read. */
-const SETTLE_MS = 260;
-/** The pause before an automatic claim, so the hand can be seen before it is counted. */
-const SHOW_MS = 900;
-/** The beat before the result screen replaces the table. */
-const FANFARE_MS = 1400;
+/**
+ * The beats: how long the engine appears to think, the pause after a scoring
+ * event so its line can be read, the pause before an automatic claim so the
+ * hand is seen before it is counted, and the beat before the result screen.
+ *
+ * `?fast=1` collapses them to a frame. It exists for the browser suite: a full
+ * game is ~10 deals of beats, which held a CI worker for over a minute per
+ * engine while asserting nothing about the beats themselves, and the mobile
+ * leg was starving other suites' page loads (2026-08-29, run 33263190505).
+ */
+const BEATS = { think: 420, settle: 260, show: 900, fanfare: 1400 } as const;
+const FAST_BEATS = { think: 16, settle: 16, show: 16, fanfare: 60 } as const;
+let beats: { think: number; settle: number; show: number; fanfare: number } = BEATS;
 
 const LEVELS: readonly CribbageLevel[] = ["Easy", "Medium", "Hard", "Expert"];
 const TARGET = 121;
@@ -678,14 +683,14 @@ export function cribbageModule(): GameModule {
         const atShow = v.phase.startsWith("show");
         if (v.toMove === ENGINE) {
           render();
-          await sleep(atShow ? SHOW_MS : THINK_MS);
+          await sleep(atShow ? beats.show : beats.think);
           if (disposed || !game) return;
           const mv = game.liveMove(level as Level);
           if (mv === null) break;
           game.play(mv);
         } else if (atShow && !cribbageManualCount()) {
           render();
-          await sleep(SHOW_MS);
+          await sleep(beats.show);
           if (disposed || !game) return;
           const claim = game.autoClaim();
           if (claim === null) break;
@@ -695,7 +700,7 @@ export function cribbageModule(): GameModule {
         }
         narrate(game.view());
         render();
-        await sleep(SETTLE_MS);
+        await sleep(beats.settle);
         if (disposed || !game) return;
       }
     } finally {
@@ -742,7 +747,7 @@ export function cribbageModule(): GameModule {
     window.setTimeout(() => {
       if (disposed) return;
       void presentResult();
-    }, FANFARE_MS);
+    }, beats.fanfare);
   };
 
   const presentResult = async (): Promise<void> => {
@@ -836,6 +841,7 @@ export function cribbageModule(): GameModule {
         }
         if (disposed) return;
         const url = new URL(location.href);
+        beats = url.searchParams.get("fast") === "1" ? FAST_BEATS : BEATS;
         const shared = url.searchParams.get("r");
         if (shared) {
           await showShared(shared);

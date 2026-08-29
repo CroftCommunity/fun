@@ -40,7 +40,7 @@ pub fn peg_options(view: &View, depth: u32) -> Vec<(Move, i32)> {
 }
 
 /// How many of each rank this seat has not seen (index by rank, 0 unused).
-fn unseen_ranks(seen: &[Card]) -> [u32; 14] {
+pub(crate) fn unseen_ranks(seen: &[Card]) -> [u32; 14] {
     let mut counts = [4u32; 14];
     counts[0] = 0;
     for c in seen {
@@ -55,7 +55,7 @@ fn count_of(stack: &[Card]) -> u32 {
 
 /// The value of playing `hand[i]` onto `stack`: its points, minus the other
 /// seat's expected best reply (if `depth > 1`), in hundredths.
-fn play_value(
+pub(crate) fn play_value(
     hand: &[Card],
     i: usize,
     stack: &[Card],
@@ -80,7 +80,7 @@ fn play_value(
 
 /// The other seat's expected best reply, from their side, over the unseen
 /// ranks. A rank they cannot play is a go for them — roughly a point to us.
-fn expected_reply(
+pub(crate) fn expected_reply(
     stack: &[Card],
     my_rest: &[Card],
     unseen: &[u32; 14],
@@ -133,6 +133,81 @@ mod tests {
         let s = apply(&apply(&s, Move::Discard(0)).unwrap(), Move::Discard(0)).unwrap();
         assert_eq!(s.phase(), Phase::Peg);
         View::for_seat(&s, s.to_move())
+    }
+
+    fn c(rank: u8, suit: u8) -> Card {
+        Card { rank, suit }
+    }
+
+    /// A distribution with only `ranks` unseen, four of each.
+    fn only(ranks: &[u8]) -> [u32; 14] {
+        let mut u = [0u32; 14];
+        for &r in ranks {
+            u[usize::from(r)] = 4;
+        }
+        u
+    }
+
+    // The lookahead's arithmetic, pinned on hand-checkable cases. Mutation audit
+    // 2026-08-29: thirty-six mutants in this file survived one comparison test —
+    // every sign in `expected_reply` was free to flip.
+
+    #[test]
+    fn unseen_ranks_subtracts_what_was_seen() {
+        let u = unseen_ranks(&[c(5, 0), c(5, 1), c(13, 2)]);
+        assert_eq!(u[0], 0);
+        assert_eq!(u[5], 2);
+        assert_eq!(u[13], 3);
+        assert_eq!(u[1], 4);
+        assert_eq!(u.iter().sum::<u32>(), 49);
+    }
+
+    #[test]
+    fn the_reply_is_their_expected_points_over_the_unseen_ranks() {
+        let stack = [c(10, 0)]; // count 10
+                                // every unseen card is a five: they make fifteen, every time
+        assert_eq!(expected_reply(&stack, &[], &only(&[5]), 3, 1), 200);
+        // every unseen card is a king: twenty, nothing
+        assert_eq!(expected_reply(&stack, &[], &only(&[13]), 3, 1), 0);
+        // half fives, half kings: the mean
+        assert_eq!(expected_reply(&stack, &[], &only(&[5, 13]), 3, 1), 100);
+    }
+
+    #[test]
+    fn a_rank_they_cannot_play_is_a_go_worth_a_point_to_us() {
+        let stack = [c(10, 0), c(10, 1), c(10, 2)]; // count 30
+                                                    // only kings unseen: none plays, every draw is a go against them
+        assert_eq!(expected_reply(&stack, &[], &only(&[13]), 3, 1), -100);
+        // only aces: thirty-one, two for them
+        assert_eq!(expected_reply(&stack, &[], &only(&[1]), 3, 1), 200);
+        // aces and kings: (200 - 100) / 2
+        assert_eq!(expected_reply(&stack, &[], &only(&[1, 13]), 3, 1), 50);
+    }
+
+    #[test]
+    fn the_second_ply_subtracts_our_best_answer_to_their_reply() {
+        // count 7; they hold only eights: 8 makes fifteen (+2 for them) — but if
+        // we still hold an eight, our reply pairs it (+2 for us), so at two plies
+        // the exchange is even.
+        let stack = [c(7, 0)];
+        assert_eq!(expected_reply(&stack, &[c(8, 1)], &only(&[8]), 3, 1), 200);
+        assert_eq!(expected_reply(&stack, &[c(8, 1)], &only(&[8]), 3, 2), 0);
+        // with nothing left in our hand the second ply has nothing to subtract
+        assert_eq!(expected_reply(&stack, &[], &only(&[8]), 3, 2), 200);
+    }
+
+    #[test]
+    fn a_play_that_makes_thirty_one_ends_the_count_and_takes_no_reply_term() {
+        let stack = [c(10, 0), c(10, 1), c(1, 2)]; // count 21
+        let hand = [c(10, 3), c(5, 0)];
+        // the ten makes 31: two points, and no lookahead beyond a reset
+        assert_eq!(play_value(&hand, 0, &stack, &only(&[5]), 3, 2), 200);
+        // the five makes 26 and hands them a five for 31 AND a pair: 0 - 400
+        assert_eq!(play_value(&hand, 1, &stack, &only(&[5]), 3, 2), -400);
+        // at one ply the five is simply worth nothing
+        assert_eq!(play_value(&hand, 1, &stack, &only(&[5]), 3, 1), 0);
+        // with no cards left in their hand there is nobody to reply
+        assert_eq!(play_value(&hand, 1, &stack, &only(&[5]), 0, 2), 0);
     }
 
     #[test]

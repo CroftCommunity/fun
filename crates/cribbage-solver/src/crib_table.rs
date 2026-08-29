@@ -92,7 +92,7 @@ impl CribTable {
 /// The other seat's throw under the hand-only policy: keep the four with the
 /// highest expectation over the cuts, ignore the crib. (The policy that does
 /// not need the table it is generating.)
-fn best_hand_only_throw(six: &[Card; 6]) -> (Card, Card) {
+pub(crate) fn best_hand_only_throw(six: &[Card; 6]) -> (Card, Card) {
     let mut best: Option<(i32, (Card, Card))> = None;
     for a in 0..6 {
         for b in a + 1..6 {
@@ -129,6 +129,62 @@ mod tests {
     fn the_shipped_table_is_the_generator_output() {
         // 20,000 samples, seed 1 — the numbers the generator test prints.
         assert_eq!(CribTable::generate(20_000, 1), CribTable::shipped());
+    }
+
+    /// Runs in debug too (the 20k-sample regeneration does not), so the
+    /// generator is exercised under `cargo mutants`: mutation audit 2026-08-29
+    /// found every arithmetic mutant in `generate` surviving because nothing
+    /// ran it in a debug build.
+    #[test]
+    fn a_small_generation_is_deterministic_plausible_and_ranks_the_throws() {
+        let a = CribTable::generate(300, 1);
+        assert_eq!(a, CribTable::generate(300, 1), "deterministic in the seed");
+        assert_ne!(
+            a,
+            CribTable::generate(300, 2),
+            "and different for another seed"
+        );
+        let filled: Vec<i32> = a.entries().iter().copied().filter(|&v| v != 0).collect();
+        assert!(
+            filled.len() > 150,
+            "most rank pairs were sampled: {}",
+            filled.len()
+        );
+        assert!(
+            filled.iter().all(|&v| (50..=1500).contains(&v)),
+            "a crib averages 0.5–15: {filled:?}"
+        );
+        // 300 samples is enough for the strongest throw to rank above the weakest.
+        assert!(a.get(c(5, 0), c(5, 1)) > a.get(c(13, 0), c(9, 1)));
+        assert_eq!(a.entries().len(), ENTRIES);
+        assert_eq!(
+            a.entries()[CribTable::key(c(5, 0), c(5, 1))],
+            a.get(c(5, 0), c(5, 1))
+        );
+    }
+
+    #[test]
+    fn the_hand_only_policy_keeps_the_four_with_the_highest_expectation() {
+        // Three fives and a jack are the keep; the 2 and the 9 are the throw.
+        let six = [c(5, 3), c(5, 2), c(2, 0), c(5, 1), c(9, 1), c(11, 0)];
+        let (t1, t2) = best_hand_only_throw(&six);
+        let mut thrown = [t1.rank, t2.rank];
+        thrown.sort_unstable();
+        assert_eq!(thrown, [2, 9]);
+        // and it beats every other keep, not merely a plausible one
+        let keep = [c(5, 3), c(5, 2), c(5, 1), c(11, 0)];
+        let best = hand_expectation(&keep, &six);
+        for a in 0..6 {
+            for b in a + 1..6 {
+                let k: Vec<Card> = six
+                    .iter()
+                    .enumerate()
+                    .filter(|(i, _)| *i != a && *i != b)
+                    .map(|(_, x)| *x)
+                    .collect();
+                assert!(hand_expectation(&[k[0], k[1], k[2], k[3]], &six) <= best);
+            }
+        }
     }
 
     #[test]
