@@ -163,6 +163,17 @@ at them and add what's specific to this repo. Git identity: chasemp
     hand and watch the new test go red. A test written to close a survivor is
     worth nothing until it has been seen to fail against that survivor — which is
     the same rule as watching a RED phase, one level up.
+  - **Two things the cribbage audit learned about running it (2026-08-29).** In a
+    worktree that has `node_modules`, `cargo mutants`' scratch copy fails with
+    `File exists (os error 17)` on every worker — run it `--in-place` (which
+    refuses `-j`, so it is one job) and **commit first**, since it mutates the
+    tree you are sitting in. And it builds **debug**, so a test that enumerates a
+    whole space (cribbage's 13M hand/cut pairs, the 20k-sample crib table) costs
+    minutes *per mutant*: mark such tests
+    `#[cfg_attr(debug_assertions, ignore = "…")]` — the release gate still runs
+    them — and make sure something else exercises that code in debug, or the
+    audit reports nothing there (the crib-table generator's 30 survivors were
+    exactly that blind spot).
   - Triage every survivor into **equivalent mutant** or **real gap**, and record
     which in the plan. Equivalent mutants are common and unkillable — measured on
     `checkers-core` 2026-08-05, 9 of 26 survivors were provably behaviour-preserving
