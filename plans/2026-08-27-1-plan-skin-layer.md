@@ -2,7 +2,7 @@
 
 **Status:** M0–M6 COMPLETE (2026-08-28). Originally Pass 1 (shape). Seven decisions recorded (D1–D7);
 **no open questions remain.** O1–O3 settled 2026-08-27 → D5, D6, D4. O4 settled 2026-08-28: the rename
-landed beside this plan (`plans/2026-08-28-1-plan-trio-tumble-rename.md`), and the name changed from
+landed beside this plan (`plans/2026-08-28-2-plan-trio-tumble-rename.md`), and the name changed from
 Ring Pop to **Trio Tumble: Jewel Drop** on a trademark collision.
 M0 was attempted 2026-08-27 and **deferred** on `PATTERN.md`'s own bar — see D7.
 
@@ -368,7 +368,7 @@ Explicitly **not** verified, and therefore not asserted anywhere above:
   left to imitation — after M2, per D7.
 - ~~**O4 — does Ring Pop's rename land inside this plan or beside it?**~~ **Settled
   2026-08-28: beside it, and the name itself changed.** Its own plan,
-  `plans/2026-08-28-1-plan-trio-tumble-rename.md`. Two things moved after this question was
+  `plans/2026-08-28-2-plan-trio-tumble-rename.md`. Two things moved after this question was
   written. First, **the name is not Ring Pop** — RING POP is a live Topps / Bazooka Candy
   Brands mark, and the art applied it to a candy-matching game depicting a gem ring, which is
   the mark used for the thing the mark names. The owner chose **Trio Tumble: Jewel Drop** and

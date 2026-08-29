@@ -232,9 +232,9 @@ inference.
 | An endless score-chase already carries a verifiable record on this shelf | `crates/twenty48-core/src/game.rs` (`score` folded into `state_hash`, `attest::<Twenty48>`); `src/games/2048/2048-outcome.ts` header: "on seed X this sequence of slides reached score S" |
 | `pond_outcome::Record` has an optional `score` field and an `Outcome` enum including `Lost` | `crates/pond-outcome/src/lib.rs` — `pub enum Outcome { Won, Stuck, Abandoned, Lost }`, `Record<M>` |
 | Bindings are raw C-ABI with a static output buffer, no wasm-bindgen | `crates/twenty48-wasm/src/lib.rs` — `#[no_mangle] pub extern "C" fn board_json() -> *const u8`, `out_len()` |
-| The wasm build list is an explicit `-p` enumeration, not a glob | `tools/build-wasm.sh` — the `cargo build --manifest-path ... -p solitaire-wasm -p match3-wasm …` line |
+| The wasm build list is an explicit `-p` enumeration, not a glob | `tools/build-wasm.sh` — the `cargo build --manifest-path ... -p solitaire-wasm -p trio-tumble-wasm …` line |
 | The cross-build harness covers a named subset (solitaire, dots, furrow), driven by `check.mjs` under node | `crates/xbuild/src/lib.rs` module doc + its `use` list |
-| Four crates carry committed golden vectors | `ls -d crates/*/vectors` → dots-core, furrow-core, match3-core, solitaire-core |
+| Four crates carry committed golden vectors | `ls -d crates/*/vectors` → dots-core, furrow-core, trio-tumble-core, solitaire-core |
 | The containment spec auto-enrolls any game directory containing `tier2.meta.json` | `tests/tier2-containment.spec.ts` — `tier2Games()` walks `src/games/*/tier2.meta.json` |
 | `tier: 3` will not typecheck today, and the banner is `tier === 2`-gated | `src/contract.ts` (`readonly tier?: 1` / `readonly tier: 2`); `docs/BUILDING-GAMES.md` §11 "What admitting the first Tier-3 game requires in code" |
 | Rapier `enhanced-determinism` gives native == wasm, tested on exactly one engine and one machine | `discovery/alpha/experiments/rapier-determinism/RESULT.md`, §§ *Result* and *What this does NOT establish* |

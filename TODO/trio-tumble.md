@@ -4,7 +4,7 @@ Status: **playable** at `/trio-tumble/` (v1: Candy-Crush target-score-in-moves w
 star thresholds). Plan: `plans/2026-07-30-trio-tumble-playable.md`. Standards:
 `docs/BUILDING-GAMES.md`.
 
-Named on 2026-08-28 (`plans/2026-08-28-1-plan-trio-tumble-rename.md`). It shipped as
+Named on 2026-08-28 (`plans/2026-08-28-2-plan-trio-tumble-rename.md`). It shipped as
 "Match-3" — its genre — until then. Where this file says *match-3* below it means the
 genre; the game is Trio Tumble.
 

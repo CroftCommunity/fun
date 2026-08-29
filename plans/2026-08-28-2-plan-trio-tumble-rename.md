@@ -1,9 +1,9 @@
 # Plan — match-3 becomes Trio Tumble: Jewel Drop
 
-**Status:** Phases 0–7 COMPLETE (2026-08-28) — `npm run gate` exit 0 against the final
-tree: 131 Rust suites, 598 unit, 521 e2e, toolchain resolved through `rustup which`.
-**Not landed** — the branch is ready to merge and the owner has not been asked yet
-(`fun/CLAUDE.md`: don't push unless asked).
+**Status:** Phases 0–7 COMPLETE (2026-08-28). Owner approved landing. `main` moved
+underneath this branch while it was in flight (a peer landed `crates/pond-physics` and
+the Orchard Drop spike, `b5c0399..a7e9808`), so main was merged in here and the gate
+re-run against the merged tree before landing.
 Commits: `8041d1b` plan · `d2c21ee` the rename · `b4b46ae` subtitle + intake + art ·
 this one, docs + the typecheck fix.
 
@@ -212,6 +212,27 @@ Each phase ends green and gets its own commit (repo rule: commit at every stable
 - **2026-08-28 — owner, splash.** Chose **keep both orientations, extend intake** over
   picking one, having been shown that it is a tool change with its own tests beyond a
   pure rename.
+- **2026-08-28 — a peer landed on main mid-flight; merged in rather than landed blind.**
+  This branch was cut at `b5c0399`; by landing time main was at `a7e9808` with twelve
+  commits adding `crates/pond-physics` and the Orchard Drop spike. Two files overlapped —
+  `Cargo.toml` and `Cargo.lock` — and git auto-merged both, which is exactly where a
+  silent loss hides, so the merged `Cargo.toml` was checked by hand for BOTH changes
+  (`pond-physics` present, all three crates renamed, no `match3` left). Three
+  consequences worth recording:
+  1. Their plan doc asserted two facts about the repo as evidence — the `-p match3-wasm`
+     entry in `tools/build-wasm.sh`, and `match3-core` among the four crates with
+     committed golden vectors. Both were true when written and false by the time this
+     landed. Re-verified against the renamed tree and corrected in place, because a
+     verified-assumptions table that silently rots is worse than one that was never
+     written.
+  2. **We both numbered a plan `2026-08-28-1`.** `TRACKING.md` says the `-N`
+     disambiguates same-day plans, and with two sessions writing plans the same day it
+     stopped disambiguating. Theirs landed on main first, so this one renumbered to
+     `-2` and its four inbound references were updated. The scheme needs a tiebreak rule
+     for concurrent sessions, or the number stops meaning anything — worth raising
+     against `TRACKING.md` rather than fixing locally again next time.
+  3. The gate was re-run against the MERGED tree. The pre-merge green covered a
+     workspace that did not contain `pond-physics`.
 - **2026-08-28 — execution, what the tooling got wrong.** Four mechanical traps, all
   caught, recorded because each would repeat on the next bulk rename:
   1. **zsh does not word-split unquoted parameters.** `for f in $FILES` passed the whole

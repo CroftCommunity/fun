@@ -59,7 +59,7 @@ for a mock rather than for production.
   mark, and the art applied it to a candy-matching game depicting a gem ring. The game
   is **Trio Tumble: Jewel Drop**, the mocks and their brand art were renamed with it,
   and the code rename is done (registry id, URL, crates, outcome kinds, pack kinds).
-  Plan: `plans/2026-08-28-1-plan-trio-tumble-rename.md`.
+  Plan: `plans/2026-08-28-2-plan-trio-tumble-rename.md`.
 - **Art coverage.** Ten of twenty games have commissioned art. Solitaire has a
   splash but no icon file (the mocks use its square splash as one). Checkers,
   Drop 4, Dots and Boxes, Furrow, Blockdoku and the four Tier-2 wraps have
