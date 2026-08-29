@@ -219,7 +219,8 @@ pre-existing" test failures that were neither: Node 25 ships a placeholder
 4. **No job timeouts in CI** — a hung job can burn six hours, and we have already
    had a test hang a worker.
 5. Per-game backlogs in `TODO/<game>.md`; next-game candidates (chess, digger,
-   logic puzzles, cribbage) in `TODO/README.md`.
+   logic puzzles) in `TODO/README.md`. (Cribbage was on that list when this was
+   written; it shipped 2026-08-29 against the engine.)
 
 ## 7. Verified after this snapshot was written
 
