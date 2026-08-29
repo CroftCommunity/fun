@@ -20,6 +20,7 @@ const filled = (page: Page): Promise<number> =>
 test("the board, arrow pad, and HUD render", { tag: "@smoke" }, async ({ page }) => {
   await page.goto("/2048/?seed=7");
   await ready(page);
+  await expect(page.locator(".this-class-does-not-exist")).toHaveCount(1); // DELIBERATE BREAK — shards proof, reverted next commit
   await expect(page.locator(".t48-board")).toBeVisible();
   await expect(page.locator(".t48-pad")).toBeVisible();
   await expect(page.locator(".t48-hud")).toContainText(/score/i);
