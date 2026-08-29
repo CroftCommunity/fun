@@ -10,6 +10,17 @@ genre; the game is Trio Tumble.
 
 ## Follow-ups from the rename
 
+- [ ] **This game is missing from the home page's "Today" strip.** `src/shelf.ts:137`
+  hardcodes `DAILY = new Set(["solitaire", "wyrdle", "2048", "bubble", "align",
+  "blockdoku", "color-sort"])` — seven ids, and this game has never been one of them.
+  **Pre-existing, not caused by the rename** (verified: the set reads identically at
+  `b5c0399`, the commit before it, and named no `match3` either). It looks wrong: this
+  game ships a date-seeded daily board and six objectives each with a winnable-daily
+  pack, which is more daily surface than anything in that set. Two things to decide
+  together — whether the omission was deliberate, and whether a hardcoded id list is
+  the right source at all when `contract.ts` could carry a `daily?: boolean` the way
+  `shelf.ts:154` already reads one if present.
+
 - [ ] **The front-end is loose files, not a game directory.** `src/games/trio-tumble.ts`
   plus eight `trio-tumble-*.ts` siblings, where `docs/BUILDING-GAMES.md` § "Game
   isolation" and `CLAUDE.md` both specify `src/games/<game>/`. Solitaire has the same
