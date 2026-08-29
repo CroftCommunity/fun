@@ -12,6 +12,12 @@ earlier is in `git log`.
 
 ## 2026-08
 
+- 2026-08-29 **shelf:** a music transport in the header — previous, play/pause, the
+  track's name, next. The name drops down the whole list, headed by *Couple tracks to
+  games*: on (the default), opening a game starts its own track; off, the shelf plays
+  whatever you last picked, everywhere. Play/pause is the same switch as the appearance
+  sheet's Music toggle. A piece that ends advances. On a phone prev/next move into the
+  list and the name truncates. (`plans/2026-08-29-plan-music-bar.md`)
 - 2026-08-29 **cribbage:** a real peg board — three streets of forty holes across the middle
   of the table, two pegs a side that leapfrog and walk hole by hole as the score ticks,
   the engine's hand above and yours below (Settings can swap them), and the whole table

@@ -18,12 +18,12 @@
 import type { SettingsSheetSpec } from "./settings-sheet.js";
 import { FAMILIES, SKINS, resolveInFamily } from "./skins.js";
 import { LAYOUTS, prefersLayoutFor } from "./shelf.js";
-import { TRACKS, trackFor } from "./music.js";
+import { TRACKS } from "./music.js";
 
 /** What the picker needs to know, and where its choices go. */
 export interface AppearanceDeps {
-  /** The game whose track would play, or null on the home page. */
-  readonly gameId?: string | null;
+  /** The track the player would play — its pick, or the page's own. */
+  readonly track?: string;
   /** Whether music is currently on. */
   readonly music?: boolean;
   onMusic?(on: boolean): void;
@@ -42,7 +42,7 @@ export function appearanceSpec({
   layout,
   onSkin,
   onLayout,
-  gameId = null,
+  track,
   music = false,
   onMusic,
 }: AppearanceDeps): SettingsSheetSpec {
@@ -89,8 +89,8 @@ export function appearanceSpec({
         // Named, because "Music" alone does not tell you that turning it on
         // fetches roughly a megabyte. Nothing is downloaded until it is on.
         hint: `Off by default. Turning it on plays ${
-          TRACKS.find((t) => t.id === trackFor(gameId))?.title ?? "a track"
-        }, downloaded then and not before.`,
+          TRACKS.find((t) => t.id === track)?.title ?? "a track"
+        }, downloaded then and not before. The header's ▶ is the same switch.`,
         value: music,
         onChange: (on) => onMusic?.(on),
       },
