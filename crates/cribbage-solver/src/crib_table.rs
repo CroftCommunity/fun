@@ -154,6 +154,13 @@ mod tests {
             filled.iter().all(|&v| (50..=1500).contains(&v)),
             "a crib averages 0.5–15: {filled:?}"
         );
+        let mean = filled.iter().map(|&v| i64::from(v)).sum::<i64>() / filled.len() as i64;
+        assert!(
+            (300..=700).contains(&mean),
+            "cribs average four to five points, not {mean}"
+        );
+        // a "pair" of one card (equal rank, same suit) is never dealt, so never sampled
+        assert_eq!(a.get(c(5, 0), c(5, 0)), 0);
         // 300 samples is enough for the strongest throw to rank above the weakest.
         assert!(a.get(c(5, 0), c(5, 1)) > a.get(c(13, 0), c(9, 1)));
         assert_eq!(a.entries().len(), ENTRIES);
@@ -168,6 +175,8 @@ mod tests {
         // Three fives and a jack are the keep; the 2 and the 9 are the throw.
         let six = [c(5, 3), c(5, 2), c(2, 0), c(5, 1), c(9, 1), c(11, 0)];
         let (t1, t2) = best_hand_only_throw(&six);
+        assert_ne!(t1, t2, "a throw is two different cards");
+        assert!(six.contains(&t1) && six.contains(&t2));
         let mut thrown = [t1.rank, t2.rank];
         thrown.sort_unstable();
         assert_eq!(thrown, [2, 9]);

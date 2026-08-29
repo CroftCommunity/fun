@@ -854,3 +854,47 @@ not see: `cargo fmt --check` on three lines edited after the last format pass, a
 shelf's "no raw hex in `styles.css`" rule. Both fixed and the gate rerun from the top.
 The one step this session cannot do is the phone: playing a game to 121 from the live
 URL is the owner's, after CI deploys.
+
+### Phase 4 (2026-08-29, after the landing) — the mutation audit, and what it was hiding
+
+Run after the first landing rather than in its numbered place: the run takes 25 minutes
+for the core and had to be restarted three times before it ran at all — the 13M-hand
+enumeration and the 20k-sample crib regeneration took minutes per mutant in a debug
+build (both now step aside under `debug_assertions`; the release gate runs them), and
+`cargo mutants`' scratch copy collided with the worktree's `node_modules` (`--in-place`
+avoids the copy; it refuses `-j`, so it is one job).
+
+**`cribbage-core`: 260 mutants — 215 caught, 13 timeouts (kills), 17 unviable, 15
+survivors.** Real: `seed()` had no caller; the hash's `0x10 | step` survived `|` → `&`
+because no two positions differ only in their show step (the bytes are now pinned);
+the `View`'s `Phase::Over` arm was untested and its `shown.len() + 1` **revealed a hand
+nobody had counted** — now exactly the counted hands, and nothing when the game ends
+while pegging; `graded_score` had no caller (removed). Equivalent: `muggins > 0` →
+`>= 0` (a zero award, `last` overwritten), `|` → `^` on disjoint bits.
+
+**`cribbage-solver`: 194 mutants against the unit tests — 106 caught, 73 survived.**
+Two causes, both worth the write-up:
+
+1. The regeneration test being release-only meant **nothing exercised `generate` in a
+   debug build at all** — every arithmetic mutant in the generator and the throw policy
+   walked. A 300-sample generation test now runs everywhere: deterministic in the seed,
+   a plausible mean (cribs average four to five points — the first range I wrote, 0.5 to
+   15 per entry, let a `× 100` → `+ 100` through), the strongest throw above the
+   weakest, and the throw policy tested directly.
+2. **The two-ply lookahead's arithmetic was pinned by one comparison** ("lead the 4 over
+   the 5"), so every sign in `expected_reply` was free to flip — the mancala plan's
+   "the search's arithmetic was untested" finding, again, in a new crate. Nine
+   hand-checkable cases now pin it: the reply as a mean over the unseen ranks, a rank
+   they cannot play as a go worth a point to us, the second ply subtracting our best
+   answer, the played card not leaking back into our remaining hand, 31 stopping the
+   lookahead, and our impossible reply counting as a go. One of my expectations was
+   wrong on first run — I had missed that their five for 31 was also a pair — which is
+   the direction these things should fail.
+
+Re-run: **163 caught, 16 survivors.** Of those, four more are pinned above; the rest:
+`key`'s `<=` (a consistently swapped pair is still a symmetric key), `select`'s `<` on
+a random percentage (a one-in-a-hundred boundary), the tie-break in the throw policy
+(either best keep is a best keep), and four in `expected_reply` that only bite at three
+plies — `fewer[rank] -= 1` and `opp_left - 1` feed the third ply's model, and the
+shipped depth is two. Reachable if the depth ever changes; noted here so that change
+knows to pin them.

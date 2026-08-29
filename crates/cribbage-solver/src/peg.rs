@@ -197,6 +197,37 @@ mod tests {
     }
 
     #[test]
+    fn the_played_card_is_not_still_in_our_hand_for_the_second_ply() {
+        // count 7, we hold 8 and 3, they hold only eights. Our 8 makes fifteen
+        // (+2); their 8 pairs it (+2); our 3 then does nothing — even. If the
+        // played 8 leaked back into "our remaining cards", the second ply would
+        // find a pair royal that does not exist.
+        let stack = [c(7, 0)];
+        let hand = [c(8, 1), c(3, 2)];
+        assert_eq!(play_value(&hand, 0, &stack, &only(&[8]), 3, 2), 0);
+    }
+
+    #[test]
+    fn our_points_and_their_reply_are_both_signed_correctly() {
+        // count 9 (4 then 5); our 6 makes a run of three and fifteen (+5);
+        // their 7 extends it to a run of four (+4): 500 - 400.
+        let stack = [c(4, 0), c(5, 1)];
+        let hand = [c(6, 2)];
+        assert_eq!(play_value(&hand, 0, &stack, &only(&[7]), 3, 2), 100);
+    }
+
+    #[test]
+    fn their_thirty_one_stops_the_lookahead_and_our_impossible_reply_is_a_go() {
+        // count 21, they hold only tens: 31 for two, and nothing follows it —
+        // not even our "go" for having no reply to a count that has reset.
+        let stack = [c(10, 0), c(10, 1), c(1, 2)];
+        assert_eq!(expected_reply(&stack, &[c(5, 3)], &only(&[10]), 3, 2), 200);
+        // count 21, they hold only fives: 26 for nothing; our ten cannot follow
+        // (36), so their line ends in our go — a point they lose: 0 - (-100).
+        assert_eq!(expected_reply(&stack, &[c(10, 3)], &only(&[5]), 3, 2), 100);
+    }
+
+    #[test]
     fn a_play_that_makes_thirty_one_ends_the_count_and_takes_no_reply_term() {
         let stack = [c(10, 0), c(10, 1), c(1, 2)]; // count 21
         let hand = [c(10, 3), c(5, 0)];
