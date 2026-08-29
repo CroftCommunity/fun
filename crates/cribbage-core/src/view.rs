@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::card::Card;
 use crate::game::{GameState, Outcome, Phase, Scored, Seat, ShowStep, Shown};
-use crate::score::HandScore;
 
 /// A hand on the table at the show: its cards, and its grading once claimed.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -100,7 +99,8 @@ impl View {
             Phase::Show(ShowStep::NonDealer) => 1,
             Phase::Show(ShowStep::Dealer) => 2,
             Phase::Show(ShowStep::Crib) => 3,
-            Phase::Over if !s.shown.is_empty() => s.shown.len() + usize::from(s.shown.len() < 3),
+            // Game over: exactly the hands that were counted, none that was not.
+            Phase::Over => s.shown.len(),
             _ => 0,
         };
         let nd = s.dealer.other();
@@ -138,12 +138,6 @@ impl View {
             outcome: s.outcome(),
         }
     }
-}
-
-/// The true score of a hand on the table, for the UI's breakdown once claimed.
-#[must_use]
-pub fn graded_score(r: &Revealed) -> Option<HandScore> {
-    r.graded.map(|g| g.actual)
 }
 
 #[cfg(test)]
@@ -234,6 +228,44 @@ mod tests {
         let own = View::for_seat(&p, lead);
         assert_eq!(own.seen.len(), 7, "your own play is not news");
         assert_eq!(own.hand.len(), 3);
+    }
+
+    #[test]
+    fn when_the_game_ends_the_view_keeps_exactly_the_hands_that_were_counted() {
+        // Mutation audit 2026-08-29: the `Phase::Over` arm had no test, and its
+        // `shown.len() + 1` revealed a hand nobody counted. Over shows what was
+        // counted — no more — and a game won while pegging shows nothing.
+        let mut s = play(&GameState::new(11), &[Move::Discard(3), Move::Discard(9)]);
+        while s.phase() == Phase::Peg {
+            let m = legal_moves(&s)[0];
+            s = apply(&s, m).unwrap();
+        }
+        let nd = s.dealer().other();
+        s.scores = [100, 100];
+        s.scores[nd.idx()] = 120;
+        let over = apply(&s, Move::Claim(1)).unwrap();
+        assert_eq!(over.phase(), Phase::Over);
+        for seat in [Seat::A, Seat::B] {
+            let v = View::for_seat(&over, seat);
+            assert_eq!(
+                v.revealed.len(),
+                1,
+                "only the non-dealer's hand was counted"
+            );
+            assert!(v.revealed[0].graded.is_some());
+            assert_eq!(v.revealed[0].owner, nd);
+            assert!(v.outcome.is_some());
+        }
+        // won while pegging: no hand reached the table
+        let mut pegging = play(&GameState::new(11), &[Move::Discard(3), Move::Discard(9)]);
+        pegging.scores = [120, 120];
+        let mut won = pegging.clone();
+        while won.phase() == Phase::Peg {
+            let m = legal_moves(&won)[0];
+            won = apply(&won, m).unwrap();
+        }
+        assert_eq!(won.phase(), Phase::Over);
+        assert!(View::for_seat(&won, Seat::A).revealed.is_empty());
     }
 
     #[test]
