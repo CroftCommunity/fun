@@ -13,7 +13,10 @@ import { expect, test, type Page } from "@playwright/test";
 
 async function ready(page: Page): Promise<void> {
   await expect(page.locator(".orch-canvas")).toBeVisible();
-  await page.waitForFunction(() => Boolean(window.__orchard));
+  // The hook is installed before the wasm binding has loaded, so `world()` is
+  // null for a beat — long enough on a starved CI shard for the first evaluate
+  // to land on it (main run 33279530068, mobile-webkit 3/3). Ready means a world.
+  await page.waitForFunction(() => Boolean(window.__orchard?.world()));
 }
 
 test("the crate renders natively — no iframe, no borrowed chrome", { tag: "@smoke" }, async ({ page }) => {
