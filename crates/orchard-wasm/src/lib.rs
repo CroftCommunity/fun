@@ -129,6 +129,26 @@ pub extern "C" fn wait_until(tick: u32) -> u32 {
 
 // ── reads ──────────────────────────────────────────────────────────────────
 
+/// Fixed-point sub-units to whole pixels.
+///
+/// A free function rather than an inline shift so a Rust test can reach it.
+/// `cargo mutants` runs `cargo test` and nothing else: a conversion checked only
+/// by the vitest is, from the crate's own point of view, unchecked — and
+/// shifting it the wrong way still yields an integer, so weak assertions do not
+/// notice either.
+#[must_use]
+pub const fn to_px(fx: i64) -> i64 {
+    fx >> 16
+}
+
+/// Fixed-point radians to whole milliradians.
+///
+/// Integer output on purpose: no float crosses this boundary.
+#[must_use]
+pub const fn to_milliradians(fx: i64) -> i64 {
+    (fx * 1000) >> 16
+}
+
 /// One fruit, as the renderer needs it. Positions are whole px: the renderer
 /// draws, it does not simulate, and handing it sub-pixel fixed-point would
 /// invite it to do arithmetic that belongs in the core.
@@ -169,10 +189,10 @@ fn world_view(s: &Session) -> WorldView {
             .map(|f| FruitView {
                 id: f.id,
                 tier: f.tier,
-                x: f.x >> 16,
-                y: f.y >> 16,
-                r: f.r >> 16,
-                ang: (f.ang * 1000) >> 16,
+                x: to_px(f.x),
+                y: to_px(f.y),
+                r: to_px(f.r),
+                ang: to_milliradians(f.ang),
             })
             .collect(),
     }
@@ -251,6 +271,16 @@ pub extern "C" fn daily_seed_lo(day: u32) -> u32 {
 #[no_mangle]
 pub extern "C" fn daily_seed_hi(day: u32) -> u32 {
     (daily(day) >> 32) as u32
+}
+
+/// Whether a move at `mv_tick` is part of the run replayed up to `n`.
+///
+/// Inclusive: a move landing exactly on the tick asked for **is** applied.
+/// Lifted out for the same reason as [`to_px`] — the boundary is the whole
+/// difference between a bisect naming the right tick and the one before it.
+#[must_use]
+pub const fn included_in_digest(mv_tick: u32, n: u32) -> bool {
+    mv_tick <= n
 }
 
 // ── the record ─────────────────────────────────────────────────────────────
@@ -338,7 +368,7 @@ pub extern "C" fn tick_digest(n: u32) -> *const u8 {
     };
     let mut g = Game::new(s.seed);
     for &mv in &s.moves {
-        if mv.tick() > n {
+        if !included_in_digest(mv.tick(), n) {
             break;
         }
         let _ = g.apply(mv);
@@ -447,6 +477,104 @@ mod tests {
         let data = b"{}";
         let r = unsafe { verify_json(data.as_ptr(), 2) };
         assert!(read(r).contains("false"));
+    }
+
+    // ── the conversions, where a wrong shift is still an integer ───────────
+
+    #[test]
+    fn fixed_point_converts_to_whole_pixels() {
+        assert_eq!(to_px(0), 0);
+        assert_eq!(to_px(1 << 16), 1);
+        assert_eq!(to_px(440 << 16), 440);
+        // Sub-pixel remainders floor rather than round, which is what makes the
+        // conversion exact rather than nearly so.
+        assert_eq!(to_px((1 << 16) - 1), 0);
+        assert_eq!(to_px((1 << 16) + (1 << 15)), 1);
+        // The direction matters: shifting the other way is still an integer,
+        // just 65,536x too large, so "is an integer" cannot see the mistake.
+        assert!(to_px(100 << 16) < 100 << 16);
+    }
+
+    #[test]
+    fn fixed_point_converts_to_whole_milliradians() {
+        assert_eq!(to_milliradians(0), 0);
+        // One radian is 1000 milliradians.
+        assert_eq!(to_milliradians(1 << 16), 1000);
+        // Half a radian is 500.
+        assert_eq!(to_milliradians(1 << 15), 500);
+        // Negative rotation survives the sign.
+        assert_eq!(to_milliradians(-(1 << 16)), -1000);
+        // `* 1000` mutated to `+ 1000` or `/ 1000` lands nowhere near these.
+        assert_ne!(to_milliradians(1 << 16), to_px(1 << 16));
+    }
+
+    #[test]
+    fn a_move_exactly_on_the_digest_tick_is_included() {
+        // The bisect boundary. `<=` vs `<` is the difference between naming the
+        // tick a divergence happened on and naming the one before it.
+        assert!(
+            included_in_digest(100, 100),
+            "a move AT the tick is included"
+        );
+        assert!(included_in_digest(99, 100));
+        assert!(!included_in_digest(101, 100));
+    }
+
+    // ── the accessors, after a game exists as well as before ───────────────
+
+    #[test]
+    fn the_accessors_report_the_run_not_a_constant() {
+        // `every_read_answers_before_a_game_exists` asserts they are 0 with no
+        // game — which a function that ALWAYS returns 0 also satisfies. This is
+        // the other half.
+        let _guard = serial();
+        new_game(7, 0);
+        assert_eq!(drop_at(0, 220), DROP_OK);
+        assert_eq!(wait_until(600), DROP_OK);
+        assert_eq!(tick(), 600, "tick follows the run");
+        assert_ne!(held(), NO_TIER);
+        assert!(held() < 5, "the held fruit is droppable");
+        assert_eq!(is_over(), 0);
+        assert_eq!(ladder_tiers(), 11, "the ladder has eleven tiers");
+    }
+
+    #[test]
+    fn score_rises_when_a_merge_happens() {
+        let _guard = serial();
+        new_game(1, 0);
+        let mut t = 0;
+        for _ in 0..14 {
+            if is_over() == 1 {
+                break;
+            }
+            drop_at(t, 220);
+            wait_until(t + 33);
+            t += 33;
+            if score() > 0 {
+                return;
+            }
+        }
+        panic!("no merge scored, so score() was never observed non-zero");
+    }
+
+    #[test]
+    fn the_daily_seed_halves_are_not_the_same_number() {
+        // `daily_seed_hi -> 0` and a shifted `>>` both survive a test that only
+        // reassembles the halves without looking at them.
+        let _guard = serial();
+        let lo = daily_seed_lo(0);
+        let hi = daily_seed_hi(0);
+        let seed = (u64::from(hi) << 32) | u64::from(lo);
+        assert_eq!(
+            seed,
+            orchard_core::pack::daily_seed(&orchard_core::pack::default_pack(), 0)
+        );
+        // At least one day in the year has a non-zero high half, or the pool is
+        // too small for the crossing to be exercised at all.
+        assert!(
+            (0..366).any(|d| daily_seed_hi(d) != 0) || (0..366).all(|d| daily_seed_lo(d) != 0),
+            "the seed pool never exercises both halves"
+        );
     }
 
     // ── the seed boundary, where the width bugs live ───────────────────────

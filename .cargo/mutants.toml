@@ -1,0 +1,14 @@
+# cargo-mutants config. Lives at the WORKSPACE ROOT — a copy inside a crate
+# directory is silently ignored, which cost a round of "the exclusion applied"
+# that had not.
+#
+# `**/src/bin/expected.rs` is a FIXTURE GENERATOR, not production code: it prints
+# the native values `check.mjs` and `tests/orchard-wasm.test.ts` compare the wasm
+# build against. Mutating it changes what the fixture would say if regenerated,
+# which nothing checks, because the committed `expected.json` is what the
+# harnesses read.
+#
+# Recorded rather than quiet, because excluding code to improve a mutation score
+# is precisely the failure the practice exists to prevent. The justification is
+# that this file is on no path the game takes.
+exclude_globs = ["**/src/bin/expected.rs"]
