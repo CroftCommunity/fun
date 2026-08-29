@@ -17,7 +17,7 @@ pub const TIERS: usize = 11;
 pub const DROPPABLE: u8 = 5;
 
 /// Radii in px, by tier.
-const RADII: [i64; TIERS] = [17, 25, 33, 41, 50, 60, 72, 85, 99, 113, 128];
+pub const RADII: [i64; TIERS] = [17, 25, 33, 41, 50, 60, 72, 85, 99, 113, 128];
 
 /// Names, by tier. Presentational, but they belong beside the radii they go with.
 const NAMES: [&str; TIERS] = [

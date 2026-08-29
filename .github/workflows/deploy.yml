@@ -114,6 +114,19 @@ jobs:
       # and would have gated nothing in test code — which is where this repo's
       # fixtures and soaks live.
       - run: cargo clippy --workspace --all-targets -- -D warnings
+      # The cross-build determinism check: replay the golden scenarios inside
+      # wasm32 and assert the hashes equal the natively-recorded ones.
+      #
+      # It needs a NODE step after a wasm build, which is why it never fitted a
+      # Rust-only job and why — until 2026-08-29 — it ran nowhere at all. The
+      # harness existed, was documented, and was executed by nothing: no npm
+      # script, no CI reference. `native == wasm` is a claim this shelf makes to
+      # users, and it was resting on a script someone had to remember to run.
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: rustup target add wasm32-unknown-unknown
+      - run: npm run test:xbuild
 
   # The browser gate. Runs in PARALLEL with `build`, which is what makes it
   # ~free: `build` is 225s of `npm run unit` against a 17s wasm compile, so an

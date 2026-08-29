@@ -57,7 +57,17 @@ at them and add what's specific to this repo. Git identity: chasemp
     (This bullet used to claim "`clippy::pedantic` clean" workspace-wide; nothing
     checked it and nothing ever had. It now says what is true.)
 - **`npm run gate` is the whole gate, and CI runs all of it.** `gate` =
-  `npm run test` (Rust + typecheck + lint + unit + build) + `npm run e2e`.
+  `npm run test` (Rust + **cross-build** + typecheck + lint + unit + build) +
+  `npm run e2e`.
+  - **`test:xbuild` was added 2026-08-29, and the finding is worth keeping.** The
+    cross-build determinism harness (`crates/xbuild`) replays golden scenarios
+    inside `wasm32` and asserts the hashes equal the natively-recorded ones — and
+    it **ran nowhere at all**: no npm script, no `tools/` caller, no CI
+    reference. It existed, was documented, and was executed by nothing, so
+    `native == wasm` — a claim this shelf makes to users — rested on a script
+    someone had to remember to run. It needs a node step after a wasm build,
+    which is why it never fitted the Rust-only job. Its `run.sh` also resolved
+    `--toolchain stable`, floating free of the pin, and that is fixed too.
   Measured 2026-08-07: **3m44s** locally, of which the browser half is ~55s.
   - CI runs the same three parts as **parallel jobs** (`build`, `rust`, `e2e`),
     and `deploy` needs all three — so a failing board blocks publication rather
