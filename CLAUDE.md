@@ -57,7 +57,17 @@ at them and add what's specific to this repo. Git identity: chasemp
     (This bullet used to claim "`clippy::pedantic` clean" workspace-wide; nothing
     checked it and nothing ever had. It now says what is true.)
 - **`npm run gate` is the whole gate, and CI runs all of it.** `gate` =
-  `npm run test` (Rust + typecheck + lint + unit + build) + `npm run e2e`.
+  `npm run test` (Rust + **cross-build** + typecheck + lint + unit + build) +
+  `npm run e2e`.
+  - **`test:xbuild` was added 2026-08-29, and the finding is worth keeping.** The
+    cross-build determinism harness (`crates/xbuild`) replays golden scenarios
+    inside `wasm32` and asserts the hashes equal the natively-recorded ones — and
+    it **ran nowhere at all**: no npm script, no `tools/` caller, no CI
+    reference. It existed, was documented, and was executed by nothing, so
+    `native == wasm` — a claim this shelf makes to users — rested on a script
+    someone had to remember to run. It needs a node step after a wasm build,
+    which is why it never fitted the Rust-only job. Its `run.sh` also resolved
+    `--toolchain stable`, floating free of the pin, and that is fixed too.
   Measured 2026-08-07: **3m44s** locally, of which the browser half is ~55s.
   - CI runs the same three parts as **parallel jobs** (`build`, `rust`, `e2e`),
     and `deploy` needs all three — so a failing board blocks publication rather
@@ -98,12 +108,45 @@ at them and add what's specific to this repo. Git identity: chasemp
   - Symptom worth recognising: `dyld: Library not loaded: libllhttp.9.3.dylib`
     from `node` means a Homebrew upgrade moved a dependency out from under the
     system Node. Under fnm that cannot happen to the pinned toolchain.
+- **A check must actually run, and its result must actually reach you.** Three
+  failure shapes, all observed here, all of which report the same green as a real
+  pass. Named because they are invisible by construction:
+  - **The result never arrives.** A pipeline exits with its LAST command's
+    status, so `npm run test:rust | tail -40` hands you `tail`'s exit code and
+    the tail of the log — the header, the failures and the counts are all above
+    the fold. `cargo clippy | grep -c error && git commit` commits whether or not
+    clippy passed, because `grep` succeeds either way. **Never pipe or chain a
+    verification.** `bash tools/check.sh <label> <cmd...>` does it correctly:
+    whole log to a file, tail printed, the command's own exit code returned.
+  - **The check never runs.** `crates/xbuild` — the harness backing
+    `native == wasm`, a claim this shelf makes to users — had no npm script, no
+    caller and no CI reference for months. Writing a guard for it immediately
+    found a second, `crates/solitaire-wasm/run.sh`, in the same state; both also
+    carried a floating `--toolchain stable`, because nothing ran either script to
+    notice. `tests/gate-reachability.test.ts` now makes unwired a red board.
+  - **The check runs but grades less than it looks like.** Measured: axe's
+    `.include(sel)` **throws** when the selector matches nothing; `.exclude(sel)`
+    is **silent** and scans everything. So a broken include fails instantly and a
+    stale exclude survives indefinitely — one did, for a day after its iframe
+    left the shelf. `tests/axe-scope.test.ts` requires an exclusion to prove its
+    target exists.
+
+  The through-line: **tests going red is not the failure mode to design against.
+  Checks going green without having run is.**
 - **Mutation-test the cores.** `cargo mutants --package <crate> -j 4` (installed;
   run it with the pinned toolchain on PATH, as `tools/rust-gate.sh` does). Expected
   when a determinism-critical crate goes green and **before calling its phase
   done** — the game cores are rules engines, encoders and searches, which is
   exactly where a green suite hides holes. Not a per-commit gate and **not in CI**:
   a run is minutes, and it is an audit, not a check.
+  - **Closing a survivor means watching the new test fail against it.** Twice in
+    one session a test was written to kill a mutant, asserted to kill it, and did
+    not — once because the mutated code was not the mechanism in play at all
+    (game-over is driven by *merged* fruit, which carry no grace, so a dropped
+    fruit's grace could be absurd and nothing noticed). Re-apply the mutation by
+    hand and watch the new test go red. A test written to close a survivor is
+    worth nothing until it has been seen to fail against that survivor — which is
+    the same rule as watching a RED phase, one level up.
   - Triage every survivor into **equivalent mutant** or **real gap**, and record
     which in the plan. Equivalent mutants are common and unkillable — measured on
     `checkers-core` 2026-08-05, 9 of 26 survivors were provably behaviour-preserving
@@ -143,19 +186,16 @@ at them and add what's specific to this repo. Git identity: chasemp
 - **Tier 1 — Croft-native (build-fresh).** Determinism-first Rust core → wasm,
   **verifiable outcome** (move-list replay → `state_hash`, re-verifying `?r=`
   share), tap-first with the core deciding legality. solitaire · Trio Tumble ·
-  bubble (in progress). This is the shelf's differentiator; build fresh when a
+  bubble · Orchard Drop (rebuilt from a wrap, 2026-08-29). This is the shelf's differentiator; build fresh when a
   game's rules are simpler than an integration.
-- **Tier 2 — opportunistic wrap/port.** Already-packaged **ethical** games taken
-  as-is (client-side/static, non-extractive, redistribution-licensed, fits our
-  chrome, **honestly represented** — no faked verifiable outcome). Gated by a
-  real-browser **containment/legibility** harness (untrusted code in our chrome).
-  A large one-time download that then runs fully offline is an allowed class
-  *with up-front size disclosure*. The wrapped-game standard is **ratified in
-  `docs/BUILDING-GAMES.md` §9**. **The tier has no third-party instance since
-  2026-08-28** — Astray, HexGL and Clumsy Bird were removed as not fitting the
-  shelf's model. Solitaire remains the Tier-1 reference. Every wrap ships a
-  `tier2.meta.json` (provenance + posture). Avoid the Emscripten + runtime-untar
-  class (the SuperTuxKart cut, `plans/2026-07-31-supertuxkart-wrap.md`).
+- **Tier 2 — RETIRED 2026-08-29.** It held third-party games taken as-is in a
+  sandboxed iframe, honestly represented as keeping no verifiable record. Four
+  games passed through it and none stayed: three were removed as not fitting the
+  shelf, and Orchard Drop was rebuilt Tier-1. The standard, its containment
+  harness, its `tier2.meta.json` schema and its banner are all gone; the
+  headstone and the reasoning worth keeping are in `docs/BUILDING-GAMES.md` §9,
+  and the full text is in git history. **If a wrap is ever wanted again, restore
+  it from history rather than reinventing it.**
 
 - **Tier 3 — engine-backed original.** A game **we build** on a **third-party
   engine whose numerics we do not control** (a physics engine, a solver). Ours

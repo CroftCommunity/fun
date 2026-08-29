@@ -21,9 +21,11 @@
     "baselines": "npm run build:wasm && HARNESS_BASELINES=1 vitest run tests/baselines.test.ts",
     "serve": "node build.mjs && node tools/serve.mjs",
     "test:rust": "bash tools/rust-gate.sh",
-    "test": "npm run test:rust && npm run typecheck && npm run lint && npm run unit && npm run build",
+    "test": "npm run test:rust && npm run test:xbuild && npm run test:binding && npm run typecheck && npm run lint && npm run unit && npm run build",
     "gate": "npm run test && npm run e2e",
-    "intake": "node tools/intake.mjs"
+    "intake": "node tools/intake.mjs",
+    "test:xbuild": "bash crates/xbuild/run.sh",
+    "test:binding": "bash crates/solitaire-wasm/run.sh"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",

@@ -18,6 +18,7 @@ import type { GameModule } from "../../contract.js";
 import { WebLLMRuntime } from "../../harness/ai-runtime.js";
 import { speak } from "../../harness/banter.js";
 import { buildBand, HybridPlayer, type BandMove } from "../../harness/hybrid-player.js";
+import { captureUiState, restoreUiState } from "../../ui-state.js";
 import {
   checkersLevel,
   checkersSide,
@@ -288,6 +289,18 @@ export function checkersModule(): GameModule {
   // Engine-grounded coaching for the human's last move, surfaced after the
   // engine replies (so it does not spoil the reply). Cleared each human turn.
   let coachMsg: string | null = null;
+  /**
+   * The tutor's last reading, held WITH the position it was computed for.
+   *
+   * It used to live only in the DOM, so every `render()` erased it — the player
+   * asked "explain my options", read two lines, toggled a setting, and the answer
+   * vanished (TODO/dots.md, which names this game). The state hash is the other
+   * half: a band of reasonable moves is *true* until a move is made and *stale*
+   * the instant one is, so repainting it unconditionally would trade a lost answer
+   * for a wrong one. Furrow already does exactly this (`tutorView`); it shipped
+   * last and solved what the earlier three inherited.
+   */
+  let tutorReading: { note: string; items: string[]; at: string } | null = null;
   let pendingCoach: string | null = null;
 
   // --- experimental local-AI opponent (hybrid: engine band + LLM in-band pick) ---
@@ -545,14 +558,22 @@ export function checkersModule(): GameModule {
           // The report is `exact` only when every move in it was proven;
           // otherwise the panel says so rather than implying certainty it does
           // not have.
-          note.textContent = report.exact ? "" : "Reading ahead (not yet certain):";
-          optionsEl.replaceChildren(
-            ...band.slice(0, 6).map((m) => el("li", {}, `${moveLabel(m.col)} — ${ideaFor(m)}`)),
-          );
+          const heading = report.exact ? "" : "Reading ahead (not yet certain):";
+          const items = band.slice(0, 6).map((m) => `${moveLabel(m.col)} — ${ideaFor(m)}`);
+          note.textContent = heading;
+          optionsEl.replaceChildren(...items.map((line) => el("li", {}, line)));
+          tutorReading = { note: heading, items, at: game.currentHash() };
           explain.removeAttribute("aria-busy");
         }, 0);
       });
     });
+    // Repaint the last reading if it still describes the position on screen.
+    // `coachMsg` below has always worked this way; the reading simply never had
+    // anywhere to be repainted from.
+    if (game && tutorReading && tutorReading.at === game.currentHash()) {
+      note.textContent = tutorReading.note;
+      optionsEl.replaceChildren(...tutorReading.items.map((line) => el("li", {}, line)));
+    }
     const coach = el("p", { class: "checkers-tutor-coach", role: "status", "aria-live": "polite" });
     if (coachMsg) coach.textContent = coachMsg;
     panel.append(explain, note, optionsEl, coach);
@@ -771,7 +792,10 @@ export function checkersModule(): GameModule {
         el("p", { class: "checkers-ai-say", role: "status" }, `${LOCAL_AI_PERSONA.name}: ${aiSay}`),
       );
     }
+    // The player owns the open panel and the focus; the model does not.
+    const ui = captureUiState(container);
     container.replaceChildren(el("div", { class: "checkers-game" }, ...parts));
+    restoreUiState(container, ui);
   }
 
   const outcomeLabel = (board: BoardView): string => {

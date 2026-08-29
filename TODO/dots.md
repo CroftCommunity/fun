@@ -78,9 +78,21 @@ was deferred.
   from the opening, so its tutor would hedge for most of the game. If it is ever
   added, the chain/loop (Berlekamp) endgame decomposition becomes the right
   answer and this becomes a real project rather than a constant change.
-- [ ] **The tutor panel's list resets on every re-render**, so playing a move
-  clears the options it just explained. Othello and checkers behave the same way;
-  it is a shared pattern worth fixing once rather than per game.
+- ~~**The tutor panel's list resets on every re-render**~~ — **fixed 2026-08-29**
+  (`plans/2026-08-29-plan-rerender-state.md`). Half of this entry was a bug and half
+  was correct, and the difference is whether the *board* changed: a band of reasonable
+  edges is true until an edge is drawn and stale the instant one is. The reading is now
+  held with the state hash it was computed for and repainted only while that matches, so
+  a setting toggle keeps it and a move clears it deliberately.
+  - **It was four games, not the three named here** — furrow shipped after this entry and
+    inherited the same pattern.
+  - **And furrow had already solved it** (`tutorView`), which this entry did not know.
+    The fix was to bring furrow's solution back to dots, othello and checkers rather than
+    to invent one.
+  - The same re-render was also discarding the **open settings panel**, which is what
+    hung `dots.spec.ts:191` on CI for two days and blocked every deploy. `src/ui-state.ts`
+    is the shared half: capture/restore for the state the player owns rather than the
+    model — open panels, focus, and the caret.
 - [ ] **Phase 4 (mutation testing) was run late** — after Phases 5–8, not before
   them. Eleven real gaps were closed and none had reached the shipped path, but
   that was luck. The recurring survivors to expect next time are recorded in

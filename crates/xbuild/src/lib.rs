@@ -18,6 +18,7 @@ use furrow_core::{
     apply_move as furrow_apply, legal_pits, state_hash as furrow_state_hash, Board as FurrowBoard,
     Pit,
 };
+use orchard_core::vectors as orchard_vectors;
 use solitaire_core::{state_hash, GameState, Move};
 
 /// Length in bytes of the hex hash the buffer holds.
@@ -168,4 +169,25 @@ fn write_hash(hex: &str) -> *const u8 {
         core::ptr::copy_nonoverlapping(hex.as_ptr(), p, 64);
         p.cast_const()
     }
+}
+
+/// How many Orchard Drop golden scenarios there are.
+#[no_mangle]
+pub extern "C" fn orchard_scenario_count() -> u32 {
+    orchard_vectors::COUNT as u32
+}
+
+/// The `state_hash` of Orchard Drop golden scenario `index`.
+///
+/// Replays the scenario **inside wasm** and hashes it, so `check.mjs` can
+/// compare against the natively-recorded value in
+/// `crates/orchard-core/vectors/`. An index past the end returns the empty
+/// string rather than panicking — a wasm panic aborts the module.
+#[no_mangle]
+pub extern "C" fn orchard_scenario_hash(index: u32) -> *const u8 {
+    let h = orchard_vectors::scenario_hash(index as usize);
+    if h.is_empty() {
+        return write_hash("");
+    }
+    write_hash(&h)
 }

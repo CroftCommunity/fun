@@ -4271,7 +4271,6 @@ body.fullscreen .le-stage {
 .sheet-choice-input { width: 1.05rem; height: 1.05rem; accent-color: var(--accent); }
 .sheet-choice-hint { margin-left: auto; color: var(--ink-muted); font-size: 0.75rem; }
 
-/* ===========================================================================
    Cribbage. The felt is the table; cards reuse the solitaire card language
    (`--card`, the suit inks, `--r-card`) so the shelf has one card, not two.
    Layout is column-first: the peg board, then the table (opponent backs /
@@ -4482,3 +4481,77 @@ body.fullscreen .le-stage {
   .crib-opp .crib-card { inline-size: 1.6rem; block-size: 2.3rem; }
   .crib-table { padding: 0.4rem; }
 }
+=======
+/* ── Orchard Drop ────────────────────────────────────────────────────────────
+   The crate's colours are skin tokens (chrome roles are skinnable, per M1) and
+   live in tokens.css with the rest of the palette. The eleven FRUIT colours are
+   the game's own identity, are not skinned, and live in render.ts — a cherry is
+   red in every skin. */
+.orch-modes {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.orch-mode {
+  /* 44px tap floor — the mobile-first standard, not a suggestion. */
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 1rem;
+}
+.orch-hud {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  color: var(--ink);
+  font-family: var(--font-display);
+}
+.orch-hud p { margin: 0; }
+.orch-score-value,
+.orch-best-value { font-weight: 700; }
+.orch-next { display: inline-flex; align-items: center; gap: 0.35rem; }
+.orch-next-chip {
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+  display: inline-block;
+  border: 1px solid rgb(0 0 0 / 20%);
+}
+.orch-next-name { color: var(--ink-muted); }
+
+.orch-surface {
+  display: flex;
+  justify-content: center;
+  margin: 0.5rem auto 0;
+  /* The crate is taller than it is wide, so height is the binding constraint on
+     a phone; cap it against the viewport rather than the container. */
+  max-height: 70vh;
+}
+.orch-surface:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+.orch-canvas {
+  display: block;
+  max-width: 100%;
+  max-height: 70vh;
+  width: auto;
+  height: auto;
+  border-radius: 6px;
+  touch-action: none; /* the crate is a drag surface, not a scroll surface */
+}
+
+.orch-result-rows {
+  display: flex;
+  justify-content: center;
+  gap: 1.25rem;
+  margin: 0.5rem 0 0.75rem;
+}
+.orch-result-rows > div { text-align: center; }
+.orch-result-rows dt {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+}
+.orch-result-rows dd { margin: 0; font-weight: 700; font-size: 1.3rem; }
+
+/* ====================================================================

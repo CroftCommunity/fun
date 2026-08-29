@@ -5,15 +5,15 @@
 // solitaire-core/vectors/. Byte-identical hashes across targets = the Rust->wasm
 // determinism property. Exits non-zero on any mismatch.
 //
-// Usage: node check.mjs <xbuild.wasm> <solitaire-vectors> <dots-vectors> <furrow-vectors> <cribbage-vectors>
-import { readFile } from "node:fs/promises";
+// Usage: node check.mjs <xbuild.wasm> <solitaire-vectors> <dots-vectors> <furrow-vectors> <orchard-vectors> <cribbage-vectors>
+import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-const [wasmPath, vectorsDir, dotsVectorsDir, furrowVectorsDir, cribbageVectorsDir] =
+const [wasmPath, vectorsDir, dotsVectorsDir, furrowVectorsDir, orchardVectorsDir, cribbageVectorsDir] =
   process.argv.slice(2);
-if (!wasmPath || !vectorsDir || !dotsVectorsDir || !furrowVectorsDir || !cribbageVectorsDir) {
+if (!wasmPath || !vectorsDir || !dotsVectorsDir || !furrowVectorsDir || !orchardVectorsDir || !cribbageVectorsDir) {
   console.error(
-    "usage: node check.mjs <xbuild.wasm> <solitaire-vectors-dir> <dots-vectors-dir> <furrow-vectors-dir> <cribbage-vectors-dir>",
+    "usage: node check.mjs <xbuild.wasm> <solitaire-vectors-dir> <dots-vectors-dir> <furrow-vectors-dir> <orchard-vectors-dir> <cribbage-vectors-dir>",
   );
   process.exit(2);
 }
@@ -34,6 +34,8 @@ const {
   cribbage_replay_hash,
   move_in_ptr,
   move_in_cap,
+  orchard_scenario_count,
+  orchard_scenario_hash,
 } = instance.exports;
 const len = hash_len();
 
@@ -137,6 +139,37 @@ for (const c of cases) {
     ok = false;
   }
 }
+// ── Orchard Drop ────────────────────────────────────────────────────────────
+// The whole stack in one comparison: orchard's state_hash folds in
+// pond-physics' world hash, so a divergence anywhere from the fixed-point
+// solver up through the merge rule shows here. That is why the physics crate
+// has no separate entry — it is covered transitively, and a second entry would
+// only be a second chance to disagree.
+
+{
+  const files = (await readdir(orchardVectorsDir)).filter((f) => f.endsWith(".json")).sort();
+  const count = orchard_scenario_count();
+  if (files.length !== count) {
+    console.error(
+      `orchard: ${files.length} vector files but the wasm reports ${count} scenarios — ` +
+        "one of them is unchecked",
+    );
+    ok = false;
+  }
+  for (const file of files) {
+    const v = JSON.parse(await readFile(join(orchardVectorsDir, file), "utf8"));
+    const got = readHash(orchard_scenario_hash(v.index));
+    if (got !== v.final_state_hash) {
+      console.error(
+        `orchard ${v.name}: wasm ${got} != native ${v.final_state_hash}`,
+      );
+      ok = false;
+    } else {
+      console.log(`orchard ${v.name}: ${got} (native == wasm)`);
+    }
+  }
+}
+
 console.log(
   ok
     ? "cross-build determinism: OK (wasm hashes == native golden hashes)"

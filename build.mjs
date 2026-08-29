@@ -18,7 +18,7 @@ const GAME_PAGES = ["", "placeholder", "solitaire", "trio-tumble", "bubble", "wy
 
 // Tier-2 wrapped games: their vendored bundle ships under src/games/<id>/vendor/
 // and is served at /<id>/vendor/ for the sandboxed iframe to load same-origin.
-const TIER2_VENDORS = ["orchard-drop"];
+
 
 // Pre-paint skin resolution: set [data-skin] before first paint so a palette
 // never flashes. GENERATED from src/skins.ts rather than hand-kept, because the
@@ -242,15 +242,7 @@ for (const id of GAME_PAGES.filter(Boolean)) {
 // Tier-2 vendored bundles: copy src/games/<id>/vendor -> dist/<id>/vendor so the
 // wrapped game's sandboxed iframe loads it same-origin (no runtime third-party
 // fetch — every asset is ours, served from our origin).
-for (const id of TIER2_VENDORS) {
-  const vendor = join(root, "src", "games", id, "vendor");
-  if (await exists(vendor)) {
-    await mkdir(join(dist, id), { recursive: true });
-    await cp(vendor, join(dist, id, "vendor"), { recursive: true });
-  } else {
-    console.warn(`note: ${id} vendor dir missing (src/games/${id}/vendor) — Tier-2 wrap needs it`);
-  }
-}
+
 
 for (const id of GAME_PAGES) {
   const dir = id ? join(dist, id) : dist;

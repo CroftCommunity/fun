@@ -439,6 +439,7 @@ dependencies = [
  "rand",
  "rand_chacha",
  "serde",
+ "serde_json",
  "sha2",
 ]
 
@@ -800,6 +801,7 @@ dependencies = [
  "cribbage-core",
  "dots-core",
  "furrow-core",
+ "orchard-core",
  "solitaire-core",
 ]
 
