@@ -284,6 +284,8 @@ test("the tutor panel is off by default, appears when enabled, and is exact for 
   await page.goto("/cribbage/?seed=7");
   await ready(page);
   await expect(page.locator(".crib-tutor")).toHaveCount(0);
+  // Open the panel while the engine may still be moving: its resting render
+  // must not snap the panel shut (the Dots hang; `src/ui-state.ts`).
   await page.locator(".crib-settings summary").click();
   await page.locator(".crib-set-tutor").check();
   await expect(page.locator(".crib-tutor-explain")).toBeVisible();
