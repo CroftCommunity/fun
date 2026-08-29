@@ -151,6 +151,24 @@ jobs:
   #
   # This costs a second runner for e2e. That is the trade: e2e was already the
   # critical path, so the wall clock should improve even as total minutes rise.
+  #
+  # DO NOT CONSOLIDATE THESE BACK INTO ONE JOB FOR SPEED. The split is not only
+  # tidier reporting — it is what made two DIFFERENT failures distinguishable, and
+  # they had been wearing one symptom for days. Both showed up as "e2e failed, some
+  # mobile-webkit test timed out at 30s", and they needed opposite fixes:
+  #
+  #   dots.spec.ts:191        0.36s locally, 30s on CI. A HANG. An async WebGPU probe
+  #                           re-rendered mid-interaction and container.replaceChildren
+  #                           rebuilt the open settings panel closed, so the checkbox
+  #                           was detached and its replacement invisible. Fixed in the
+  #                           app (src/ui-state.ts), not here.
+  #   a11y-matrix.spec.ts:76  9.1s locally, past 30s on CI. GENUINELY LONG — every game
+  #                           scanned inside one budget. Fixed by regrouping per game.
+  #
+  # The obvious cheap remedy was to raise the per-test timeout. It would have fixed the
+  # long one and BURIED THE HANG behind a green tick — a real UI bug, shipped, with the
+  # suite reporting success. A remedy aimed at the symptom turns a loud failure into a
+  # quiet one. Rejoining the jobs re-merges the evidence that told them apart.
   e2e:
     name: e2e (${{ matrix.project }})
     runs-on: ubuntu-latest
