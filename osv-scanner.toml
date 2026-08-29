@@ -1,0 +1,61 @@
+# osv-scanner exceptions — Phase 0 of the supply-chain rollout, 2026-08-29.
+#
+# Rule and why: CroftC/.claude/SUPPLY-CHAIN.md rule 9 — dated, reasoned, expiring.
+# Each reason names the rung of rule 5 that settled it.
+#
+# What was NOT excepted: every advisory with an in-range fix was FIXED by `npm audit fix`
+# in the same pass. Only the vite/vitest/esbuild cluster remains, because each of those
+# fixes is a MAJOR bump — vite 5->6, vitest 2->3, esbuild 0.21->0.25.
+#
+# That is the drift thesis making itself concrete: these are not deferred security fixes,
+# they are deferred version bumps that BECAME security fixes. The bumps belong to Phase 4
+# (the freshness budget), not to a Phase 0 whose job is to record a baseline. This repo is
+# among those already over the FLAG threshold in .claude/DEP-DRIFT.md.
+#
+# Verified for THIS repo before writing any of it (rule 5, rungs 3 and 4):
+#   - the test script is `vitest run` — headless. No Vitest UI, no Browser Mode.
+#   - no `--host`, no `--api.host`, no `api.host` config anywhere. The dev server is
+#     never exposed to a network.
+#   - CI and every developer machine here are Linux/macOS. Two of these advisories are
+#     Windows-only by their own text.
+# All three conditions must hold. If any changes, these exceptions are void — see each
+# entry.
+
+[[IgnoredVulns]]
+id = "GHSA-5xrq-8626-4rwp"
+ignoreUntil = 2026-11-29
+reason = """vitest 2.1.9 — arbitrary file read via the Vitest UI server (CVSS 9.8, and
+the score is doing a lot of work here). By the advisory's own text it affects only users
+who EXPLICITLY expose the Vitest UI server (--api.host / api.host) or who run Vitest UI
+or Browser Mode ON WINDOWS. This repo runs `vitest run` headless, exposes nothing, and
+runs on Linux/macOS. Rungs 3 and 4 both clear it independently.
+VOID IF: the UI or Browser Mode is adopted, --api.host is added, or a Windows runner
+enters CI. Fix is vitest 3.2.6, a major bump — Phase 4."""
+
+[[IgnoredVulns]]
+id = "GHSA-fx2h-pf6j-xcff"
+ignoreUntil = 2026-11-29
+reason = """vite 5.4.21 — server.fs.deny bypass via Windows alternate paths. Requires
+BOTH an explicitly network-exposed dev server (--host / server.host) and Windows.
+Neither holds here. VOID IF either appears. Fix is vite 6.4.3, a major bump — Phase 4."""
+
+[[IgnoredVulns]]
+id = "GHSA-4w7w-66w2-5vf9"
+ignoreUntil = 2026-11-29
+reason = """vite 5.4.21 dev-server advisory. Same clearance: the dev server is never
+network-exposed here, and nothing in production ships vite — it is build tooling for a
+static site. Fix is vite 6.4.2, a major bump — Phase 4."""
+
+[[IgnoredVulns]]
+id = "GHSA-v6wh-96g9-6wx3"
+ignoreUntil = 2026-11-29
+reason = """vite 5.4.21 dev-server advisory. Same clearance as above. Fix is vite 6.4.3,
+a major bump — Phase 4."""
+
+[[IgnoredVulns]]
+id = "GHSA-67mh-4wv8-2f99"
+ignoreUntil = 2026-11-29
+reason = """esbuild 0.21.5/0.24.2 — permissive CORS on the DEVELOPMENT server lets any
+website read responses from it. Reaches only a running dev server; the CI build and the
+published static output are unaffected. VOID IF a dev server is ever exposed beyond
+localhost. Fix is esbuild 0.25.0, a major bump — Phase 4."""
