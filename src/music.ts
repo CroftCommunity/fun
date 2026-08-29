@@ -32,6 +32,13 @@ export interface Track {
 
 /** Preference key: "on" or "off". Absent means off — music never starts uninvited. */
 export const MUSIC_KEY = "fun-music";
+/** Preference key: the last track the player picked from the list. */
+export const TRACK_KEY = "fun-music-track";
+/**
+ * Preference key: "on" or "off". Absent means ON — coupling a game to its named
+ * track is what the shelf always did, so the default must not change it.
+ */
+export const COUPLE_KEY = "fun-music-couple";
 
 const CACHE = "fun-audio-v1";
 
@@ -89,6 +96,41 @@ export function trackFor(gameId: string | null): string {
   return named !== undefined && KNOWN.has(named) ? named : SHELF_TRACK;
 }
 
+/** Stored coupling preference → on/off. Only an explicit "off" uncouples. Pure. */
+export function resolveCouple(stored: string | null): boolean {
+  return stored !== "off";
+}
+
+/**
+ * Which track a page starts on. Coupled: the page's own track, whatever was
+ * picked before. Uncoupled: the last pick, if it still exists; else the page's.
+ * Pure.
+ */
+export function startingTrack({
+  gameId,
+  coupled,
+  stored,
+}: {
+  readonly gameId: string | null;
+  readonly coupled: boolean;
+  readonly stored: string | null;
+}): string {
+  if (!coupled && stored !== null && KNOWN.has(stored)) return stored;
+  return trackFor(gameId);
+}
+
+/**
+ * The track before or after `id` in library order, wrapping at both ends. An
+ * unknown id steps to the start of the list: the list is the only place to go.
+ * Pure.
+ */
+export function stepTrack(id: string, dir: 1 | -1): string {
+  const at = TRACKS.findIndex((t) => t.id === id);
+  if (at < 0) return TRACKS[0]!.id;
+  const n = TRACKS.length;
+  return TRACKS[(at + dir + n) % n]!.id;
+}
+
 /** Is a track a loop? Pure. */
 export function isLoop(id: string): boolean {
   return TRACKS.find((t) => t.id === id)?.kind === "loop";
@@ -131,47 +173,49 @@ export interface MusicPlayer {
   /** Turn music on (fetching lazily) or off. Persists the choice. */
   setEnabled(on: boolean): void;
   isEnabled(): boolean;
-  /** The track this page would play. */
+  /** The track this page is playing, or would play. */
   current(): string;
+  /** Pick a track. Remembered; played now only if music is on. */
+  select(id: string): void;
+  next(): void;
+  prev(): void;
+  /** Whether opening a game starts that game's named track. */
+  isCoupled(): boolean;
+  /** Re-coupling snaps to the page's own track; uncoupling keeps what plays. */
+  setCoupled(on: boolean): void;
+  /** Hear every change (track, on/off, coupling). Returns the unsubscribe. */
+  subscribe(fn: () => void): () => void;
   stop(): void;
+}
+
+function readPref(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writePref(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Storage denied: the choice holds for this page view only.
+  }
 }
 
 /**
  * Start the music layer for a page. Fetches nothing unless music is already on.
  */
 export function startMusic(gameId: string | null): MusicPlayer {
-  const id = trackFor(gameId);
+  let coupled = resolveCouple(readPref(COUPLE_KEY));
+  let id = startingTrack({ gameId, coupled, stored: readPref(TRACK_KEY) });
   let audio: HTMLAudioElement | null = null;
-  let enabled = false;
+  let enabled = resolveMusic(readPref(MUSIC_KEY));
+  const listeners = new Set<() => void>();
 
-  try {
-    enabled = resolveMusic(localStorage.getItem(MUSIC_KEY));
-  } catch {
-    enabled = false;
-  }
-
-  const persist = (on: boolean): void => {
-    try {
-      localStorage.setItem(MUSIC_KEY, on ? "on" : "off");
-    } catch {
-      // Storage denied: the choice holds for this page view only.
-    }
-  };
-
-  const play = (): void => {
-    void (async () => {
-      try {
-        const src = await cachedUrl(id);
-        const el = new Audio(src);
-        el.loop = isLoop(id);
-        el.volume = 0.35;
-        audio = el;
-        // A rejected play() is normal (no gesture yet, or the tab is muted).
-        await el.play().catch(() => undefined);
-      } catch {
-        // Best-effort: music never breaks a page.
-      }
-    })();
+  const publish = (): void => {
+    for (const fn of listeners) fn();
   };
 
   const stop = (): void => {
@@ -183,6 +227,41 @@ export function startMusic(gameId: string | null): MusicPlayer {
     audio = null;
   };
 
+  const play = (): void => {
+    const wanted = id;
+    void (async () => {
+      try {
+        const src = await cachedUrl(wanted);
+        // A pick made while the fetch was in flight wins; this one is stale.
+        if (wanted !== id || !enabled) return;
+        stop();
+        const el = new Audio(src);
+        el.loop = isLoop(wanted);
+        el.volume = 0.35;
+        // A piece plays out; a transport that then stops dead reads as broken,
+        // so advance. Loops never fire `ended`.
+        el.addEventListener("ended", () => {
+          if (enabled && audio === el) step(1);
+        });
+        audio = el;
+        // A rejected play() is normal (no gesture yet, or the tab is muted).
+        await el.play().catch(() => undefined);
+      } catch {
+        // Best-effort: music never breaks a page.
+      }
+    })();
+  };
+
+  const select = (next: string): void => {
+    if (!KNOWN.has(next)) return;
+    id = next;
+    writePref(TRACK_KEY, next);
+    if (enabled) play();
+    publish();
+  };
+
+  const step = (dir: 1 | -1): void => select(stepTrack(id, dir));
+
   if (enabled) play();
 
   return {
@@ -191,9 +270,29 @@ export function startMusic(gameId: string | null): MusicPlayer {
     stop,
     setEnabled: (on) => {
       enabled = on;
-      persist(on);
+      writePref(MUSIC_KEY, on ? "on" : "off");
       if (on) play();
       else stop();
+      publish();
+    },
+    select,
+    next: () => step(1),
+    prev: () => step(-1),
+    isCoupled: () => coupled,
+    setCoupled: (on) => {
+      coupled = on;
+      writePref(COUPLE_KEY, on ? "on" : "off");
+      if (on && id !== trackFor(gameId)) {
+        // Snap without persisting: the page's track is the coupling's choice,
+        // not the player's pick, and their pick should survive re-uncoupling.
+        id = trackFor(gameId);
+        if (enabled) play();
+      }
+      publish();
+    },
+    subscribe: (fn) => {
+      listeners.add(fn);
+      return () => listeners.delete(fn);
     },
   };
 }

@@ -4239,6 +4239,114 @@ body.fullscreen .le-stage {
 }
 .appearance-toggle:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
+/* --- Music transport ---------------------------------------------------------
+   Four controls in the header: previous · play/pause · the track's name · next.
+   The name drops down the list (a panel under the header, like the appearance
+   panel, so a phone gets the full width rather than a floating menu clipped by
+   the viewport). Tokens only; 44px tap floor. Under 40rem the header has no
+   room for prev/next beside the name, so they move into the panel's top row and
+   the name truncates. */
+
+.music-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.chrome-header .music-bar button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.4rem 0.5rem;
+}
+.chrome-header .music-name {
+  display: inline-flex;
+  align-items: center;
+  max-width: 14rem;
+  font-family: var(--font-display);
+}
+.music-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.music-name[aria-expanded="true"] {
+  background: color-mix(in srgb, var(--ink) 8%, var(--surface));
+}
+
+.music-list {
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  padding: 0.6rem 0.9rem 0.9rem;
+}
+.music-list[hidden] { display: none; }
+.music-list-transport { display: none; }
+.music-couple {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 44px;
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 0 0.2rem;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-display);
+  font-weight: 600;
+  cursor: pointer;
+}
+.music-couple input { width: 1.05rem; height: 1.05rem; accent-color: var(--accent); }
+.music-tracks {
+  list-style: none;
+  margin: 0.4rem auto 0;
+  padding: 0;
+  max-width: 40rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.2rem;
+}
+.music-track {
+  width: 100%;
+  min-height: 44px;
+  text-align: left;
+  font: inherit;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 0.4rem 0.6rem;
+  cursor: pointer;
+}
+.music-track:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.music-track[aria-current="true"] {
+  border-color: var(--accent);
+  font-weight: 600;
+}
+.music-track[aria-current="true"]::before { content: "♪ "; }
+.music-track:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+@media (max-width: 40rem) {
+  .chrome-header .music-bar > .music-prev,
+  .chrome-header .music-bar > .music-next { display: none; }
+  .chrome-header .music-name { max-width: 7rem; }
+  .music-list-transport {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    max-width: 40rem;
+    margin: 0 auto 0.4rem;
+  }
+  .music-list-transport button {
+    flex: 1;
+    min-height: 44px;
+    font: inherit;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+  }
+}
+
 .appearance-panel {
   border-bottom: 1px solid var(--border);
   background: var(--surface);

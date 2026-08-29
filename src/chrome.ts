@@ -10,6 +10,7 @@ import { applySkin, currentSkin, isDark, setSkin, siblingOf, togglePalette } fro
 import { renderHome } from "./home.js";
 import { appearanceSpec } from "./appearance.js";
 import { startMusic } from "./music.js";
+import { renderMusicBar } from "./music-bar.js";
 import { renderSettingsSheet } from "./settings-sheet.js";
 import {
   LAYOUT_KEY,
@@ -181,6 +182,13 @@ export function boot(root: HTMLElement = document.body): Chrome {
   // Lazy by construction: startMusic fetches nothing unless the stored
   // preference is already "on". A visitor who never asks for sound pays no bytes.
   const music = startMusic(gameId);
+  // The transport lives in the header beside the palette and appearance
+  // controls; its dropdown is a sibling landmark-free panel under the header,
+  // like the appearance panel. Both read the same player, so neither can lie.
+  const musicBar = renderMusicBar(music);
+  music.subscribe(() => {
+    if (!appearancePanel.hidden) paintAppearance();
+  });
 
   const paintAppearance = (): void => {
     appearancePanel.replaceChildren(
@@ -188,12 +196,9 @@ export function boot(root: HTMLElement = document.body): Chrome {
         appearanceSpec({
           skin: currentSkin(),
           layout: readStored(LAYOUT_KEY),
-          gameId,
+          track: music.current(),
           music: music.isEnabled(),
-          onMusic: (on) => {
-            music.setEnabled(on);
-            paintAppearance();
-          },
+          onMusic: (on) => music.setEnabled(on),
           onSkin: (id) => {
             setSkin(id);
             paintThemeBtn();
@@ -226,7 +231,16 @@ export function boot(root: HTMLElement = document.body): Chrome {
     { class: "visually-hidden" },
     gameId ? `fun.croft.ing — ${gameId}` : "fun.croft.ing — games",
   );
-  const header = el("header", { class: "chrome-header" }, heading, toggle, fullscreenBtn, themeBtn, appearanceBtn);
+  const header = el(
+    "header",
+    { class: "chrome-header" },
+    heading,
+    toggle,
+    fullscreenBtn,
+    musicBar.bar,
+    themeBtn,
+    appearanceBtn,
+  );
   if (gameId) {
     header.append(
       el("a", { href: `/how-to/?game=${gameId}`, class: "how-to-link" }, "How to play"),
@@ -244,7 +258,7 @@ export function boot(root: HTMLElement = document.body): Chrome {
 
   const playArea = el("main", { class: "play-area", id: "play-area" });
 
-  root.prepend(header, scrim, drawer, appearancePanel, playArea);
+  root.prepend(header, scrim, drawer, musicBar.list, appearancePanel, playArea);
 
   /** Render (or re-render) the home page in the layout currently in force. */
   function repaintHome(): void {
