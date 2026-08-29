@@ -13,7 +13,7 @@ a portable artifact addressable at its own URL.
 `fun.croft.ing` presents games in a **slide-out drawer** over a persistent play area; each game can
 also go **full-screen** or **open in its own tab** (so every game has its own URL). A game is a module
 that implements one contract and renders chrome-agnostically into a mount point — the drawer is built
-once and every game reuses it. Shelf order: **solitaire → trio tumble → bubble → wyrdle → 2048 → drop 4 → align → blockdoku → loose ends → cribbage**.
+once and every game reuses it. Shelf order: **solitaire → trio tumble → bubble → wyrdle → 2048 → drop 4 → align → blockdoku → loose ends → cribbage** (cribbage shipped 2026-08-29, against the engine).
 
 ## Layout
 
@@ -286,6 +286,38 @@ opponent's row is full hands them everything left on it. It is the fastest way t
 lose a game you were winning.
 
 Plan: `plans/2026-08-07-mancala.md`. AI rationale: `docs/AI-PLAYERS.md`.
+
+## Cribbage (playable — the first hidden-information game, vs the engine)
+
+`/cribbage/` is two-hand, six-card cribbage to 121 against the shelf's engine, on
+one device. Tap two cards and throw them to the crib, peg to 31, then the show
+counts the hands in the order the rules fix — non-dealer, dealer, crib — and the
+game ends the instant anyone reaches 121. The app counts every hand and shows its
+work; switch **Count my own hands** on and you type the total, the core grades it,
+and an under-count goes to the engine by muggins. A win is worth 1, a skunk 2, a
+double skunk 3, and the verifiable `?r=` record carries the value.
+
+It is the first game here whose **state is not the observation**. The five versus
+games share a stack built for perfect information — `adversary-core` says so in
+its first line — and none of it applies: no move has a win/draw/loss class, the
+value of a throw is an expected point total, and the engine must provably never
+read the other hand. So the core hands out a per-seat `View`; the solver's public
+surface takes a `View` and nothing else (a test reads the crate's own source to
+pin it); the wasm binding has **no state export**, only the human's view; and the
+rig plays a test-only peeking player against the honest Expert and asserts the
+cheat wins by a wide margin (measured 81%; a leak would shrink it).
+
+Strength is expectation, not search. Phase 0 measured that the throw is the
+whole game — random throws lose 24 games in 25, the crib term is worth about five
+points of win rate — and that two plies of pegging lookahead beat the folk
+heuristic by ~6 while a third buys nothing. The tutor's `exact` flag is true for
+a throw (exhaustive over the 46 cuts) and never for pegging (the other hand is a
+model), and the wording is bound to it in Rust.
+
+The two-human version — the reason this game sat gated for a month — is a
+follow-on: the only thing it changes in the core is where the seed comes from.
+
+Plan: `plans/2026-08-29-plan-cribbage-vs-engine.md`. Rules: `crates/cribbage-core/RULES.md`.
 
 ## Align (playable — falling-block stacker)
 

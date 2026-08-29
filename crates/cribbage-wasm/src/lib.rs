@@ -330,10 +330,15 @@ fn ui_view(s: &Session) -> UiView {
 }
 
 /// How many cards are in the crib, from what the human can see: its own two
-/// throws, plus the engine's once the cut is showing (both have thrown).
+/// throws, plus the engine's once the engine holds fewer than six (it has
+/// thrown — the count of backs on the table is public knowledge).
 fn crib_count(v: &View) -> u8 {
     let mine = if v.kept.is_empty() { 0 } else { 2 };
-    let theirs = if v.cut.is_some() { 2 } else { 0 };
+    let theirs = if v.opponent_cards < 6 || v.cut.is_some() {
+        2
+    } else {
+        0
+    };
     mine + theirs
 }
 

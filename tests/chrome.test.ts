@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { boot } from "../src/chrome.js";
 import { placeholderMountCount } from "../src/games/placeholder.js";
@@ -82,10 +82,26 @@ describe("games drawer chrome", () => {
     ).toBe("/solitaire/");
   });
 
-  it("shows a coming-soon panel for a not-yet-playable game", () => {
-    document.body.dataset.game = "cribbage";
-    const chrome = boot();
+  it("shows a coming-soon panel for a not-yet-playable game", async () => {
+    // Every real entry is playable now (cribbage was the last "soon" tile until
+    // 2026-08-29), so the branch is exercised against a registry with one
+    // synthetic "soon" entry appended.
+    vi.resetModules();
+    const SOON = { id: "someday", title: "Someday", emoji: "🌱", status: "soon" as const };
+    vi.doMock("../src/registry.js", async (importOriginal) => {
+      const real = await importOriginal<typeof import("../src/registry.js")>();
+      return {
+        ...real,
+        REGISTRY: [...real.REGISTRY, SOON],
+        findGame: (id: string) => (id === SOON.id ? SOON : real.findGame(id)),
+      };
+    });
+    const { boot: bootWithSoon } = await import("../src/chrome.js");
+    document.body.dataset.game = "someday";
+    const chrome = bootWithSoon();
     expect(chrome.mountedModule()).toBeNull();
     expect(document.querySelector(".welcome")?.textContent).toMatch(/coming soon/i);
+    vi.doUnmock("../src/registry.js");
+    vi.resetModules();
   });
 });

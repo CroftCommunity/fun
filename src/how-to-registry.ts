@@ -17,6 +17,7 @@ import { BLOCKDOKU_GUIDE } from "./games/blockdoku/blockdoku-howto.js";
 import { LOOSEENDS_GUIDE } from "./games/looseends/looseends-howto.js";
 import { COLOR_SORT_GUIDE } from "./games/color-sort/color-sort-howto.js";
 import { ORCHARD_DROP_GUIDE } from "./games/orchard-drop/orchard-drop-howto.js";
+import { CRIBBAGE_GUIDE } from "./games/cribbage/cribbage-howto.js";
 
 export const GUIDES: Readonly<Record<string, Guide>> = {
   solitaire: SOLITAIRE_GUIDE,
@@ -34,6 +35,7 @@ export const GUIDES: Readonly<Record<string, Guide>> = {
   looseends: LOOSEENDS_GUIDE,
   "color-sort": COLOR_SORT_GUIDE,
   "orchard-drop": ORCHARD_DROP_GUIDE,
+  cribbage: CRIBBAGE_GUIDE,
 };
 
 /** The guide for a game id, or undefined if none is written yet. */

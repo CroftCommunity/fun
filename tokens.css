@@ -142,6 +142,16 @@
   --fur-b: #5c1a09;           /* their side: fill + rim (3.33:1 on board) */
   --fur-landing: #f0c14b;     /* a landing seed, on a well   (4.72:1)  */
   --fur-legal: #7fd4c1;       /* a pit you may sow, on a well (4.59:1) */
+  /* Cribbage: the felt is the table (`--felt`), cards reuse `--card` and the
+     suit inks. Its own tokens are the peg board and the selection states. */
+  --crib-track: #d9cfb6;      /* a peg track, on the felt                */
+  --crib-track-ink: #2b2417;  /* track labels                (9.9:1)     */
+  --crib-peg-a: #16305e;      /* your peg                 (5.5:1 on track) */
+  --crib-peg-b: #8a1a0b;      /* the engine's peg         (5.3:1 on track) */
+  --crib-skunk: #b3123b;      /* the skunk line                          */
+  --crib-legal: #1f8f6b;      /* a card you may play: ring (3.4:1 on card) */
+  --crib-selected: #b8860b;   /* a selected throw: ring     (3.3:1 on card) */
+  --crib-back: #2c4c8a;       /* a card back                             */
 
   /* Blockdoku board lines (graphical, not text): a thin cell grid and a heavier
      3×3-box divider that also frames the board, so the nine sub-squares read at a
@@ -282,6 +292,14 @@
   --fur-b: #ff9c74;           /* their side: fill + rim (5.98:1 on board) */
   --fur-landing: #ffd76a;     /* a landing seed, on a well  (11.93:1)  */
   --fur-legal: #7fe3cd;       /* a pit you may sow, on a well (10.83:1) */
+  --crib-track: #4a4133;      /* a peg track, on the deeper felt         */
+  --crib-track-ink: #efe6d2;  /* track labels                (9.2:1)     */
+  --crib-peg-a: #9fc0ff;      /* your peg                 (6.7:1 on track) */
+  --crib-peg-b: #ffa07a;      /* the engine's peg         (6.9:1 on track) */
+  --crib-skunk: #ff6f8c;      /* the skunk line                          */
+  --crib-legal: #7fe3cd;      /* a card you may play: ring (7.8:1 on card) */
+  --crib-selected: #ffd76a;   /* a selected throw: ring    (10.4:1 on card) */
+  --crib-back: #3a5f9e;       /* a card back                             */
 
   /* Blockdoku board lines, re-tuned for dark: a subtle grid and a light-moss
      box divider that pops on the near-black cells. */

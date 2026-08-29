@@ -713,5 +713,80 @@ Everything in "Documentation Impact", plus the Review Log entries for every phas
 
 ## Review Log
 
-*(Execution notes go here, one entry per phase, in the shape the mancala plan uses:
-what was measured, what the measurement refuted, and what changed as a result.)*
+### Phase 1 (2026-08-29) — the core, and where the tests were wrong rather than the rules
+
+Three commits: cards + RNG + scorer, the state machine, then `View` + hash +
+`pond_outcome::Game`; 45 unit tests, 4 vector tests. The scorer is pinned by the full
+enumeration from Phase 0 — every one of the 12,994,800 (hand, cut) pairs, 0.3 s in
+release, asserted against the published distribution — which is why the two unit
+tests that failed on first run were the tests: a missed 5+K fifteen and a missed
+2+4+9. The enumeration cannot be wrong that way.
+
+The state machine's first run failed 7 of 19 tests and **four were test setups**:
+three consecutive tens are a pair royal, and a 4-3-2 finish is a run. The fixtures
+were rewritten with 10 / K / Q (value ten, distinct ranks, no run) — worth knowing for
+anyone writing pegging fixtures. One was a real defect: the muggins award overwrote
+`last` with the other seat, so the UI would have narrated a claim as the wrong seat's
+event. Fixed so the claim stays the claimant's even when muggins ends the game.
+
+Two design points the plan did not spell out and the tests forced: a **go is a move
+only when the other seat can still play** — when neither can, the core resolves the
+go point itself (no move in the record), which matches how a table plays it; and the
+**crib is attributed** (`thrown[seat]`) so a seat's `View` can carry its own two
+throws without a way to reach the other's. The `View` leak test walks the JSON for
+card objects and checks every one against the hidden set, at every phase — including
+that the crib stays face down until its step and that deal 2 starts clean.
+
+Golden vectors: the opening, a 12-deal game with gos and muggins both ways (159
+codes), and a skunk (value 2). A fourth test replays each vector move-by-move through
+`apply` to prove no corpus move leans on replay's skip-if-refused.
+
+### Phase 2 (2026-08-29) — native == wasm, nothing to report
+
+`xbuild` enrolled cribbage with a seed-taking export; the input buffer grew from 64
+to 256 bytes (a full game is ~160 codes, the longest list enrolled). All three vectors
+hash identically under `wasm32-unknown-unknown`.
+
+### Phase 3 (2026-08-29) — the solver, and the crib table is a 0.4-second artefact
+
+21 tests. The crib table (392 entries, hundredths) regenerates from 20,000 samples in
+0.4 s and a test asserts the checked-in copy equals the regeneration byte for byte.
+`select` reproduces the shared selector's load-bearing property (RNG untouched at 0%)
+with a test that reads the stream before and after. The source-reading test that pins
+"no public function takes `GameState`" had to learn to stop at `#[cfg(test)]` — the
+fixtures legitimately build one.
+
+One test was wrong on first run for a reason worth recording: it asked for the
+dealer's discard options on a fresh deal and got none, because **the dealer is not to
+move until the non-dealer has thrown**. Off-turn options are empty by design.
+
+### Phase 5 (2026-08-29) — the binding, and a leak test that leaked itself
+
+6 tests. The binding's leak test checked `"code":N` as a substring and reported engine
+card 3 in the view — because `"code":3` matches `"code":30`. Tightened to
+`"code":N}` (the code is the card's last field). The real property held throughout.
+
+### Phase 10 (2026-08-29) — the rig moved to Rust, and the numbers
+
+The plan's Phase 10 put the peek check behind a feature-flagged wasm export absent
+from the shipped binary. It is in Rust instead (`crates/cribbage-solver/tests/rig.rs`):
+a test cannot be compiled into a `cdylib`, so the peeking code cannot exist in the
+shipped module at all, which is a stronger form of the same guarantee with no build
+step to get wrong. Measured, 300–400 games a pair, 0.7 s total:
+
+| pair | candidate wins | pts/deal |
+|---|---|---|
+| Expert vs random-legal | **99.0%** | 13.4 vs 8.4 |
+| Expert vs Easy | 92.3% | |
+| Easy vs random-legal | 83.0% | |
+| Medium vs Easy | 79.7% | |
+| Hard vs Medium | 75.3% | |
+| Expert vs Hard | 56.7% | |
+| **Peek vs Expert** | **81.0%** | 14.0 vs 11.8 |
+
+Expert's discard equalled the exhaustive optimum on every graded deal (the
+discard-oracle check). The peeker here is simpler than Phase 0's (one-ply pegging
+minimax, and it knows the other throw only when that seat has already thrown), which
+is why 81% rather than 93%; the assertion floor is 60%. The levels are ordered; the
+Expert–Hard gap is the narrowest (Hard already uses the full expectation with 25%
+noise), which is a tuning observation, not a defect — filed in `TODO/cribbage.md`.

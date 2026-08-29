@@ -68,6 +68,15 @@ perfect-info board games, the LLM is a narrator, not a player. If you want to
 test where an LLM earns its keep as a *player*, vary the *kind* of game, not the
 flavor of solved board game.
 
+*That game now exists.* Cribbage (2026-08-29) is the shelf's first
+hidden-information game, shipped with an **expectation engine** — exhaustive
+discard expectation plus two-ply pegging expectimax over the unseen cards — as
+the opponent, and a rig that plays a test-only peeking player against it to prove
+the honest engine cannot see the other hand (`crates/cribbage-solver/tests/rig.rs`).
+It does not ship an LLM player; it ships the baseline an LLM-as-player trial would
+have to beat, which is the missing half of the sentence above. The trial is in
+`TODO/cribbage.md`.
+
 ## The pieces (ports)
 
 | Port | Role | Per-game? |

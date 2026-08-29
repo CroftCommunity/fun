@@ -42,6 +42,12 @@ files are the running, checkbox-level worklist.
   stress it, and it needed no shared change either. Brought one move that rewrites
   thirteen cells and a terminal that rewrites the score. Open: the live WebGPU
   trial (same item as dots'), and `eval`'s weights are reasoned but never tuned.
+- [cribbage.md](cribbage.md) — **adversarial, hidden information** (the sixth
+  versus game, the first where the state is not the observation); shipped
+  2026-08-29 against the engine, on one device. Deliberately does *not* use the
+  `Adversary` / band / `GameOracle` stack — a per-seat `View`, an expectation
+  engine, and a Rust rig with a peek check instead. Open: the LLM-as-player
+  trial, match play, P2P.
 - blockdoku, looseends, color-sort — shipped; no open backlog file yet.
 
 ## Shipped — Tier-2 wrapped (playable)
@@ -129,9 +135,11 @@ field:
    Nonograms / Sudoku / …) remains a plausible later direction, and note it is
    **single-player** — it reuses none of the adversarial trait / band / tutor /
    harness stack, so it is not an answer to "what else can that stack carry".
-4. **Cribbage** — [cribbage.md](cribbage.md). **Gated:** a real two-human game
-   needs a P2P transport + fair-reveal (commit/reveal) first; not startable until
-   that lands.
+4. **Cribbage — done.** Shipped 2026-08-29 against the engine
+   (`TODO/cribbage.md`, `plans/2026-08-29-plan-cribbage-vs-engine.md`). The gate
+   (P2P + fair-reveal) only ever applied to two *untrusted peers*; against a local
+   engine the deck is a seed. The two-human version is a follow-on on the same
+   core.
 5. **SuperTuxKart** — [supertuxkart.md](supertuxkart.md). Tier-2, **under owner
    review** — local preview built + served; the awesome-or-not call is pending
    (and the Emscripten + runtime-untar class is discouraged, `docs/BUILDING-GAMES.md`).
