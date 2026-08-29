@@ -28,8 +28,9 @@ per-seat `View` that provably never peeks).
       earn its keep as a *player*. Run it against the expectation engine at each level,
       with the peek-sensitivity check in place, before believing any result. Persona name
       reserved for this. (Plan O4.)
-- [ ] **Match play / skunk scoring** — needs cross-game persistence the shelf does not
-      have. (Plan O2.)
+- [ ] **Match play** — accumulate game values (1 / skunk 2 / double skunk 3, already in
+      every record) to a target across games. Needs cross-game persistence the shelf
+      does not have. (Plan O2.)
 - [ ] **P2P — two humans.** The original gate, now a follow-on plan: a browser-native
       transport (WebRTC / matchbox, `discovery/…/beta/cairn/iroh-app-pond-building-blocks.md`),
       a joint commit/reveal that produces the seed `GameState::new(seed)` already takes,

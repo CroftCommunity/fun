@@ -69,9 +69,13 @@ Three things "standard" leaves open, decided here (they are O1–O3 if the owner
   an opponent missed — has no meaning against it. A "count your own hand" mode (the
   player states a total, the core grades it) is a real feature and a natural tutor, and
   it is a follow-up in `TODO/cribbage.md`, not part of this plan.
-- **Skunks are recorded, not scored.** A loss by 31+ is a skunk, by 61+ a double skunk.
-  The record carries the flag; there is no match play, no "counts as two games" — one
-  game to 121 is the unit, as one deal is solitaire's.
+- **A game has a value: 1, 2 or 3** (owner, 2026-08-29). A win is worth 1; a win by
+  31 or more (the loser under 91) is a **skunk**, worth 2; by 61 or more (under 61) a
+  **double skunk**, worth 3. The core computes the value at the terminal and the record
+  carries it as its `score`, so it is replayed, not trusted. One game to 121 is still
+  the unit of play; accumulating values across games (match play) is a persistence
+  feature the shelf does not have and is a follow-up. The skunk line at 90 is drawn on
+  the peg board so the threshold is visible during play.
 - **The dealer is decided by the seed.** Cutting for deal is a ritual with no decision
   in it; the core derives the first dealer from the seed, the UI narrates the cut.
 
@@ -424,7 +428,8 @@ per-seat view.
 - [ ] Golden vectors: 29 / 28 / 0 hands; a flush in hand vs crib (crib needs five);
   his heels; his nobs; a double run, a triple run, a double-double run; pegging 15,
   31, pair-royal, a run out of order, go and last card; **a game won by non-dealer
-  during the show before the dealer counts**; **a game won mid-pegging**; a full game
+  during the show before the dealer counts**; **a game won mid-pegging**; game values
+  at the boundaries (loser on 91 → 1, on 90 → 2, on 61 → 2, on 60 → 3); a full game
   from a seed replayed to a stable hash.
 
 **Call chain:** `Deck::from_seed → deal → apply(Discard×2) → cut → apply(Peg…) →
@@ -569,7 +574,9 @@ test plays two deals and asserts the second view's `revealed` is empty until its
   cribbage furniture that has to look like itself.
 - [ ] The opponent as a *who*: a turn bar naming both seats, the crib marker, whose
   turn. Persona name per O4.
-- [ ] End screen: verification-forward, skunk flag shown, `?r=` share that re-verifies.
+- [ ] End screen: verification-forward, the game's value stated ("worth 2 games — a
+  skunk"), `?r=` share that re-verifies.
+- [ ] The skunk line at 90 on the peg board (O2).
 - [ ] `cribbage-outcome.ts` — record/verify/share, the `drop4-outcome.ts` shape.
 - [ ] Wiring test through the entry point (`BUILDING-GAMES` §8).
 
@@ -686,9 +693,11 @@ Everything in "Documentation Impact", plus the Review Log entries for every phas
    penalty — the same rule most home tables use. Whether over-claiming should cost
    something is a Phase 8 UX decision, not a rules decision, and the record does not
    change either way. Manual counting is therefore in Phase 8, not the TODO.
-2. **O2 — Skunk: a flag, or a scored match?** Recommendation: **a flag on the record**,
-   one game to 121 as the unit. Match play is a persistence feature, and the shelf has no
-   cross-game persistence yet. Must be answered before Phase 1 (it is in the record).
+2. **O2 — Skunk: a flag, or a scored match?** **Answered by the owner (2026-08-29): a
+   game is worth 1, a skunk 2, a double skunk 3.** The value is computed by the core and
+   carried in the record's `score` (replayed, never trusted); the end screen states it
+   ("worth 2 games"); the skunk line at 90 is on the board. Match play — accumulating
+   game values to a target — stays a follow-up because it needs cross-game persistence.
 3. **O3 — Pegging engine: heuristic or expectimax?** **Answered by Phase 0
    (2026-08-29): expectimax-2.** +6 points of win rate over the heuristic at 10,000
    games; a third ply is indistinguishable (49.7% head-to-head) at 1.5× the cost.
