@@ -249,3 +249,19 @@ test("the board has no axe violations in light and dark", async ({ page }) => {
     expect(results.violations, `axe violations in ${theme}`).toEqual([]);
   }
 });
+
+test("the settings panel stays open when something re-renders the board", async ({ page }) => {
+  // Same defect as dots': render() is container.replaceChildren, so a re-render
+  // rebuilt the panel the player had opened. This game re-renders on its own when
+  // the WebGPU probe resolves, at a moment nothing in the UI predicts — toggling a
+  // setting fires the same render(), which makes the race a deterministic click.
+  await page.goto("/checkers/?seed=7");
+  await ready(page);
+  const panel = page.locator(".checkers-settings");
+  await page.locator(".checkers-settings summary").click();
+  await expect(panel).toHaveAttribute("open", "");
+
+  await page.locator(".checkers-set-tutor").click();
+
+  await expect(panel).toHaveAttribute("open", "");
+});

@@ -24,6 +24,7 @@ import type { GameModule } from "../../contract.js";
 import { WebLLMRuntime } from "../../harness/ai-runtime.js";
 import { speak } from "../../harness/banter.js";
 import { buildBand, HybridPlayer, type BandMove } from "../../harness/hybrid-player.js";
+import { captureUiState, restoreUiState } from "../../ui-state.js";
 import {
   declareAssistanceEnabled,
   furrowLevel,
@@ -692,6 +693,8 @@ export function furrowModule(): GameModule {
     const board = game.board();
     const humanTurn = board.toMove === HUMAN;
     const statusEl = el("p", { class: "furrow-status", role: "status" }, status);
+    // The player owns the open panel and the focus; the model does not.
+    const ui = captureUiState(container);
     container.replaceChildren(
       el(
         "div",
@@ -721,6 +724,7 @@ export function furrowModule(): GameModule {
     );
     const boardEl = container.querySelector(".furrow-board");
     boardEl?.addEventListener("click", onBoardClick);
+    restoreUiState(container, ui);
   };
 
   // ---------- the sow, animated from the core's own preview ----------

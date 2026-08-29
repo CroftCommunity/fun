@@ -18,6 +18,7 @@ import type { GameModule } from "../../contract.js";
 import { WebLLMRuntime } from "../../harness/ai-runtime.js";
 import { speak } from "../../harness/banter.js";
 import { buildBand, HybridPlayer, type BandMove } from "../../harness/hybrid-player.js";
+import { captureUiState, restoreUiState } from "../../ui-state.js";
 import {
   checkersLevel,
   checkersSide,
@@ -771,7 +772,10 @@ export function checkersModule(): GameModule {
         el("p", { class: "checkers-ai-say", role: "status" }, `${LOCAL_AI_PERSONA.name}: ${aiSay}`),
       );
     }
+    // The player owns the open panel and the focus; the model does not.
+    const ui = captureUiState(container);
     container.replaceChildren(el("div", { class: "checkers-game" }, ...parts));
+    restoreUiState(container, ui);
   }
 
   const outcomeLabel = (board: BoardView): string => {

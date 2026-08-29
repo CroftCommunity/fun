@@ -163,3 +163,19 @@ test("the experimental local-AI toggle appears with a real adapter and discloses
   await toggle.check();
   await expect(page.locator(".othello-ai-disclosure")).toContainText(/download|one[- ]time|GB|MB/i);
 });
+
+test("the settings panel stays open when something re-renders the board", async ({ page }) => {
+  // Same defect as dots': render() is container.replaceChildren, so a re-render
+  // rebuilt the panel the player had opened. This game re-renders on its own when
+  // the WebGPU probe resolves, at a moment nothing in the UI predicts — toggling a
+  // setting fires the same render(), which makes the race a deterministic click.
+  await page.goto("/othello/?seed=7");
+  await ready(page);
+  const panel = page.locator(".othello-settings");
+  await page.locator(".othello-settings summary").click();
+  await expect(panel).toHaveAttribute("open", "");
+
+  await page.locator(".othello-set-tutor").click();
+
+  await expect(panel).toHaveAttribute("open", "");
+});

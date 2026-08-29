@@ -404,3 +404,19 @@ test("the toggle appears with a real adapter and discloses the cost and the guar
   // The turn bar switches to the persona, so a player knows who they are facing.
   await expect(page.locator(".furrow-seat.them")).toContainText("Millet");
 });
+
+test("the settings panel stays open when something re-renders the board", async ({ page }) => {
+  // Same defect as dots': render() is container.replaceChildren, so a re-render
+  // rebuilt the panel the player had opened. This game re-renders on its own when
+  // the WebGPU probe resolves, at a moment nothing in the UI predicts — toggling a
+  // setting fires the same render(), which makes the race a deterministic click.
+  await page.goto("/furrow/?seed=7");
+  await ready(page);
+  const panel = page.locator(".furrow-settings");
+  await page.locator(".furrow-settings summary").click();
+  await expect(panel).toHaveAttribute("open", "");
+
+  await page.locator(".furrow-set-hints").click();
+
+  await expect(panel).toHaveAttribute("open", "");
+});

@@ -32,6 +32,7 @@ import {
   type VerifyResult,
 } from "./othello-outcome.js";
 import { Othello, type BoardView, type Level, type MoveAssessment } from "./othello-wasm.js";
+import { captureUiState, restoreUiState } from "../../ui-state.js";
 
 declare global {
   interface Window {
@@ -623,7 +624,10 @@ export function othelloModule(): GameModule {
         el("p", { class: "othello-ai-say", role: "status" }, `${LOCAL_AI_PERSONA.name}: ${aiSay}`),
       );
     }
+    // The player owns the open panel and the focus; the model does not.
+    const ui = captureUiState(container);
     container.replaceChildren(el("div", { class: "othello-game" }, ...parts));
+    restoreUiState(container, ui);
   }
 
   const outcomeLabel = (board: BoardView): string => {

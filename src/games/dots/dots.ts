@@ -34,6 +34,7 @@ import {
   type DotsSeat,
 } from "../../settings.js";
 import { latticeCells } from "./dots-lattice.js";
+import { captureUiState, restoreUiState } from "../../ui-state.js";
 import {
   decodeRecord,
   encodeRecord,
@@ -693,6 +694,8 @@ export function dotsModule(): GameModule {
   function render(): void {
     if (disposed || !container || !game) return;
     const board = game.board();
+    // The player owns the open panel and the focus; the model does not.
+    const ui = captureUiState(container);
     container.replaceChildren(
       el(
         "div",
@@ -713,6 +716,7 @@ export function dotsModule(): GameModule {
         statusEl,
       ),
     );
+    restoreUiState(container, ui);
   }
 
   const outcomeLabel = (board: BoardView): string => {

@@ -272,3 +272,22 @@ test("every edge target clears the 24px minimum touch size", async ({ page }) =>
   );
   expect(small).toBe(0);
 });
+
+test("the settings panel stays open when something re-renders the board", async ({ page }) => {
+  // The player opened this panel; a re-render must not close it. Reproduces the
+  // defect behind the CI failure in `dots.spec.ts:191` without depending on when
+  // the WebGPU probe happens to resolve: toggling a setting calls the same
+  // render() the probe does, so the race becomes a deterministic click.
+  await page.goto("/dots/?seed=7");
+  await ready(page);
+  const panel = page.locator(".dots-settings");
+  await page.locator(".dots-settings summary").click();
+  await expect(panel).toHaveAttribute("open", "");
+
+  await page.locator(".dots-set-hints").click(); // setHintsEnabled() -> render()
+
+  await expect(panel).toHaveAttribute("open", "");
+  // And the control the player was aiming at is still reachable, which is the
+  // exact assertion CI times out on.
+  await expect(page.locator(".dots-set-tutor")).toBeVisible();
+});
