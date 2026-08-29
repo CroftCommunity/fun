@@ -26,6 +26,27 @@ pub struct Pack {
     pub fixture: u64,
 }
 
+/// The master seed the shipped schedule is generated from. Changing it reissues
+/// every daily, so it is a deliberate commit rather than a tuning knob.
+pub const MASTER_SEED: u64 = 0x0C_A5E5_0001;
+
+/// The seed pool the schedule is drawn from.
+pub const POOL: usize = 4096;
+
+/// How many dailies the schedule holds — a year, plus a day for leap years.
+pub const COUNT: usize = 366;
+
+/// The shipped schedule.
+///
+/// One canonical pack, so the binding and the tests cannot disagree about which
+/// dailies are the real ones. Generated rather than stored: it is a pure
+/// function of [`MASTER_SEED`], and `the_pack_is_a_recorded_schedule_not_merely_a_deterministic_one`
+/// pins its output against an independently derived vector.
+#[must_use]
+pub fn default_pack() -> Pack {
+    generate_pack(MASTER_SEED, POOL, COUNT)
+}
+
 /// A deterministic `splitmix64` step — self-contained, so the shuffle needs no
 /// `rand` dependency and the same inputs regenerate byte-identically. Matches
 /// the generator `twenty48-core` uses for the same job.
@@ -86,12 +107,10 @@ pub fn pack_to_doc(pack: &Pack) -> Result<Vec<u8>, pond_docformat::DocError> {
 mod tests {
     use super::*;
 
-    const MASTER: u64 = 0x0C_A5E5_0001;
-    const POOL: usize = 4096;
-    const COUNT: usize = 366;
+    const MASTER: u64 = MASTER_SEED;
 
     fn pack() -> Pack {
-        generate_pack(MASTER, POOL, COUNT)
+        default_pack()
     }
 
     #[test]

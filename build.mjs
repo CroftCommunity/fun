@@ -122,6 +122,10 @@ const bwasm = join(root, "target/wasm32-unknown-unknown/release/bubble_wasm.wasm
 if (await exists(bwasm)) await cp(bwasm, join(dist, "bubble.wasm"));
 else console.warn("note: bubble.wasm not built yet — run `npm run build:wasm` (bubble needs it)");
 
+const orchwasm = join(root, "target/wasm32-unknown-unknown/release/orchard_wasm.wasm");
+if (await exists(orchwasm)) await cp(orchwasm, join(dist, "orchard-drop.wasm"));
+else console.warn("note: orchard-drop.wasm not built yet — run `npm run build:wasm`");
+
 const wywasm = join(root, "target/wasm32-unknown-unknown/release/wyrdle_wasm.wasm");
 if (await exists(wywasm)) await cp(wywasm, join(dist, "wyrdle.wasm"));
 else console.warn("note: wyrdle.wasm not built yet — run `npm run build:wasm` (wyrdle needs it)");

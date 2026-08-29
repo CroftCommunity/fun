@@ -162,6 +162,27 @@ pub fn is_above_line(centre_y: Fx, radius: Fx) -> bool {
     centre_y - radius < from_px(LINE_Y)
 }
 
+/// One fruit as a renderer needs to see it: where it is, how big, which way up.
+///
+/// Fixed-point throughout — the conversion to whole pixels belongs at the very
+/// edge, in the binding, so nothing between here and the canvas is tempted to do
+/// arithmetic that belongs in the core.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FruitState {
+    /// Stable identity, so a renderer can animate a fruit across ticks.
+    pub id: u32,
+    /// Ladder tier — which fruit it is.
+    pub tier: u8,
+    /// Centre x.
+    pub x: Fx,
+    /// Centre y.
+    pub y: Fx,
+    /// Radius.
+    pub r: Fx,
+    /// Rotation, radians. Presentational; nothing reads it but the renderer.
+    pub ang: Fx,
+}
+
 /// Per-fruit bookkeeping the physics does not carry.
 #[derive(Clone, Copy, Debug)]
 struct Fruit {
@@ -391,6 +412,29 @@ impl Game {
         let mut v: Vec<u8> = self.fruit.values().map(|f| f.tier).collect();
         v.sort_unstable();
         v
+    }
+
+    /// Every fruit in the crate, **in id order**.
+    ///
+    /// Id order rather than insertion order so a renderer sees a stable
+    /// sequence: a merge removes two and adds one, and a list that reshuffled
+    /// on every merge would make animating a fruit across ticks impossible.
+    #[must_use]
+    pub fn fruit_view(&self) -> Vec<FruitState> {
+        self.fruit
+            .iter()
+            .filter_map(|(&id, f)| {
+                let b = self.world.body(id)?;
+                Some(FruitState {
+                    id: id.0,
+                    tier: f.tier,
+                    x: b.pos.x,
+                    y: b.pos.y,
+                    r: b.radius(),
+                    ang: b.ang,
+                })
+            })
+            .collect()
     }
 
     /// The move list — the proof a record replays from.
@@ -843,6 +887,50 @@ mod tests {
         g.apply(Move::Drop { tick: 0, x: 220 }).expect("legal drop");
         g.apply(Move::Wait { tick: 300 }).expect("legal wait");
         assert_eq!(g.max_tier(), 0, "a single drop is not a merge");
+    }
+
+    #[test]
+    fn the_fruit_view_reports_every_fruit_in_id_order() {
+        // Id order is what lets a renderer animate a fruit across ticks: a merge
+        // removes two and adds one, and a list that reshuffled every merge would
+        // make that impossible.
+        let mut g = Game::new(1);
+        assert!(g.fruit_view().is_empty());
+        g.apply(Move::Drop { tick: 0, x: 100 }).expect("legal drop");
+        g.apply(Move::Drop {
+            tick: COOLDOWN_TICKS,
+            x: 340,
+        })
+        .expect("legal drop");
+        let v = g.fruit_view();
+        assert_eq!(v.len(), 2);
+        assert!(v[0].id < v[1].id, "not in id order");
+        // Positions are real, not defaults.
+        assert!(v[0].r > 0 && v[1].r > 0);
+        assert_ne!(v[0].x, v[1].x, "both fruit are at the same x");
+    }
+
+    #[test]
+    fn the_fruit_view_follows_a_merge() {
+        let mut g = Game::new(1);
+        let mut t = 0;
+        for _ in 0..14 {
+            if g.is_over() {
+                break;
+            }
+            let before = g.fruit_view().len();
+            let _ = g.apply(Move::Drop { tick: t, x: 220 });
+            let _ = g.apply(Move::Wait {
+                tick: t + COOLDOWN_TICKS,
+            });
+            t += COOLDOWN_TICKS;
+            if g.fruit_view().len() <= before {
+                // A merge happened: the view must agree with the count.
+                assert_eq!(g.fruit_view().len(), g.fruit_count());
+                return;
+            }
+        }
+        panic!("no merge occurred, so the view was never tested across one");
     }
 
     #[test]
