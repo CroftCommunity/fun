@@ -143,10 +143,13 @@ impl World {
             return false;
         };
         self.bodies.remove(i);
-        // The removed body's contacts must not warm-start anything next tick.
-        self.cache.retain(|&((class, x, y), _, _)| {
-            !(class == 1 && (x == id.0 || y == id.0)) && !(class == 0 && y == id.0)
-        });
+        // No cache surgery here on purpose. `step` clears and rebuilds the
+        // warm-start cache from the tick's own contacts, so a removed body's
+        // entries are never looked up (no live contact carries their key) and
+        // are discarded at the end of the very next step. A `retain` that
+        // pruned them was written here first and deleted: mutation testing
+        // survived **eleven** mutations of its predicate, which is what inert
+        // code looks like from the outside.
         true
     }
 
@@ -229,8 +232,15 @@ impl World {
         self.tick += 1;
     }
 
-    /// The separation normal for a contact, or a straight-up push when the two
-    /// centres coincide and there is no direction to separate along.
+    /// The separation normal for a contact.
+    ///
+    /// When the two centres coincide exactly there is no direction to separate
+    /// along, and something has to be chosen. The choice is **straight up**, and
+    /// which body goes up follows from the normal pointing A to B: the
+    /// higher-id body rises. That is arbitrary but it is not free — it must be
+    /// deterministic and written down, because a coin-flip here would be a
+    /// divergence between native and wasm. Pinned by
+    /// `two_circles_at_the_same_centre_separate_upward_and_deterministically`.
     fn normal_or_fallback(d: V2) -> V2 {
         d.normalize().unwrap_or(V2::new(0, -ONE))
     }
@@ -660,16 +670,24 @@ mod tests {
     }
 
     #[test]
-    fn two_circles_at_the_same_centre_do_not_panic() {
-        // A degenerate contact has no direction to separate along. The solver
-        // must pick one rather than divide by zero.
+    fn two_circles_at_the_same_centre_separate_upward_and_deterministically() {
+        // A degenerate contact has no direction to separate along, so the solver
+        // picks one. Asserting only "it did not panic" left the choice untested:
+        // flipping the fallback normal survived mutation. The direction is a
+        // decision — a coin-flip here would diverge native from wasm — so it is
+        // pinned: the normal points A to B, A is the lower id, so the HIGHER id
+        // rises.
         let mut w = crate_world();
         w.add_body(fruit(100, 220, 300, 33));
         w.add_body(fruit(101, 220, 300, 33));
-        for _ in 0..100 {
-            w.step();
-        }
+        w.step();
+        let lower = w.body(BodyId(100)).expect("body exists").pos.y;
+        let higher = w.body(BodyId(101)).expect("body exists").pos.y;
         assert_eq!(w.body_count(), 2);
+        assert!(
+            higher < lower,
+            "the higher id should rise: 101 at {higher}, 100 at {lower}"
+        );
     }
 
     #[test]
