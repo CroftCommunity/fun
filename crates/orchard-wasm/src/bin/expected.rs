@@ -29,6 +29,27 @@ fn main() {
     println!("  \"score\": {},", g.score());
     println!("  \"tick\": {},", g.tick());
     println!("  \"fruit\": {},", g.fruit_count());
+    // The fruit view as the binding will convert it: whole px, milliradians.
+    // Compared exactly by the vitest, because a RANGE check cannot see a
+    // conversion that is wrong by a factor — mutation testing walked straight
+    // through "is an integer" and "is plausibly small".
+    let fruit: Vec<String> = g
+        .fruit_view()
+        .into_iter()
+        .map(|f| {
+            format!(
+                "    {{ \"id\": {}, \"tier\": {}, \"x\": {}, \"y\": {}, \"r\": {}, \"ang\": {} }}",
+                f.id,
+                f.tier,
+                f.x >> 16,
+                f.y >> 16,
+                f.r >> 16,
+                (f.ang * 1000) >> 16
+            )
+        })
+        .collect();
+    println!("  \"fruit_view\": [\n{}\n  ],", fruit.join(",\n"));
+
     let cp: Vec<String> = ticks
         .iter()
         .map(|(t, h)| format!("    {{ \"tick\": {t}, \"hash\": \"{h}\" }}"))

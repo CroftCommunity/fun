@@ -21,6 +21,7 @@ const expected = JSON.parse(
   score: number;
   tick: number;
   fruit: number;
+  fruit_view: { id: number; tier: number; x: number; y: number; r: number; ang: number }[];
   checkpoints: { tick: number; hash: string }[];
 };
 
@@ -76,18 +77,57 @@ describe("the wasm binding through the TS wrapper", () => {
   });
 
   it("hands the renderer a world it can actually draw", async () => {
+    // "Is an integer" was the original bar and it was far too weak: shifting the
+    // fixed-point conversion the WRONG WAY still yields integers, just 65,536x
+    // too large. Mutation testing shifted `>> 16` to `<< 16` and every
+    // assertion here passed. The bar is now the crate's actual dimensions.
+    const CRATE_W = 440;
+    const CRATE_H = 640;
+    const LADDER_RADII = [17, 25, 33, 41, 50, 60, 72, 85, 99, 113, 128];
+
     const g = await load();
     play(g);
     const w = g.world();
     expect(w).not.toBeNull();
     expect(w!.fruit).toHaveLength(expected.fruit);
+    expect(g.ladderTiers()).toBe(LADDER_RADII.length);
+
     for (const f of w!.fruit) {
-      expect(Number.isInteger(f.x)).toBe(true);
-      expect(Number.isInteger(f.y)).toBe(true);
-      expect(f.r).toBeGreaterThan(0);
       expect(f.tier).toBeGreaterThanOrEqual(0);
-      expect(f.tier).toBeLessThan(g.ladderTiers());
+      expect(f.tier).toBeLessThan(LADDER_RADII.length);
+      // The radius is the ladder's, exactly — not merely positive.
+      expect(f.r).toBe(LADDER_RADII[f.tier]);
+      // The fruit is inside the crate, allowing for the resting slop.
+      expect(f.x).toBeGreaterThanOrEqual(f.r - 1);
+      expect(f.x).toBeLessThanOrEqual(CRATE_W - f.r + 1);
+      expect(f.y).toBeLessThanOrEqual(CRATE_H - f.r + 1);
+      expect(f.y).toBeGreaterThan(0);
     }
+    // ... and every field matches native EXACTLY. A range check cannot see a
+    // conversion that is wrong by a factor: `ang * 1000` mutated to
+    // `ang + 1000` produced plausible small numbers and walked straight through
+    // an earlier version of this test.
+    expect(w!.fruit).toEqual(expected.fruit_view);
+  });
+
+  it("the tick digest includes a move landing exactly on the tick asked for", async () => {
+    // The bisect walks moves while `mv.tick() > n`. Whether a move exactly AT
+    // `n` is included is the boundary, and `>` vs `>=` is the whole difference
+    // between bisecting to the right tick and the one before it.
+    const g = await load();
+    g.newGame(SEED);
+    g.drop(100, 220);
+    const at = g.tickDigest(100);
+
+    // The sharp assertion: at tick 100 the drop must be INCLUDED, so the digest
+    // must differ from an identical run that never dropped. Comparing
+    // digest(99) to digest(100) was not enough — they differ under the mutation
+    // too, simply because the tick differs.
+    const empty = await load();
+    empty.newGame(SEED);
+    empty.waitUntil(100);
+    expect(at).not.toBe(empty.hash());
+    expect(g.tickDigest(100)).toBe(at);
   });
 
   it("round-trips a record and rejects a tampered one", async () => {
