@@ -47,7 +47,7 @@ async function tapMove(page: Page, mv: { from: number; path: number[] }): Promis
   }
 }
 
-test("the board, turn bar, and pickers render", async ({ page }) => {
+test("the board, turn bar, and pickers render", { tag: "@smoke" }, async ({ page }) => {
   await page.goto("/checkers/?seed=7");
   await ready(page);
   // 64 squares, of which 32 are the playable dark ones; 12 men a side to start.
@@ -133,11 +133,11 @@ test("the side picker restarts the game with the engine opening", async ({ page 
   await page.waitForFunction(() => window.__checkers!.game.board().toMove === 2);
 });
 
-test("a full game plays to a terminal result; the final board shows; share re-verifies", async ({
+test("a full game plays to a terminal result; the final board shows; share re-verifies", { tag: "@long" }, async ({
   page,
 }) => {
   test.setTimeout(300_000);
-  await page.goto("/checkers/?seed=7");
+  await page.goto("/checkers/?seed=7&fast=1");
   await ready(page);
   for (let ply = 0; ply < 140; ply += 1) {
     await waitHumanOrOver(page);

@@ -21,7 +21,7 @@ async function homeWith(page: Page, layout?: string): Promise<void> {
   await expect(page.locator(".home")).toBeVisible();
 }
 
-test("the front door lists games instead of a sentence", async ({ page }) => {
+test("the front door lists games instead of a sentence", { tag: "@smoke" }, async ({ page }) => {
   await homeWith(page);
   await expect(page.locator(".home")).toBeVisible();
   // Every playable game is reachable from the home page itself, not only from

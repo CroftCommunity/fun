@@ -59,11 +59,17 @@ async function humanMove(page: Page): Promise<void> {
   await page.locator(".crib-hand .crib-card.legal").first().click();
 }
 
-test("the table, the peg board and the pickers render", async ({ page }) => {
+test("the table, the peg board and the pickers render", { tag: "@smoke" }, async ({ page }) => {
   await page.goto("/cribbage/?seed=7");
   await ready(page);
+  // At seed 7 the engine is the non-dealer and throws first, so by the time a
+  // slow runner gets here it holds four, not six. The invariant is that the
+  // backs on the table are the count the view reports — never the cards.
+  await waitHumanOrOver(page);
   await expect(page.locator(".crib-hand .crib-card")).toHaveCount(6);
-  await expect(page.locator(".crib-opp .crib-card.back")).toHaveCount(6);
+  const backs = await page.evaluate(() => window.__cribbage!.game.view().opponentCards);
+  expect(backs).toBe(4);
+  await expect(page.locator(".crib-opp .crib-card.back")).toHaveCount(backs);
   await expect(page.locator(".crib-track")).toHaveCount(2);
   await expect(page.locator(".crib-skunk")).toHaveCount(2);
   await expect(page.locator(".crib-turnbar")).toContainText(/you/i);
@@ -162,7 +168,7 @@ test("the difficulty picker persists the chosen level", async ({ page }) => {
   expect(await page.evaluate(() => localStorage.getItem("fun-cribbage-level"))).toBe("Hard");
 });
 
-test("a full game plays to a result stating its value; the share re-verifies", async ({ page }) => {
+test("a full game plays to a result stating its value; the share re-verifies", { tag: "@long" }, async ({ page }) => {
   test.setTimeout(300_000);
   await page.goto("/cribbage/?seed=7&fast=1");
   await ready(page);
@@ -284,6 +290,8 @@ test("the tutor panel is off by default, appears when enabled, and is exact for 
   await page.goto("/cribbage/?seed=7");
   await ready(page);
   await expect(page.locator(".crib-tutor")).toHaveCount(0);
+  // Open the panel while the engine may still be moving: its resting render
+  // must not snap the panel shut (the Dots hang; `src/ui-state.ts`).
   await page.locator(".crib-settings summary").click();
   await page.locator(".crib-set-tutor").check();
   await expect(page.locator(".crib-tutor-explain")).toBeVisible();

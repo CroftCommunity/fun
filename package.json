@@ -15,6 +15,7 @@
     "preunit": "npm run build:wasm",
     "unit": "vitest run",
     "e2e": "playwright test",
+    "smoke": "playwright test --project=chromium --grep @smoke",
     "guide:shots": "node tools/guide-shots.mjs",
     "ai:trial": "node build.mjs && node tools/ai-trial.mjs",
     "harness:trial": "node build.mjs && node tools/harness-trial.mjs",

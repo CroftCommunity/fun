@@ -16,7 +16,7 @@ async function ready(page: Page): Promise<void> {
 const shotsLeft = (page: Page): Promise<number> =>
   page.evaluate(() => window.__bubble!.game.board().shotsLeft);
 
-test("the board renders a canvas, a launcher chip, an aim control and the HUD", async ({ page }) => {
+test("the board renders a canvas, a launcher chip, an aim control and the HUD", { tag: "@smoke" }, async ({ page }) => {
   await page.goto("/bubble/?variant=classic&seed=7");
   await ready(page);
   await expect(page.locator(".bub-canvas")).toHaveAttribute("aria-label", /bubbles left/i);

@@ -143,5 +143,5 @@ the verifiable `final_hash`.
 
 ## Not in this phase
 
-- Trio Tumble / cribbage board styling (those games arrive later and reuse these
-  tokens).
+- Trio Tumble / cribbage board styling (both arrived later and reuse these
+  tokens — cribbage's cards are the solitaire card, `--card` and the suit inks).

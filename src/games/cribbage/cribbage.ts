@@ -20,6 +20,7 @@
 //! A finished game is a verifiable `pond-outcome` record, shareable via `?r=`.
 
 import type { GameModule } from "../../contract.js";
+import { captureUiState, restoreUiState } from "../../ui-state.js";
 import {
   cribbageLevel,
   cribbageManualCount,
@@ -598,6 +599,11 @@ export function cribbageModule(): GameModule {
     if (!game || !container || ending) return;
     const v = game.view();
     const interactive = v.toMove === HUMAN && !busy && v.result === -1;
+    // The player's open settings panel and focus survive the rebuild: the
+    // engine's resting render lands at a moment nothing in the UI predicts, and
+    // on CI it landed between a test opening the panel and checking a box inside
+    // it (run 33264669353, mobile-webkit — the Dots hang, again).
+    const ui = captureUiState(container);
     container.replaceChildren(
       el(
         "div",
@@ -612,6 +618,7 @@ export function cribbageModule(): GameModule {
       ),
     );
     container.querySelector(".crib-hand")?.addEventListener("click", onHandClick);
+    restoreUiState(container, ui);
   };
 
   // ---------- moves ----------

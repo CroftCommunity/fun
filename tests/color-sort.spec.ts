@@ -10,7 +10,7 @@ async function ready(page: Page): Promise<void> {
   await page.waitForFunction(() => Boolean(window.__colorSort));
 }
 
-test("daily board renders 12 tubes (10 colours + 2 empty)", async ({ page }) => {
+test("daily board renders 12 tubes (10 colours + 2 empty)", { tag: "@smoke" }, async ({ page }) => {
   await page.goto("/color-sort/");
   await ready(page);
   await expect(page.locator(".cs-tube")).toHaveCount(12);

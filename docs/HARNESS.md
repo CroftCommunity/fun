@@ -32,6 +32,14 @@ own guide.
 
 ## Adding your game to the rig
 
+> **Not every game joins.** `GameOracle.board()` exposes the whole position, so a
+> `Player` here sees both sides — right for the five perfect-information games, and
+> exactly what a hidden-information game must never allow. Cribbage measures itself in
+> Rust instead (`crates/cribbage-solver/tests/rig.rs`: self-play by level, a
+> discard-oracle check, and a test-only peeking player that must beat the honest
+> engine). See `docs/BUILDING-GAMES.md` §10 → "Variation — hidden information".
+
+
 Four files. The rig is not one of them — if you find yourself editing
 `match-runner`/`scorer`/`tournament`, the port is wrong and that is the finding.
 

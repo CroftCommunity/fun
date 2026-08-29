@@ -13,7 +13,7 @@ async function ready(page: Page): Promise<void> {
   await page.waitForFunction(() => Boolean(window.__blockdoku));
 }
 
-test("the board, tray, and HUD render with visible 3×3 boxes", async ({ page }) => {
+test("the board, tray, and HUD render with visible 3×3 boxes", { tag: "@smoke" }, async ({ page }) => {
   await page.goto("/blockdoku/?seed=7");
   await ready(page);
   await expect(page.locator(".bdk-board")).toBeVisible();

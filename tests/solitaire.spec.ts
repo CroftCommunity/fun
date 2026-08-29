@@ -12,7 +12,7 @@ async function ready(page: Page): Promise<void> {
   await page.waitForFunction(() => Boolean(window.__solitaire));
 }
 
-test("board renders the seed-0 deal: 7 piles sized 1..7, hidden cards have no card", async ({
+test("board renders the seed-0 deal: 7 piles sized 1..7, hidden cards have no card", { tag: "@smoke" }, async ({
   page,
 }) => {
   await page.goto("/solitaire/?seed=0");

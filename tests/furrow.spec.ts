@@ -34,7 +34,7 @@ const waitHumanOrOver = (page: Page): Promise<unknown> =>
 const cells = (page: Page): Promise<number[]> =>
   page.evaluate(() => window.__furrow!.game.board().cells);
 
-test("the two rows, both stores and the pickers render", async ({ page }) => {
+test("the two rows, both stores and the pickers render", { tag: "@smoke" }, async ({ page }) => {
   await page.goto("/furrow/?seed=7");
   await ready(page);
   await expect(page.locator(".furrow-pit")).toHaveCount(12);
@@ -151,7 +151,7 @@ test("the difficulty picker persists the chosen level", async ({ page }) => {
   expect(await page.evaluate(() => localStorage.getItem("fun-furrow-level"))).toBe("Hard");
 });
 
-test("a full game plays to a result; the final board shows; the share re-verifies", async ({
+test("a full game plays to a result; the final board shows; the share re-verifies", { tag: "@long" }, async ({
   page,
 }) => {
   test.setTimeout(120_000);

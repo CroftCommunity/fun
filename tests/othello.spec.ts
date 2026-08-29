@@ -29,7 +29,7 @@ const waitHumanOrOver = (page: Page): Promise<unknown> =>
     return b.result !== -1 || (b.toMove === human && b.legal.length > 0);
   }, HUMAN);
 
-test("the board, turn bar, and pickers render", async ({ page }) => {
+test("the board, turn bar, and pickers render", { tag: "@smoke" }, async ({ page }) => {
   await page.goto("/othello/?seed=7");
   await ready(page);
   // 64 squares; the standard opening shows 4 discs and 4 legal targets.
@@ -73,8 +73,8 @@ test("the difficulty picker persists the chosen level", async ({ page }) => {
   expect(await page.evaluate(() => localStorage.getItem("fun-othello-level"))).toBe("Hard");
 });
 
-test("a full game plays to a terminal result; the final board shows; share re-verifies", async ({ page }) => {
-  await page.goto("/othello/?seed=7");
+test("a full game plays to a terminal result; the final board shows; share re-verifies", { tag: "@long" }, async ({ page }) => {
+  await page.goto("/othello/?seed=7&fast=1");
   await ready(page);
   // Play a real game through the UI: each human turn, tap the first legal square
   // and let the engine (and any forced passes) auto-advance. ≤60 placements.
