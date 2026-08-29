@@ -220,6 +220,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "cribbage-wasm"
+version = "0.0.0"
+dependencies = [
+ "cribbage-core",
+ "cribbage-solver",
+ "pond-outcome",
+ "rand_chacha",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "crypto-common"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"

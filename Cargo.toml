@@ -51,6 +51,7 @@ members = [
     "crates/checkers-core",
     "crates/cribbage-core",
     "crates/cribbage-solver",
+    "crates/cribbage-wasm",
     "crates/checkers-solver",
     "crates/checkers-wasm",
     "crates/furrow-core",

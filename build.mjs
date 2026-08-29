@@ -148,6 +148,9 @@ else console.warn("note: dots.wasm not built yet — run `npm run build:wasm` (d
 const fuwasm = join(root, "target/wasm32-unknown-unknown/release/furrow_wasm.wasm");
 if (await exists(fuwasm)) await cp(fuwasm, join(dist, "furrow.wasm"));
 else console.warn("note: furrow.wasm not built yet — run `npm run build:wasm` (furrow needs it)");
+const crwasm = join(root, "target/wasm32-unknown-unknown/release/cribbage_wasm.wasm");
+if (await exists(crwasm)) await cp(crwasm, join(dist, "cribbage.wasm"));
+else console.warn("note: cribbage.wasm not built yet — run `npm run build:wasm` (cribbage needs it)");
 const ckwasm = join(root, "target/wasm32-unknown-unknown/release/checkers_wasm.wasm");
 if (await exists(ckwasm)) await cp(ckwasm, join(dist, "checkers.wasm"));
 else console.warn("note: checkers.wasm not built yet — run `npm run build:wasm` (checkers needs it)");

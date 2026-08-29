@@ -1,0 +1,21 @@
+[package]
+name = "cribbage-wasm"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Browser binding over cribbage-core + cribbage-solver: raw C-ABI + serde-JSON (no wasm-bindgen). Holds one game with the human in seat A and the engine in seat B, exposes the HUMAN'S VIEW only (there is deliberately no state export — the engine's hand cannot be handed out even by accident), the rules (legal codes / play / hash / result / value), the live opponent (difficulty Levels), the exact auto-claim for automatic counting, the tutor with its honesty flag, and the verifiable outcome. Never panics."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[lints]
+workspace = true
+
+[dependencies]
+cribbage-core = { path = "../cribbage-core" }
+cribbage-solver = { path = "../cribbage-solver" }
+pond-outcome = { workspace = true }
+serde = { workspace = true }
+serde_json.workspace = true
+rand_chacha.workspace = true
