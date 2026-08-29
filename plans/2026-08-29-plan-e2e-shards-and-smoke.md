@@ -899,3 +899,37 @@ first-party standard** everywhere except the one property the engine denies it.
 - [ ] `GameModule` mounts; registry `tier: 3` + `status`; own `/<id>/` URL with a wiring test (§1). **First Tier-3 game only:** add a `tier` discriminant to `src/contract.ts` and write the honest-representation banner first, test-first — see "What admitting the first Tier-3 game requires in code".
 - [ ] Engine bundle size disclosed; no runtime third-party fetch, no CDN.
 - [ ] Full gate green (`npm run gate`) and deployed.
+
+### Phases 2–3 (2026-08-29) — the shards ran, and the two PRs needed each other
+
+The first branch run (33278184197): `wasm` 45 s, chromium shards 70–91 s, and mobile-WebKit
+2/3 red on two cribbage tests — the tutor-panel hang the cribbage hotfix (#36) fixes, and a
+render test of mine that asserted the engine held six cards when at seed 7 the engine
+throws first and a slow runner finds it holding four. The hotfix's own run then failed on
+**Othello's full game at full pace** — the test this plan's seam collapses. Neither PR could
+land green without the other, so #36 was folded into #37 by rebase and closed.
+
+The rebased run (33278868366), all green:
+
+| job | time |
+|---|---|
+| `wasm` | 32 s |
+| chromium 1/3 · 2/3 · 3/3 | 105 s · 85 s · 78 s |
+| mobile-webkit 1/3 · 2/3 · 3/3 | 265 s · 178 s · 227 s |
+| `rust` / `build` (unchanged) | 253 s / 205 s |
+| **wall clock** | **304 s** (against ~450 s green and 470 s+ red before) |
+
+The critical path is now the slowest WebKit shard, and about 110 s of every WebKit
+shard is the browser download — the next lever, if one is ever needed, is caching the
+WebKit install rather than a fourth shard. The chromium shards came in close to the
+Phase 1 estimate; the WebKit ones are 2–3× it, which is the runner's 2 workers against
+the laptop's 7 and was the ratio `CI.md` already recorded.
+
+`npm run smoke`: 42 tests on chromium, measured locally at under a minute. The six
+full-game tests carry `@long`; Othello's and checkers' pass `?fast=1`.
+
+**The one-red-shard proof** (run after 33278868366, the deliberate break): a wiring test in
+`2048.spec.ts` made to fail — `chromium 1/3` and `mobile-webkit 1/3` red, the other four
+shards green, `deploy` skipped. The job name said which engine and which third of the
+suite, and the healthy shards kept reporting (`fail-fast: false`). Reverted in the next
+commit; this entry rides with the revert.
