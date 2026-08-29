@@ -74,7 +74,7 @@ obstacles) but **doesn't feel good to play**:
   `renderFrame` updated in lockstep.
 - **P1.4 FX + bus (`4da55ed`):** `analyzeCascade` frame-diff drives per-phase timing
   (clear held ~260ms), particle bursts, and an escalating Nice/Sweet/Divine, all
-  off a game-scoped `match3-events` bus. Softened the per-frame drop-in.
+  off a game-scoped `trio-tumble-events` bus. Softened the per-frame drop-in.
 - **P2 campaign (`12d4176`):** `trio-tumble-campaign` + `campaign-pack.json` (build.mjs
   copy); real seeds → verifiable, front-end star reinterpretation; landing +
   `?level=N` + level nav + Next-level + progress. Levels 1–2 curated easy openers
@@ -82,10 +82,10 @@ obstacles) but **doesn't feel good to play**:
 - **P2 autosave (`2c2311f`):** move-list resume (replayed into a fresh core), Restart.
 - **P2 tutorial glow (`3afde56`):** Level 1 first-load opening-move nudge, once,
   non-penalising.
-- **P2 narrative scaffold (`656b6b3`):** `match3-story` (event→beat, once-ever +
-  once-per-board) → skippable `match3-overlay` beat card, gated to campaign.
-- **Gate:** how-to copy (swipe + campaign) + match3 guide shots regenerated;
-  README. `npm run test` green (195 unit); match3 e2e green (desktop + mobile).
+- **P2 narrative scaffold (`656b6b3`):** `trio-tumble-story` (event→beat, once-ever +
+  once-per-board) → skippable `trio-tumble-overlay` beat card, gated to campaign.
+- **Gate:** how-to copy (swipe + campaign) + Trio Tumble guide shots regenerated;
+  README. `npm run test` green (195 unit); Trio Tumble e2e green (desktop + mobile).
   Known: the pre-existing `how-to.spec` solitaire shot-load test flakes in this
   sandbox's newer Chromium (lazy-loaded below-fold images the non-scrolling poll
   misses) — unrelated to this change (solitaire/how-to renderer untouched).
@@ -110,11 +110,11 @@ obstacles) but **doesn't feel good to play**:
 - **1c. Clear timing.** Per-phase durations by frame-diff inference: a snapshot
   whose hole-count *rose* is a **clear** phase → hold ~250ms; fall/refill snappy.
   (Tech-debt: phase-tagged frames from the core would be cleaner — Phase 4.)
-- **1d. Burst + celebration + event bus.** `match3-fx.ts` burst layer (decorative,
+- **1d. Burst + celebration + event bus.** `trio-tumble-fx.ts` burst layer (decorative,
   `aria-hidden`, reduced-motion-gated, `<span>`-only so `.m3-gem` stays ×64),
   positioned by grid math over the settled board. Cleared cells + cascade depth
   from the same frame-diff. Escalating "Nice/Sweet/Divine". Driven by a tiny
-  game-scoped bus `match3-events.ts` (module-closure, not global).
+  game-scoped bus `trio-tumble-events.ts` (module-closure, not global).
 
 ## Phase 2 — onboarding + campaign + autosave + scaffold
 
@@ -130,23 +130,23 @@ obstacles) but **doesn't feel good to play**:
   moves:Swap[],ts}` — the **move list**, not the board — replayed into a fresh core
   on load (deterministic + verifiable). URL params (`?r=`/`?seed=`/`?mode=`) win
   over the save. Hook exposes `level`.
-- **2d. Narrative scaffold.** `match3-story.ts` (event taxonomy → beat map) +
-  `match3-overlay.ts` (skippable placeholder beat card) subscribing to the Phase-1
+- **2d. Narrative scaffold.** `trio-tumble-story.ts` (event taxonomy → beat map) +
+  `trio-tumble-overlay.ts` (skippable placeholder beat card) subscribing to the Phase-1
   bus. One-tap skip, remembered, reduced-motion friendly. Placeholder beats only.
 
 ## Precedence (mount)
 
 `?r=` (shared) > `?seed=` > `?mode=` > `?level=N` > autosave-resume >
-campaign(Level 1) / daily. `window.__match3` keeps its existing keys (adds
+campaign(Level 1) / daily. `window.__trioTumble` keeps its existing keys (adds
 `level`).
 
 ## TDD & tests (RED first)
 
-- **Unit** (`tests/match3-unit.test.ts` + new): frame-diff → cleared-cells;
+- **Unit** (`tests/trio-tumble-unit.test.ts` + new): frame-diff → cleared-cells;
   cascade-depth → celebration tier; event-bus emit/on; campaign parsing + star
   grading; autosave move-list replay reconstructs identical `state_hash`; story
   taxonomy mapping.
-- **E2e** (`tests/match3.spec.ts`): rewrite the desktop `draggable` test as a
+- **E2e** (`tests/trio-tumble.spec.ts`): rewrite the desktop `draggable` test as a
   **swipe** test; tap-select still swaps; glossy gems keep `button.m3-gem` ×64 +
   axe-clean + 360px fit; `.m3-animating` still shows then settles; reduced-motion
   skips FX; Level 1 first-load glow; win → "Next level" advances + persists; resume
@@ -162,6 +162,6 @@ campaign(Level 1) / daily. `window.__match3` keeps its existing keys (adds
    glow + easy multi-clear; reload resumes; a beat overlay skips cleanly; `?r=`
    still verifies.
 4. `npm run build:wasm && npm run build && npm run guide:shots` — regenerate ONLY
-   the match3 shots (`git add` match3, `git checkout --` the rest); update how-to
+   the Trio Tumble shots (`git add` trio-tumble, `git checkout --` the rest); update how-to
    copy (swipe replaces "tap to drag", new campaign/onboarding).
 5. Commit at each green phase (`Co-Authored-By: Claude Opus 4.8`).

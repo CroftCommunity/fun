@@ -148,7 +148,7 @@ deterministically; all three gates green; packs winnable + byte-identical.
 - [ ] `src/games/trio-tumble-howto.ts` — the colour bomb now has its power: swap it with
   any gem to clear every gem of that colour. (Colour bomb was the last "power
   arriving" special; after B3 all three single specials are live — fish is B4.)
-- [ ] `tests/match3.spec.ts` — greedy-play a deterministic deal until a colour bomb
+- [ ] `tests/trio-tumble.spec.ts` — greedy-play a deterministic deal until a colour bomb
   is on the board, swap it, assert the score jumps (the colour-clear reaching the UI).
 - [ ] roadmap Track B + `TODO/trio-tumble.md` — tick B3.
 - [ ] regenerate guide shots only if the visuals changed (no new special kind; likely

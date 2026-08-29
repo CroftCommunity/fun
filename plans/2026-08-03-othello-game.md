@@ -124,7 +124,7 @@ reuse that doesn't are both documented as the generality finding.
   optional "takes a corner" enrichment (a new fact or a game-supplied idea) is the
   ADVISORY open question, not required for v1.
 - **[Pass 2] Wasm-in-vitest load pattern** (read `tests/solitaire-unit.test.ts:22-33`,
-  `match3-unit.test.ts:12-17`): `preunit` builds the wasm, then a unit test shims
+  `trio-tumble-unit.test.ts:12-17`): `preunit` builds the wasm, then a unit test shims
   `globalThis.fetch` to serve `target/wasm32-unknown-unknown/release/<game>_wasm.wasm`
   via `readFile` and calls `Game.load()`. Phase 4's `othello-unit.test.ts` uses this
   (path `…/othello_wasm.wasm`) — `Othello.load()` won't resolve `fetch` under jsdom

@@ -87,7 +87,7 @@ single source of truth so every downstream path stays consistent for free.
   play; regenerate `games/trio-tumble/{par,blockers,jelly}-pack.json` **in the same commit**
   and expect the **blockers/jelly packs to change too this time** (their deals change),
   not just par. **Run the full gate** — the hardcoded JS fixtures (blockers/jelly
-  seeds+moves in `match3-unit.test.ts`/`match3.spec.ts`, and the seed-based special
+  seeds+moves in `trio-tumble-unit.test.ts`/`trio-tumble.spec.ts`, and the seed-based special
   e2e probes seed=3/11/13) will very likely go stale and must be re-derived (B0.4
   hazard, at its worst).
 
@@ -104,7 +104,7 @@ single source of truth so every downstream path stays consistent for free.
   Confirmed.
 - `SpecialKind` + `tag` + `from_char` (board.rs) and the hash special section
   (hash.rs) extend additively for `Fish` (tag `0x05`, char `F`) with no pre-B4
-  re-lock. The wasm `BoardView.specials` string + `match3.ts` badge/a11y add a `fish`
+  re-lock. The wasm `BoardView.specials` string + `trio-tumble.ts` badge/a11y add a `fish`
   case. Confirmed by reading board.rs + the B0 render contract.
 - Activation is currently a pure function; B4.2 threads `self.rng` targeting through
   `resolve_move` (as B2 threaded the re-blast seed). Confirmed.
@@ -181,7 +181,7 @@ taught.
 **Changes:**
 - [ ] `src/games/trio-tumble-howto.ts` — make a fish with a 2×2 block; it swims to eat a
   target (preferring jelly/blockers).
-- [ ] `tests/match3.spec.ts` — e2e drives a fish creation + activation; assert the
+- [ ] `tests/trio-tumble.spec.ts` — e2e drives a fish creation + activation; assert the
   render + a score/jelly/blocker change.
 - [ ] roadmap + `TODO/trio-tumble.md` tick B4; regenerate guide shots (a new special badge
   is a visual change — likely a shot refresh).

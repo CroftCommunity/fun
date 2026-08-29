@@ -192,7 +192,7 @@ packs winnable + byte-identical-or-reported.
 **Changes:**
 - [ ] `src/games/trio-tumble-howto.ts` — a combo section (swap two specials → a bigger clear;
   bomb+bomb clears the board).
-- [ ] `tests/match3.spec.ts` — e2e drives a combo (probe a seed whose greedy line makes
+- [ ] `tests/trio-tumble.spec.ts` — e2e drives a combo (probe a seed whose greedy line makes
   two adjacent specials, or author via a fixed setup) + asserts a large score/clear; both
   projects incl. axe.
 - [ ] roadmap + `TODO/trio-tumble.md` tick B5; regenerate guide shots if the combo renders a new

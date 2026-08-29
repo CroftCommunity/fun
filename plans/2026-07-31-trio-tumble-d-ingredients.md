@@ -108,10 +108,10 @@ generic's engineering knobs, documented revisable.
   outcome kind (`trio-tumble-ingredients`), `board_view` ingredient mask + remaining/total.
 
 ### Phase 4 (UI + how-to) — toggle, render, HUD, e2e, shots
-- [ ] `match3.ts` — objective toggle entry, ingredient tile render + a11y label, an
+- [ ] `trio-tumble.ts` — objective toggle entry, ingredient tile render + a11y label, an
   ingredients-left HUD, a verifiable clear result; `?mode=ingredients`.
-- [ ] `match3-howto.ts` — the ingredients objective.
-- [ ] `tests/match3.spec.ts` — e2e drives an ingredient drop + a verifiable clear (both
+- [ ] `trio-tumble-howto.ts` — the ingredients objective.
+- [ ] `tests/trio-tumble.spec.ts` — e2e drives an ingredient drop + a verifiable clear (both
   projects incl. axe); guide shots if a new tile visual.
 - [ ] roadmap + `TODO/trio-tumble.md` tick Ingredients.
 
