@@ -1,0 +1,19 @@
+[package]
+name = "cribbage-core"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Deterministic, headless two-hand cribbage engine: seeded deal, discard, the cut, pegging with go / 31 / last card, the show in order with claims (manual counting), the game value (1 / skunk 2 / double skunk 3), a per-seat View that hides the other hand, and a canonical state hash. Implements pond_outcome::Game so a game replays from (seed, moves) exactly and native==wasm. No floats on the hashed path, no network."
+
+[lints]
+workspace = true
+
+[dependencies]
+serde = { workspace = true }
+sha2.workspace = true
+hex.workspace = true
+thiserror.workspace = true
+pond-outcome.workspace = true
+rand.workspace = true
+rand_chacha.workspace = true
