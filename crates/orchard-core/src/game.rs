@@ -111,6 +111,32 @@ pub enum MoveError {
     GameOver,
 }
 
+/// The tick from which a fruit dropped at `tick` starts counting toward
+/// game-over.
+///
+/// A fixed duration **from** the drop, not a scaling **of** it. Extracted
+/// because the difference is invisible in play: game-over is dominated by
+/// *merged* fruit, which carry no grace at all, so a dropped fruit's deadline
+/// can be wildly wrong and a run will still end at the same tick. Mutation
+/// testing found that; a test that reasoned about whole runs did not.
+#[must_use]
+pub const fn counts_from_after_drop(tick: u32) -> u32 {
+    tick + GRACE_TICKS
+}
+
+/// A merged fruit counts immediately — no grace. It matches the wrap's
+/// `nb.born = 0`, and it is deliberate: a merge high in the crate is supposed to
+/// be dangerous.
+pub const MERGED_COUNTS_FROM: u32 = 0;
+
+/// Whether a fruit whose grace ends at `counts_from` is counting at `now`.
+///
+/// Inclusive at the boundary: the fruit counts **from** that tick, not after it.
+#[must_use]
+pub const fn is_counting(now: u32, counts_from: u32) -> bool {
+    now >= counts_from
+}
+
 /// The score a merge of two tier-`tier` fruit awards.
 ///
 /// Extracted from the merge loop because the branch that matters most — two
@@ -216,7 +242,7 @@ impl Game {
         self.advance_to(mv.tick());
         if let Move::Drop { tick, x } = mv {
             if !self.over {
-                self.spawn(self.held, x, DROP_Y, tick + GRACE_TICKS);
+                self.spawn(self.held, x, DROP_Y, counts_from_after_drop(tick));
                 self.held = self.next;
                 self.next = self.rng.next_tier();
                 self.last_drop = Some(tick);
@@ -265,7 +291,7 @@ impl Game {
             let created = m.tier + 1;
             self.max_tier = self.max_tier.max(created);
             // A merged fruit counts for game-over immediately — no grace.
-            self.spawn_at(created, mid, 0);
+            self.spawn_at(created, mid, MERGED_COUNTS_FROM);
         }
     }
 
@@ -275,7 +301,7 @@ impl Game {
             let Some(b) = self.world.body(id) else {
                 continue;
             };
-            if now < f.counts_from {
+            if !is_counting(now, f.counts_from) {
                 f.dwell = 0;
                 continue;
             }
@@ -643,6 +669,49 @@ mod tests {
     }
 
     // ── the policies mutation testing found unreachable in place ───────────
+
+    #[test]
+    fn the_grace_is_a_duration_from_the_drop_not_a_multiple_of_it() {
+        // `tick + GRACE` and `tick * GRACE` agree at tick 0, and a whole-run
+        // test cannot tell them apart either: game-over is driven by MERGED
+        // fruit, which have no grace, so a dropped fruit's deadline can be
+        // absurd and the run still ends on time. Only the rule itself pins it.
+        assert_eq!(counts_from_after_drop(0), GRACE_TICKS);
+        assert_eq!(counts_from_after_drop(100), 100 + GRACE_TICKS);
+        assert_eq!(counts_from_after_drop(5000), 5000 + GRACE_TICKS);
+        // The gap between two drops is the gap between their deadlines — which
+        // a multiplication would not preserve.
+        assert_eq!(
+            counts_from_after_drop(233) - counts_from_after_drop(200),
+            33,
+            "shifting a drop by 33 ticks must shift its deadline by 33"
+        );
+    }
+
+    #[test]
+    fn a_merged_fruit_gets_no_grace_at_all() {
+        // A merge high in the crate is supposed to be dangerous.
+        assert_eq!(MERGED_COUNTS_FROM, 0);
+        assert!(
+            is_counting(0, MERGED_COUNTS_FROM),
+            "a merged fruit counts at once"
+        );
+    }
+
+    #[test]
+    fn counting_starts_on_the_deadline_tick_not_after_it() {
+        // The boundary, all three points. `<` vs `<=` vs `==` here is one tick
+        // of grace, and it is the kind of difference nothing else would notice.
+        let deadline = 77;
+        assert!(!is_counting(deadline - 1, deadline), "still in grace");
+        assert!(
+            is_counting(deadline, deadline),
+            "counting starts ON the deadline"
+        );
+        assert!(is_counting(deadline + 1, deadline), "and stays counting");
+        // ... and it does not stop counting later, which `==` would do.
+        assert!(is_counting(deadline + 10_000, deadline));
+    }
 
     #[test]
     fn a_merge_awards_the_triangular_score_of_the_tier_it_creates() {
