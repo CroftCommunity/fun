@@ -31,6 +31,7 @@ members = [
     "crates/match3-core",
     "crates/solitaire-core",
     "crates/pond-docformat",
+    "crates/pond-physics",
     "crates/pond-outcome",
     "crates/match3-wasm",
     "crates/solitaire-wasm",
@@ -89,6 +90,7 @@ match3-core = { path = "crates/match3-core" }
 solitaire-core = { path = "crates/solitaire-core" }
 pond-docformat = { path = "crates/pond-docformat" }
 pond-outcome = { path = "crates/pond-outcome" }
+pond-physics = { path = "crates/pond-physics" }
 checkers-core = { path = "crates/checkers-core" }
 adversary-solver = { path = "crates/adversary-solver" }
 checkers-solver = { path = "crates/checkers-solver" }
