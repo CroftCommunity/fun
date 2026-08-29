@@ -155,19 +155,14 @@ at them and add what's specific to this repo. Git identity: chasemp
   share), tap-first with the core deciding legality. solitaire · Trio Tumble ·
   bubble · Orchard Drop (rebuilt from a wrap, 2026-08-29). This is the shelf's differentiator; build fresh when a
   game's rules are simpler than an integration.
-- **Tier 2 — opportunistic wrap/port.** Already-packaged **ethical** games taken
-  as-is (client-side/static, non-extractive, redistribution-licensed, fits our
-  chrome, **honestly represented** — no faked verifiable outcome). Gated by a
-  real-browser **containment/legibility** harness (untrusted code in our chrome).
-  A large one-time download that then runs fully offline is an allowed class
-  *with up-front size disclosure*. The wrapped-game standard is **ratified in
-  `docs/BUILDING-GAMES.md` §9**. **The tier is EMPTY since 2026-08-29** — Astray,
-  HexGL and Clumsy Bird were removed as not fitting the shelf's model, and
-  Orchard Drop was rebuilt Tier-1. The machinery is kept, not deleted (§9's
-  status note says why); note the containment spec **skips** at zero wraps, so it
-  goes green by not running. Solitaire remains the Tier-1 reference. Every wrap
-  ships a `tier2.meta.json` (provenance + posture). Avoid the Emscripten + runtime-untar
-  class (the SuperTuxKart cut, `plans/2026-07-31-supertuxkart-wrap.md`).
+- **Tier 2 — RETIRED 2026-08-29.** It held third-party games taken as-is in a
+  sandboxed iframe, honestly represented as keeping no verifiable record. Four
+  games passed through it and none stayed: three were removed as not fitting the
+  shelf, and Orchard Drop was rebuilt Tier-1. The standard, its containment
+  harness, its `tier2.meta.json` schema and its banner are all gone; the
+  headstone and the reasoning worth keeping are in `docs/BUILDING-GAMES.md` §9,
+  and the full text is in git history. **If a wrap is ever wanted again, restore
+  it from history rather than reinventing it.**
 
 - **Tier 3 — engine-backed original.** A game **we build** on a **third-party
   engine whose numerics we do not control** (a physics engine, a solver). Ours

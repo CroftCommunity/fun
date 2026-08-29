@@ -42,35 +42,33 @@ tokens.css, styles.css                                                        SH
 A game touches SHARED files only at its wiring points (a `registry.ts` entry, a
 `how-to-registry.ts` entry, append-only `tokens.css` tokens, `Cargo.toml` +
 `build.mjs` for its crates/wasm). It never reaches into another game's
-directory. This isolation matters most for **Tier-2 wraps / webxdc-style
+directory. This isolation matters most for **webxdc-style
 bundles**, which are wholly self-contained under their own directory and must not
 bleed into the shared chrome (see "The two tiers" below).
 
-### The three tiers
+### The two tiers
 
 The standards in §§2–8 describe **Tier-1 Croft-native** games (build-fresh,
-determinism-first, verifiable). The shelf also admits **Tier-2** opportunistic
-ethical wraps/ports (already-packaged, static, non-extractive, taken as-is, **no
-verifiable outcome — stated honestly**), gated by a real-browser
-containment/legibility harness rather than by the verifiable-outcome + tap-first
-standards. **The Tier-2 wrapped-game standard is ratified in §9 below**. It has
-**no live reference implementation** since 2026-08-28 — see the note at the head
-of §9 — where solitaire remains the one for
-Tier-1. Everything in §§2–8 is Tier-1 unless noted.
+determinism-first, verifiable). Solitaire is the reference implementation, and
+everything in §§2–8 is Tier-1 unless noted.
 
-**Tier-3 — engine-backed originals** (§11) is the third: a game **we build**, on a
-**third-party engine we do not control the numerics of**. It is ours like Tier-1
-and non-verifiable like Tier-2, and it is neither of them. The two axes that
-actually separate the tiers are *who built it* and *can the outcome be re-proved*:
+**Tier-3 — engine-backed originals** (§11) is the other: a game **we build**, on
+a **third-party engine we do not control the numerics of**. It is ours like
+Tier-1 and unverifiable unlike it.
 
 ```
                     outcome re-provable?        YES              NO
    who built it?
    ours (build-fresh)                        Tier-1           Tier-3
-   theirs (taken as-is)                         —             Tier-2
 ```
 
 Emoji Wars (`levelforge`) is Tier-3's reference implementation.
+
+**Tier 2 was retired on 2026-08-29** — it held third-party games taken as-is, in
+a sandboxed iframe, with no verifiable outcome. Four games passed through it and
+none stayed. Its headstone is §9, and the reasoning worth keeping is recorded
+there: honest representation, containment for foreign code, and the inclusion
+filter. The numbering is left alone so existing cross-references still resolve.
 
 ## 2. Determinism-first core → wasm
 
@@ -181,7 +179,7 @@ Emoji Wars (`levelforge`) is Tier-3's reference implementation.
   inform the player** (an optional countdown for felt pressure) but must **never
   decide the verified outcome** — real elapsed time can't be reproduced by
   replay, and a client-asserted time is forgeable, so a time-out loss can't be a
-  verifiable result (§9 "no faked verifiable outcome"). Reference:
+  verifiable result (no faked verifiable outcome). Reference:
   `crates/bubble-core/src/levels.rs`.
 - **A real-time game is verifiable by a tick-stamped input record.** When play is
   continuous *and* clock-driven (a falling-block stacker, where gravity advances
@@ -291,178 +289,63 @@ page (`/how-to/?game=<id>`). It follows the Croft user-guide pattern:
 
 ---
 
-## 9. Tier-2 — wrapped games (the ratified addendum)
+## 9. Tier-2 — wrapped games (RETIRED 2026-08-29)
 
+**This tier no longer exists.** The standard, its containment harness, its
+`tier2.meta.json` schema, its honest-representation banner, and its four
+implementations have all been removed at the owner's call.
 
-> **Status, 2026-08-29: this tier is empty.** Astray, HexGL and Clumsy Bird were
-> removed on 2026-08-28 as not fitting the shelf's model. **Orchard Drop left on
-> 2026-08-29**, rebuilt as a Tier-1 game on a deterministic fixed-point core
-> (`plans/2026-08-28-1-plan-orchard-drop-tier1.md`) — which resolves what the
-> previous note called out: it was *ours*, wrapping a physics engine rather than
-> somebody else's game, so `tier: 2` had always misdescribed it.
->
-> **The standard below is kept, not struck**, and that is a decision rather than
-> an oversight. §9 was ratified and applied four times; the containment harness,
-> the `tier2.meta.json` schema and the honest-representation banner all still
-> work and still gate anything that carries a `tier2.meta.json`. §11 has been a
-> ratified standard with **no** implementation since it was written, and this
-> repo says plainly that is a normal state — an empty tier is not a dead one.
->
-> One consequence is worth naming because it is quiet: with no `tier2.meta.json`
-> on disk, `tests/tier2-containment.spec.ts` **skips** rather than fails. It goes
-> green by not running. That is correct behaviour and it is also exactly the kind
-> of pass that hides a regression, so the next wrap to arrive should confirm the
-> harness actually exercises it rather than assuming a green board means it did.
->
-> Whether Tier 2 survives as a category at all remains an open owner decision.
+It is recorded here rather than deleted outright because §11 refers to it, the
+plans that built it are still in `plans/`, and a standard that was ratified and
+applied deserves a headstone rather than a silent gap. **The full text is in git
+history** — `git log --follow -- docs/BUILDING-GAMES.md` — along with the
+containment spec, the meta schema, and the four wraps.
 
-A Tier-2 game is an **already-packaged, ethical game taken as-is**. We do **not**
-rebuild it and we do **not** fake a verifiable outcome. It earns a place by being
-honestly represented and provably contained, not by the Tier-1 verifiable-outcome
-standard. **The reference implementation was Astray, removed 2026-08-28** (see
-the note at the head of this section); the Tux
-Racer spike (`plans/2026-07-30-tux-racer-wrap-spike.md`) is the origin of this
-standard, and the SuperTuxKart cut (`plans/2026-07-31-supertuxkart-wrap.md`) is
-the cautionary tale — **avoid the Emscripten + runtime-asset-untar class**; prefer
-a self-contained JS/WebGL bundle that vendors as plain static files.
+### What it was
 
-### The inclusion filter (all must hold)
+A Tier-2 game was an **already-packaged, ethical game taken as-is**: fully
+client-side, non-extractive, redistribution-licensed, run inside an
+opaque-origin sandboxed iframe, and **honestly represented** — it kept no
+verifiable outcome and the shelf said so on the page. Astray was its reference
+implementation.
 
-1. **Already fully client-side / static** — runs in-browser, no backend.
-2. **Non-extractive** — no ads, tracking/telemetry-home, account-as-data-grab, or
-   dark patterns. Any such code is **stripped at vendor time** and the removal is
-   recorded as a patch (see HexGL's Google-Analytics strip).
-3. **Redistribution-licensed** — an OSS/freeware-assets license that lets us
-   vendor, host, and attribute. Copyleft (GPL) is allowed but carries a
-   **source-offer** obligation — record it in the meta.
-4. **Fits our chrome** — mounts through the `GameModule` contract, gets its own
-   `/<id>/` URL, and passes the containment/legibility gate in all modes.
-5. **Honestly represented** — the shelf must not imply a verifiable record where
-   there is none.
+### Why it went
 
-Bundle weight is **not** a disqualifier — a large one-time download that then runs
-fully offline is an allowed class *with up-front size disclosure* (recorded in the
-meta's `approxSizeKb`).
+Four games entered the tier and none stayed.
 
-### Which Tier-1 standards change for a wrap
+- **Astray, HexGL and Clumsy Bird** were removed on 2026-08-28: they did not fit
+  the shelf's model.
+- **Orchard Drop** left on 2026-08-29, rebuilt as a Tier-1 game
+  (`plans/2026-08-28-1-plan-orchard-drop-tier1.md`). It had always been the
+  awkward one — it was *ours*, wrapping a physics engine rather than somebody
+  else's game, so `tier: 2` misdescribed it from the start. Replacing 80KB of
+  Matter.js with a fixed-point core turned it into exactly the thing the tier
+  said it could never be: a wrapped game with a verifiable record.
 
-| Tier-1 standard | For a Tier-2 wrap |
-|---|---|
-| Determinism-first Rust core → wasm (§2) | **N/A** — the game is vendored, not built |
-| Verifiable outcome / `pond-outcome` / `?r=` (§3) | **Replaced** by honest "no verifiable record" representation |
-| Tap-first, core-decides-legality (§4) | **N/A** — native input; document the input model in the meta |
-| Identity + tokens, WCAG AA, axe (§5) | **Required for our chrome** around the game (the embedded canvas is exempt) |
-| Standard settings (§6) | **N/A** |
-| How to play (§7) | **Required** — and it must state plainly that the game keeps no verifiable record |
-| TDD + gate (§8) | **Required** for the wrapper + the containment gate we write (not the vendored engine) |
+That left the machinery with no instances. It was kept for one day as a ratified
+standard awaiting a future wrap, then purged: **an empty tier is a maintenance
+cost and a false promise.** Its containment spec went green *by skipping*, which
+is the shape of a test that no longer tests anything, and the `tier: 2` variant
+in `src/contract.ts` was a branch nothing could take.
 
-### The Tier-2 mechanics (as built)
+### What is worth carrying forward
 
-- **Vendor, don't fetch.** The bundle lives under `src/games/<id>/vendor/`
-  (license file verbatim), is committed, and is served from our own origin —
-  no runtime third-party fetch, no untar step. `build.mjs` copies it to
-  `dist/<id>/vendor/`; `tools/serve.mjs` (and GitHub Pages) send
-  `Access-Control-Allow-Origin: *` so opaque-origin WebGL texture loads succeed.
-- **Provenance + posture in one file.** Every wrap ships
-  `src/games/<id>/tier2.meta.json` — the single source of truth for where it came
-  from (upstream URL/ref/date, author, license, license file) and how it is
-  contained (containment, sandbox flags, `egress: "same-origin"`, input, size,
-  and **every vendor patch with its reason**). `parseTier2Meta` is fail-loud; a
-  gate test ties the registry's `attribution` to the meta's `provenance` so they
-  cannot drift.
-- **Contained mount.** The `GameModule` mounts through the shared
-  `mountWrappedGame` primitive: an `iframe[sandbox="allow-scripts"]` (opaque
-  origin; `allow-same-origin` is refused because, with scripts, it lets the frame
-  remove its own sandbox). Clean teardown on `unmount`. The primitive also
-  **focuses the frame on load** — see "Keyboard focus" below for why this is
-  mandatory for any keyboard-driven wrap.
-- **Honest representation.** The chrome renders a persistent "Wrapped game — no
-  verifiable record" banner + attribution (author · license · source link) above
-  the game, driven by `GameEntry.tier === 2`.
-- **The gate.** `tests/tier2-containment.spec.ts` is a real-browser gate
-  parameterized over every `tier2.meta.json`. It asserts the game's real behavior
-  matches its declared posture: sandbox flags, **zero off-origin egress**, no
-  breakout, our-origin storage untouched, legible in our chrome at 360px +
-  desktop, axe-clean chrome, the frame **auto-focuses so the keyboard reaches the
-  game without a click**, and focus still returns to our chrome (no focus trap).
+The reasoning survives the tier:
 
-### Porting a game — the step-by-step recipe
+- **Honest representation.** A game that cannot prove its outcome must say so on
+  the page. §11 still carries this for engine-backed originals, and it is the
+  rule that made Orchard Drop's rebuild worth doing rather than papering over.
+- **Containment is for foreign code.** An opaque-origin sandbox is the right
+  answer when the code is not ours. Nothing on the shelf is foreign today; if
+  something is again, the harness is in git history and is worth re-reading
+  before being rewritten.
+- **The inclusion filter** — client-side, non-extractive, redistribution
+  licensed, honestly represented — is a good filter for *any* third-party thing,
+  not only a game.
 
-Read this section straight — there is no wrap to copy from right now (the
-bundle). The whole thing is a wrapper + a metadata file; you write no game code.
-
-1. **Recon against primary sources.** Confirm the real repo, the **license**
-   (file-by-file if assets differ from code), and that it is **non-extractive** —
-   look for `ads.txt`, analytics snippets (`ga.js`, `gtag`), telemetry, and a
-   trademark on the name/characters. Reject trademarked clones (Pac-Man, the
-   Chrome dino) even when the code license is clean. Prefer a self-contained
-   JS/WebGL bundle; steer clear of the Emscripten + runtime-untar class.
-2. **Vendor it, don't fetch it.** Copy the runtime files into
-   `src/games/<id>/vendor/` (skip dev/deploy cruft — `.git`, `Gruntfile`,
-   `package.json`, `Procfile`), **including the license file verbatim**. Nothing
-   loads from a third-party origin at runtime.
-3. **Patch minimally, record every change.** Strip any extractive code
-   (analytics/ads); repoint external asset URLs (favicons, textures) to local or
-   relative paths so nothing leaves our origin. Each edit becomes a `patches`
-   entry in the meta with a `reason`. A zero-patch bundle (Clumsy Bird) is ideal;
-   an honest patch list (HexGL) is fine.
-4. **Write `src/games/<id>/tier2.meta.json`.** Provenance (upstream URL/ref/date,
-   author, license, license-file path; `basedOn` if it descends from another
-   work) and posture (`sandbox`, `egress: "same-origin"`, input model,
-   `approxSizeKb`, the patch list). `parseTier2Meta` is fail-loud; get it right.
-5. **Wrap + wire.** A ~20-line `GameModule` that calls `mountWrappedGame({ src:
-   "/<id>/vendor/index.html", title })`. Add the registry entry (`tier: 2` +
-   `attribution` matching the meta's provenance), add `<id>` to `GAME_PAGES` and
-   `TIER2_VENDORS` in `build.mjs`, and register a how-to.
-6. **Pay homage.** Attribution/homage is shared code — the banner credits the
-   original dev "with thanks" and links to the source automatically from the
-   registry `attribution`; set `basedOn` to credit lineage. The how-to's closing
-   note repeats the credit + source link. Keep this consistent for every wrap.
-7. **Prove it.** The containment/legibility gate enrols the game automatically
-   from its meta. Run `npm run test` + `npm run e2e`; both green before shipping.
-
-### Mobile + desktop — what a wrap must still honour
-
-The house rules (works on a phone and a desktop, honest, contained) apply to the
-*frame around* the game even though we don't control the game's own input.
-`docs/RESPONSIVE-DESIGN.md` is the full layout/touch playbook; for a wrap it
-governs the chrome + frame, not the vendored game's internals:
-
-- **Both viewports.** The gate checks **no horizontal overflow at 360px** and a
-  desktop width; the `.wrapped-game-frame` fills the play area (70vh; 100vh in
-  full-screen). Confirm the game is actually playable at phone width, not just
-  non-overflowing — some ports assume a desktop canvas.
-- **Input honesty.** Declare the real input model in the meta (`keyboard`,
-  `pointer`, `touch`, `gamepad`). If a game is keyboard-only, **say so**
-  in the how-to — do not imply our tap-first floor. A game that needs a physical
-  keyboard is admissible but must be honest that it plays best with one.
-- **Focus + full-screen.** Input reaches the frame, but focus must return to our
-  chrome (Esc / the drawer toggle) — no focus trap. Full-screen must keep the
-  game mounted and legible. The gate asserts both.
-- **Keyboard focus — the sandboxed-iframe gotcha.** An **opaque-origin sandboxed
-  iframe never takes keyboard focus on its own.** Pointer events land on the game
-  canvas regardless of focus (so mouse/touch "just work"), but *key* events go to
-  the parent document and never reach the wrapped game — a keyboard game looks
-  dead to the keyboard while clicks flap fine. This bit Clumsy Bird: the space bar
-  did nothing until the frame was focused. Two layers fix it, and a keyboard wrap
-  needs both:
-  1. **Initial focus (shared, automatic).** `mountWrappedGame` focuses the frame
-     on its `load` event, so the keyboard works from the first key with no click.
-     Every wrap gets this for free; the containment gate asserts it
-     (`await expect(frame).toBeFocused()` after load, with no manual `focus()`).
-  2. **Re-grab on interaction (per-vendor).** If the player clicks our surrounding
-     chrome and then clicks back onto the game, only the frame can observe that
-     pointer event (the parent can't reach across the opaque origin), so the
-     vendored bundle must restore its own focus. Add a tiny script to the wrap's
-     `index.html`: `window.addEventListener("pointerdown", () => window.focus(),
-     true)` (also on `load` as a belt-and-braces). Record it as a `patches` entry.
-  Any remapped or added keys likewise belong in a recorded `index.html` patch —
-  Clumsy Bird wraps `me.input.bindKey` so the Up arrow mirrors the space bar.
-- **Size disclosure.** A heavy bundle (HexGL, ~17 MB) is allowed but its size
-  goes in `approxSizeKb` **and** in the how-to lede, up front, before the player
-  commits to the download.
-- **Our chrome stays accessible.** Tokens/WCAG-AA/axe apply to the banner and
-  surrounding chrome (the embedded game canvas is exempt).
+**If a wrap is ever wanted again, restore this from history rather than
+reinventing it.** It was ratified, it was applied four times, and the harness it
+produced worked.
 
 ## 10. Adversarial two-player games + the AI-player standard
 
@@ -802,8 +685,8 @@ equally specific about why determinism was not worth its price here.
 ### The inclusion filter (all must hold)
 
 1. **Ours.** We wrote the game. If it is someone else's game taken as-is, it is
-   Tier-2 and §9 governs it. A game we build *using* a third-party engine is
-   Tier-3; a game someone else built that we merely host is not.
+   not a game for this shelf at all — the tier that admitted third-party games
+   was retired (§9). A game we build *using* a third-party engine is Tier-3.
 2. **The engine is the only non-deterministic part.** Non-determinism is a
    property we accept in one named dependency, not a general licence to be loose.
    See "the data/sim line" below — it is the heart of this tier.
@@ -813,7 +696,9 @@ equally specific about why determinism was not worth its price here.
    code, so it follows the workspace dependency rule: **vendor it and add a CI
    drift check.** No CDN, no floating range, license recorded, size disclosed.
 5. **Honestly represented.** The shelf must not imply a verifiable record where
-   there is none — the same rule §9 imposes on wraps, and for the same reason.
+   there is none. This rule outlived the tier that first stated it (§9), and it
+   is the rule that made Orchard Drop's rebuild worth doing rather than papering
+   over.
 
 ### The sharing rule: inputs yes, outcomes never
 
@@ -831,7 +716,7 @@ result.
 
 Concretely: Emoji Wars sharing a level JSON is exactly right. Emoji Wars sharing
 "I beat this in 3 shots" as a verified claim is exactly the faked verifiable
-outcome §9 forbids. A *self-reported* score shown as self-reported is fine; the
+outcome the shelf forbids. A *self-reported* score shown as self-reported is fine; the
 lie is in the framing, not the number.
 
 ### The data/sim line (the load-bearing requirement)
@@ -876,7 +761,7 @@ a fixed scenario, assert future runs stay within a recorded tolerance.
 |---|---|
 | Determinism-first Rust core → wasm (§2) | **Split** — required on the data side; **N/A** on the sim side. The line must be explicit. |
 | Verifiable outcome / `pond-outcome` / `?r=` (§3) | **Replaced** by the sharing rule: inputs shareable, outcomes never presented as records |
-| Tap-first, core decides legality (§4) | **Required** — we wrote the input model, so we own it. (This is where Tier-3 is stricter than Tier-2, which is exempt.) |
+| Tap-first, core decides legality (§4) | **Required** — we wrote the input model, so we own it. |
 | Identity + tokens, WCAG AA, axe both themes (§5) | **Required**, fully — this is our own UI, not an embedded foreign canvas |
 | Standard settings (§6) | **Required** — again, ours |
 | How to play (§7) | **Required**, and it must state plainly that the game keeps **no verifiable record** |
@@ -887,41 +772,40 @@ a fixed scenario, assert future runs stay within a recorded tolerance.
 
 As of this section being written, **the code does not yet know Tier-3 exists**.
 The catalog contract in `src/contract.ts` is a discriminated union with a Tier-1
-variant (`tier?: 1`) and a Tier-2 variant (`tier: 2`), and nothing else — so
+single entry type with no `tier` discriminant at all — so
 `tier: 3` will not typecheck today. Two changes are needed when the first Tier-3
 game lands, and both are **test-first**, not speculative groundwork to do now:
 
 1. **A Tier-3 variant in `src/contract.ts`**, carrying the engine's provenance
-   (name, pinned version, license, `approxSizeKb`) the way the Tier-2 variant
-   carries the game's.
-2. **The honest-representation banner must fire for it.** `src/wrapped-banner.ts`
-   currently returns `null` unless `entry.tier === 2`. A Tier-3 game has no
-   verifiable record either, so shipping one without widening that check would
-   put an unmarked non-verifiable game on the shelf — the precise failure the
-   honesty rule exists to prevent. Widen the condition, do not add a second banner.
+   (name, pinned version, license, `approxSizeKb`).
+2. **An honest-representation banner must be written for it.** There used to be
+   one (`src/wrapped-banner.ts`, retired with Tier-2 on 2026-08-29 — it is in git
+   history and is worth reading before rewriting). A Tier-3 game has no
+   verifiable record, so shipping one without a banner would put an unmarked
+   non-verifiable game on the shelf — the precise failure the honesty rule exists
+   to prevent.
 
 Until both exist, this section is a **ratified standard with no implementation**.
-That is a normal state for this repo — §9 was written the same way — but it is
+That is a normal state for this repo — §9 was written the same way, before it
+was retired — but it is
 worth stating plainly so nobody reads the checklist, writes `tier: 3`, and
 concludes the docs are lying.
 
-### Tier-3 vs Tier-2 — the differences that bite
+### What Tier-3 owes, now that Tier-2 is gone
 
-Both give up the verifiable outcome, so they are easy to conflate. They are not alike:
+Tier-2 used to be the comparison: it bought safety with **containment**, because
+the code was not ours. Tier-3 has nothing to contain, and so owes the **full
+first-party standard** everywhere except the one property the engine denies it.
 
-| | Tier-2 wrap | Tier-3 original |
-|---|---|---|
-| Authorship | theirs, taken as-is | **ours** |
-| Runs in | sandboxed iframe (`allow-scripts`, no `allow-same-origin`) | **our page directly** — it is our code |
-| Containment harness (§9) | **required** | **N/A** — nothing foreign is executing |
-| Provenance artifact | `tier2.meta.json` (the *game's* provenance) | **the engine's** provenance: pin, license, size, drift check |
-| Tap-first (§4) | exempt (native input, documented) | **required** |
-| Standard settings (§6) | exempt | **required** |
-| Accessibility | our chrome only; embedded canvas exempt | **whole surface** |
-
-The short version: Tier-2 buys safety with **containment**, because the code is
-not ours. Tier-3 has nothing to contain and instead owes the **full first-party
-standard** everywhere except the one property the engine denies it.
+| | Tier-3 original |
+|---|---|
+| Authorship | **ours** |
+| Runs in | **our page directly** — it is our code |
+| Containment harness | **N/A** — nothing foreign is executing |
+| Provenance artifact | **the engine's**: pin, license, size, drift check |
+| Tap-first (§4) | **required** |
+| Standard settings (§6) | **required** |
+| Accessibility | **whole surface** |
 
 ## New-game checklist (Tier-3 engine-backed original — see §11)
 
@@ -932,17 +816,6 @@ standard** everywhere except the one property the engine denies it.
 - [ ] Sharing carries **inputs only** (level/seed/challenge). No outcome is presented as a verified record; any self-reported number is shown as self-reported.
 - [ ] Tap-first honoured (§4); standard settings wired (§6); tokens + WCAG AA + axe clean in both themes across the **whole** surface (§5).
 - [ ] "How to play" guide states plainly there is **no verifiable record**; `guide:shots` + sync tests; header link (§7).
-- [ ] `GameModule` mounts; registry `tier: 3` + `status`; own `/<id>/` URL with a wiring test (§1). **First Tier-3 game only:** widen `src/contract.ts` and the `wrapped-banner.ts` tier check first, test-first — see "What admitting the first Tier-3 game requires in code".
+- [ ] `GameModule` mounts; registry `tier: 3` + `status`; own `/<id>/` URL with a wiring test (§1). **First Tier-3 game only:** add a `tier` discriminant to `src/contract.ts` and write the honest-representation banner first, test-first — see "What admitting the first Tier-3 game requires in code".
 - [ ] Engine bundle size disclosed; no runtime third-party fetch, no CDN.
 - [ ] Full gate green (`npm run gate`) and deployed.
-
-## New-game checklist (Tier-2 wrap — see §9)
-
-- [ ] Passes the inclusion filter (client-side/static, non-extractive, redistribution-licensed, fits our chrome, honestly represented).
-- [ ] Bundle **vendored** under `src/games/<id>/vendor/` (license verbatim); no runtime third-party fetch; each modification recorded as a patch.
-- [ ] `src/games/<id>/tier2.meta.json` complete (provenance + posture + patches); `parseTier2Meta` passes; registry `attribution` matches the meta's `provenance`.
-- [ ] Any extractive code (analytics/ads) stripped; copyleft source-offer recorded if applicable.
-- [ ] `GameModule` mounts via `mountWrappedGame` (sandbox `allow-scripts`, no `allow-same-origin`); registry `tier: 2` + `status: "playable"`; own `/<id>/` URL.
-- [ ] Honest-representation banner shows on the game page; our surrounding chrome is WCAG AA + axe clean.
-- [ ] "How to play" guide (pure data) states plainly there is **no verifiable record**; `guide:shots` + sync tests; header link.
-- [ ] `tests/tier2-containment.spec.ts` green for the game (containment + legibility + interaction) on both engines; full gate green and deployed.
