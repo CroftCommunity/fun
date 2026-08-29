@@ -72,9 +72,18 @@ for (const skin of ALL_SKINS) {
 // --- every game's entry state, under every skin -------------------------------
 const PLAYABLE = REGISTRY.filter((g) => g.status === "playable").map((g) => g.id);
 
-for (const skin of ALL_SKINS) {
-  test(`${skin}: every game's entry state is clean`, async ({ page }) => {
-    for (const id of PLAYABLE) {
+// ONE TEST PER GAME, not one per skin. Same coverage — every playable game under
+// every skin — regrouped along the axis that is useful when it breaks.
+//
+// As one test per skin, the whole shelf ran inside a single 30s budget: 9.1s
+// locally on mobile-webkit, and past 30s on a CI runner, which kept `main` red
+// and the site unpublished. Per game it is four scans a test, it parallelises
+// across workers instead of four ways, and a failure names the GAME — which is
+// the axis an axe violation actually belongs to, since the skins are shared
+// chrome and the boards are not.
+for (const id of PLAYABLE) {
+  test(`${id}: entry state is clean under every skin`, async ({ page }) => {
+    for (const skin of ALL_SKINS) {
       await withSkin(page, skin);
       await page.goto(`/${id}/`);
       await expect(page.locator("#play-area")).toBeVisible();
