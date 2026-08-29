@@ -4,6 +4,8 @@
 
 import { renderGuide } from "./how-to.js";
 import { findGuide } from "./how-to-registry.js";
+import { displayName } from "./contract.js";
+import { REGISTRY } from "./registry.js";
 import { applySkin, currentSkin, isDark, siblingOf, togglePalette } from "./skins.js";
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -53,8 +55,14 @@ themeBtn.addEventListener("click", () => {
 header.append(back, themeBtn);
 
 const main = el("main", { class: "play-area" });
+const entry = REGISTRY.find((g) => g.id === gameId);
 if (guide) {
-  document.title = `Croft · fun — ${guide.title}`;
+  // This page has room for the whole name where a 360px tile does not, so it is
+  // the surface that shows it. Composed via displayName, never concatenated
+  // here — see src/contract.ts.
+  const full = entry ? displayName(entry) : undefined;
+  document.title = `Croft · fun — ${full ?? guide.title}`;
+  if (entry?.subtitle) main.append(el("p", { class: "how-to-fullname" }, full!));
   main.append(renderGuide(guide));
 } else {
   main.append(

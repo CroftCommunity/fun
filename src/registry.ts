@@ -29,7 +29,7 @@ export const REGISTRY: readonly GameEntry[] = [
     load: placeholderModule,
   },
   { id: "solitaire", title: "Solitaire", emoji: "♠", status: "playable", icon: true, load: solitaireModule },
-  { id: "trio-tumble", title: "Trio Tumble", emoji: "💎", status: "playable", icon: true, load: trioTumbleModule },
+  { id: "trio-tumble", title: "Trio Tumble", subtitle: "Jewel Drop", emoji: "💎", status: "playable", icon: true, load: trioTumbleModule },
   { id: "bubble", title: "Bubble", emoji: "🫧", status: "playable", icon: true, load: bubbleModule },
   { id: "wyrdle", title: "Wyrdle", emoji: "🐉", status: "playable", icon: true, load: wyrdleModule },
   { id: "2048", title: "2048", emoji: "🔢", status: "playable", icon: true, load: twenty48Module },

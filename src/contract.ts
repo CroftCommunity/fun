@@ -41,6 +41,17 @@ export interface GameAttribution {
 interface BaseGameEntry {
   readonly id: string;
   readonly title: string;
+  /**
+   * The rest of the game's name, for the surfaces that have room for it.
+   *
+   * Tiles and the drawer show `title` alone. `.home-tile-title` has no
+   * truncation or clamp and the shelf's floor is 360px, so a title much past
+   * the shipped maximum ("Dots and Boxes", 14 chars) wraps. Trio Tumble's full
+   * name is "Trio Tumble: Jewel Drop" — 23 — so it is split here rather than
+   * given clamp CSS no other game needs. Compose with {@link displayName};
+   * never concatenate by hand, or the surfaces drift.
+   */
+  readonly subtitle?: string;
   /** Fallback glyph, shown where a game has no icon art yet. */
   readonly emoji: string;
   readonly status: "playable" | "soon";
@@ -82,3 +93,15 @@ export interface Tier2GameEntry extends BaseGameEntry {
 
 /** A catalog entry describing a game and how to load it. */
 export type GameEntry = Tier1GameEntry | Tier2GameEntry;
+
+/**
+ * The game's whole name: `title`, plus `subtitle` after a colon when it has one.
+ *
+ * Use this on surfaces with room — the how-to page, the browser tab. Tiles and
+ * the drawer stay on `title` alone. A blank or whitespace-only subtitle yields
+ * the bare title rather than a dangling colon.
+ */
+export function displayName(entry: Pick<GameEntry, "title" | "subtitle">): string {
+  const sub = entry.subtitle?.trim();
+  return sub ? `${entry.title}: ${sub}` : entry.title;
+}

@@ -39,9 +39,10 @@ The originals are **not in this repo** — they live in `~/Downloads/fun_images/
 been separated out of the images folder. `brand/` holds derived, web-sized copies
 only, ~3.4 MB total:
 
-- `brand/icon/` — 512² JPEGs. Seven come straight from square 2048² sources; the
-  2048, Trio Tumble and Align icons are cropped out of portrait/landscape sources,
-  because the `_icon` / `_splash` filenames do not match the actual aspect ratios.
+- `brand/icon/` — 512² JPEGs. Most come straight from square sources; the 2048 and
+  Align icons are cropped out of portrait/landscape sources, because the `_icon` /
+  `_splash` filenames do not match the actual aspect ratios. Trio Tumble's was
+  re-shot square (1024²) with the 2026-08-28 rename art, so it is no longer cropped.
 - `brand/splash/` — 1200px-tall portrait JPEGs.
 - `brand/wide/` — the three landscape sources.
 - `brand/audio/` — four tracks at 96 kbps via `afconvert` + `lame` (the installed
