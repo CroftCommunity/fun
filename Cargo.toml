@@ -32,6 +32,7 @@ members = [
     "crates/solitaire-core",
     "crates/pond-docformat",
     "crates/pond-physics",
+    "crates/orchard-core",
     "crates/pond-outcome",
     "crates/trio-tumble-wasm",
     "crates/solitaire-wasm",
@@ -91,6 +92,7 @@ solitaire-core = { path = "crates/solitaire-core" }
 pond-docformat = { path = "crates/pond-docformat" }
 pond-outcome = { path = "crates/pond-outcome" }
 pond-physics = { path = "crates/pond-physics" }
+orchard-core = { path = "crates/orchard-core" }
 checkers-core = { path = "crates/checkers-core" }
 adversary-solver = { path = "crates/adversary-solver" }
 checkers-solver = { path = "crates/checkers-solver" }

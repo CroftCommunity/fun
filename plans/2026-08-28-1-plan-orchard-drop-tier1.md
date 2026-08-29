@@ -900,6 +900,67 @@ position in any plan.
 
 ## Review Log
 
+### Phase 2 execution — 2026-08-28 · `crates/orchard-core`
+
+**Done.** 72 tests + 6 vector tests, five golden vectors, `RULES.md`, a daily pack with no solver.
+The wiring test the phase existed for — `a_recorded_run_replays_to_the_same_hash` — passes, which
+is the moment `pond-physics` stopped being dead code.
+
+**Design decisions that were not in the plan:**
+
+- **The merge tie-break is a pure function** (`merge::resolve`) over `(contacts, id→tier)` rather
+  than logic inside the game loop. It is the subtlest requirement in the game, and buried in the
+  loop it would have been testable only by contriving a physical arrangement of three touching
+  fruit. As a function, the nine cases are direct — three in a row, two disjoint pairs, a chain of
+  four collapsing to two merges, a contact naming an already-removed body. It **deliberately does
+  not re-sort** the contact list: `pond-physics` supplies a canonical order, and a second sort here
+  would be a second opinion that diverges the first time either changes.
+- **`Move::Wait` was added to the move vocabulary.** A drop list alone cannot say *when a run
+  ended*, and in a physics game the end tick changes the final positions. Letting replay guess
+  would make an abandoned run replay to a state the player never saw.
+- **The wall-clock rounding is a rule, recorded in `RULES.md`:** 520 ms → 33 ticks, 1200 → 77,
+  900 → 58. Every rounding goes the way that favours the player. That is a choice, and writing it
+  down is what keeps it one.
+- **`won` = a watermelon was grown** (`max_tier >= 10`), the milestone the wrap's end screen
+  already celebrates — resolving the Pass 2 question without inventing a condition.
+
+**Two tests were wrong about the game, and the game was right both times:** forty drops down one
+column overflow the crate long before forty (the run ending is correct), and merging two cherries
+creates tier **one**, not tier five, so a merge cannot be detected by `max_tier > 4`.
+
+**Mutation audit, three rounds**, committing the green state before each.
+
+| round | mutants | missed |
+|---|---|---|
+| 1 | 122 | **22** |
+| 2 | 127 | **3** |
+| 3 | 130 | **0** (124 caught, 5 unviable, 1 timeout — a kill) |
+
+`merge.rs` had **zero survivors in every round**: the rule the game's reproducibility rests on is
+genuinely pinned, not merely covered.
+
+The two findings worth carrying forward:
+
+- **The daily pack had no golden vector, and its tests could not have noticed.** Ten survivors sat
+  inside `splitmix64` and the Fisher-Yates modulus, because every property the tests asserted — no
+  repeats, not sequential, regenerates identically, every daily playable — is satisfied by *any*
+  decent scrambler. The tests looked thorough and pinned nothing about the schedule people would
+  actually play. Fixed with recorded seeds derived from an **independent Python reimplementation**
+  rather than printed from the Rust: a vector copied from the thing it checks pins only that the
+  code has not changed; one derived separately pins that it is right. They agreed.
+- **A test I wrote to close a survivor did not close it, and I had said it would.** The claim was
+  that shifting a whole run 500 ticks distinguishes `tick + GRACE` from `tick * GRACE`. It does
+  not: game-over is driven by *merged* fruit, which carry no grace by design, so a dropped fruit's
+  deadline can be absurd and the run still ends on the same tick. A mechanism that fit the evidence
+  without being it. The rules are now pinned as functions, and **each mutation was re-applied by
+  hand to watch the new tests fail** — because a test written to close a survivor is worth nothing
+  until it has been seen to fail against that survivor, which is the same mistake one level up.
+
+Five policies were extracted during the audit for the same reason each time: mutation could reach
+them and play could not. `merge_award` (two watermelons popping needs a run that climbs the whole
+ladder twice), `is_above_line` (its boundary is one exact position), `counts_from_after_drop`,
+`is_counting`, and `TOP` (derived from `TIERS` and never checked).
+
 ### Phase 1 execution — 2026-08-28 · `crates/pond-physics`
 
 **Done.** 42 tests, five golden vectors, `RULES.md`, gate green through

@@ -1,0 +1,22 @@
+[package]
+name = "orchard-core"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Deterministic, headless Orchard Drop engine. An eleven-tier fruit-merge ladder over pond-physics: drops are (tick, x) pairs, merges resolve by a canonical contact order, and scoring, the drop cooldown and the game-over dwell are all counted in ticks. Implements pond_outcome::Game, so a run replays from (seed, moves) exactly and native==wasm. No floats on the hashed path, no network."
+
+[lints]
+workspace = true
+
+[dependencies]
+pond-physics.workspace = true
+pond-outcome.workspace = true
+serde = { workspace = true }
+sha2.workspace = true
+hex.workspace = true
+rand.workspace = true
+rand_chacha.workspace = true
+
+[dev-dependencies]
+pond-docformat.workspace = true
