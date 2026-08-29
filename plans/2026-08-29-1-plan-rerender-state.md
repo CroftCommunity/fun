@@ -1,6 +1,8 @@
 # Plan — a re-render must not discard what the player did
 
-**Status:** Phase 0 complete (survey + decisions). Phases 1–5 not started.
+**Status:** Phases 0–4 COMPLETE (2026-08-29). Phase 5 (gate + land) in progress.
+Worktree moved to `worktrees/rerender-state/fun` when the feature-workspace layout
+landed mid-flight (`CroftC` 4d472bd).
 
 Branch `claude/rerender-state`; claim `CroftC/.coordination/claims/fun--rerender-state.md`.
 Owner asked for both halves in one pass, TDD first.
@@ -127,8 +129,16 @@ Measured on `224e976` before writing this.
   furrow:417.
 - Thirteen games build a `sol-settings` `<details>`; fourteen call
   `container.replaceChildren`.
-- All four adversarial games write tutor output DOM-only: `optionsEl.replaceChildren(…)`
-  with no `tutorReport`-shaped variable in any of them (`grep -cE 'let (tutorReport|lastReport|tutorState)'` → 0, 0, 0, 0).
+- ~~All four adversarial games write tutor output DOM-only.~~ **WRONG — corrected in
+  Phase 4.** Three of them do. **Furrow already holds its reading in `tutorView`, keyed by
+  `game.currentHash()`, and repaints it** — it shipped last and had already solved this.
+  The check that produced the false claim was
+  `grep -cE 'let (tutorReport|lastReport|tutorState)'`, which searched for the three names
+  I expected rather than for the behaviour, and returned 0 for a file that implements it
+  under a fourth name. A grep for invented identifiers confirms your vocabulary, not the
+  code. The fix became "bring furrow's solution back to the other three", and dots now
+  keys on `currentHash()` the way furrow already did rather than the board serialisation
+  I had written for it.
 - `coachMsg` in dots is already a variable and is already re-applied on rebuild
   (`if (coachMsg) coach.textContent = coachMsg;`) — the precedent this follows.
 
@@ -153,6 +163,23 @@ RED first in every phase; each ends green with its own commit.
 - **Phase 5 — land.** Full `npm run gate`, then CI must show **both** e2e legs green and
   `deploy` no longer skipped — the point of the exercise is a published site, so the
   evidence is the deploy, not the local gate.
+
+## What execution changed
+
+- **The bug was never mobile-webkit's.** The Phase 1 test failed on **both** engines the
+  moment it was deterministic. CI only ever caught it under mobile-webkit because that is
+  where the WebGPU probe resolved late enough to land mid-interaction; chromium carried the
+  same defect and never tripped over it.
+- **A RED test that passes is worse than no test, and I wrote one.** The first version of
+  the dots tutor test toggled *Declare assistance* — which writes a setting and does not
+  re-render — so it passed against the unfixed code. It only became a real test once it
+  used a toggle that actually calls `render()`, and then it failed as it should:
+  `Expected: 6, Received: 0`.
+- **Every test here was mutation-verified**, because three of the seven were written after
+  the fix rather than before it. Disabling `restoreUiState` in the three sibling games
+  turned all six panel tests red; disabling the tutor repaint turned all six tutor tests
+  red, furrow's included. Each round committed first and restored with
+  `git checkout HEAD --` against a `git status --porcelain` checked at that moment.
 
 ## Risks
 
