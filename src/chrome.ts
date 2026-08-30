@@ -268,9 +268,15 @@ export function boot(root: HTMLElement = document.body): Chrome {
   function repaintHome(): void {
     if (gameId) return;
     playArea.replaceChildren();
+    const now = new Date();
+    const progress = Object.fromEntries(
+      REGISTRY.filter((g) => g.status === "playable")
+        .map((g) => [g.id, readProgress(g.id, now)] as const)
+        .filter((pair): pair is readonly [string, Progress] => pair[1] !== null),
+    );
     renderHome(
       playArea,
-      buildShelfModel({ games: REGISTRY, state: readShelfState(), now: new Date() }),
+      buildShelfModel({ games: REGISTRY, state: readShelfState(), now, progress }),
       resolveLayout(readStored(LAYOUT_KEY), prefersLayoutFor(currentSkin())),
     );
   }

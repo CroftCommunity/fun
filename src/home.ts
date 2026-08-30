@@ -57,10 +57,11 @@ function renderTodayFirst(root: HTMLElement, model: ShelfModel): void {
   if (model.resume) {
     const card = el("a", { href: `/${model.resume.id}/`, class: "home-resume" });
     card.append(
-      el("span", { class: "home-eyebrow" }, "Jump back in"),
+      el("span", { class: "home-eyebrow" }, model.resume.line ? "Continue" : "Jump back in"),
       el("b", {}, model.resume.title),
-      el("span", { class: "home-cta" }, "Play"),
     );
+    if (model.resume.line) card.append(el("span", { class: "home-resume-line" }, model.resume.line));
+    card.append(el("span", { class: "home-cta" }, model.resume.line ? "Continue" : "Play"));
     root.append(card);
   }
 
@@ -104,7 +105,11 @@ function renderTodayFirst(root: HTMLElement, model: ShelfModel): void {
 function renderShelf(root: HTMLElement, model: ShelfModel): void {
   if (model.resume) {
     const card = el("a", { href: `/${model.resume.id}/`, class: "home-resume is-quiet" });
-    card.append(el("span", { class: "home-eyebrow" }, "Last played"), el("b", {}, model.resume.title));
+    card.append(
+      el("span", { class: "home-eyebrow" }, model.resume.line ? "Continue" : "Last played"),
+      el("b", {}, model.resume.title),
+    );
+    if (model.resume.line) card.append(el("span", { class: "home-resume-line" }, model.resume.line));
     root.append(card);
   }
 

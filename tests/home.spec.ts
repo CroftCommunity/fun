@@ -81,3 +81,28 @@ for (const layout of ["today-first", "shelf"] as const) {
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   });
 }
+
+test("home's Continue shows where you were, from the progress store", { tag: "@smoke" }, async ({ page }) => {
+  // Seeded, because no listed game snapshots yet (the placeholder does, but the home
+  // page does not list it). The record is what Phase 6's Othello will write.
+  await page.addInitScript(() => {
+    if (localStorage.getItem("fun-progress-othello") !== null || sessionStorage.getItem("seeded")) return;
+    sessionStorage.setItem("seeded", "1");
+    const now = new Date().toISOString();
+    localStorage.setItem(
+      "fun-progress-othello",
+      JSON.stringify({ v: 1, status: "in-progress", startedAt: now, updatedAt: now, setup: { mode: "free" }, record: {}, summary: { line: "Move 14 · you lead 9–4" } }),
+    );
+  });
+  await page.goto("/");
+  const card = page.locator(".home-resume");
+  await expect(card).toContainText("Othello");
+  await expect(card.locator(".home-resume-line")).toHaveText("Move 14 · you lead 9–4");
+  // New game from the continue card clears the store; home falls back to "last played"
+  await page.goto("/othello/");
+  await page.locator(".gf-continue .gf-newgame").click();
+  await expect(page.locator(".gf-poster")).toBeVisible();
+  await page.goto("/");
+  await expect(page.locator(".home-resume")).toContainText("Othello");
+  await expect(page.locator(".home-resume-line")).toHaveCount(0);
+});

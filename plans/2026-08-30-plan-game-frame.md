@@ -8,7 +8,7 @@ parameters does once every bare URL opens on a start screen) gates Phase 5** and
 thing between this plan and execution: Phases 0–4 may start now. D5 was resolved during
 planning (read-only, see Verified Assumptions) and is struck from Phase 0. Phases 1, 2, 3
 and 5 carry sub-phases (1a/1b, 2a/2b, 3a/3b, 5a/5b) — each with its own Done-when and
-wiring test — because each touched four or more files. Phases 0–4 COMPLETE (2026-08-30). Mocks
+wiring test — because each touched four or more files. Phases 0–5 COMPLETE (2026-08-30). Mocks
 landed on `main` (`mocks/d-game-frame.html`, PR #45, `6c4dd9c`); owner decisions D1–D5
 recorded.
 
@@ -1104,6 +1104,18 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
    it changes one test case either way.*
 
 ## Review Log
+
+### Phase 5b — executed 2026-08-30
+- RED first (2 model cases), then green: `buildShelfModel` takes `progress` (validated
+  records by id); an in-progress record for a registered game wins (newest `updatedAt`
+  when several) with its `line`; a finished record is not Continue material; a stale key
+  for an unregistered game is ignored; no record → the last-opened game, no line. The
+  home card reads "Continue" + the line in both layouts. `noteOpened` still fires at
+  land (the recorded decision). The browser spec seeds an Othello record because no
+  listed game snapshots yet and the placeholder is unlisted by design — Phase 6 makes
+  the seed real.
+- Green: unit 210 (shelf + chrome + tokens), `tests/home.spec.ts` 18/18 both engines,
+  `npm run smoke` 53/53, typecheck, lint.
 
 ### Phase 5a — executed 2026-08-30
 - RED first: 7 jsdom cases in `tests/chrome.test.ts` (poster on a bare URL, Play mounts +

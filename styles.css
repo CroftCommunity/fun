@@ -4693,6 +4693,10 @@ body.fullscreen .le-stage {
   color: var(--ink);
   text-decoration: none;
 }
+.home-resume-line {
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+}
 .home-resume b {
   flex: 1;
   font-family: var(--font-display);

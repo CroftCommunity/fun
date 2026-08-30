@@ -14,6 +14,7 @@
 //! Adding that means adding a progress store first, deliberately.
 
 import type { GameEntry } from "./contract.js";
+import type { Progress } from "./progress.js";
 import { FAMILIES, SKINS } from "./skins.js";
 
 // ---------------------------------------------------------------------------
@@ -112,8 +113,12 @@ export interface TodayEntry {
 
 /** What the home page renders, in whichever layout. */
 export interface ShelfModel {
-  /** The game you most recently opened, if any. Carries no progress — see the module note. */
-  readonly resume?: { readonly id: string; readonly title: string };
+  /**
+   * What Continue points at. An unfinished game from the progress store wins,
+   * with its summary `line`; otherwise the game most recently opened, without one
+   * (plan Phase 5b — the store exists now; the module note above is history).
+   */
+  readonly resume?: { readonly id: string; readonly title: string; readonly line?: string };
   readonly today: readonly TodayEntry[];
   readonly groups: readonly ShelfGroup[];
 }
@@ -123,6 +128,8 @@ export interface ShelfDeps {
   readonly games: readonly GameEntry[];
   readonly state: ShelfState;
   readonly now: Date;
+  /** The progress store's records by game id, already validated (`readProgress`). */
+  readonly progress?: Readonly<Record<string, Progress>>;
 }
 
 /** Games that ship a daily pack (`games/<id>/daily-pack.json`). */
@@ -132,15 +139,26 @@ const DAILY = new Set(["solitaire", "wyrdle", "2048", "bubble", "align", "blockd
 const UNLISTED = new Set(["placeholder"]);
 
 /** Build the model both layouts consume. Pure. */
-export function buildShelfModel({ games, state, now }: ShelfDeps): ShelfModel {
+export function buildShelfModel({ games, state, now, progress = {} }: ShelfDeps): ShelfModel {
   // `placeholder` exists to exercise the chrome. It was item #1 in the drawer
   // and led the shelf; a dev artifact is not the first thing a player should
   // meet. Still reachable at /placeholder/ and still in the drawer.
   const playable = games.filter((g) => g.status === "playable" && !UNLISTED.has(g.id));
   const byId = new Map(playable.map((g) => [g.id, g]));
 
+  // Continue: the unfinished game the store holds (newest first when several),
+  // else the last one opened. A finished record is not Continue material, and a
+  // key for a game no longer in the registry is a stale key, ignored.
+  const unfinished = Object.entries(progress)
+    .filter(([id, p]) => byId.has(id) && p.status === "in-progress")
+    .sort((a, b) => (a[1].updatedAt < b[1].updatedAt ? 1 : a[1].updatedAt > b[1].updatedAt ? -1 : 0))[0];
   const lastId = recentFirst(state).find((id) => byId.has(id));
   const last = lastId === undefined ? undefined : byId.get(lastId);
+  const resume = unfinished
+    ? { id: unfinished[0], title: byId.get(unfinished[0])!.title, line: unfinished[1].summary.line }
+    : last
+      ? { id: last.id, title: last.title }
+      : undefined;
 
   const dailyFlag = (g: GameEntry): boolean =>
     (g as { daily?: boolean }).daily ?? DAILY.has(g.id);
@@ -152,7 +170,7 @@ export function buildShelfModel({ games, state, now }: ShelfDeps): ShelfModel {
   }
 
   return {
-    ...(last ? { resume: { id: last.id, title: last.title } } : {}),
+    ...(resume ? { resume } : {}),
     today: playable.filter(dailyFlag).map((g) => ({
       id: g.id,
       title: g.title,
