@@ -69,7 +69,7 @@ test("the open drawer scrolls its own content instead of the background page", a
 test("a game page mounts the module; full-screen preserves the same instance", async ({
   page,
 }) => {
-  await page.goto("/placeholder/");
+  await page.goto("/placeholder/?play=1");
   const game = page.locator(".placeholder-game");
   await expect(game).toBeVisible();
   await expect(game).toHaveAttribute("data-mount-count", "1");
@@ -84,7 +84,7 @@ test("a game page mounts the module; full-screen preserves the same instance", a
 test("a game page loads standalone at its own URL", async ({ page }) => {
   // Loading /placeholder/ directly (new-tab / shared link) mounts with no
   // dependency on having navigated through the drawer.
-  await page.goto("/placeholder/");
+  await page.goto("/placeholder/?play=1");
   await expect(page.locator(".placeholder-game")).toBeVisible();
 });
 

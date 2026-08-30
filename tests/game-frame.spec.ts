@@ -20,7 +20,7 @@ const top = async (page: Page, sel: string): Promise<number> => {
 };
 
 test("the placeholder mounts inside a frame", { tag: "@smoke" }, async ({ page }) => {
-  await page.goto("/placeholder/");
+  await page.goto("/placeholder/?play=1");
   await ready(page);
   await expect(page.locator(".gf-game-bar .gf-title")).toHaveText("Placeholder");
   // the placeholder's one verb, plus the frame's own Settings
@@ -30,7 +30,7 @@ test("the placeholder mounts inside a frame", { tag: "@smoke" }, async ({ page }
 
 test("the bands are the reserved heights, to the pixel, on a phone", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/placeholder/");
+  await page.goto("/placeholder/?play=1");
   await ready(page);
   const h = async (sel: string): Promise<number> => (await page.locator(sel).boundingBox())!.height;
   expect(await h(".gf-game-bar")).toBe(48);
@@ -40,7 +40,7 @@ test("the bands are the reserved heights, to the pixel, on a phone", async ({ pa
 
 test("pressing a verb that changes a meter moves the stage by zero pixels", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/placeholder/");
+  await page.goto("/placeholder/?play=1");
   await ready(page);
   const before = await top(page, ".gf-stage");
   const gameBefore = await top(page, ".placeholder-game");
@@ -58,7 +58,7 @@ test("the shelf header is one row on every game page at 390px", { tag: "@smoke" 
   await page.setViewportSize({ width: 390, height: 844 });
   const tall: string[] = [];
   for (const id of PLAYABLE) {
-    await page.goto(`/${id}/`);
+    await page.goto(`/${id}/?play=1`);
     await expect(page.locator(".gf-game-bar")).toBeVisible();
     const h = (await page.locator(".chrome-header").boundingBox())!.height;
     // One row is 64px plus a hairline (64.19 measured); two rows were 110 on every
@@ -70,7 +70,7 @@ test("the shelf header is one row on every game page at 390px", { tag: "@smoke" 
 });
 
 test("the game bar's ⋯ menu holds How to play and open-in-new-tab, and behaves like a menu", async ({ page }) => {
-  await page.goto("/othello/");
+  await page.goto("/othello/?play=1");
   const more = page.locator(".gf-more");
   const menu = page.locator(".gf-menu");
   await expect(more).toHaveAttribute("aria-expanded", "false");
@@ -108,7 +108,7 @@ test("a game page's title is the game's display name", { tag: "@smoke" }, async 
 
 test("at 1000 wide the frame is a rail beside the board; at 899 it is a dock under it", async ({ page }) => {
   await page.setViewportSize({ width: 1000, height: 680 });
-  await page.goto("/placeholder/");
+  await page.goto("/placeholder/?play=1");
   await ready(page);
   await expect(page.locator(".gf")).toHaveAttribute("data-gf-shape", "rail");
   const stage = (await page.locator(".gf-stage").boundingBox())!;
@@ -128,7 +128,7 @@ test("at 1000 wide the frame is a rail beside the board; at 899 it is a dock und
 
 test("on a phone Settings opens a bottom sheet dialog; Escape and the scrim close it and return focus", { tag: "@smoke" }, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/placeholder/");
+  await page.goto("/placeholder/?play=1");
   await ready(page);
   const settings = page.locator('.gf-verb[data-verb="settings"]');
   await settings.click();
@@ -153,7 +153,7 @@ test("on a phone Settings opens a bottom sheet dialog; Escape and the scrim clos
 
 test("on desktop the same rows are inline in the rail and no scrim exists", { tag: "@smoke" }, async ({ page }) => {
   await page.setViewportSize({ width: 1000, height: 680 });
-  await page.goto("/placeholder/");
+  await page.goto("/placeholder/?play=1");
   await ready(page);
   await expect(page.locator('.gf-extra [data-setting="hints"]')).toBeVisible();
   await expect(page.locator('.gf-extra [data-setting="declare-assistance"]')).toBeVisible();
@@ -169,7 +169,7 @@ test("on desktop the same rows are inline in the rail and no scrim exists", { ta
 test("the mirror preference puts the rail left of the board and reverses the dock, live from the sheet", { tag: "@smoke" }, async ({ page }) => {
   // desktop: rail right by default, left with the preference on
   await page.setViewportSize({ width: 1000, height: 680 });
-  await page.goto("/placeholder/");
+  await page.goto("/placeholder/?play=1");
   await ready(page);
   const railX = async (): Promise<number> => (await page.locator(".gf-dock").boundingBox())!.x;
   const stageX = async (): Promise<number> => (await page.locator(".gf-stage").boundingBox())!.x;
@@ -190,4 +190,78 @@ test("the mirror preference puts the rail left of the board and reverses the doc
   await page.locator('.gf-verb[data-verb="settings"]').click();
   await page.locator('.gf-sheet [data-setting="controls-left"] .sheet-toggle-input').click({ force: true });
   await expect(page.locator(".gf")).toHaveAttribute("data-gf-side", "right");
+});
+
+// --- Phase 5a: the start screen ---
+
+test("a bare game URL opens on the poster; Play mounts the board without moving the stage", { tag: "@smoke" }, async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/placeholder/");
+  const poster = page.locator(".gf-poster");
+  await expect(poster).toBeVisible();
+  await expect(poster.locator("img")).toHaveAttribute("src", "/placeholder/assets/splash.jpg");
+  await expect(poster.locator(".gf-start-title")).toHaveText("Placeholder");
+  await expect(page.locator(".placeholder-game")).toHaveCount(0);
+  // The poster covers the whole frame (the bands under it are declared at mount),
+  // so the transition is poster → laid-out board; from first paint on, the stage
+  // does not move.
+  await poster.locator(".gf-play").click();
+  await expect(poster).toBeHidden();
+  await ready(page);
+  const stageTop = await top(page, ".gf-stage");
+  await page.locator('.gf-verb[data-verb="poke"]').click();
+  await expect(page.locator(".gf-stat-value")).toHaveText("1");
+  expect(await top(page, ".gf-stage")).toBe(stageTop);
+  expect(await page.evaluate(() => localStorage.getItem("fun-progress-placeholder"))).not.toBeNull();
+});
+
+test("leaving mid-game and coming back shows the continue card, and Continue restores the game", { tag: "@smoke" }, async ({ page }) => {
+  await page.goto("/placeholder/");
+  await page.locator(".gf-poster .gf-play").click();
+  await ready(page);
+  await page.locator('.gf-verb[data-verb="poke"]').click();
+  await page.locator('.gf-verb[data-verb="poke"]').click();
+  await expect(page.locator(".gf-stat-value")).toHaveText("2");
+  await page.reload();
+  const card = page.locator(".gf-continue");
+  await expect(card).toBeVisible();
+  await expect(card.locator(".gf-start-line")).toHaveText("2 pokes");
+  await expect(card.locator("img")).toHaveAttribute("src", "/placeholder/assets/icon.jpg");
+  await card.locator(".gf-continue-btn").click();
+  await ready(page);
+  await expect(page.locator(".gf-stat-value")).toHaveText("2"); // the card's number and the board's agree
+  // New game from the board's own verb is the game's business; from the card it clears the store
+  await page.reload();
+  await page.locator(".gf-continue .gf-newgame").click();
+  await expect(page.locator(".gf-poster")).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem("fun-progress-placeholder"))).toBeNull();
+});
+
+test("?r= and any other query is a deep link — no poster, the board mounts", async ({ page }) => {
+  for (const q of ["?r=x", "?seed=7", "?fast=1"]) {
+    await page.goto(`/placeholder/${q}`);
+    await ready(page);
+    await expect(page.locator(".gf-poster")).toHaveCount(0);
+    await expect(page.locator(".gf-continue")).toHaveCount(0);
+  }
+});
+
+test("storage denied → the poster, no error", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("console", (m) => {
+    if (m.type() === "error") errors.push(m.text());
+  });
+  await page.addInitScript(() => {
+    const deny = (): never => {
+      throw new Error("denied");
+    };
+    Object.defineProperty(window, "localStorage", {
+      value: { getItem: deny, setItem: deny, removeItem: deny, clear: deny, key: deny, length: 0 },
+    });
+  });
+  await page.goto("/placeholder/");
+  await expect(page.locator(".gf-poster")).toBeVisible();
+  await page.locator(".gf-poster .gf-play").click();
+  await ready(page);
+  expect(errors).toEqual([]);
 });

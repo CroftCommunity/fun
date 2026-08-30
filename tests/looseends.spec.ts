@@ -23,7 +23,7 @@ const board = (page: Page): Promise<{ arrows: { present: boolean; free: boolean 
   });
 
 test("mounts at its own URL and shows the home screen", async ({ page }) => {
-  await page.goto("/looseends/");
+  await page.goto("/looseends/?play=1");
   await ready(page);
   await expect(page.locator(".le-home")).toBeVisible();
   await expect(page.locator(".le-logo")).toContainText(/loose ends/i);
@@ -31,7 +31,7 @@ test("mounts at its own URL and shows the home screen", async ({ page }) => {
 });
 
 test("a level renders the canvas board, HUD, droplets, and hint", { tag: "@smoke" }, async ({ page }) => {
-  await page.goto("/looseends/");
+  await page.goto("/looseends/?play=1");
   await ready(page);
   await openLevel(page, 6);
   await expect(page.locator(".le-canvas")).toBeVisible();
@@ -41,7 +41,7 @@ test("a level renders the canvas board, HUD, droplets, and hint", { tag: "@smoke
 });
 
 test("the core decides legality — a FREE tap releases, a BLOCKED tap only costs a droplet", async ({ page }) => {
-  await page.goto("/looseends/");
+  await page.goto("/looseends/?play=1");
   await ready(page);
   await openLevel(page, 6);
 
@@ -66,7 +66,7 @@ test("the core decides legality — a FREE tap releases, a BLOCKED tap only cost
 });
 
 test("clearing the board reaches a verified win, and its share re-verifies", async ({ page }) => {
-  await page.goto("/looseends/");
+  await page.goto("/looseends/?play=1");
   await ready(page);
   await openLevel(page, 3);
 
@@ -98,7 +98,7 @@ test("clearing the board reaches a verified win, and its share re-verifies", asy
 });
 
 test("level select and daily calendar render from the home screen", async ({ page }) => {
-  await page.goto("/looseends/");
+  await page.goto("/looseends/?play=1");
   await ready(page);
   await page.getByRole("button", { name: "All levels" }).click();
   await expect(page.locator(".le-level-grid")).toBeVisible();
@@ -113,7 +113,7 @@ test("level select and daily calendar render from the home screen", async ({ pag
 });
 
 test("no axe violations in light and dark, and no horizontal overflow at 360px", async ({ page }) => {
-  await page.goto("/looseends/");
+  await page.goto("/looseends/?play=1");
   await ready(page);
   await openLevel(page, 6);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);

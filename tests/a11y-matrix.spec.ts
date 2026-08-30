@@ -88,10 +88,17 @@ const PLAYABLE = REGISTRY.filter((g) => g.status === "playable").map((g) => g.id
 // the axis an axe violation actually belongs to, since the skins are shared
 // chrome and the boards are not.
 for (const id of PLAYABLE) {
-  test(`${id}: entry state is clean under every skin`, { tag: "@smoke" }, async ({ page }) => {
+  test(`${id}: poster and entry state are clean under every skin`, { tag: "@smoke" }, async ({ page }) => {
     for (const skin of ALL_SKINS) {
       await withSkin(page, skin);
+      // The bare URL is the front door (the poster); a query is a deep link to the
+      // board. Both are surfaces, and the poster is the newer one.
+      // The first skin sees the poster; once ?play=1 has mounted the game the store
+      // holds a record and later skins see the continue card. Both are surfaces.
       await page.goto(`/${id}/`);
+      await expect(page.locator(".gf-start")).toBeVisible();
+      await scan(page);
+      await page.goto(`/${id}/?play=1`);
       await expect(page.locator("#play-area")).toBeVisible();
       await scan(page);
     }
@@ -105,12 +112,12 @@ test("placeholder: the settings sheet and the rail are clean under every skin", 
   for (const skin of ALL_SKINS) {
     await withSkin(page, skin);
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/placeholder/");
+    await page.goto("/placeholder/?play=1");
     await page.locator('.gf-verb[data-verb="settings"]').click();
     await expect(page.locator(".gf-sheet")).toBeVisible();
     await scan(page);
     await page.setViewportSize({ width: 1000, height: 680 });
-    await page.goto("/placeholder/");
+    await page.goto("/placeholder/?play=1");
     await expect(page.locator(".gf-extra")).toBeVisible();
     await scan(page);
   }

@@ -13,6 +13,7 @@ import { startMusic } from "./music.js";
 import { renderMusicBar } from "./music-bar.js";
 import { renderSettingsSheet } from "./settings-sheet.js";
 import { renderGameFrame, type GameFrame } from "./game-frame.js";
+import { clearProgress, readProgress, writeProgress, type Progress } from "./progress.js";
 import {
   controlsOnLeft,
   declareAssistanceEnabled,
@@ -277,6 +278,7 @@ export function boot(root: HTMLElement = document.body): Chrome {
   // --- mount the current game / welcome ---
   let mounted: GameModule | null = null;
   let frame: GameFrame | null = null;
+  let frameUpdateHook: (() => void) | null = null;
   const mode: PresentationMode = gameId ? "standalone" : "drawer";
   const entry = gameId ? findGame(gameId) : undefined;
   if (!gameId) {
@@ -334,14 +336,54 @@ export function boot(root: HTMLElement = document.body): Chrome {
         },
       ],
       side: controlsOnLeft() ? "left" : "right",
+      onUpdate: () => frameUpdateHook?.(),
       menu: [
         { label: "How to play", href: `/how-to/?game=${entry.id}` },
         { label: "Open in a new tab ↗", href: `/${entry.id}/`, newTab: true },
       ],
     });
-    mounted = entry.load();
-    mounted.mount(frame.stage, { mode, frame });
+    // The shelf records the LAND, poster or board (plan 5b's recorded decision).
     writeShelfState(noteOpened(readShelfState(), entry.id, new Date()));
+
+    const game = entry;
+    const theFrame = frame;
+    const save = (): void => {
+      if (mounted?.snapshot) writeProgress(game.id, mounted.snapshot());
+    };
+    const mountGame = (resume?: Progress): void => {
+      mounted = game.load!();
+      mounted.mount(theFrame.stage, { mode, frame: theFrame });
+      if (resume) mounted.resume?.(resume);
+      save();
+    };
+    const showStart = (): void => {
+      theFrame.renderStart({
+        id: game.id,
+        title: displayName(game),
+        ...(game.pitch ? { pitch: game.pitch } : {}),
+        ...(game.setup ? { setup: game.setup() } : {}),
+        progress: readProgress(game.id),
+        onPlay: () => mountGame(),
+        onResume: (p) => mountGame(p),
+        onNewGame: () => {
+          clearProgress(game.id);
+          showStart();
+        },
+      });
+    };
+    // A bare URL is the front door — the poster, or the continue card when the
+    // store holds a game. Any query (?r=, ?seed=, ?play=1…) is a deep link and
+    // mounts the board directly (plan Q7).
+    if (window.location.search) {
+      console.debug(`[frame] start=direct id=${game.id} progress=${readProgress(game.id)?.status ?? "none"}`);
+      mountGame();
+    } else {
+      showStart();
+    }
+    // The frame's update() fires this: after every declared change, the store
+    // gets the game's own snapshot. `mounted` is null during the mount's first
+    // declaration, so the initial write happens in mountGame instead.
+    frameUpdateHook = save;
   }
 
   // --- drawer open/close + focus trap + ESC ---

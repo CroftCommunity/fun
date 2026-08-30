@@ -125,7 +125,7 @@ test("the board is centered and shares a centerline with the arrow pad", async (
   await ready(page);
   const board = await page.locator(".t48-board").boundingBox();
   const pad = await page.locator(".t48-pad").boundingBox();
-  const area = await page.locator("#play-area").boundingBox();
+  const area = await page.locator(".gf-stage").boundingBox();
   expect(board).not.toBeNull();
   expect(pad).not.toBeNull();
   expect(area).not.toBeNull();

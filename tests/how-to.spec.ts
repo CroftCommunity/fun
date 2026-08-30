@@ -35,6 +35,7 @@ test("the how-to page renders the solitaire guide with all screenshots loading",
 test("the in-game 'How to play' link reaches the guide", async ({ page }) => {
   await page.goto("/solitaire/?seed=0");
   await expect(page.locator(".sol-board")).toBeVisible();
+  await page.locator(".gf-more").click(); // the link lives in the game bar's ⋯ menu
   await page.getByRole("link", { name: /how to play/i }).click();
   await expect(page).toHaveURL(/\/how-to\/\?game=solitaire/);
   await expect(page.locator("h1")).toContainText(/how to play solitaire/i);

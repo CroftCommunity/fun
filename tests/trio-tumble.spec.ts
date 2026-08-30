@@ -175,7 +175,7 @@ test("reduced-motion spawns no particles (FX skipped)", async ({ browser }) => {
 });
 
 test("a fresh visitor lands in the campaign at Level 1 (with the intro + a11y clean)", async ({ page }) => {
-  await page.goto("/trio-tumble/");
+  await page.goto("/trio-tumble/?play=1");
   await ready(page);
   await expect(page.locator(".m3-campaign-hud")).toContainText(/level 1/i);
   await expect(page.locator(".m3-mode-campaign")).toHaveAttribute("aria-pressed", "true");
@@ -270,7 +270,7 @@ test("an in-progress campaign board resumes after a reload (move-list replay)", 
 
   // Reload with no ?level — the saved move list should replay us back to the
   // same level and the same deterministic board state.
-  await page.goto("/trio-tumble/");
+  await page.goto("/trio-tumble/?play=1");
   await ready(page);
   const after = await page.evaluate(() => ({ level: window.__trioTumble!.level, board: window.__trioTumble!.game.board() }));
   expect(after.level).toBe(1);
@@ -530,7 +530,7 @@ test("the play area (board) is centred in the play surface", async ({ page }) =>
   // play area's centreline, not hugging the left edge (the inline-flex centring trap).
   await page.goto("/trio-tumble/?mode=obstacles&seed=72");
   await ready(page);
-  const pa = await page.locator(".play-area").boundingBox();
+  const pa = await page.locator(".gf-stage").boundingBox();
   const bd = await page.locator(".m3-board").boundingBox();
   expect(pa && bd, "play area + board are laid out").toBeTruthy();
   const paCenter = pa!.x + pa!.width / 2;
