@@ -12,6 +12,11 @@ earlier is in `git log`.
 
 ## 2026-08
 
+- 2026-08-30 **dots:** inside the frame. Seats carry the box counts, and "goes again" is
+  said on the seat that keeps the turn rather than as a sentence that appeared under the
+  lattice; Difficulty and your seat are the New game card; the tutor and the local-AI
+  opponent are in Settings with the download disclosed on the row. Leave mid-game and
+  the continue card replays the edges. (`plans/2026-08-30-plan-game-frame.md` Phase 13)
 - 2026-08-30 **checkers:** inside the frame, the Othello shape: two seats with piece counts
   and whose move it is (The Engine’s pulses while it thinks), Difficulty and your men on
   the start screen and the New game sheet, the tutor and the local-AI opponent in

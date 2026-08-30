@@ -8,7 +8,7 @@ parameters does once every bare URL opens on a start screen) gates Phase 5** and
 thing between this plan and execution: Phases 0–4 may start now. D5 was resolved during
 planning (read-only, see Verified Assumptions) and is struck from Phase 0. Phases 1, 2, 3
 and 5 carry sub-phases (1a/1b, 2a/2b, 3a/3b, 5a/5b) — each with its own Done-when and
-wiring test — because each touched four or more files. Phases 0–12 COMPLETE (2026-08-30). Mocks
+wiring test — because each touched four or more files. Phases 0–13 COMPLETE (2026-08-30). Mocks
 landed on `main` (`mocks/d-game-frame.html`, PR #45, `6c4dd9c`); owner decisions D1–D5
 recorded.
 
@@ -1104,6 +1104,36 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
    it changes one test case either way.*
 
 ## Review Log
+
+### Phase 13 — executed 2026-08-30 (Dots and Boxes)
+- Red first: 22 of 40 against the unmigrated page. Seats carry the box counts; "goes
+  again" is a seat sub-label ("you go again" / "goes again…"), not a status sentence;
+  Difficulty and the seat are setup; tutor and local-AI (with its measured disclosure —
+  ~270 MB, a quarter-second a move, the guarantee with its reason) are preferences; the
+  rule sentence and banter are toasts; the fanfare under the final lattice. `snapshot()`
+  is the seed and the edges; `resume()` replays and re-enters the loop.
+- What the tests caught: the opening toast never fired — playing second by default, the
+  human's first turn comes after the engine's opening, so "no moves yet" was already
+  false; it fires on the human's first turn now. The same block-cut slip as Blockdoku
+  removed `renderTutorPanel`; typecheck caught it; restored from `HEAD`.
+- Green: 80/80 with `--repeat-each=2` at 2 workers on both engines, `npm run e2e`
+  **687/687** at 2 workers, typecheck, lint, unit (dots + tutor suites); shots for Dots
+  only (4). How-to copy and changelog landed in-phase.
+
+### Process decision — 2026-08-30, owner: scope the test runs
+- Owner (verbatim): "we sure are running a lot of tests on games that have no changes,
+  can we scope the test running better? waiting on testing checkers code that hasn't
+  changed at all is silly."
+- From Phase 14 on, a **game phase's local gate** is: typecheck + lint + the unit suites
+  it touches (frame, chrome, tokens, art, the game's own) + **the game's browser spec on
+  both engines** (`--repeat-each=2`) + `npm run smoke` (every game's wiring test and the
+  a11y matrix, ~1 min). The **full declared gate** (`npm run test` incl. Rust, and the full
+  `npm run e2e`) runs on **CI for the PR**, and nothing merges until it is green — which is
+  the rule that caught both cross-game problems so far (the header links, the cribbage
+  race). Locally, the full suites come back only when shared code changes:
+  `src/game-frame.ts`, `src/chrome.ts`, the shared blocks of `styles.css`,
+  `src/settings-sheet.ts`, `src/progress.ts`. Rust is untouched by every phase after 0
+  and is not re-run locally.
 
 ### Phase 12 — executed 2026-08-30 (Checkers)
 - The Othello shape, applied: seats with piece counts, thinking as the engine's seat

@@ -15,7 +15,10 @@
 //! arithmetic is the lattice layout (`dots-lattice.ts`, pure and unit-pinned). A
 //! finished match is a verifiable `pond-outcome` record, shareable via `?r=`.
 
-import type { GameModule } from "../../contract.js";
+import type { GameModule, GameServices } from "../../contract.js";
+import type { GameFrame, GameFrameSpec } from "../../game-frame.js";
+import type { Progress } from "../../progress.js";
+import type { SettingRow } from "../../settings-sheet.js";
 import { WebLLMRuntime } from "../../harness/ai-runtime.js";
 import { speak } from "../../harness/banter.js";
 import { buildBand, HybridPlayer, type BandMove } from "../../harness/hybrid-player.js";
@@ -25,11 +28,9 @@ import {
   dotsSeat,
   dotsTutorEnabled,
   hintsEnabled,
-  setDeclareAssistance,
   setDotsLevel,
   setDotsSeat,
   setDotsTutor,
-  setHintsEnabled,
   type DotsLevel,
   type DotsSeat,
 } from "../../settings.js";
@@ -229,6 +230,42 @@ function renderResultScreen(
 
 // ---------- the game module ----------
 
+/** The New game card: difficulty and your seat. One builder for the poster and the sheet. */
+export function dotsSetupRows(onChange?: { level?(l: DotsLevel): void; seat?(s: DotsSeat): void }): SettingRow[] {
+  return [
+    {
+      kind: "choice",
+      id: "level",
+      label: "Difficulty",
+      hint: "3×3 dots is solved, so Perfect really is perfect.",
+      value: dotsLevel(),
+      options: LEVELS.map((l) => ({ value: l, label: l })),
+      onChange: (v) => {
+        setDotsLevel(v as DotsLevel);
+        onChange?.level?.(v as DotsLevel);
+      },
+    },
+    {
+      kind: "choice",
+      id: "seat",
+      label: "You play",
+      hint: "Second by default: on this board the second player can always win with perfect play.",
+      value: dotsSeat(),
+      options: [
+        { value: "second", label: "Second (reply)" },
+        { value: "first", label: "First (open)" },
+      ],
+      onChange: (v) => {
+        setDotsSeat(v as DotsSeat);
+        onChange?.seat?.(v as DotsSeat);
+      },
+    },
+  ];
+}
+
+/** The poster's setup card — the registry's `setup` factory. */
+export const dotsSetup = (): SettingRow[] => dotsSetupRows();
+
 /** Construct a fresh Dots and Boxes module (the registry `load`). */
 export function dotsModule(): GameModule {
   let game: Dots | null = null;
@@ -236,6 +273,13 @@ export function dotsModule(): GameModule {
   let container: HTMLElement | null = null;
   let disposed = false;
   let thinking = false;
+  let frame: GameFrame | null = null;
+  let pendingResume: Progress | null = null;
+  let moves: number[] = [];
+  let hinted = false;
+  let toasted: string | null = null;
+  /** The last "goes again" — a seat sub-label, not a status sentence (frame rule 2). */
+  let again: "you" | "engine" | null = null;
   let ending = false;
   let seed = 0n;
   let level: DotsLevel = dotsLevel();
@@ -312,16 +356,17 @@ export function dotsModule(): GameModule {
       return;
     }
     thinking = true;
-    setStatus(`${opponentIdentity().name} is thinking…`);
+    setStatus(""); // thinking is the engine's seat state (frame rule 2)
     render();
     window.setTimeout(() => {
       void (async () => {
       if (disposed || !game) return;
       const mv = opponentKind === LOCAL_AI ? await hybridMove() : game.liveMove(level as Level);
       if (disposed || !game) return;
-      if (mv !== null) game.play(mv);
+      if (mv !== null && game.play(mv) === "applied") moves.push(mv);
       const b = game.board();
       thinking = false;
+      again = b.keptTurn && b.result === -1 ? "engine" : null;
       setStatus(
         b.keptTurn && b.result === -1
           ? `${opponentIdentity().name} closed a box — it goes again.`
@@ -355,6 +400,8 @@ export function dotsModule(): GameModule {
         ? coachFor(verdict, game.coach().bestCol, dims.rows, dims.cols)
         : null;
     if (game.play(edge) !== "applied") return;
+    moves.push(edge);
+    again = game.board().keptTurn && game.board().result === -1 ? "you" : null;
     const b = game.board();
     setStatus(b.keptTurn && b.result === -1 ? "You closed a box — your turn again." : "");
     // Hold the coaching until the engine has replied, so it does not sit on
@@ -542,131 +589,81 @@ export function dotsModule(): GameModule {
   const theirBoxes = (board: BoardView): number =>
     humanSide() === 1 ? board.boxesB : board.boxesA;
 
-  const renderTurnbar = (board: BoardView): HTMLElement => {
-    const turn =
-      board.result !== -1
-        ? ""
-        : board.toMove === humanSide()
-          ? "Your move"
-          : `${opponentIdentity().name} to move`;
-    return el(
-      "div",
-      { class: "dots-turnbar" },
-      el(
-        "span",
-        { class: "dots-score you" },
-        `You ${MARK[humanSide()]} ${yourBoxes(board)}`,
-      ),
-      el(
-        "span",
-        { class: "dots-score them" },
-        `${opponentIdentity().name} ${opponentIdentity().avatar} ${MARK[engineSide()]} ${theirBoxes(board)}`,
-      ),
-      el("span", { class: "dots-turn", role: "status", "aria-live": "polite" }, turn),
-    );
-  };
-
-  const renderControls = (): HTMLElement => {
-    const bar = el("div", { class: "sol-controls dots-controls" });
-
-    const levelSel = el("select", { class: "dots-level", "aria-label": "Difficulty" });
-    for (const l of LEVELS) {
-      const opt = el("option", { value: l }, l);
-      if (l === level) opt.setAttribute("selected", "");
-      levelSel.append(opt);
-    }
-    levelSel.addEventListener("change", () => {
-      level = levelSel.value as DotsLevel;
-      setDotsLevel(level);
-    });
-
-    const seatSel = el("select", { class: "dots-seat", "aria-label": "Your seat" });
-    for (const [val, txt] of [
-      ["second", "Second (reply)"],
-      ["first", "First (open)"],
-    ] as const) {
-      const opt = el("option", { value: val }, txt);
-      if (val === seat) opt.setAttribute("selected", "");
-      seatSel.append(opt);
-    }
-    seatSel.addEventListener("change", () => {
-      seat = seatSel.value as DotsSeat;
-      setDotsSeat(seat);
-      void startGame(); // a new seat restarts (it changes who opens)
-    });
-
-    const fresh = el("button", { type: "button", class: "sol-fresh" }, "New game");
-    fresh.addEventListener("click", () => void startGame());
-
-    // The shared assistance control: a hint while hints are on, and otherwise
-    // the honest way out — ending the match rather than pretending it finished.
+  // --- what the frame shows: seats (box counts, "goes again"), the level chip, verbs, setup, preferences ---
+  const spec = (): GameFrameSpec => {
+    const b = game?.board();
+    const opp = opponentIdentity();
+    const live = b !== undefined && b.result === -1;
+    const humanTurn = live && b.toMove === humanSide();
+    const engineThinking = live && !humanTurn && thinking;
     const hints = hintsEnabled();
-    const action = el(
-      "button",
-      { type: "button", class: hints ? "dots-hint" : "dots-stuck" },
-      hints ? "Hint" : "I’m done",
-    );
-    action.addEventListener("click", hints ? showHint : endNow);
-
-    const toggle = (
-      checked: boolean,
-      label: string,
-      cls: string,
-      onChange: (on: boolean) => void,
-    ): HTMLElement => {
-      const input = el("input", { type: "checkbox", class: cls });
-      (input as HTMLInputElement).checked = checked;
-      input.addEventListener("change", () => onChange((input as HTMLInputElement).checked));
-      return el("label", { class: "dots-toggle" }, input, ` ${label}`);
-    };
-    const details = el("details", { class: "sol-settings dots-settings" });
-    details.append(
-      el("summary", {}, "Settings"),
-      toggle(hints, "Enable hints", "dots-set-hints", (on) => {
-        setHintsEnabled(on);
-        render(); // relabel the action control (Hint ↔ I'm done)
-      }),
-      toggle(declareAssistanceEnabled(), "Declare assistance used", "dots-set-assist", (on) => {
-        setDeclareAssistance(on);
-      }),
-      toggle(dotsTutorEnabled(), "Show tutor", "dots-set-tutor", (on) => {
-        setDotsTutor(on);
-        render();
-      }),
-    );
+    const preferences: SettingRow[] = [
+      {
+        kind: "toggle",
+        id: "tutor",
+        label: "Tutor",
+        hint: "Explains the reasonable lines with the engine's own one-line reason.",
+        value: dotsTutorEnabled(),
+        onChange: (on) => {
+          setDotsTutor(on);
+          render();
+        },
+      },
+    ];
     if (localAiAvailable) {
-      details.append(
-        toggle(
-          opponentKind === LOCAL_AI,
-          "Experimental: local AI opponent",
-          "dots-ai-toggle-input",
-          (on) => {
-            opponentKind = on ? LOCAL_AI : "engine";
-            aiSay = null;
-            render();
-          },
-        ),
-        el(
-          "p",
-          { class: "dots-ai-disclosure" },
-          // Both costs stated, and the guarantee stated *with its reason* — which
-          // is what makes it true here and false in Furrow, where the same
-          // sentence had to be withdrawn. See `docs/AI-PLAYERS.md` → "The band's
-          // guarantee is only as strong as the exact fraction".
-          `An in-browser model (${LOCAL_AI_PERSONA.name}) picks within the engine's safe edges and adds banter — a one-time ~270 MB download, then about a quarter-second a move. It never plays a losing move: this board is solved from four edges in, so the engine's band is a proof rather than a guess.`,
-        ),
-      );
+      preferences.push({
+        kind: "toggle",
+        id: "local-ai",
+        label: "Experimental: local AI opponent",
+        // Both costs stated, and the guarantee stated *with its reason* — which is
+        // what makes it true here and false in Furrow, where the same sentence had
+        // to be withdrawn. See docs/AI-PLAYERS.md → "The band's guarantee…".
+        hint: `An in-browser model (${LOCAL_AI_PERSONA.name}) picks within the engine's safe edges and adds banter — a one-time ~270 MB download, then about a quarter-second a move. It never plays a losing move: this board is solved from four edges in, so the engine's band is a proof rather than a guess.`,
+        value: opponentKind === LOCAL_AI,
+        onChange: (on) => {
+          opponentKind = on ? LOCAL_AI : "engine";
+          aiSay = null;
+          render();
+        },
+      });
     }
-
-    bar.append(
-      el("label", { class: "dots-field" }, "Difficulty ", levelSel),
-      el("label", { class: "dots-field" }, "You play ", seatSel),
-      fresh,
-      action,
-      details,
-    );
-    return bar;
+    const yourSub = humanTurn && !thinking ? (again === "you" ? "you go again" : "your move") : undefined;
+    const engineSub = engineThinking ? (again === "engine" ? "goes again…" : "thinking…") : undefined;
+    return {
+      title: "Dots and Boxes",
+      mode: level,
+      meters: [
+        { kind: "seat", id: "you", name: "You", glyph: MARK[humanSide()], score: b ? yourBoxes(b) : 0, state: humanTurn && !thinking ? "active" : "idle", ...(yourSub ? { sub: yourSub } : {}) },
+        {
+          kind: "seat",
+          id: "engine",
+          name: `${opp.name} ${opp.avatar}`,
+          glyph: MARK[engineSide()],
+          score: b ? theirBoxes(b) : 0,
+          state: engineThinking ? "thinking" : "idle",
+          ...(engineSub ? { sub: engineSub } : {}),
+        },
+      ],
+      verbs: [
+        hints
+          ? { id: "hint", label: "Hint", icon: "✦", primary: true, onPress: showHint }
+          : { id: "done", label: "I’m done", icon: "⇥", onPress: endNow },
+        { id: "new", label: "New game", icon: "⟳", onPress: (btn) => frame?.openSheet("setup", btn) },
+      ],
+      setup: dotsSetupRows({
+        level: (l) => {
+          level = l;
+        },
+        seat: (st) => {
+          seat = st;
+        },
+      }),
+      preferences,
+      onStart: () => void startGame(),
+    };
   };
+  const declare = (): void => frame?.update(spec());
+
 
   // --- the tutor panel (engine-grounded coaching; opt-in, no GPU) ---
   const renderTutorPanel = (): HTMLElement => {
@@ -722,23 +719,23 @@ export function dotsModule(): GameModule {
       el(
         "div",
         { class: "dots-game" },
-        renderTurnbar(board),
-        // The local-AI opponent's spoken reason for its last move (personality).
-        ...(aiSay && opponentKind === LOCAL_AI
-          ? [el("p", { class: "dots-ai-say", role: "status" }, `${LOCAL_AI_PERSONA.name}: ${aiSay}`)]
-          : []),
-        renderControls(),
-        el(
-          "p",
-          { class: "dots-banner" },
-          "Tap an edge. Draw the fourth side of a box to claim it — and go again. Most boxes wins.",
-        ),
         buildBoard(board, true),
         ...(dotsTutorEnabled() ? [renderTutorPanel()] : []),
         statusEl,
       ),
     );
     restoreUiState(container, ui);
+    declare();
+    // Transients overlay the stage — never a <p> in flow above the board (frame rule 1).
+    if (aiSay && opponentKind === LOCAL_AI && aiSay !== toasted) {
+      toasted = aiSay;
+      frame?.toast(`${LOCAL_AI_PERSONA.name}: ${aiSay}`, 6000);
+    }
+    // On the human's FIRST turn — which, playing second, comes after the engine's opening.
+    if (!hinted && humanToMove() && !thinking && !gameOver()) {
+      hinted = true;
+      frame?.toast("Tap an edge. Draw the fourth side of a box to claim it — and go again. Most boxes wins.", 5000);
+    }
   }
 
   const outcomeLabel = (board: BoardView): string => {
@@ -756,15 +753,16 @@ export function dotsModule(): GameModule {
     ending = true;
     const board = game.board();
     const won = yourBoxes(board) > theirBoxes(board);
+    // The fanfare sits BELOW the final board (rule 1 holds to the end).
     container.replaceChildren(
       el(
         "div",
         { class: "dots-game" },
-        renderTurnbar(board),
-        el("p", { class: `dots-flash${won ? " win" : ""}`, role: "status" }, outcomeLabel(board)),
         buildBoard(board, false),
+        el("p", { class: `dots-flash${won ? " win" : ""}`, role: "status" }, outcomeLabel(board)),
       ),
     );
+    declare();
     window.setTimeout(() => {
       if (disposed) return;
       void presentResult();
@@ -803,10 +801,41 @@ export function dotsModule(): GameModule {
     lastHumanQuality = null;
     seed = seedOverride ?? randomSeed();
     game.newGame(seed);
+    moves = [];
+    hinted = false;
+    again = null;
     setStatus("");
     exposeHook();
     step(); // if the human took the second seat, the engine opens here
   }
+
+  /** Replay a stored game: the seed and every edge, then re-enter the turn loop. */
+  const applyResume = (p: Progress): void => {
+    if (!game || disposed) return;
+    const rec = p.record as { seed?: unknown; moves?: unknown };
+    const setup = p.setup as { level?: unknown; seat?: unknown };
+    if (LEVELS.includes(setup.level as DotsLevel)) level = setup.level as DotsLevel;
+    if (setup.seat === "first" || setup.seat === "second") seat = setup.seat;
+    thinking = false;
+    ending = false;
+    coachMsg = null;
+    pendingCoach = null;
+    endedEarly = null;
+    aiSay = null;
+    lastHumanQuality = null;
+    hinted = true;
+    again = null;
+    seed = typeof rec.seed === "string" ? BigInt(rec.seed) : randomSeed();
+    game.newGame(seed);
+    moves = [];
+    for (const edge of Array.isArray(rec.moves) ? (rec.moves as unknown[]) : []) {
+      if (typeof edge !== "number" || game.play(edge) !== "applied") break;
+      moves.push(edge);
+    }
+    setStatus("");
+    exposeHook();
+    step();
+  };
 
   const showShared = async (payload: string): Promise<void> => {
     if (!container) return;
@@ -849,11 +878,14 @@ export function dotsModule(): GameModule {
   };
 
   return {
-    mount(c: HTMLElement): void {
+    mount(c: HTMLElement, services?: GameServices): void {
       container = c;
+      frame = services?.frame ?? null;
       disposed = false;
       level = dotsLevel();
       seat = dotsSeat();
+      frame?.onSettingsChange(() => render()); // Hints flips the verb
+      declare();
       container.replaceChildren(el("div", { class: "sol-loading" }, "Loading Dots and Boxes…"));
       void (async () => {
         try {
@@ -874,10 +906,16 @@ export function dotsModule(): GameModule {
           await showShared(shared);
           return;
         }
-        const seedParam = url.searchParams.get("seed");
-        await startGame(seedParam !== null ? BigInt(seedParam) : undefined);
-        // Probe WebGPU in the background; if present the controls re-render with
-        // the experimental local-AI opponent offered (classic engine otherwise).
+        if (pendingResume) {
+          const p = pendingResume;
+          pendingResume = null;
+          applyResume(p);
+        } else {
+          const seedParam = url.searchParams.get("seed");
+          await startGame(seedParam !== null ? BigInt(seedParam) : undefined);
+        }
+        // Probe WebGPU in the background; if present the settings sheet offers
+        // the experimental local-AI opponent (classic engine otherwise).
         void probeLocalAi();
       })();
     },
@@ -886,10 +924,30 @@ export function dotsModule(): GameModule {
       delete window.__dots;
       container?.replaceChildren();
       container = null;
+      frame = null;
       game = null;
       verifier = null;
       runtime = null; // release the WebGPU engine (local-AI) if it was created
       hybrid = null;
+    },
+    // --- the progress store: the seed and the edges drawn; resume is replay ---
+    snapshot(): Progress {
+      const b = game?.board();
+      const now = new Date().toISOString();
+      const done = gameOver();
+      return {
+        v: 1,
+        status: done ? "finished" : "in-progress",
+        startedAt: now,
+        updatedAt: now,
+        setup: { mode: "free", seed: seed.toString(), level, seat },
+        record: { seed: seed.toString(), moves: [...moves] },
+        summary: { line: done && b ? outcomeLabel(b) : `${moves.length} edge${moves.length === 1 ? "" : "s"} · boxes ${b ? yourBoxes(b) : 0}–${b ? theirBoxes(b) : 0}` },
+      };
+    },
+    resume(p: Progress): void {
+      if (game) applyResume(p);
+      else pendingResume = p;
     },
   };
 }

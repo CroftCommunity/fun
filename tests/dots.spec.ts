@@ -8,6 +8,8 @@
 
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+
+import { boardTopStable } from "./helpers/board-top.js";
 import { DEFAULT_SKIN, familyMembers, familyOf } from "../src/skins.js";
 
 async function ready(page: Page): Promise<void> {
@@ -36,13 +38,16 @@ test("the lattice, turn bar, and pickers render", { tag: "@smoke" }, async ({ pa
   await expect(page.locator(".dots-edge")).toHaveCount(24);
   await expect(page.locator(".dots-dot")).toHaveCount(16);
   await expect(page.locator(".dots-box")).toHaveCount(9);
-  // The banner explains the rule that makes this game its own thing.
-  await expect(page.locator(".dots-banner")).toContainText(/again/i);
-  await expect(page.locator(".dots-turnbar")).toContainText(/you/i);
-  await expect(page.locator(".dots-turnbar")).toContainText(/the engine/i);
-  // The difficulty picker tops out at Perfect — 3x3 dots is solved.
-  await expect(page.locator(".dots-level option")).toHaveCount(4);
-  await expect(page.locator(".dots-level")).toContainText("Perfect");
+  // The rule that makes this game its own thing is the opening toast (and the pitch).
+  await expect(page.locator(".gf-toast")).toContainText(/again/i);
+  await expect(page.locator(".dots-banner, .dots-turnbar, .dots-controls")).toHaveCount(0);
+  await expect(page.locator('.gf-seat[data-meter="you"]')).toContainText(/you/i);
+  await expect(page.locator('.gf-seat[data-meter="engine"]')).toContainText(/the engine/i);
+  // The difficulty tops out at Perfect — 3x3 dots is solved.
+  await page.locator('.gf-verb[data-verb="new"]').click();
+  const labels = await page.locator('.gf-sheet [data-setting="level"] .sheet-choice-opt').allTextContents();
+  expect(labels).toEqual(["Easy", "Medium", "Hard", "Perfect"]);
+  await page.keyboard.press("Escape");
 });
 
 test("tapping a legal edge draws it, and an already-drawn edge is inert", async ({ page }) => {
@@ -98,7 +103,10 @@ test("closing a box scores it and keeps the turn with the closer", async ({ page
 test("the difficulty picker persists the chosen level", async ({ page }) => {
   await page.goto("/dots/?seed=7");
   await ready(page);
-  await page.locator(".dots-level").selectOption("Hard");
+  await page.locator('.gf-verb[data-verb="new"]').click();
+  await page.locator('.gf-sheet [data-setting="level"] input[value="Hard"]').check();
+  await page.locator(".gf-sheet .gf-start").click();
+  await expect(page.locator(".gf-mode")).toHaveText("Hard");
   expect(await page.evaluate(() => localStorage.getItem("fun-dots-level"))).toBe("Hard");
 });
 
@@ -167,7 +175,7 @@ test("a hint names an edge, explains it, and says it counts as assistance", asyn
   await page.goto("/dots/?seed=7");
   await ready(page);
   await waitHumanOrOver(page);
-  await page.locator(".dots-hint").click();
+  await page.locator('.gf-verb[data-verb="hint"]').click();
   const status = page.locator(".dots-status");
   await expect(status).toContainText(/Hint: the (horizontal|vertical) edge, row \d, column \d/);
   await expect(status).toContainText(/assistance/i);
@@ -178,8 +186,8 @@ test("with hints off the control ends the game and reports what was left", async
   await page.goto("/dots/?seed=7");
   await ready(page);
   await waitHumanOrOver(page);
-  await expect(page.locator(".dots-hint")).toHaveCount(0);
-  await page.locator(".dots-stuck").click();
+  await expect(page.locator('.gf-verb[data-verb="hint"]')).toHaveCount(0);
+  await page.locator('.gf-verb[data-verb="done"]').click();
   const result = page.locator(".sol-result");
   await expect(result).toBeVisible();
   await expect(result).toContainText(/ended early/i);
@@ -192,8 +200,9 @@ test("the tutor panel is off by default and appears when enabled in settings", a
   await page.goto("/dots/?seed=7");
   await ready(page);
   await expect(page.locator(".dots-tutor")).toHaveCount(0);
-  await page.locator(".dots-settings summary").click();
-  await page.locator(".dots-set-tutor").check();
+  await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-input').click({ force: true });
   await expect(page.locator(".dots-tutor-explain")).toBeVisible();
 });
 
@@ -221,8 +230,9 @@ test("the experimental local-AI opponent is hidden with no real WebGPU adapter",
   });
   await page.goto("/dots/?seed=7");
   await ready(page);
-  await page.locator(".dots-settings summary").click();
-  await expect(page.locator(".dots-ai-toggle-input")).toHaveCount(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await expect(page.locator('.gf-sheet [data-setting="local-ai"]')).toHaveCount(0);
 });
 
 test("the experimental local-AI toggle appears with a real adapter and discloses the download", async ({
@@ -236,11 +246,11 @@ test("the experimental local-AI toggle appears with a real adapter and discloses
   });
   await page.goto("/dots/?seed=7");
   await ready(page);
-  await page.locator(".dots-settings summary").click();
-  const toggle = page.locator(".dots-ai-toggle-input");
-  await expect(toggle).toHaveCount(1);
-  await toggle.check();
-  const disclosure = page.locator(".dots-ai-disclosure");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  const row = page.locator('.gf-sheet [data-setting="local-ai"]');
+  await expect(row).toHaveCount(1);
+  const disclosure = row.locator(".sheet-hint");
   await expect(disclosure).toContainText(/download|one[- ]time|GB|MB/i);
   await expect(disclosure).toContainText(/quarter-second a move/i);
   // And it discloses the guarantee — which for *this* game is true, because the
@@ -273,25 +283,21 @@ test("every edge target clears the 24px minimum touch size", async ({ page }) =>
   expect(small).toBe(0);
 });
 
-test("the settings panel stays open when something re-renders the board", async ({ page }) => {
-  // The player opened this panel; a re-render must not close it. Reproduces the
-  // defect behind the CI failure in `dots.spec.ts:191` without depending on when
-  // the WebGPU probe happens to resolve: toggling a setting calls the same
-  // render() the probe does, so the race becomes a deterministic click.
+test("the settings sheet stays open when something re-renders the board", async ({ page }) => {
+  // The sheet is the frame's, outside the game's replaceChildren — a re-render
+  // (here: flipping Hints, which relabels the verb through onSettingsChange)
+  // cannot close it.
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/dots/?seed=7");
   await ready(page);
-  const panel = page.locator(".dots-settings");
-  await page.locator(".dots-settings summary").click();
-  await expect(panel).toHaveAttribute("open", "");
-
-  await page.locator(".dots-set-hints").click(); // setHintsEnabled() -> render()
-
-  await expect(panel).toHaveAttribute("open", "");
-  // And the control the player was aiming at is still reachable, which is the
-  // exact assertion CI times out on.
-  await expect(page.locator(".dots-set-tutor")).toBeVisible();
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  const sheet = page.locator(".gf-sheet");
+  await expect(sheet).toBeVisible();
+  await page.locator('.gf-sheet [data-setting="hints"] .sheet-toggle-input').click({ force: true });
+  await expect(page.locator('.gf-verb[data-verb="done"]')).toHaveCount(1);
+  await expect(sheet).toBeVisible();
+  await expect(page.locator('.gf-sheet [data-setting="tutor"]')).toBeVisible();
 });
-
 test("the tutor's explained options survive a re-render, and clear when the board moves on", async ({
   page,
 }) => {
@@ -314,8 +320,10 @@ test("the tutor's explained options survive a re-render, and clear when the boar
   // A re-render that does NOT change the board must keep the reading. Note the
   // toggle has to be one that actually re-renders: "Declare assistance" only
   // writes a setting, so using it proved nothing and passed against the bug.
-  await page.locator(".dots-settings summary").click();
-  await page.locator(".dots-set-hints").click(); // setHintsEnabled() -> render()
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await page.locator('.gf-sheet [data-setting="hints"] .sheet-toggle-input').click({ force: true }); // -> render()
+  await page.keyboard.press("Escape");
   await expect(items).toHaveCount(before);
   await expect(page.locator(".dots-tutor-note")).toHaveText(note ?? "");
 
@@ -323,4 +331,38 @@ test("the tutor's explained options survive a re-render, and clear when the boar
   // rather than sit there describing a position that no longer exists.
   await page.locator(".dots-edge.legal").first().click();
   await expect(items).toHaveCount(0);
+});
+
+// --- the frame (plan Phase 13): "goes again" is a seat sub-label; the lattice does not move ---
+
+test("closing a box says 'goes again' on the seat, and the lattice does not move across the engine's reply", { tag: "@smoke" }, async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/dots/?seed=7");
+  await ready(page);
+  await waitHumanOrOver(page);
+  const v = await boardTopStable(page, ".dots-board", async () => {
+    await page.locator(".dots-edge.legal").first().click();
+    await waitHumanOrOver(page);
+    await page.locator('.gf-verb[data-verb="settings"]').click();
+    await expect(page.locator(".gf-sheet")).toBeVisible();
+    await page.keyboard.press("Escape");
+  });
+  expect(v.frames).toBeGreaterThan(5);
+  expect(v, `lattice top moved ${v.delta}px over ${v.frames} frames`).toMatchObject({ stable: true });
+});
+
+test("leaving mid-game and returning to the bare URL resumes the same position", async ({ page }) => {
+  await page.goto("/dots/?seed=7");
+  await ready(page);
+  await waitHumanOrOver(page);
+  await page.locator(".dots-edge.legal").first().click();
+  await waitHumanOrOver(page);
+  const hash = await page.evaluate(() => window.__dots!.game.currentHash());
+  await page.goto("/dots/");
+  const card = page.locator(".gf-continue");
+  await expect(card).toBeVisible();
+  await card.locator(".gf-continue-btn").click();
+  await ready(page);
+  await waitHumanOrOver(page);
+  expect(await page.evaluate(() => window.__dots!.game.currentHash())).toBe(hash);
 });
