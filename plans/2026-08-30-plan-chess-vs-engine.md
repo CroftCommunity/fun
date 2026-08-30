@@ -5,7 +5,7 @@ analysis) 2026-08-30; Pass 3 (quality gates) 2026-08-30. Every open question is
 owner-confirmed and none is BLOCKING-unresolved; the two PHASE-GATED items gate Phases 2
 and 9 and are already reflected in those phases. **Phase 0 executed 2026-08-30**
 (D1 / D2-desktop / D3-deferral / D4 / D6 closed; D2's Samsung half and D5's
-two-Android half owed, `[device: …]` tags on their task lines) — **Phase 1 executed 2026-08-30** (perft green at CI depth on all six positions; differential perft 200/0) — **Phase 2 executed 2026-08-30** (terminals, both trait impls, hash, SAN, vectors; gate green) — **Phase 3 next.**
+two-Android half owed, `[device: …]` tags on their task lines) — **Phase 1 executed 2026-08-30** (perft green at CI depth on all six positions; differential perft 200/0) — **Phase 2 executed 2026-08-30** (terminals, both trait impls, hash, SAN, vectors; gate green) — **Phase 3 executed 2026-08-30** (both chess cases green in wasm) — **Phase 4 next.**
 Worktree `worktrees/chess/fun`, branch `claude/chess`.
 **Standards anchor:** `docs/BUILDING-GAMES.md` §10 + both new-game checklists;
 `docs/AI-PLAYERS.md` (search cost, honesty gate); `docs/HARNESS.md` (adding a game).
@@ -1076,10 +1076,10 @@ still measures; the number goes beside the constants.
 **Goal:** The determinism claim, checked by the harness that exists for it.
 
 **Changes:**
-- [ ] The two Phase 2 vectors (`crates/chess-core/vectors/01-full-game.json`,
+- [x] The two Phase 2 vectors (`crates/chess-core/vectors/01-full-game.json`,
   `02-threefold.json`) with natively recorded hashes; `npm run test:xbuild`
   replays them in `wasm32` and asserts equality.
-- [ ] **Enrol chess in the harness — four hand edits** (Pass 2; the harness
+- [x] **Enrol chess in the harness — four hand edits** (Pass 2; the harness
   auto-discovers nothing): `crates/xbuild/Cargo.toml` gains `chess-core = { path =
   "../chess-core" }`; `src/lib.rs` gains `chess_replay_hash(seed_lo, seed_hi, len)`
   over a **new `static mut CHESS_IN: [u16; 512]`** with `chess_in_ptr` /
@@ -1088,9 +1088,9 @@ still measures; the number goes beside the constants.
   takes a seventh positional `<chess-vectors>` and pushes a `chess ${v.name}`
   case per file (the cribbage loop's shape, seed as two `u32` halves, moves
   written as `Uint16Array`); `run.sh` passes `crates/chess-core/vectors`.
-- [ ] `crates/chess-core` builds for `wasm32-unknown-unknown` with no `std` feature
+- [x] `crates/chess-core` builds for `wasm32-unknown-unknown` with no `std` feature
   it cannot have (no `getrandom`, no floats, no time).
-- [ ] **RED first, and green must be seen to grade something (Pass 3).** The RED:
+- [x] **RED first, and green must be seen to grade something (Pass 3).** The RED:
   `run.sh` passes `crates/chess-core/vectors` and `check.mjs` reads the seventh
   argument **before** `chess_replay_hash` exists in `src/lib.rs` — the run fails on the
   missing export, which is the wiring test failing for the right reason. Then the
@@ -1852,6 +1852,30 @@ PR open; `workspace-audit.sh` clean.
 ---
 
 ## Review Log
+
+### Phase 3 execution — 2026-08-30
+
+**RED watched, then green.** The runner edits landed first (check.mjs's usage
+comment, destructure and error string — three places; the chess loop with the
+empty-directory guard; run.sh's seventh argument) and the run failed on the
+missing export (`chess_in_cap is not a function`) while every existing case
+still passed — the wiring failing for exactly the right reason. Then the
+export: `chess_replay_hash(seed_lo, seed_hi, len)` over the new
+`CHESS_IN: [u16; 512]` (the first buffer wider than a byte, per Pass 2) with
+`chess_in_ptr` / `chess_in_cap`, xbuild gaining `chess-core` + `pond-outcome`
+deps.
+
+**Green, read by name:** `PASS chess full-game` and `PASS chess threefold`
+in the whole check-xbuild log; `cross-build determinism: OK`; the Rust gate
+green (clippy sees xbuild's lib.rs).
+
+**One safety note beyond the plan:** chess's replay POISONS on an
+inapplicable move (Phase 2's deviation), and the poison string is shorter
+than a hash — `write_hash` copies 64 bytes unconditionally, so the export
+pads the poison to 64 before writing. The pad can only ever FAIL a
+comparison, never fake one. (The pre-existing `write_hash("")` call in the
+orchard export has the unpadded shape of this hazard; noted for the shelf,
+not changed here.)
 
 ### Phase 2 execution — 2026-08-30
 

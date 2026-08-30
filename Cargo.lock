@@ -154,8 +154,12 @@ dependencies = [
 name = "chess-core"
 version = "0.0.0"
 dependencies = [
+ "adversary-core",
+ "hex",
+ "pond-outcome",
  "serde",
  "serde_json",
+ "sha2",
  "thiserror",
 ]
 
@@ -838,11 +842,13 @@ dependencies = [
 name = "xbuild"
 version = "0.0.0"
 dependencies = [
+ "chess-core",
  "cribbage-core",
  "dots-core",
  "furrow-core",
  "mahjong-core",
  "orchard-core",
+ "pond-outcome",
  "solitaire-core",
 ]
 
