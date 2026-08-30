@@ -8,7 +8,7 @@ parameters does once every bare URL opens on a start screen) gates Phase 5** and
 thing between this plan and execution: Phases 0–4 may start now. D5 was resolved during
 planning (read-only, see Verified Assumptions) and is struck from Phase 0. Phases 1, 2, 3
 and 5 carry sub-phases (1a/1b, 2a/2b, 3a/3b, 5a/5b) — each with its own Done-when and
-wiring test — because each touched four or more files. Phases 0–10 COMPLETE (2026-08-30). Mocks
+wiring test — because each touched four or more files. Phases 0–11 COMPLETE (2026-08-30). Mocks
 landed on `main` (`mocks/d-game-frame.html`, PR #45, `6c4dd9c`); owner decisions D1–D5
 recorded.
 
@@ -1104,6 +1104,19 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
    it changes one test case either way.*
 
 ## Review Log
+
+### Phase 11 — executed 2026-08-30 (Drop 4)
+- Red first: 20 of 36 against the unmigrated page. The turn bar (with its `.drop4-thinking`
+  span that wrapped it) is two seats with thinking as the engine's state; Difficulty and
+  the mark are setup (poster + New game sheet, one shared row builder); the tutor and the
+  local-AI toggle — with its ~1 GB disclosure as the row's hint — are preferences; the
+  goal sentence and Chip's banter are toasts; the fanfare sits below the final board (the
+  Othello lesson, applied before the sampler had to find it). `snapshot()` is the seed and
+  the columns; `resume()` replays and re-schedules the engine if it is to move.
+- Green: 72/72 with `--repeat-each=2` at 2 workers on both engines (the board stable
+  across the engine's reply and the sheet; thinking observed from inside the page);
+  `npm run e2e` **679/679** at 2 workers (3.6m; load had fallen to 10); typecheck, lint,
+  unit; shots for Drop 4 only (3). How-to copy and changelog landed in-phase.
 
 ### Phase 10 — executed 2026-08-30 (Blockdoku)
 - Red first: 12 of 24 against the unmigrated page. Score · best · streak are the meters;

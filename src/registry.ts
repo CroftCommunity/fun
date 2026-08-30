@@ -9,7 +9,7 @@ import { trioTumbleModule, trioTumbleSetup } from "./games/trio-tumble.js";
 import { bubbleModule } from "./games/bubble/bubble.js";
 import { wyrdleModule, wyrdleSetup } from "./games/wyrdle/wyrdle.js";
 import { twenty48Module } from "./games/2048/2048.js";
-import { drop4Module } from "./games/drop4/drop4.js";
+import { drop4Module, drop4Setup } from "./games/drop4/drop4.js";
 import { othelloModule, othelloSetup } from "./games/othello/othello.js";
 import { checkersModule } from "./games/checkers/checkers.js";
 import { dotsModule } from "./games/dots/dots.js";
@@ -64,7 +64,17 @@ export const REGISTRY: readonly GameEntry[] = [
     load: wyrdleModule,
   },
   { id: "2048", title: "2048", emoji: "🔢", status: "playable", icon: true, load: twenty48Module },
-  { id: "drop4", title: "Drop 4", emoji: "🔴", status: "playable", icon: true, group: "versus", load: drop4Module },
+  {
+    id: "drop4",
+    title: "Drop 4",
+    emoji: "🔴",
+    status: "playable",
+    icon: true,
+    group: "versus",
+    pitch: "Drop a disc; line up four across, up or diagonally before the engine does — an engine that knows this game exactly.",
+    setup: drop4Setup,
+    load: drop4Module,
+  },
   {
     id: "othello",
     title: "Othello",
