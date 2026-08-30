@@ -163,3 +163,31 @@ test("on desktop the same rows are inline in the rail and no scrim exists", { ta
   await page.locator('.gf-extra [data-setting="hints"] .sheet-toggle-input').click({ force: true });
   expect(await page.evaluate(() => localStorage.getItem("fun-hints"))).toBe("off");
 });
+
+// --- Phase 3b: "Controls on the left" ---
+
+test("the mirror preference puts the rail left of the board and reverses the dock, live from the sheet", { tag: "@smoke" }, async ({ page }) => {
+  // desktop: rail right by default, left with the preference on
+  await page.setViewportSize({ width: 1000, height: 680 });
+  await page.goto("/placeholder/");
+  await ready(page);
+  const railX = async (): Promise<number> => (await page.locator(".gf-dock").boundingBox())!.x;
+  const stageX = async (): Promise<number> => (await page.locator(".gf-stage").boundingBox())!.x;
+  expect(await railX()).toBeGreaterThan(await stageX());
+  await page.locator('.gf-extra [data-setting="controls-left"] .sheet-toggle-input').click({ force: true });
+  await expect(page.locator(".gf")).toHaveAttribute("data-gf-side", "left");
+  expect(await railX()).toBeLessThan(await stageX()); // no reload
+  expect(await page.evaluate(() => localStorage.getItem("fun-controls-left"))).toBe("on");
+
+  // phone: the dock's verb order reverses — the first verb's x is the largest
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  await ready(page);
+  await expect(page.locator(".gf")).toHaveAttribute("data-gf-side", "left");
+  const xs = await page.locator(".gf-dock .gf-verb").evaluateAll((els) => els.map((e) => e.getBoundingClientRect().x));
+  expect(xs[0]).toBeGreaterThan(xs[xs.length - 1]!);
+  // and off again, from the phone sheet, without a reload
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await page.locator('.gf-sheet [data-setting="controls-left"] .sheet-toggle-input').click({ force: true });
+  await expect(page.locator(".gf")).toHaveAttribute("data-gf-side", "right");
+});

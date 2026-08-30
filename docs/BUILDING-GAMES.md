@@ -306,7 +306,8 @@ bug).
   to the verb), inline in the rail on desktop. The sheet is **Every game** first — Hints,
   Declare assistance, Sound, and the mirror preference — then a section headed with your
   `title` holding your `preferences`. A game with no preferences still gets the common
-  section. Declaring your own `settings` verb throws.
+  section. Declaring your own `settings` verb throws. The common section's **Controls on
+  the left** flips the frame live (`data-gf-side` on the root); your game sees nothing.
 - **The New game sheet** renders your `setup` rows and a Start button; Start closes the
   sheet and calls your `onStart()`. Open it from your own *New game…* verb with
   `frame.openSheet("setup", button)` — pass the button so focus returns to it.
@@ -380,6 +381,13 @@ Settings are shared across games and persisted; both default **on**:
 - **Declare assistance used** (on). Controls whether the outcome record carries the
   (self-declared) assistance flag. Undo and hints set it; assistance is not
   replay-derivable, so it is an honesty declaration.
+
+Since the game frame (§4c) these two rows, plus **Sound** (the music bar's switch,
+mirrored) and **Controls on the left** (the frame's mirror preference, `fun-controls-left`:
+the rail moves left of the board on desktop, the dock's verbs reverse on a phone — plan
+2026-08-30 D4), are the **"Every game"** section at the top of every settings sheet; the
+chrome supplies them and a game never re-declares them. A game's own preferences follow in
+a section headed with its name.
 
 When **hints are off**, the control flips to **"I'm stuck"**: it **ends the game**
 and reports honestly **whether a legal move was still available** at that moment.

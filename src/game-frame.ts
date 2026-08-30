@@ -78,6 +78,8 @@ export interface GameFrameOptions {
    * controls on the left. A factory, so the values are read when the sheet opens.
    */
   readonly common?: () => readonly SettingRow[];
+  /** Which side the controls sit on: the rail's column, the dock's verb order. Default right. */
+  readonly side?: "left" | "right";
 }
 
 /** Which sheet to open. */
@@ -93,6 +95,8 @@ export interface GameFrame {
    *  `from` is the control to return focus to on close. */
   openSheet(kind: SheetKind, from?: HTMLElement): void;
   closeSheet(): void;
+  /** Flip the controls' side live — the mirror preference's onChange calls this. */
+  setSide(side: "left" | "right"): void;
   destroy(): void;
 }
 
@@ -266,6 +270,10 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
   };
   paintShape();
   media?.addEventListener("change", paintShape);
+  const setSide = (side: "left" | "right"): void => {
+    root.dataset.gfSide = side;
+  };
+  setSide(opts.side ?? "right");
 
   let current: GameFrameSpec | undefined = spec;
 
@@ -426,6 +434,7 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
     },
     openSheet,
     closeSheet,
+    setSide,
     destroy(): void {
       if (destroyed) return;
       destroyed = true;

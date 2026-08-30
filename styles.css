@@ -549,6 +549,11 @@ body:has(> .play-area > .gf) {
   text-align: right;
 }
 
+/* --- "Controls on the left" (plan D4): one attribute, both shapes ----------- */
+.gf[data-gf-side="left"] > .gf-dock {
+  flex-direction: row-reverse;
+}
+
 /* --- desktop: the dock stands up as a rail beside the board ------------------
    Same DOM, one breakpoint (plan D2: a 280px rail holds at 900 with margin).
    The bands keep their heights; only their column changes. */
@@ -633,6 +638,23 @@ body:has(> .play-area > .gf) {
   .gf[data-gf-shape="rail"] > .gf-extra {
     background: var(--surface);
     border-left: 1px solid var(--border);
+  }
+  /* mirrored: the rail column comes first; the grid lays the dock out as a
+     two-column grid, so the phone's row-reverse must not apply here */
+  .gf[data-gf-shape="rail"][data-gf-side="left"] {
+    grid-template-columns: 280px minmax(0, 1fr);
+    grid-template-areas:
+      "bar stage"
+      "meters stage"
+      "dock stage"
+      "extra stage";
+  }
+  .gf[data-gf-shape="rail"][data-gf-side="left"] > .gf-game-bar,
+  .gf[data-gf-shape="rail"][data-gf-side="left"] > .gf-meters,
+  .gf[data-gf-shape="rail"][data-gf-side="left"] > .gf-dock,
+  .gf[data-gf-shape="rail"][data-gf-side="left"] > .gf-extra {
+    border-left: 0;
+    border-right: 1px solid var(--border);
   }
   .gf[data-gf-shape="rail"] .gf-sheet,
   .gf[data-gf-shape="rail"] .gf-scrim {

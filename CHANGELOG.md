@@ -19,8 +19,9 @@ earlier is in `git log`.
   new tab* moved into the game bar's ⋯ menu. On a desktop window the frame's controls
   stand up as a rail beside the board — verbs, the game's setup read-only, and every
   setting inline; on a phone, Settings opens a bottom sheet with the shared rows (Hints,
-  Declare assistance, Sound) first and the game's own second. The games' own controls
-  migrate one at a time. Also: a game page's tab now reads the game's name ("Trio Tumble: Jewel Drop")
+  Declare assistance, Sound, and a new *Controls on the left* that moves the rail to the
+  left of the board and reverses the dock's buttons) first and the game's own second. The
+  games' own controls migrate one at a time. Also: a game page's tab now reads the game's name ("Trio Tumble: Jewel Drop")
   rather than its slug. (`plans/2026-08-30-plan-game-frame.md` Phases 1–2)
 - 2026-08-30 **shelf:** three more pieces in the library — *Porcelain Afternoon*, *The
   Last Cab Home*, *Tuesday Night Rainfall* (each about three minutes, so they play out

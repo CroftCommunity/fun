@@ -13,7 +13,14 @@ import { startMusic } from "./music.js";
 import { renderMusicBar } from "./music-bar.js";
 import { renderSettingsSheet } from "./settings-sheet.js";
 import { renderGameFrame, type GameFrame } from "./game-frame.js";
-import { declareAssistanceEnabled, hintsEnabled, setDeclareAssistance, setHintsEnabled } from "./settings.js";
+import {
+  controlsOnLeft,
+  declareAssistanceEnabled,
+  hintsEnabled,
+  setControlsOnLeft,
+  setDeclareAssistance,
+  setHintsEnabled,
+} from "./settings.js";
 import { displayName } from "./contract.js";
 import {
   LAYOUT_KEY,
@@ -314,7 +321,19 @@ export function boot(root: HTMLElement = document.body): Chrome {
           value: music.isEnabled(),
           onChange: (on) => music.setEnabled(on),
         },
+        {
+          kind: "toggle",
+          id: "controls-left",
+          label: "Controls on the left",
+          hint: "The rail moves to the left of the board on a desktop; the dock's buttons reverse on a phone.",
+          value: controlsOnLeft(),
+          onChange: (on) => {
+            setControlsOnLeft(on);
+            frame?.setSide(on ? "left" : "right");
+          },
+        },
       ],
+      side: controlsOnLeft() ? "left" : "right",
       menu: [
         { label: "How to play", href: `/how-to/?game=${entry.id}` },
         { label: "Open in a new tab ↗", href: `/${entry.id}/`, newTab: true },

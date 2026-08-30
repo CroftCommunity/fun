@@ -21,6 +21,7 @@ const ALIGN_MOVE_SPEED_KEY = "fun-align-move-speed";
 const CS_SKIN_KEY = "fun-color-sort-skin";
 const CS_ICONS_KEY = "fun-color-sort-icons";
 const CS_STRICT_KEY = "fun-color-sort-strict";
+const CONTROLS_LEFT_KEY = "fun-controls-left";
 
 /** Pure resolver: an explicit stored "on"/"off" wins; otherwise the default. */
 export function resolveBool(stored: string | null, fallback: boolean): boolean {
@@ -102,6 +103,17 @@ export function hintsEnabled(): boolean {
 }
 export function setHintsEnabled(on: boolean): void {
   write(HINTS_KEY, on);
+}
+
+/** The game frame's mirror preference — **off by default**: the rail sits right of the
+ *  board on desktop and the dock's verbs run left-to-right on a phone. On, both flip
+ *  ("reverse control sides", plan 2026-08-30 D4). A frame-level preference, so it lives
+ *  in the "Every game" section rather than with any one game. */
+export function controlsOnLeft(): boolean {
+  return read(CONTROLS_LEFT_KEY, false);
+}
+export function setControlsOnLeft(on: boolean): void {
+  write(CONTROLS_LEFT_KEY, on);
 }
 
 /** Declare assistance (undo/hint use) in the outcome record — **on by default**. */

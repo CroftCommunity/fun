@@ -301,3 +301,14 @@ describe("renderGameFrame — the sheets", () => {
     expect(frame.root.querySelectorAll(".gf-extra")).toHaveLength(1);
   });
 });
+
+describe("renderGameFrame — the mirror preference", () => {
+  it("data-gf-side follows the option, and setSide() flips it live", () => {
+    const frame = renderGameFrame(host, spec(), { side: "left" });
+    expect(frame.root.dataset.gfSide).toBe("left");
+    frame.setSide("right");
+    expect(frame.root.dataset.gfSide).toBe("right");
+    host.innerHTML = "";
+    expect(renderGameFrame(host, spec()).root.dataset.gfSide).toBe("right");
+  });
+});
