@@ -294,8 +294,24 @@ bug).
 - **Unmigrated games** get the game bar and the stage only, and keep rendering their own
   controls inside the stage until they migrate. The frame with no spec is a legal state,
   not a broken one.
-- **The dock becomes a rail on desktop** (Phase 3) — the same spec, reflowed; a common
-  preference mirrors it to the left. **The start screen** (Phase 5) shows your
+- **The dock becomes a rail on desktop.** At ≥ 900px the same four bands reflow into a
+  280px column beside the board (`data-gf-shape="rail"` on the frame's root; `"dock"`
+  below). Verbs become a two-column grid, the meters stack, and the rail gains a panel
+  the phone does not show: **This game** (your `setup` rows, read-only, as "label · value")
+  and **Settings** (the same rows the sheet carries, inline — a preference is never more
+  than one click away on desktop). You declare nothing extra for this.
+- **Settings is the frame's verb, not yours.** The frame appends it to your verbs (so you
+  may declare at most four), and it opens the settings sheet: a bottom-sheet dialog on a
+  phone (`role="dialog"`, focus moves in, Escape and the scrim close it and return focus
+  to the verb), inline in the rail on desktop. The sheet is **Every game** first — Hints,
+  Declare assistance, Sound, and the mirror preference — then a section headed with your
+  `title` holding your `preferences`. A game with no preferences still gets the common
+  section. Declaring your own `settings` verb throws.
+- **The New game sheet** renders your `setup` rows and a Start button; Start closes the
+  sheet and calls your `onStart()`. Open it from your own *New game…* verb with
+  `frame.openSheet("setup", button)` — pass the button so focus returns to it.
+  A second `openSheet` replaces the first; there is never more than one sheet.
+  **The start screen** (Phase 5) shows your
   `splash.jpg`, `title`, `pitch` and setup card on first land, and a continue card (your
   `icon.jpg` plus a summary line from the progress store) when a game is in progress; a
   game opts into Continue by implementing `snapshot()` / `resume()` on its module (Phase 4).

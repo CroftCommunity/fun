@@ -94,4 +94,31 @@ describe("renderSettingsSheet", () => {
     range.dispatchEvent(new Event("input"));
     expect(update).toHaveBeenLastCalledWith(7);
   });
+
+  it("renders sections in order, each with a heading, after the bare rows", () => {
+    const sheet = renderSettingsSheet({
+      rows: [{ kind: "toggle", id: "bare", label: "Bare", value: true, onChange: () => {} }],
+      sections: [
+        { label: "Every game", rows: [{ kind: "toggle", id: "a", label: "A", value: false, onChange: () => {} }] },
+        { label: "Othello", rows: [{ kind: "toggle", id: "b", label: "B", value: true, onChange: () => {} }] },
+      ],
+    });
+    const heads = [...sheet.querySelectorAll(".sheet-section")].map((h) => h.textContent);
+    expect(heads).toEqual(["Every game", "Othello"]);
+    const order = [...sheet.querySelectorAll(".sheet-row, .sheet-section")].map(
+      (n) => n.getAttribute("data-setting") ?? `#${n.textContent}`,
+    );
+    expect(order).toEqual(["bare", "#Every game", "a", "#Othello", "b"]);
+  });
+
+  it("a spec with no sections renders no heading at all — Bubble's caller must not grow an empty one", () => {
+    const sheet = renderSettingsSheet({ rows: [{ kind: "toggle", id: "a", label: "A", value: false, onChange: () => {} }] });
+    expect(sheet.querySelector(".sheet-section")).toBeNull();
+  });
+
+  it("a section with zero rows is not rendered", () => {
+    const sheet = renderSettingsSheet({ rows: [], sections: [{ label: "Empty", rows: [] }] });
+    expect(sheet.querySelector(".sheet-section")).toBeNull();
+    expect(sheet.querySelectorAll(".sheet-row")).toHaveLength(0);
+  });
 });

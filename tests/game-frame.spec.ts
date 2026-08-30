@@ -23,7 +23,8 @@ test("the placeholder mounts inside a frame", { tag: "@smoke" }, async ({ page }
   await page.goto("/placeholder/");
   await ready(page);
   await expect(page.locator(".gf-game-bar .gf-title")).toHaveText("Placeholder");
-  await expect(page.locator(".gf-dock .gf-verb")).toHaveCount(1);
+  // the placeholder's one verb, plus the frame's own Settings
+  await expect(page.locator(".gf-dock .gf-verb")).toHaveCount(2);
   await expect(page.locator(".gf-meters .gf-stat")).toHaveCount(1);
 });
 
@@ -43,7 +44,7 @@ test("pressing a verb that changes a meter moves the stage by zero pixels", asyn
   await ready(page);
   const before = await top(page, ".gf-stage");
   const gameBefore = await top(page, ".placeholder-game");
-  await page.locator(".gf-verb").click();
+  await page.locator('.gf-verb[data-verb="poke"]').click();
   await expect(page.locator(".gf-stat-value")).toHaveText("1");
   expect(await top(page, ".gf-stage")).toBe(before);
   expect(await top(page, ".placeholder-game")).toBe(gameBefore);
@@ -101,4 +102,64 @@ test("a game page's title is the game's display name", { tag: "@smoke" }, async 
   await expect(page).toHaveTitle("Croft · fun — Trio Tumble: Jewel Drop");
   await page.goto("/color-sort/");
   await expect(page).toHaveTitle("Croft · fun — Color Sort");
+});
+
+// --- Phase 3a: dock ↔ rail, and the sheets ---
+
+test("at 1000 wide the frame is a rail beside the board; at 899 it is a dock under it", async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 680 });
+  await page.goto("/placeholder/");
+  await ready(page);
+  await expect(page.locator(".gf")).toHaveAttribute("data-gf-shape", "rail");
+  const stage = (await page.locator(".gf-stage").boundingBox())!;
+  const dock = (await page.locator(".gf-dock").boundingBox())!;
+  expect(dock.x).toBeGreaterThan(stage.x + stage.width - 1); // beside, to the right
+  await expect(page.locator(".gf-extra")).toBeVisible();
+  await expect(page.locator('.gf-verb[data-verb="settings"]')).toBeHidden();
+
+  await page.setViewportSize({ width: 899, height: 680 });
+  await expect(page.locator(".gf")).toHaveAttribute("data-gf-shape", "dock");
+  const stage2 = (await page.locator(".gf-stage").boundingBox())!;
+  const dock2 = (await page.locator(".gf-dock").boundingBox())!;
+  expect(dock2.y).toBeGreaterThan(stage2.y + stage2.height - 1); // under
+  await expect(page.locator(".gf-extra")).toBeHidden();
+  await expect(page.locator('.gf-verb[data-verb="settings"]')).toBeVisible();
+});
+
+test("on a phone Settings opens a bottom sheet dialog; Escape and the scrim close it and return focus", { tag: "@smoke" }, async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/placeholder/");
+  await ready(page);
+  const settings = page.locator('.gf-verb[data-verb="settings"]');
+  await settings.click();
+  const sheet = page.locator(".gf-sheet");
+  await expect(sheet).toBeVisible();
+  await expect(sheet).toHaveAttribute("role", "dialog");
+  await expect(sheet).toHaveAttribute("aria-modal", "true");
+  await expect(sheet.locator(".sheet-section").first()).toHaveText("Every game");
+  await expect(sheet.locator('[data-setting="hints"]')).toBeVisible();
+  await expect(sheet.locator('[data-setting="sound"]')).toBeVisible();
+  // focus moved inside
+  expect(await page.evaluate(() => document.activeElement?.closest(".gf-sheet") !== null)).toBe(true);
+  await page.keyboard.press("Escape");
+  await expect(sheet).toBeHidden();
+  expect(await page.evaluate(() => document.activeElement?.getAttribute("data-verb"))).toBe("settings");
+  await settings.click();
+  await expect(sheet).toBeVisible();
+  await page.locator(".gf-scrim").click({ position: { x: 10, y: 10 } });
+  await expect(sheet).toBeHidden();
+  expect(await page.evaluate(() => document.activeElement?.getAttribute("data-verb"))).toBe("settings");
+});
+
+test("on desktop the same rows are inline in the rail and no scrim exists", { tag: "@smoke" }, async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 680 });
+  await page.goto("/placeholder/");
+  await ready(page);
+  await expect(page.locator('.gf-extra [data-setting="hints"]')).toBeVisible();
+  await expect(page.locator('.gf-extra [data-setting="declare-assistance"]')).toBeVisible();
+  await expect(page.locator(".gf-scrim")).toHaveCount(0);
+  await expect(page.locator(".gf-sheet")).toHaveCount(0);
+  // the sheet's toggle writes the shared setting: flip Hints and read it back
+  await page.locator('.gf-extra [data-setting="hints"] .sheet-toggle-input').click({ force: true });
+  expect(await page.evaluate(() => localStorage.getItem("fun-hints"))).toBe("off");
 });

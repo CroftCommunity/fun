@@ -16,8 +16,11 @@ earlier is in `git log`.
   fixed-height bands (game bar, meters, dock) around the board so nothing above it can
   move while you play. Every game page now renders inside it: the shelf header is one row
   again on a phone (it wrapped to two on every game page), and *How to play* / *open in a
-  new tab* moved into the game bar's ⋯ menu. The games' own controls migrate one at a
-  time. Also: a game page's tab now reads the game's name ("Trio Tumble: Jewel Drop")
+  new tab* moved into the game bar's ⋯ menu. On a desktop window the frame's controls
+  stand up as a rail beside the board — verbs, the game's setup read-only, and every
+  setting inline; on a phone, Settings opens a bottom sheet with the shared rows (Hints,
+  Declare assistance, Sound) first and the game's own second. The games' own controls
+  migrate one at a time. Also: a game page's tab now reads the game's name ("Trio Tumble: Jewel Drop")
   rather than its slug. (`plans/2026-08-30-plan-game-frame.md` Phases 1–2)
 - 2026-08-30 **shelf:** three more pieces in the library — *Porcelain Afternoon*, *The
   Last Cab Home*, *Tuesday Night Rainfall* (each about three minutes, so they play out

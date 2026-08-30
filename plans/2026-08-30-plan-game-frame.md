@@ -1105,6 +1105,25 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
 
 ## Review Log
 
+### Phase 3a — executed 2026-08-30
+- RED first: 12 unit cases failed (sections, sheets, the Settings verb, the cap); then the
+  browser cases. Two design points settled in code rather than the plan's words: (1) the
+  rail is the **same DOM** in a CSS grid (`data-gf-shape="rail"` at ≥ 900px from
+  `matchMedia`), not a `.gf-rail` wrapper — so the 1a band-order test still holds and no
+  `display: contents` is needed; the plan's ".gf-rail visible" assertion became "the dock's
+  box is beside the stage at 1000, under it at 899". (2) **Settings is the frame's verb**:
+  appended after the game's, so a game declares at most four (`MAX_GAME_VERBS`) and a
+  declared `settings` id throws — the reserved-verb rule from §4c, enforced.
+- What the tests caught: a touch tap on WebKit does not focus a button, so "return focus
+  to the opener" needed the opener passed explicitly (`openSheet(kind, from)`); the rail
+  panel's `<h3>` heads under a hidden `<h1>` failed axe `heading-order` → `<h2>`; the
+  1b spec's "one verb" became "one verb plus Settings".
+- Green: unit 30 (frame + sheet), `tests/game-frame.spec.ts` 18/18 both engines, `npm run
+  smoke` 49/49 (the matrix gained the open-sheet and rail states on the placeholder),
+  typecheck, lint, hex scan. Screenshots at 390 (sheet) and 1000 (rail) reviewed: the
+  sheet's sections read "Every game → Hints · Declare assistance · Sound"; the rail shows
+  the meter, the verb, and settings inline.
+
 ### Phase 2b — executed 2026-08-30
 - RED first: `tests/page-titles.test.ts` failed to resolve `tools/registry-titles.mjs`;
   then one real red after the tool existed — `Object.keys` hoists the integer-like `"2048"`

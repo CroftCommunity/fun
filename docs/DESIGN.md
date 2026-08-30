@@ -113,8 +113,11 @@ The frame (`src/game-frame.ts`, `docs/BUILDING-GAMES.md` §4c) is chrome, so it 
 chrome roles only and a skin restyles it freely: bands sit on `--surface` with `--border`
 hairlines; the title uses `--font-display`; a seat's active ring and the thinking pulse
 are `--accent`; sub-labels and stat labels are `--ink-muted`; the primary verb is
-`--accent` on transparent; focus is `--focus`. It touches no board token (ADR-0002 records
-why the frame sits above the skin and below the board).
+the primary verb is `--active` on transparent (NOT `--accent`, which is a fill role — axe
+caught the accent version at 2.44:1); focus is `--focus`. The sheets reuse the settings
+sheet's own tokens (`.sheet-*`), sit on `--surface`, and dim the frame behind them with a
+fixed 45% black scrim in both palettes. It touches no board token (ADR-0002 records why the
+frame sits above the skin and below the board).
 
 ## Theme mechanics
 
