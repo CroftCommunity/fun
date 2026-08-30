@@ -261,6 +261,11 @@ mod tests {
             .expect("the mate is flagged immediate");
         assert!(mate.exact, "a mate on the spot is proven");
         assert_eq!(mate.quality, MoveClass::Optimal);
+        assert_eq!(
+            report.best_col,
+            Some(mate.col),
+            "best_col names the best move"
+        );
         assert_eq!(mate.san, "Re8#");
         assert!(mate.gives_check, "a mate is a check");
     }

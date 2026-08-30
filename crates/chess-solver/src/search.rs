@@ -116,6 +116,7 @@ pub struct Table {
     map: HashMap<TtKey, TtEntry>,
     enabled: bool,
     nodes: u64,
+    hits: u64,
 }
 
 impl Table {
@@ -126,6 +127,7 @@ impl Table {
             map: HashMap::new(),
             enabled: true,
             nodes: 0,
+            hits: 0,
         }
     }
 
@@ -137,6 +139,7 @@ impl Table {
             map: HashMap::new(),
             enabled: false,
             nodes: 0,
+            hits: 0,
         }
     }
 
@@ -157,6 +160,14 @@ impl Table {
     pub fn nodes(&self) -> u64 {
         self.nodes
     }
+
+    /// Probes the table answered without a search. The audit's lesson: a
+    /// table that never answers changes no result, so hits are the only
+    /// honest evidence the answer policy runs at all.
+    #[must_use]
+    pub fn hits(&self) -> u64 {
+        self.hits
+    }
 }
 
 /// What a search node learned, negamax-internal.
@@ -169,21 +180,16 @@ struct Node {
     path_dep: bool,
 }
 
-/// The value of a terminal from the side to move's perspective. `depth` is
-/// the remaining depth, so a mate found sooner outranks one found later —
-/// both directions: the engine finishes a won game and drags out a lost one.
-fn terminal_value(res: adversary_core::MatchResult, pos: &Position, depth: u32) -> i32 {
+/// The value of a terminal from the side to move's perspective. A decisive
+/// terminal is always a LOSS for the side to move (the mover is the one
+/// mated), so the only question is depth: `depth` is the remaining depth,
+/// and a mate found sooner outranks one found later — both directions: the
+/// engine finishes a won game and drags out a lost one. (The audit found the
+/// "mover won" branch this used to carry was unreachable; it is gone.)
+fn terminal_value(res: adversary_core::MatchResult, depth: u32) -> i32 {
     match res.winner() {
         None => 0,
-        Some(winner) => {
-            let mover_won =
-                winner == <chess_core::Chess as adversary_core::Adversary>::side_to_move(pos);
-            if mover_won {
-                MATE + depth as i32
-            } else {
-                -(MATE + depth as i32)
-            }
-        }
+        Some(_) => -(MATE + depth as i32),
     }
 }
 
@@ -241,7 +247,7 @@ fn qsearch(
     let all = legal_moves(board); // the node's ONE generation
     if let Some(res) = result_given(pos, &all) {
         return Some(Node {
-            value: terminal_value(res, pos, 0),
+            value: terminal_value(res, 0),
             exact: true,
             path_dep: matches!(res, adversary_core::MatchResult::Draw)
                 && terminal_is_repetition(pos, !all.is_empty()),
@@ -340,7 +346,7 @@ fn negamax(
     let mut moves = legal_moves(&pos.board); // the node's ONE generation
     if let Some(res) = result_given(pos, &moves) {
         return Some(Node {
-            value: terminal_value(res, pos, depth),
+            value: terminal_value(res, depth),
             exact: true,
             path_dep: matches!(res, adversary_core::MatchResult::Draw)
                 && terminal_is_repetition(pos, !moves.is_empty()),
@@ -359,6 +365,7 @@ fn negamax(
         if let Some(entry) = tt.map.get(&key) {
             tt_best = entry.best;
             if let Some(hit) = table_answer(*entry, depth, alpha, beta) {
+                tt.hits += 1;
                 return Some(hit);
             }
         }
@@ -695,6 +702,7 @@ mod tests {
                 move_scores_with(&pos, 4, &mut without, &mut NodeBudget::unlimited())
                     .expect("runs");
             assert_eq!(with_scores, without_scores, "{fen}");
+            assert!(with.hits() > 0, "{fen}: the table answered at least once");
             with_total += with.nodes();
             without_total += without.nodes();
         }
@@ -702,6 +710,72 @@ mod tests {
             with_total < without_total,
             "the table saved work across the boards: {with_total} vs {without_total}"
         );
+    }
+
+    #[test]
+    #[cfg_attr(
+        debug_assertions,
+        ignore = "release only: a depth-4 untabled midgame search"
+    )]
+    fn the_table_changes_speed_never_results_at_depth_four_in_a_midgame() {
+        // Narrow windows inside a real midgame are where the Lower/Upper bound
+        // guards actually fire; small boards barely reach them. Values and
+        // flags must still match an untabled search exactly.
+        let pos = pos_of("r1bq1rk1/ppp2ppp/2np1n2/2b1p3/2B1P3/2PP1N2/PP3PPP/RNBQ1RK1 w - - 2 7");
+        let mut with = Table::new();
+        let with_scores =
+            move_scores_with(&pos, 4, &mut with, &mut NodeBudget::unlimited()).expect("runs");
+        let without = move_scores_with(
+            &pos,
+            4,
+            &mut Table::disabled(),
+            &mut NodeBudget::unlimited(),
+        )
+        .expect("runs");
+        assert_eq!(with_scores, without);
+        assert!(with.hits() > 0);
+    }
+
+    /// Full-width quiescence with no cutoffs — the independent reference for
+    /// the alpha-beta one, on capture-rich boards where a wrong child window
+    /// would prune a needed recapture.
+    fn ref_qsearch(pos: &Position) -> i32 {
+        let board = &pos.board;
+        let all = legal_moves(board);
+        if let Some(res) = result_given(pos, &all) {
+            return terminal_value(res, 0);
+        }
+        let stand = heuristic(pos);
+        all.into_iter()
+            .filter(|mv| {
+                board.cells[usize::from(mv.to)] != 0
+                    || mv.promo != 0
+                    || (board.ep == Some(mv.to)
+                        && chess_core::board::kind_of(board.cells[usize::from(mv.from)])
+                            == Some(PieceKind::Pawn))
+            })
+            .map(|mv| -ref_qsearch(&pos.play(mv)))
+            .fold(stand, i32::max)
+    }
+
+    #[test]
+    fn quiescence_agrees_with_a_full_width_reference_on_capture_rich_boards() {
+        for fen in [
+            "4k3/2p1p3/3n4/4P3/8/3Q4/8/4K3 w - - 0 1",
+            "r3k3/1p6/2n5/3Pp3/2B5/8/8/4K2R w - - 0 1",
+            "3rk3/8/8/3q4/2N1B3/8/8/3RK3 b - - 0 1",
+        ] {
+            let pos = pos_of(fen);
+            let q = qsearch(
+                &pos,
+                -INFINITY,
+                INFINITY,
+                &mut Table::new(),
+                &mut NodeBudget::unlimited(),
+            )
+            .expect("unlimited");
+            assert_eq!(q.value, ref_qsearch(&pos), "{fen}");
+        }
     }
 
     #[test]
@@ -741,7 +815,7 @@ mod tests {
     /// test.
     fn ref_minimax(pos: &Position, depth: u32) -> i32 {
         if let Some(res) = result(pos) {
-            return terminal_value(res, pos, depth);
+            return terminal_value(res, depth);
         }
         if depth == 0 {
             return qsearch(
