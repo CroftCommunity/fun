@@ -18,6 +18,7 @@ pub mod hash;
 pub mod layout;
 pub mod rng;
 pub mod tiles;
+pub mod vectors;
 
 pub use board::{Board, MoveError};
 pub use config::{daily_origin, daily_seed, level_layout, level_origin};

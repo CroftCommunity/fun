@@ -1,0 +1,16 @@
+{
+  "index": 4,
+  "name": "05-refusals-are-noops",
+  "note": "Level 3 with illegal codes spliced in: each replays as a no-op.",
+  "seed": 4042403530,
+  "moves": [
+    31,
+    0,
+    280,
+    1309,
+    51401,
+    524287,
+    31
+  ],
+  "final_state_hash": "5c62a00358b3bd946ac185e3da2b8e3e7079153713053ff9317415c5ee552598"
+}

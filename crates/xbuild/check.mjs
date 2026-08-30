@@ -9,11 +9,11 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-const [wasmPath, vectorsDir, dotsVectorsDir, furrowVectorsDir, orchardVectorsDir, cribbageVectorsDir] =
+const [wasmPath, vectorsDir, dotsVectorsDir, furrowVectorsDir, orchardVectorsDir, cribbageVectorsDir, mahjongVectorsDir] =
   process.argv.slice(2);
-if (!wasmPath || !vectorsDir || !dotsVectorsDir || !furrowVectorsDir || !orchardVectorsDir || !cribbageVectorsDir) {
+if (!wasmPath || !vectorsDir || !dotsVectorsDir || !furrowVectorsDir || !orchardVectorsDir || !cribbageVectorsDir || !mahjongVectorsDir) {
   console.error(
-    "usage: node check.mjs <xbuild.wasm> <solitaire-vectors-dir> <dots-vectors-dir> <furrow-vectors-dir> <orchard-vectors-dir> <cribbage-vectors-dir>",
+    "usage: node check.mjs <xbuild.wasm> <solitaire-vectors-dir> <dots-vectors-dir> <furrow-vectors-dir> <orchard-vectors-dir> <cribbage-vectors-dir> <mahjong-vectors-dir>",
   );
   process.exit(2);
 }
@@ -36,6 +36,8 @@ const {
   move_in_cap,
   orchard_scenario_count,
   orchard_scenario_hash,
+  mahjong_scenario_count,
+  mahjong_scenario_hash,
 } = instance.exports;
 const len = hash_len();
 
@@ -166,6 +168,32 @@ for (const c of cases) {
       ok = false;
     } else {
       console.log(`orchard ${v.name}: ${got} (native == wasm)`);
+    }
+  }
+}
+
+// ── Mahjong ─────────────────────────────────────────────────────────────────
+// The deal itself is a seeded peel and the shuffle continues that stream, so
+// the vectors cover generation as well as play: a divergence in the RNG or the
+// FREE predicate between targets shows as a different deal, not only a
+// different position.
+{
+  const files = (await readdir(mahjongVectorsDir)).filter((f) => f.endsWith(".json")).sort();
+  const count = mahjong_scenario_count();
+  if (files.length !== count) {
+    console.error(
+      `mahjong: ${files.length} vector files but the wasm reports ${count} scenarios — one of them is unchecked`,
+    );
+    ok = false;
+  }
+  for (const file of files) {
+    const v = JSON.parse(await readFile(join(mahjongVectorsDir, file), "utf8"));
+    const got = readHash(mahjong_scenario_hash(v.index));
+    if (got !== v.final_state_hash) {
+      console.error(`mahjong ${v.name}: wasm ${got} != native ${v.final_state_hash}`);
+      ok = false;
+    } else {
+      console.log(`mahjong ${v.name}: ${got} (native == wasm)`);
     }
   }
 }

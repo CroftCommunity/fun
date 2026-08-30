@@ -18,6 +18,7 @@ use furrow_core::{
     apply_move as furrow_apply, legal_pits, state_hash as furrow_state_hash, Board as FurrowBoard,
     Pit,
 };
+use mahjong_core::vectors as mahjong_vectors;
 use orchard_core::vectors as orchard_vectors;
 use solitaire_core::{state_hash, GameState, Move};
 
@@ -175,6 +176,25 @@ fn write_hash(hex: &str) -> *const u8 {
 #[no_mangle]
 pub extern "C" fn orchard_scenario_count() -> u32 {
     orchard_vectors::COUNT as u32
+}
+
+/// The number of Mahjong golden scenarios.
+#[no_mangle]
+pub extern "C" fn mahjong_scenario_count() -> u32 {
+    mahjong_vectors::COUNT as u32
+}
+
+/// The `state_hash` of Mahjong golden scenario `index`, replayed inside wasm —
+/// the deal (a peel drawing from the seeded stream), a clear, a shuffle that
+/// continues the stream, and spliced-in refusals all run here. An index past
+/// the end returns the empty string rather than panicking.
+#[no_mangle]
+pub extern "C" fn mahjong_scenario_hash(index: u32) -> *const u8 {
+    let h = mahjong_vectors::scenario_hash(index as usize);
+    if h.is_empty() {
+        return write_hash("");
+    }
+    write_hash(&h)
 }
 
 /// The `state_hash` of Orchard Drop golden scenario `index`.

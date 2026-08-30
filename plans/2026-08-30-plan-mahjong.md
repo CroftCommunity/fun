@@ -29,27 +29,26 @@ front-end directory:
 
 ```
 crates/mahjong-core      tiles · match predicate · layouts (half-tile grid) · FREE predicate
-                         · reverse-construction generator · Game (play / undo / shuffle)
+                         · peel generator (deals winnable by construction) · Game (play / undo / shuffle)
                          · state_hash · pond_outcome::Game            + RULES.md, vectors/
 crates/mahjong-solver    budgeted DFS win-finder from ANY position (hints; "proven" flag)
-                         · the daily pack (seed schedule + fixture line; see Reasoning)
 crates/mahjong-wasm      raw C-ABI + serde-JSON binding: holds one game, never panics
 src/games/mahjong/       mahjong.ts (GameModule on the game frame) · mahjong-wasm.ts ·
                          mahjong-outcome.ts · mahjong-howto.ts · tiles.ts (SVG faces) ·
-                         assets/{icon,splash}.jpg
-games/mahjong/           daily-pack.json
+                         assets/{icon,splash}.jpg   (no daily pack — see Reasoning)
 ```
 
-- **Layouts** are authored in a half-tile ASCII grid (the KMahjongg idea, our own files —
-  its `.layout`s are GPL and we are AGPL, so reuse would be legal; they are re-authored
-  anyway because the format here carries offsets differently). Ladder: `pond` 36 → `bridge`
+- **Layouts** are authored in code on a half-tile grid (`layout.rs`: `row`/`block` builders
+  plus explicit half-offset slots — the KMahjongg idea, our own designs; its `.layout`s are
+  GPL and we are AGPL, so reuse would have been legal, but five originals were cheaper than
+  a parser). Ladder: `pond` 36 → `bridge`
   60 → `fortress` 88 → `steps` 112 → `turtle` 144 — the Turtle to the standard 5-layer
   shape (87 / 36 / 16 / 4 / 1, side tiles half-offset).
 - **A deal is `(layout, seed)`**, packed into one JS-safe integer; the record carries only
   that plus the move list. Levels: `n` → layout by band, seed `FNV("mahjong-level-n")`;
-  endless. Daily: the pack's seed for the UTC day, on the Turtle.
+  endless. Daily: `FNV("mahjong-daily-YYYY-MM-DD")` on the Turtle (no pack — see Reasoning).
 - **A move is a pair of slot ids** (`a << 8 | b`) or **Shuffle** (`0x10000`) — shuffle
-  re-deals the remaining tiles over the remaining slots by reverse construction from the
+  re-deals the remaining tiles over the remaining slots by the same peel from the
   game's own RNG stream, so it is winnable-by-construction again *and* replays. Undo pops
   and replays. Hint, undo and shuffle all count as assistance.
 - **Hint = the solver's next move when it finds a win within budget** (guaranteed not to
@@ -70,22 +69,36 @@ games/mahjong/           daily-pack.json
 often enough that a filter would work, but the filter is a full solver run per seed (the
 hard cases take de Bondt's solver a day), and it says nothing about the *smaller* boards or
 about shuffle-on-stuck. Reverse construction gives a winnable board for every layout and
-every remaining-slot subset in linear time, with the winning line as a by-product. The cost
-is care in the placement step: a slot with tiles on both sides can never be added, so the
-generator refuses a placement that would leave such a gap, requires a slot's support to be
-present before it, and retries the attempt from the continuing RNG stream on the rare dead
-end. The retry rate is measured in the tests, not assumed.
+every remaining-slot subset in linear time, with the winning line as a by-product.
 
-**Why the pack has no solver in its winnability path (§3 of BUILDING-GAMES).** Every deal is
-winnable by construction, so the daily pack is the trivially-winnable shape: a deterministic
-seed schedule plus a fixture line, byte-identically regenerable. The solver crate exists for
-*hints* and difficulty, and the plan says so rather than shipping a solver "for symmetry".
+**Why the construction is a peel, not a placement (learned 2026-08-30).** The first cut
+placed pairs forward into empty slots under two rules — support first, and never leave a
+one-slot gap between placed tiles — and dead-ended on **half of all Turtles**. Instrumenting
+the dead ends showed why: *any* hole between two placed tiles on a row is unfillable (its
+last slot would be touched on both sides), not only a one-slot one, and the end of the walk
+routinely left a row tail whose only addable slot could not take its neighbour as a
+partner. The industry's framing is the fix: **peel** the full layout — remove random pairs
+of currently-free slots until none remain — and let that order be the deal. Nothing to get
+wrong about holes, because a peel only ever removes what is free. Measured restart rate: 22
+per 300 Turtle seeds, pinned by test.
+
+**Why there is no daily pack (§3 of BUILDING-GAMES, the Loose Ends precedent).** Every deal
+is winnable by construction, so the daily needs no certified seed list: the daily seed is
+`FNV("mahjong-daily-YYYY-MM-DD")` on the Turtle, derived identically in the core and the TS
+wrapper, and the fixture line lives in the golden vectors (`02-pond-cleared`). The solver
+crate exists for *hints*, and the plan says so rather than shipping a pack "for symmetry".
 
 **Why the solver is budgeted and hints carry a `proven` flag.** Position solvability is
 NP-complete with peeking; a budgeted DFS with memoisation on the present-tile bitset and
-"four free of a kind → take them" pruning finds wins fast on most positions and gives up on
-the rest. A hint from a found line cannot doom the board; a heuristic hint might, and the UI
-must not say otherwise.
+"every remaining tile of a class is free → take them" pruning finds wins fast on most
+positions and gives up on the rest. A hint from a found line cannot doom the board; a
+heuristic hint might, and the UI must not say otherwise. **Measured (release, fresh
+Turtles):** most seeds clear in ~60 nodes; a few sink millions into one wrong early branch
+(seed 5 unsolved at 3M). De Bondt's remedy — random restarts with growing caps and the
+dead-position memo carried across — took seed 5 to 557k and the rest to ≤ 56k. Found on the
+way: a position abandoned for *budget* was being memoised as dead; only an exhausted subtree
+is. The wasm hint budget is 15k nodes, so a hard position falls back to the heuristic and
+says so.
 
 **Why original SVG faces.** The repo is AGPL, so GPL/CC-BY-SA art is legally reusable, but
 vendoring 42 SVGs from KDE/Commons buys attribution obligations, a dependency to drift-check,
@@ -115,7 +128,7 @@ coverage.
 |---|---|---|
 | 0 | Plan, worktree, FEATURE.md | this doc |
 | 1 | `mahjong-core`: tiles + match, layouts + FREE, generator, Game, hash, outcome | Rust gate green; every generated board replays its construction line to a clear; RULES.md + vectors |
-| 2 | `mahjong-solver`: budgeted win-finder + pack | solver clears a level-1 board and the Turtle from its start within budget; pack committed + regen drill |
+| 2 | `mahjong-solver`: budgeted win-finder | solver clears a level-1 board and six fresh Turtles within 1M nodes; hint honesty bound to `proven` |
 | 3 | `mahjong-wasm` + `xbuild` enrolment | C-ABI never panics; native == wasm on the vectors |
 | 4 | Front end: module, frame spec, tiles.ts, outcome/share, how-to, registry, styles, tokens | wiring e2e (`@smoke`), core-decides-legality e2e, full solve → verified win → `?r=` re-verifies, board-top stability, axe both themes, 360px |
 | 5 | Art (icon/splash), guide shots, CHANGELOG, README, TODO | `art.test.ts`, `how-to.test.ts` green |
@@ -132,3 +145,5 @@ coverage.
 ## Review Log
 
 - 2026-08-30 — plan written from the research brief; phases begin.
+- 2026-08-30 — Phase 1–3 landed: the generator became a peel (see Reasoning), the solver
+  gained restarts, the daily pack was dropped for the Loose Ends shape. Rust gate green.

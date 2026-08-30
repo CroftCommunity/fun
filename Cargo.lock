@@ -423,6 +423,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "mahjong-core"
+version = "0.0.0"
+dependencies = [
+ "hex",
+ "pond-docformat",
+ "pond-outcome",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+]
+
+[[package]]
+name = "mahjong-solver"
+version = "0.0.0"
+dependencies = [
+ "mahjong-core",
+]
+
+[[package]]
+name = "mahjong-wasm"
+version = "0.0.0"
+dependencies = [
+ "mahjong-core",
+ "mahjong-solver",
+ "pond-outcome",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "memchr"
 version = "2.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -801,6 +832,7 @@ dependencies = [
  "cribbage-core",
  "dots-core",
  "furrow-core",
+ "mahjong-core",
  "orchard-core",
  "solitaire-core",
 ]

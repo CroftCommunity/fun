@@ -18,7 +18,7 @@ once and every game reuses it. Since 2026-08-30 every game page is the **game fr
 meter row, the stage the game renders into, and a dock of at most five verbs — four fixed-height bands
 around the board, so nothing above it moves while you play. Every game is on it (the migration
 landed 2026-08-30, one game per phase); ⤢ in the shelf bar is the real Fullscreen API where the
-browser has one, and says so where it does not (iOS Safari). Shelf order: **solitaire → trio tumble → bubble → wyrdle → 2048 → drop 4 → align → blockdoku → loose ends → cribbage** (cribbage shipped 2026-08-29, against the engine).
+browser has one, and says so where it does not (iOS Safari). Shelf order: **solitaire → trio tumble → bubble → wyrdle → 2048 → drop 4 → align → blockdoku → loose ends → mahjong → cribbage** (cribbage shipped 2026-08-29, against the engine).
 
 ## Layout
 
@@ -53,6 +53,13 @@ crates/
                      FNV/mulberry32 RNG, FREE test + release, solvable-by-construction
                      generator, state hash — green (no solver: solvable by construction)
   looseends-wasm/    browser binding over looseends-core (raw C-ABI + serde-JSON)   — built
+  mahjong-core/      deterministic Mahjong-solitaire engine (144-tile set with flower/season
+                     wild classes, five half-tile-grid layouts incl. the Turtle, the FREE
+                     predicate, peel-built deals winnable by construction, a recorded shuffle,
+                     state hash + replay) — green, with RULES.md + vectors/
+  mahjong-solver/    budgeted win-finder for a live position: the hint oracle (random restarts
+                     with growing caps; "proven" only when a line was found) — green
+  mahjong-wasm/      browser binding over mahjong-core + solver (raw C-ABI + serde-JSON) — built
   twenty48-wasm/     browser binding over twenty48-core (raw C-ABI + serde-JSON)   — built
 games/solitaire/     daily-pack.json — a year of winnable daily seeds + a fixture win line (v2, seeds-lean)
 games/bubble/        daily-pack.json — a year of winnable clear-the-board seeds + a fixture clear line

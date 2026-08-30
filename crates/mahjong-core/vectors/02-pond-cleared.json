@@ -1,0 +1,27 @@
+{
+  "index": 1,
+  "name": "02-pond-cleared",
+  "note": "Level 1 played down its construction line to a clear.",
+  "seed": 4008848292,
+  "moves": [
+    4643,
+    7970,
+    4385,
+    2848,
+    1565,
+    1308,
+    4,
+    1802,
+    6174,
+    283,
+    2073,
+    4887,
+    2330,
+    4118,
+    5141,
+    515,
+    3087,
+    3342
+  ],
+  "final_state_hash": "ba5083c89da3bc3a1d4314f5114bf10cf51c46c795684d6c39f51602de424dd2"
+}

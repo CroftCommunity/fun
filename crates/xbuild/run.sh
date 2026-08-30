@@ -27,4 +27,5 @@ node "$here/check.mjs" \
   "$fun/crates/dots-core/vectors" \
   "$fun/crates/furrow-core/vectors" \
   "$fun/crates/orchard-core/vectors" \
-  "$fun/crates/cribbage-core/vectors"
+  "$fun/crates/cribbage-core/vectors" \
+  "$fun/crates/mahjong-core/vectors"
