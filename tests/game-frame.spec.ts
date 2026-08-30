@@ -93,3 +93,12 @@ test("the game bar's ⋯ menu holds How to play and open-in-new-tab, and behaves
   await page.locator(".gf-stage").click({ position: { x: 5, y: 5 } });
   await expect(menu).toBeHidden();
 });
+
+// --- Phase 2b: the tab reads the game's name, not its slug ---
+
+test("a game page's title is the game's display name", { tag: "@smoke" }, async ({ page }) => {
+  await page.goto("/trio-tumble/");
+  await expect(page).toHaveTitle("Croft · fun — Trio Tumble: Jewel Drop");
+  await page.goto("/color-sort/");
+  await expect(page).toHaveTitle("Croft · fun — Color Sort");
+});

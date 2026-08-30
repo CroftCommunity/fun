@@ -17,7 +17,8 @@ earlier is in `git log`.
   move while you play. Every game page now renders inside it: the shelf header is one row
   again on a phone (it wrapped to two on every game page), and *How to play* / *open in a
   new tab* moved into the game bar's ⋯ menu. The games' own controls migrate one at a
-  time. (`plans/2026-08-30-plan-game-frame.md` Phases 1–2)
+  time. Also: a game page's tab now reads the game's name ("Trio Tumble: Jewel Drop")
+  rather than its slug. (`plans/2026-08-30-plan-game-frame.md` Phases 1–2)
 - 2026-08-30 **shelf:** three more pieces in the library — *Porcelain Afternoon*, *The
   Last Cab Home*, *Tuesday Night Rainfall* (each about three minutes, so they play out
   rather than loop). No game names them by default yet; they are in the track list.

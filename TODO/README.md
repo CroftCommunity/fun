@@ -146,16 +146,11 @@ field:
 
 ## Cross-game open threads (span more than one game)
 
-- [ ] **Every game page's `<title>` is a slug, not a name.** `build.mjs` emits
-  `Croft · fun — ${id}`, so the browser tab reads "Croft · fun — color-sort" and
-  "Croft · fun — trio-tumble" on all 18 pages. Noticed during the 2026-08-28
-  rename, which added `displayName()` to `src/contract.ts` and used it for the
-  how-to page's tab title — the game pages are the other half and were left
-  alone deliberately, because changing them touches every page and wants its own
-  check. The obstacle is that `build.mjs` is a Node script and cannot import the
-  TS registry; it would read `src/registry.ts` as text the way `tools/intake.mjs`
-  and the pre-paint skin script already do. Note that `gameAliases()` did exactly
-  that and had an index-zip bug for it, so parse each entry as a unit.
+- [x] **Every game page's `<title>` is a slug, not a name.** Closed 2026-08-30 (plan
+  `2026-08-30-plan-game-frame.md` Phase 2b): `tools/registry-titles.mjs` reads
+  `src/registry.ts` as text, each entry as a unit, and `build.mjs` takes both the page
+  list and each page's display name from it; `tests/page-titles.test.ts` pins the parse
+  to the real registry and is the first test that ties `build.mjs`'s pages to `REGISTRY`.
 
 - [ ] **Nothing in this repo's workflow compiles the solvers with overflow checks
   on.** The gate runs `cargo test --workspace --release`, for the documented
