@@ -7,6 +7,8 @@
 
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+
+import { boardTopStable } from "./helpers/board-top.js";
 import { DEFAULT_SKIN, familyMembers, familyOf } from "../src/skins.js";
 
 async function ready(page: Page): Promise<void> {
@@ -39,16 +41,18 @@ test("the two rows, both stores and the pickers render", { tag: "@smoke" }, asyn
   await ready(page);
   await expect(page.locator(".furrow-pit")).toHaveCount(12);
   await expect(page.locator(".furrow-store")).toHaveCount(2);
-  // The banner explains the two rules that make this game its own thing.
-  await expect(page.locator(".furrow-banner")).toContainText(/go again/i);
-  await expect(page.locator(".furrow-banner")).toContainText(/capture/i);
-  await expect(page.locator(".furrow-turnbar")).toContainText(/you/i);
-  await expect(page.locator(".furrow-turnbar")).toContainText(/the engine/i);
-  // The difficulty picker tops out at Expert — the opening does not solve, so
-  // "Perfect" would be a claim the engine cannot make.
-  await expect(page.locator(".furrow-level option")).toHaveCount(4);
-  await expect(page.locator(".furrow-level")).toContainText("Expert");
-  await expect(page.locator(".furrow-level")).not.toContainText("Perfect");
+  // The two rules that make this game its own thing are the opening toast (and the pitch).
+  await expect(page.locator(".gf-toast")).toContainText(/go again/i);
+  await expect(page.locator(".gf-toast")).toContainText(/capture/i);
+  await expect(page.locator(".furrow-banner, .furrow-turnbar, .furrow-controls")).toHaveCount(0);
+  await expect(page.locator('.gf-seat[data-meter="you"]')).toContainText(/you/i);
+  await expect(page.locator('.gf-seat[data-meter="engine"]')).toContainText(/the engine/i);
+  // The difficulty tops out at Expert — the opening does not solve, so "Perfect"
+  // would be a claim the engine cannot make.
+  await page.locator('.gf-verb[data-verb="new"]').click();
+  const labels = await page.locator('.gf-sheet [data-setting="level"] .sheet-choice-opt').allTextContents();
+  expect(labels).toEqual(["Easy", "Medium", "Hard", "Expert"]);
+  await page.keyboard.press("Escape");
 });
 
 test("tapping a legal pit sows it, and an empty pit is inert", async ({ page }) => {
@@ -147,7 +151,10 @@ test("an empty pit is not dimmed, because the numeral is the information", async
 test("the difficulty picker persists the chosen level", async ({ page }) => {
   await page.goto("/furrow/?seed=7");
   await ready(page);
-  await page.locator(".furrow-level").selectOption("Hard");
+  await page.locator('.gf-verb[data-verb="new"]').click();
+  await page.locator('.gf-sheet [data-setting="level"] input[value="Hard"]').check();
+  await page.locator(".gf-sheet .gf-start").click();
+  await expect(page.locator(".gf-mode")).toHaveText("Hard");
   expect(await page.evaluate(() => localStorage.getItem("fun-furrow-level"))).toBe("Hard");
 });
 
@@ -252,7 +259,7 @@ test("a hint names a pit, explains it, and says it counts as assistance", async 
   await page.goto("/furrow/?seed=7");
   await ready(page);
   await waitHumanOrOver(page);
-  await page.locator(".furrow-hint").click();
+  await page.locator('.gf-verb[data-verb="hint"]').click();
   const status = page.locator(".furrow-status");
   await expect(status).toContainText(/Hint: your pit \d/);
   await expect(status).toContainText(/assistance/i);
@@ -265,8 +272,8 @@ test("with hints off the control ends the game and reports what was left", async
   await page.goto("/furrow/?seed=7");
   await ready(page);
   await waitHumanOrOver(page);
-  await expect(page.locator(".furrow-hint")).toHaveCount(0);
-  await page.locator(".furrow-stuck").click();
+  await expect(page.locator('.gf-verb[data-verb="hint"]')).toHaveCount(0);
+  await page.locator('.gf-verb[data-verb="done"]').click();
   const result = page.locator(".sol-result");
   await expect(result).toBeVisible({ timeout: 30_000 });
   await expect(result).toContainText(/ended early/i);
@@ -279,8 +286,9 @@ test("the tutor panel is off by default and appears when enabled in settings", a
   await page.goto("/furrow/?seed=7");
   await ready(page);
   await expect(page.locator(".furrow-tutor")).toHaveCount(0);
-  await page.locator(".furrow-settings summary").click();
-  await page.locator(".furrow-set-tutor").check();
+  await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-input').click({ force: true });
   await expect(page.locator(".furrow-tutor-explain")).toBeVisible();
 });
 
@@ -329,8 +337,10 @@ test("the tutor's reading survives the re-render that lands after a turn settles
   const before = await page.locator(".furrow-tutor-options li").count();
 
   // Force a re-render without changing the position: toggling a setting does it.
-  await page.locator(".furrow-settings summary").click();
-  await page.locator(".furrow-set-assist").click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await page.locator('.gf-sheet [data-setting="declare-assistance"] .sheet-toggle-input').click({ force: true });
+  await page.keyboard.press("Escape");
   expect(await page.locator(".furrow-tutor-options li").count()).toBe(before);
 
   // But a move DOES change the position, and the stale reading must go.
@@ -353,8 +363,9 @@ test("the experimental local-AI opponent is hidden with no real WebGPU adapter",
   });
   await page.goto("/furrow/?seed=7");
   await ready(page);
-  await page.locator(".furrow-settings summary").click();
-  await expect(page.locator(".furrow-ai-toggle-input")).toHaveCount(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await expect(page.locator('.gf-sheet [data-setting="local-ai"]')).toHaveCount(0);
 });
 
 test("a fallback adapter does not count as WebGPU", async ({ page }) => {
@@ -367,8 +378,9 @@ test("a fallback adapter does not count as WebGPU", async ({ page }) => {
   });
   await page.goto("/furrow/?seed=7");
   await ready(page);
-  await page.locator(".furrow-settings summary").click();
-  await expect(page.locator(".furrow-ai-toggle-input")).toHaveCount(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await expect(page.locator('.gf-sheet [data-setting="local-ai"]')).toHaveCount(0);
 });
 
 test("the toggle appears with a real adapter and discloses the cost and the guarantee", async ({
@@ -382,11 +394,12 @@ test("the toggle appears with a real adapter and discloses the cost and the guar
   });
   await page.goto("/furrow/?seed=7");
   await ready(page);
-  await page.locator(".furrow-settings summary").click();
-  const toggle = page.locator(".furrow-ai-toggle-input");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  const toggle = page.locator('.gf-sheet [data-setting="local-ai"] .sheet-toggle-input'); // visually hidden input
   await expect(toggle).toHaveCount(1);
-  await toggle.check();
-  const disclosure = page.locator(".furrow-ai-disclosure");
+  await toggle.click({ force: true });
+  const disclosure = page.locator('.gf-sheet [data-setting="local-ai"] .sheet-hint');
   // The cost, with the size — a player deciding whether to tap this deserves the
   // number, not "a download".
   await expect(disclosure).toContainText(/one[- ]time/i);
@@ -402,25 +415,23 @@ test("the toggle appears with a real adapter and discloses the cost and the guar
   await expect(disclosure).toContainText(/plays weaker/i);
   await expect(disclosure).not.toContainText(/never plays a losing move/i);
   // The turn bar switches to the persona, so a player knows who they are facing.
-  await expect(page.locator(".furrow-seat.them")).toContainText("Millet");
+  await page.keyboard.press("Escape");
+  await expect(page.locator('.gf-seat[data-meter="engine"]')).toContainText("Millet");
 });
 
-test("the settings panel stays open when something re-renders the board", async ({ page }) => {
-  // Same defect as dots': render() is container.replaceChildren, so a re-render
-  // rebuilt the panel the player had opened. This game re-renders on its own when
-  // the WebGPU probe resolves, at a moment nothing in the UI predicts — toggling a
-  // setting fires the same render(), which makes the race a deterministic click.
+test("the settings sheet stays open when something re-renders the board", async ({ page }) => {
+  // The sheet is the frame's, outside the game's replaceChildren — a re-render
+  // (flipping Hints relabels the verb through onSettingsChange) cannot close it.
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/furrow/?seed=7");
   await ready(page);
-  const panel = page.locator(".furrow-settings");
-  await page.locator(".furrow-settings summary").click();
-  await expect(panel).toHaveAttribute("open", "");
-
-  await page.locator(".furrow-set-hints").click();
-
-  await expect(panel).toHaveAttribute("open", "");
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  const sheet = page.locator(".gf-sheet");
+  await expect(sheet).toBeVisible();
+  await page.locator('.gf-sheet [data-setting="hints"] .sheet-toggle-input').click({ force: true });
+  await expect(page.locator('.gf-verb[data-verb="done"]')).toHaveCount(1);
+  await expect(sheet).toBeVisible();
 });
-
 test("the tutor's explained options survive a re-render on the same position", async ({ page }) => {
   // TODO/dots.md:81 — the reading used to live only in the DOM, so any render()
   // erased it. Hiding and re-showing the tutor is the board-neutral re-render
@@ -437,10 +448,46 @@ test("the tutor's explained options survive a re-render on the same position", a
   await expect(items.first()).toBeVisible();
   const before = await items.count();
 
-  await page.locator(".furrow-settings summary").click();
-  await page.locator(".furrow-set-tutor").click(); // hide  -> render()
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  const tutorRow = page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-input');
+  await tutorRow.click({ force: true }); // hide  -> render()
   await expect(page.locator(".furrow-tutor")).toHaveCount(0);
-  await page.locator(".furrow-set-tutor").click(); // show  -> render()
+  await tutorRow.click({ force: true }); // show  -> render()
 
   await expect(items).toHaveCount(before);
+});
+
+// --- the frame (plan Phase 14): the board does not move across the engine's reply; resume ---
+
+test("thinking is the engine's seat state and the board does not move across its reply", { tag: "@smoke" }, async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/furrow/?seed=7");
+  await ready(page);
+  await waitHumanOrOver(page);
+  const v = await boardTopStable(page, ".furrow-board", async () => {
+    await page.locator(".furrow-pit.mine.legal").first().click();
+    await waitHumanOrOver(page);
+    await page.locator('.gf-verb[data-verb="settings"]').click();
+    await expect(page.locator(".gf-sheet")).toBeVisible();
+    await page.keyboard.press("Escape");
+  });
+  expect(v.frames).toBeGreaterThan(5);
+  expect(v, `board top moved ${v.delta}px over ${v.frames} frames`).toMatchObject({ stable: true });
+});
+
+test("leaving mid-game and returning to the bare URL resumes the same position", async ({ page }) => {
+  await page.goto("/furrow/?seed=7");
+  await ready(page);
+  await waitHumanOrOver(page);
+  await page.locator(".furrow-pit.mine.legal").first().click();
+  await waitHumanOrOver(page);
+  const hash = await page.evaluate(() => window.__furrow!.game.currentHash());
+  await page.goto("/furrow/");
+  const card = page.locator(".gf-continue");
+  await expect(card).toBeVisible();
+  await card.locator(".gf-continue-btn").click();
+  await ready(page);
+  await waitHumanOrOver(page);
+  expect(await page.evaluate(() => window.__furrow!.game.currentHash())).toBe(hash);
 });

@@ -20,7 +20,10 @@
 //!
 //! A finished match is a verifiable `pond-outcome` record, shareable via `?r=`.
 
-import type { GameModule } from "../../contract.js";
+import type { GameModule, GameServices } from "../../contract.js";
+import type { GameFrame, GameFrameSpec } from "../../game-frame.js";
+import type { Progress } from "../../progress.js";
+import type { SettingRow } from "../../settings-sheet.js";
 import { WebLLMRuntime } from "../../harness/ai-runtime.js";
 import { speak } from "../../harness/banter.js";
 import { buildBand, HybridPlayer, type BandMove } from "../../harness/hybrid-player.js";
@@ -30,10 +33,8 @@ import {
   furrowLevel,
   furrowTutorEnabled,
   hintsEnabled,
-  setDeclareAssistance,
   setFurrowLevel,
   setFurrowTutor,
-  setHintsEnabled,
   type FurrowLevel,
 } from "../../settings.js";
 import {
@@ -291,6 +292,27 @@ function renderResultScreen(
 
 // ---------- the game module ----------
 
+/** The New game card: difficulty. One builder for the poster and the sheet. */
+export function furrowSetupRows(onChange?: { level?(l: FurrowLevel): void }): SettingRow[] {
+  return [
+    {
+      kind: "choice",
+      id: "level",
+      label: "Difficulty",
+      hint: "Expert, not Perfect: this board is too big to solve from the opening, so even the top level searches rather than proves.",
+      value: furrowLevel(),
+      options: LEVELS.map((l) => ({ value: l, label: l })),
+      onChange: (v) => {
+        setFurrowLevel(v as FurrowLevel);
+        onChange?.level?.(v as FurrowLevel);
+      },
+    },
+  ];
+}
+
+/** The poster's setup card — the registry's `setup` factory. */
+export const furrowSetup = (): SettingRow[] => furrowSetupRows();
+
 /** Construct a fresh Furrow module (the registry `load`). */
 export function furrowModule(): GameModule {
   let game: Furrow | null = null;
@@ -298,6 +320,11 @@ export function furrowModule(): GameModule {
   let container: HTMLElement | null = null;
   let disposed = false;
   let busy = false;
+  let frame: GameFrame | null = null;
+  let pendingResume: Progress | null = null;
+  let moves: number[] = [];
+  let hinted = false;
+  let toasted: string | null = null;
   let ending = false;
   let seed = 0n;
   let level: FurrowLevel = furrowLevel();
@@ -513,113 +540,77 @@ export function furrowModule(): GameModule {
     return el("div", { class: "furrow-boardwrap" }, boardEl);
   };
 
-  const renderTurnbar = (board: BoardView): HTMLElement => {
-    const humanTurn = board.toMove === HUMAN;
-    return el(
-      "div",
-      { class: "furrow-turnbar", role: "status" },
-      el(
-        "span",
-        { class: `furrow-seat you${humanTurn ? " active" : ""}` },
-        `${MARK[HUMAN]} You ${yourStore(board)}`,
-      ),
-      el(
-        "span",
-        { class: `furrow-seat them${humanTurn ? "" : " active"}` },
-        `${opponentIdentity().avatar} ${opponentIdentity().name} ${theirStore(board)}`,
-      ),
-    );
-  };
-
-  const renderControls = (): HTMLElement => {
-    const select = el("select", { class: "furrow-level", "aria-label": "Difficulty" });
-    for (const l of LEVELS) {
-      const opt = el("option", l === level ? { selected: "selected" } : {}, l);
-      opt.setAttribute("value", l);
-      select.append(opt);
-    }
-    select.addEventListener("change", () => {
-      level = select.value as FurrowLevel;
-      setFurrowLevel(level);
-    });
-
-    const fresh = el("button", { type: "button", class: "furrow-new" }, "New game");
-    fresh.addEventListener("click", () => void startGame());
-
-    // The shared assistance control: a hint while hints are on, and otherwise
-    // the honest way out — ending the match rather than pretending it finished.
+  // --- what the frame shows: seats (stores, "go again"), the level chip, verbs, setup, preferences ---
+  const spec = (): GameFrameSpec => {
+    const b = game?.board();
+    const opp = opponentIdentity();
+    const live = b !== undefined && b.result === -1;
+    const humanTurn = live && b.toMove === HUMAN;
+    const engineThinking = live && !humanTurn && busy;
     const hints = hintsEnabled();
-    const action = el(
-      "button",
-      { type: "button", class: hints ? "furrow-hint" : "furrow-stuck" },
-      hints ? "Hint" : "I\u2019m done",
-    );
-    action.addEventListener("click", hints ? showHint : endNow);
-
-    const toggle = (
-      checked: boolean,
-      label: string,
-      cls: string,
-      onChange: (on: boolean) => void,
-    ): HTMLElement => {
-      const input = el("input", { type: "checkbox", class: cls });
-      (input as HTMLInputElement).checked = checked;
-      input.addEventListener("change", () => onChange((input as HTMLInputElement).checked));
-      return el("label", { class: "furrow-toggle" }, input, ` ${label}`);
-    };
-    const details = el("details", { class: "sol-settings furrow-settings" });
-    details.append(
-      el("summary", {}, "Settings"),
-      toggle(hints, "Enable hints", "furrow-set-hints", (on) => {
-        setHintsEnabled(on);
-        render(); // relabel the action control (Hint <-> I'm done)
-      }),
-      toggle(declareAssistanceEnabled(), "Declare assistance used", "furrow-set-assist", (on) => {
-        setDeclareAssistance(on);
-      }),
-      toggle(furrowTutorEnabled(), "Show tutor", "furrow-set-tutor", (on) => {
-        setFurrowTutor(on);
-        render();
-      }),
-    );
+    const preferences: SettingRow[] = [
+      {
+        kind: "toggle",
+        id: "tutor",
+        label: "Tutor",
+        hint: "Lists the pits the engine rates as sound, each with its reason, and says how sure it is.",
+        value: furrowTutorEnabled(),
+        onChange: (on) => {
+          setFurrowTutor(on);
+          render();
+        },
+      },
+    ];
     if (localAiAvailable) {
-      details.append(
-        toggle(
-          opponentKind === LOCAL_AI,
-          "Experimental: local AI opponent",
-          "furrow-ai-toggle-input",
-          (on) => {
-            opponentKind = on ? LOCAL_AI : "engine";
-            aiSay = null;
-            render();
-          },
-        ),
-        el(
-          "p",
-          { class: "furrow-ai-disclosure" },
-          // Measured, not asserted (2026-08-10, 8 games vs Expert). The earlier
-          // copy said "never plays a losing move (the engine's band decides)",
-          // copied from dots — where it is true, because 3x3 is solved from four
-          // plies in and the band's class floor is a *proof* nearly everywhere.
-          // Here roughly 70% of a game is above the exact threshold, so for most
-          // of it the band is the engine's judgement rather than a guarantee, and
-          // the model picks badly within it: Millet wins 1 game in 8 where the
-          // engine itself draws 4. Saying "never plays a losing move" was the
-          // cosmetic cousin of an over-claimed `exact`.
-          `An in-browser model (${LOCAL_AI_PERSONA.name}) picks among the pits the engine rates as sound and adds banter — a one-time ~270 MB download, then about a quarter-second a move against the engine's own 8 ms. It also plays weaker, measured at 1 win in 8 against Expert: outside the endgame the engine is judging which pits are sound rather than proving it.`,
-        ),
-      );
+      preferences.push({
+        kind: "toggle",
+        id: "local-ai",
+        label: "Experimental: local AI opponent",
+        // Measured, not asserted (2026-08-10, 8 games vs Expert) — see the note that
+        // used to sit on the disclosure paragraph: outside the endgame the band is
+        // the engine's judgement, so "never plays a losing move" would be a lie here.
+        hint: `An in-browser model (${LOCAL_AI_PERSONA.name}) picks among the pits the engine rates as sound and adds banter — a one-time ~270 MB download, then about a quarter-second a move against the engine's own 8 ms. It also plays weaker, measured at 1 win in 8 against Expert: outside the endgame the engine is judging which pits are sound rather than proving it.`,
+        value: opponentKind === LOCAL_AI,
+        onChange: (on) => {
+          opponentKind = on ? LOCAL_AI : "engine";
+          aiSay = null;
+          render();
+        },
+      });
     }
-
-    return el(
-      "div",
-      { class: "furrow-controls" },
-      el("label", { class: "furrow-field" }, "Difficulty ", select),
-      fresh,
-      action,
-      details,
-    );
+    const yourSub = humanTurn && !busy ? (b.keptTurn ? "go again" : "your move") : undefined;
+    const engineSub = engineThinking ? (b.keptTurn ? "goes again…" : "thinking…") : undefined;
+    return {
+      title: "Furrow",
+      mode: level,
+      meters: [
+        { kind: "seat", id: "you", name: "You", glyph: MARK[HUMAN], score: b ? yourStore(b) : 0, state: humanTurn && !busy ? "active" : "idle", ...(yourSub ? { sub: yourSub } : {}) },
+        {
+          kind: "seat",
+          id: "engine",
+          name: `${opp.name} ${opp.avatar}`,
+          glyph: opp.avatar,
+          score: b ? theirStore(b) : 0,
+          state: engineThinking ? "thinking" : "idle",
+          ...(engineSub ? { sub: engineSub } : {}),
+        },
+      ],
+      verbs: [
+        hints
+          ? { id: "hint", label: "Hint", icon: "✦", primary: true, onPress: showHint }
+          : { id: "done", label: "I’m done", icon: "⇥", onPress: endNow },
+        { id: "new", label: "New game", icon: "⟳", onPress: (btn) => frame?.openSheet("setup", btn) },
+      ],
+      setup: furrowSetupRows({
+        level: (l) => {
+          level = l;
+        },
+      }),
+      preferences,
+      onStart: () => void startGame(),
+    };
   };
+  const declare = (): void => frame?.update(spec());
 
   const humanToMove = (): boolean =>
     Boolean(game) && game!.board().toMove === HUMAN && game!.board().result === -1;
@@ -699,23 +690,6 @@ export function furrowModule(): GameModule {
       el(
         "div",
         { class: "furrow-game" },
-        renderTurnbar(board),
-        // The local-AI opponent's spoken reason for its last move (personality).
-        ...(aiSay && opponentKind === LOCAL_AI
-          ? [
-              el(
-                "p",
-                { class: "furrow-ai-say", role: "status" },
-                `${LOCAL_AI_PERSONA.name}: ${aiSay}`,
-              ),
-            ]
-          : []),
-        renderControls(),
-        el(
-          "p",
-          { class: "furrow-banner" },
-          "Tap one of your pits. Land your last seed in your store to go again; land it in an empty pit of yours to capture. Most seeds wins.",
-        ),
         buildBoard(board, humanTurn && !busy),
         el("p", { class: "furrow-turnline" }, turnLine(board, humanTurn, opponentIdentity().name)),
         ...(furrowTutorEnabled() ? [renderTutorPanel()] : []),
@@ -725,6 +699,16 @@ export function furrowModule(): GameModule {
     const boardEl = container.querySelector(".furrow-board");
     boardEl?.addEventListener("click", onBoardClick);
     restoreUiState(container, ui);
+    declare();
+    // Transients overlay the stage — never a <p> in flow above the board (frame rule 1).
+    if (aiSay && opponentKind === LOCAL_AI && aiSay !== toasted) {
+      toasted = aiSay;
+      frame?.toast(`${LOCAL_AI_PERSONA.name}: ${aiSay}`, 6000);
+    }
+    if (!hinted && humanTurn && !busy) {
+      hinted = true;
+      frame?.toast("Tap one of your pits. Land your last seed in your store to go again; land it in an empty pit of yours to capture. Most seeds wins.", 6000);
+    }
   };
 
   // ---------- the sow, animated from the core's own preview ----------
@@ -787,6 +771,7 @@ export function furrowModule(): GameModule {
       render();
       return;
     }
+    moves.push(pit);
     const after = game.board();
     noteSweep(before, after);
     coachMsg = pendingCoach;
@@ -829,7 +814,7 @@ export function furrowModule(): GameModule {
       await animateSow(mv);
       if (disposed || !game) return;
       const before = game.board();
-      game.play(mv);
+      if (game.play(mv) === "applied") moves.push(mv);
       const after = game.board();
       noteSweep(before, after);
       busy = false;
@@ -872,16 +857,17 @@ export function furrowModule(): GameModule {
     ending = true;
     const board = game.board();
     const won = yourStore(board) > theirStore(board);
+    // The fanfare sits BELOW the final board (rule 1 holds to the end).
     container.replaceChildren(
       el(
         "div",
         { class: "furrow-game" },
-        renderTurnbar(board),
-        el("p", { class: `furrow-flash${won ? " win" : ""}`, role: "status" }, outcomeLabel(board)),
         buildBoard(board, false),
+        el("p", { class: `furrow-flash${won ? " win" : ""}`, role: "status" }, outcomeLabel(board)),
         el("p", { class: "furrow-status", role: "status" }, status),
       ),
     );
+    declare();
     window.setTimeout(() => {
       if (disposed) return;
       void presentResult();
@@ -921,11 +907,41 @@ export function furrowModule(): GameModule {
     aiSay = null;
     seed = seedOverride ?? randomSeed();
     game.newGame(seed);
+    moves = [];
+    hinted = false;
     setStatus("");
     exposeHook();
     render();
     await step();
   }
+
+  /** Replay a stored game: the seed and every sown pit, then re-enter the turn loop. */
+  const applyResume = async (p: Progress): Promise<void> => {
+    if (!game || disposed) return;
+    const rec = p.record as { seed?: unknown; moves?: unknown };
+    const setup = p.setup as { level?: unknown };
+    if (LEVELS.includes(setup.level as FurrowLevel)) level = setup.level as FurrowLevel;
+    busy = false;
+    ending = false;
+    sweptNotice = false;
+    coachMsg = null;
+    pendingCoach = null;
+    endedEarly = null;
+    tutorView = null;
+    aiSay = null;
+    hinted = true;
+    seed = typeof rec.seed === "string" ? BigInt(rec.seed) : randomSeed();
+    game.newGame(seed);
+    moves = [];
+    for (const pit of Array.isArray(rec.moves) ? (rec.moves as unknown[]) : []) {
+      if (typeof pit !== "number" || game.play(pit) !== "applied") break;
+      moves.push(pit);
+    }
+    setStatus("");
+    exposeHook();
+    render();
+    await step();
+  };
 
   const showShared = async (payload: string): Promise<void> => {
     if (!container) return;
@@ -968,10 +984,13 @@ export function furrowModule(): GameModule {
   };
 
   return {
-    mount(c: HTMLElement): void {
+    mount(c: HTMLElement, services?: GameServices): void {
       container = c;
+      frame = services?.frame ?? null;
       disposed = false;
       level = furrowLevel();
+      frame?.onSettingsChange(() => render()); // Hints flips the verb
+      declare();
       container.replaceChildren(el("div", { class: "sol-loading" }, "Loading Furrow…"));
       void (async () => {
         try {
@@ -992,10 +1011,16 @@ export function furrowModule(): GameModule {
           await showShared(shared);
           return;
         }
-        const seedParam = url.searchParams.get("seed");
-        await startGame(seedParam !== null ? BigInt(seedParam) : undefined);
-        // Probe WebGPU in the background; if present the controls re-render with
-        // the experimental local-AI opponent offered (classic engine otherwise).
+        if (pendingResume) {
+          const p = pendingResume;
+          pendingResume = null;
+          await applyResume(p);
+        } else {
+          const seedParam = url.searchParams.get("seed");
+          await startGame(seedParam !== null ? BigInt(seedParam) : undefined);
+        }
+        // Probe WebGPU in the background; if present the settings sheet offers
+        // the experimental local-AI opponent (classic engine otherwise).
         void probeLocalAi();
       })();
     },
@@ -1004,10 +1029,30 @@ export function furrowModule(): GameModule {
       delete window.__furrow;
       container?.replaceChildren();
       container = null;
+      frame = null;
       game = null;
       verifier = null;
       runtime = null; // release the WebGPU engine (local-AI) if it was created
       hybrid = null;
+    },
+    // --- the progress store: the seed and the sown pits; resume is replay ---
+    snapshot(): Progress {
+      const b = game?.board();
+      const now = new Date().toISOString();
+      const done = b !== undefined && b.result !== -1;
+      return {
+        v: 1,
+        status: done ? "finished" : "in-progress",
+        startedAt: now,
+        updatedAt: now,
+        setup: { mode: "free", seed: seed.toString(), level },
+        record: { seed: seed.toString(), moves: [...moves] },
+        summary: { line: done && b ? outcomeLabel(b) : `Move ${moves.length} · stores ${b ? yourStore(b) : 0}–${b ? theirStore(b) : 0}` },
+      };
+    },
+    resume(p: Progress): void {
+      if (game) void applyResume(p);
+      else pendingResume = p;
     },
   };
 }

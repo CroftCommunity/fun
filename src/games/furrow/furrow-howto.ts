@@ -25,13 +25,13 @@ export const FURROW_GUIDE: Guide = {
         },
         {
           kind: "prose",
-          text: 'One picker sits above the board. "Difficulty" sets how hard The Engine tries, from Easy up to Expert. It stops at Expert rather than Perfect on purpose: this board is too big to solve from the opening, so even the top level is searching rather than proving. It is remembered for next time.',
+          text: 'The New game card — on the start screen, or from the button under the board — sets "Difficulty", how hard The Engine tries, from Easy up to Expert. It stops at Expert rather than Perfect on purpose: this board is too big to solve from the opening, so even the top level is searching rather than proving. It is remembered for next time.',
         },
         {
           kind: "shot",
           name: "furrow-board",
-          alt: "A Furrow game: a turn bar showing both players' banked seeds, a difficulty picker, and a carved wooden board with two rows of six pits between two tall stores. The player's pits carry a teal ring showing which can be sown.",
-          caption: "The turn bar, the picker, and the board — a teal ring marks each pit you can sow right now.",
+          alt: "A Furrow game inside the game frame: two seats above the board showing both players' banked seeds, and a carved wooden board with two rows of six pits between two tall stores. The player's pits carry a teal ring showing which can be sown.",
+          caption: "The two seats and the board — a teal ring marks each pit you can sow right now.",
         },
       ],
     },

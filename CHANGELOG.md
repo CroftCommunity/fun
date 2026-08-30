@@ -12,6 +12,12 @@ earlier is in `git log`.
 
 ## 2026-08
 
+- 2026-08-30 **furrow:** inside the frame. Seats carry the stores and say "go again" when a
+  seed lands in a store; Difficulty is the New game card; the tutor and Millet, the local-AI
+  opponent, are in Settings with the measured disclosure on the row; the rules sentence
+  and the banter are toasts; the status line below the board keeps its height instead of
+  collapsing. Leave mid-game and the continue card replays the sowing.
+  (`plans/2026-08-30-plan-game-frame.md` Phase 14)
 - 2026-08-30 **dots:** inside the frame. Seats carry the box counts, and "goes again" is
   said on the seat that keeps the turn rather than as a sentence that appeared under the
   lattice; Difficulty and your seat are the New game card; the tutor and the local-AI
