@@ -1,0 +1,22 @@
+machine: native (report the host beside these numbers)
+positions: 50
+
+== quiescence ON ==
+depth  median-nodes  p95-nodes  worst-nodes  median-ms  p95-ms  worst-ms
+2               982       3623         6051          0       0         1
+3              3594      26425        31883          0       5         6
+4             19700     142438       247821          4      32        55
+5             89501     681728       881438         19     153       213
+6            408732    4529750      5170991         90    1043      1235
+
+== quiescence OFF ==
+depth  median-nodes  p95-nodes  worst-nodes  median-ms  p95-ms  worst-ms
+2               125        267          339          0       0         0
+3              1596       5177         5435          0       0         0
+4              6635      30221        54226          1       5         8
+5             50869     357650       441227          7      60        71
+6            149970    2000625      2434213         29     396       494
+
+== depth-3 hang probe (>= 700cp capture swing after the chosen move) ==
+quiescence OFF: 0 of 50 positions hang a piece-or-more
+quiescence ON : 0 of 50 positions hang a piece-or-more

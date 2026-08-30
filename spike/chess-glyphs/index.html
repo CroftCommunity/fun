@@ -1,0 +1,81 @@
+<!doctype html>
+<!-- Phase 0 D5 spike (plan 2026-08-30-plan-chess-vs-engine.md): how do chess
+     pieces render on the two Androids? Twelve Unicode glyphs vs a first-cut
+     inline SVG set, at 44px, on the shelf's light tokens and a dark block.
+     THROWAWAY page — open on the Samsung and the Pixel, screenshot both. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>chess glyphs spike</title>
+<style>
+  :root { --bg:#f2f0ea; --surface:#ffffff; --ink:#191c1f; --felt:#1f5c3f;
+          --sq-light:#ecdfc8; --sq-dark:#9a6a42; }
+  body.dark { --bg:#191c1f; --surface:#23272b; --ink:#eae8e2;
+              --sq-light:#b8a98c; --sq-dark:#6f4b2e; }
+  body { background:var(--bg); color:var(--ink); font-family:system-ui;
+         margin:0; padding:16px; }
+  h2 { font-size:14px; margin:16px 0 8px; }
+  button { font-size:16px; padding:8px 16px; }
+  .row { display:flex; flex-wrap:wrap; }
+  .sq { width:44px; height:44px; display:flex; align-items:center;
+        justify-content:center; }
+  .sq:nth-child(odd)  { background:var(--sq-light); }
+  .sq:nth-child(even) { background:var(--sq-dark); }
+  .uni { font-size:38px; line-height:1;
+         font-variant-emoji: text; }
+  .white-fill { color:#f6f1e6; }
+  .black-fill { color:#221d18; }
+  svg.piece { width:38px; height:38px; }
+  svg.piece .body  { stroke:#221d18; stroke-width:28; stroke-linejoin:round; }
+  svg.piece.w .body { fill:#f6f1e6; }
+  svg.piece.b .body { fill:#221d18; stroke:#f6f1e6; stroke-width:20; }
+</style>
+</head>
+<body>
+<button onclick="document.body.classList.toggle('dark')">toggle theme</button>
+
+<h2>1. Unicode, natural glyphs (♔…♟), inherited color</h2>
+<div class="row" id="uni-natural"></div>
+
+<h2>2. Unicode, filled glyphs only (♟ shapes), CSS-colored per side</h2>
+<div class="row" id="uni-filled"></div>
+
+<h2>3. Inline SVG first cut, CSS-colored per side</h2>
+<div class="row" id="svg-set"></div>
+
+<script>
+const uniW = ["♔","♕","♖","♗","♘","♙"];
+const uniB = ["♚","♛","♜","♝","♞","♟"];
+
+// Section 1: the natural pair — this is the row that fails on Android if the
+// white outlines fill with the square color or ♟ renders as emoji.
+document.getElementById("uni-natural").innerHTML =
+  [...uniW, ...uniB].map(g => `<div class="sq"><span class="uni">${g}</span></div>`).join("");
+
+// Section 2: use only the FILLED (black) glyph shapes for both sides, colored
+// by CSS — the common workaround; still font-dependent for shape and emoji.
+document.getElementById("uni-filled").innerHTML =
+  [...uniB.map(g => `<div class="sq"><span class="uni white-fill">${g}</span></div>`),
+   ...uniB.map(g => `<div class="sq"><span class="uni black-fill">${g}</span></div>`)].join("");
+
+// Section 3: a deliberately simple own SVG set (silhouettes on a 460x460 box).
+// Shapes are crude — the spike question is rendering fidelity and theme
+// coloring, not beauty; the real set is drawn in Phase 9 if SVG wins.
+const P = {
+  king:   "M230 40 L230 110 M195 75 L265 75 M160 420 L160 300 Q120 220 190 170 L200 140 L260 140 L270 170 Q340 220 300 300 L300 420 Z",
+  queen:  "M110 130 L160 260 L185 110 L230 250 L275 110 L300 260 L350 130 L320 420 L140 420 Z",
+  rook:   "M140 420 L140 160 L140 90 L180 90 L180 130 L210 130 L210 90 L250 90 L250 130 L280 130 L280 90 L320 90 L320 160 L320 420 Z",
+  bishop: "M230 60 A30 30 0 1 1 229 60 M230 120 Q320 220 280 320 L180 320 Q140 220 230 120 M160 420 L160 380 L300 380 L300 420 Z",
+  knight: "M150 420 L150 380 Q150 240 230 190 L210 120 L260 150 L330 230 Q360 300 330 420 Z",
+  pawn:   "M230 110 A45 45 0 1 1 229 110 M190 420 L190 340 Q170 260 230 220 Q290 260 270 340 L270 420 Z",
+};
+const order = ["king","queen","rook","bishop","knight","pawn"];
+const svgFor = (name, side) =>
+  `<div class="sq"><svg class="piece ${side}" viewBox="0 0 460 460">` +
+  `<path class="body" d="${P[name]}"/></svg></div>`;
+document.getElementById("svg-set").innerHTML =
+  [...order.map(n => svgFor(n, "w")), ...order.map(n => svgFor(n, "b"))].join("");
+</script>
+</body>
+</html>

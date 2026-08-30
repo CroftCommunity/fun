@@ -3,7 +3,9 @@
 **Status:** READY TO EXECUTE — Pass 1 (plan development) 2026-08-30; Pass 2 (gap
 analysis) 2026-08-30; Pass 3 (quality gates) 2026-08-30. Every open question is
 owner-confirmed and none is BLOCKING-unresolved; the two PHASE-GATED items gate Phases 2
-and 9 and are already reflected in those phases. No phase executed — **Phase 0 next.**
+and 9 and are already reflected in those phases. **Phase 0 executed 2026-08-30**
+(D1 / D2-desktop / D3-deferral / D4 / D6 closed; D2's Samsung half and D5's
+two-Android half owed, `[device: …]` tags on their task lines) — **Phase 1 next.**
 Worktree `worktrees/chess/fun`, branch `claude/chess`.
 **Standards anchor:** `docs/BUILDING-GAMES.md` §10 + both new-game checklists;
 `docs/AI-PLAYERS.md` (search cost, honesty gate); `docs/HARNESS.md` (adding a game).
@@ -517,14 +519,21 @@ ringed, the checked king marked, legal destinations glowing from the core's
   multi-threaded build needs COOP/COEP, which GitHub Pages does not serve —
   npm `stockfish` / lichess `stockfish.wasm` READMEs. Informs the follow-up only.
 
-**Not yet verified (Phase 0):** the node counts a quiescent alpha-beta needs per
-depth on chess middlegames (D2); how the two Androids render chess glyphs (D5);
-whether a threefold/50-move fixture as a move list from the start position is short
-enough to be a readable test (D4). *Pass 3 settled D4's `from_fen` half during
-planning:* five of the six perft positions Phase 1 asserts are FENs, so
-`Board::from_fen` exists whatever D4 finds — test-and-bridge only, never the record
-format. D4 decides only whether the draw fixtures start from a FEN or from the
-opening.
+**Verified by Phase 0 execution (2026-08-30, `spike/chess-search`):** the D2 node
+and latency table (in D2's task entry — native M-series Mac + desktop Chromium
+≈ 2.6M nps; depth 5 quiescent p95 = 682k nodes / 254 ms Chromium, 0/50 over
+400 ms; quiescence costs 2.5–3× nodes at every depth); the seven D4 draw
+fixtures, including the two repetition exclusions (9.2.3.1–2) and
+mate-precedes-the-clock — with the earliest-seen-cycle-member finding Phase 2's
+tests must encode; cozy-chess's king-takes-rook castling encoding as a
+spike-only quirk. *Pass 3 settled D4's `from_fen` half during planning:* five of
+the six perft positions Phase 1 asserts are FENs, so `Board::from_fen` exists
+whatever D4 finds — test-and-bridge only, never the record format.
+
+**Still not verified (owed to the device pass):** the phone halves — the
+Samsung nps ratio that converts D2's node budgets to phone milliseconds, and how
+the two Androids render chess glyphs (D5). Both carry `[device: …]` tags on
+their task lines; both gate Phase 9/13 tuning, not Phases 1–8.
 
 ---
 
@@ -687,7 +696,7 @@ decision as evidence rather than opinion.
 
 **Discovery tasks:**
 
-- [ ] **D1: Is build-fresh the right call under the workspace's rules?** *(Reading
+- [x] **D1: Is build-fresh the right call under the workspace's rules?** *(Reading
   only; resolved in Pass 1 and recorded here so execution does not re-open it.)*
   - **Probe:** `dep_gate.py` allowlist (`:103-107`) — GPL-3.0 absent;
     `DECISIONS.md` § dependency-sourcing — vendor + drift for not-ours; crates.io
@@ -696,8 +705,33 @@ decision as evidence rather than opinion.
     "Build-fresh". **Met.**
   - **Disposition:** `keep-as-fixture` — the reasoning is the fixture.
 
-- [ ] **D2: How many nodes does a quiescent alpha-beta need per depth on chess
-  middlegames, and what does that cost in wasm?**
+- [x] **D2 (desktop halves): RESOLVED 2026-08-30; the phone half stays owed.**
+  Measured over the 50 positions (16 lines + 9 endgame FENs + 25 seeded
+  random-play boards; `spike/chess-search`, fresh 16 MiB TT per search):
+
+  | depth | q-ON nodes med / p95 / worst | q-OFF nodes med / p95 / worst | Chromium q-ON ms med / p95 / worst |
+  |---|---|---|---|
+  | 2 | 982 / 3.6k / 6.1k | 125 / 267 / 339 | 0.7 / 1.7 / 2.3 |
+  | 3 | 3.6k / 26k / 32k | 1.6k / 5.2k / 5.4k | 1.7 / 9.4 / 11.7 |
+  | 4 | 20k / 142k / 248k | 6.6k / 30k / 54k | 7 / 52 / 86 |
+  | 5 | 90k / 682k / 881k | 51k / 358k / 441k | 32 / 254 / 352 |
+  | 6 | 409k / 4.5M / 5.2M | 150k / 2.0M / 2.4M | (not run — d5 already brackets the bar) |
+
+  Native (this Mac, M-series): d5 q-ON p95 153 ms; Chromium ≈ 2.6M nps, ~1.7×
+  slower than native. **0/50 over 400 ms at depth 5 in desktop Chromium**, so the
+  re-plan trigger (no depth ≥ 4 fits the phone bar) is not close to tripping even
+  at a 3–4× phone slowdown for depth 4. **Provisional level table for Phase 4:**
+  Easy d2 · Medium d3 · Hard d4 · Expert d5, Expert under a ~500k `NodeBudget`
+  (trims the p95 tail: 682k → budget bite on ~1 in 20 positions). Quiescence
+  costs ~2.5–3× nodes at every depth — the tax is now a number.
+  **The hang probe returned a null result** (0/50 hangs at depth 3 with *and*
+  without quiescence, ≥ 700cp swing metric): the sampled positions do not
+  discriminate, so it is recorded as exactly that — not as evidence against
+  quiescence. Consequence for Phase 4: its "depth-3-without-quiescence blunders"
+  test must use a **constructed** tactical position, not a sampled one.
+  Spike quirk recorded for Phase 1: cozy-chess encodes castling king-takes-rook
+  (`e1h1`); chess-core uses standard UCI `e1g1`.
+  *(Original probe spec follows.)*
   - **Probe:** `spike/chess-search/` — its own Cargo project (never a workspace
     member), depending on `cozy-chess 0.3.4` for move generation only. A plain
     alpha-beta + quiescence + MVV-LVA + a simple TT over material + PST, run at
@@ -729,7 +763,25 @@ decision as evidence rather than opinion.
     Phase 4's, on Phase 4's crate, under Phase 4's TDD *(Pass 3: every task declares
     one, including the deferred one)*.
 
-- [ ] **D4: Build the draw-rule fixtures.**
+- [x] **D4: Build the draw-rule fixtures.** — **RESOLVED 2026-08-30.** Seven
+  fixtures, all validated by `spike/chess-search` (`fixtures` subcommand, cozy-chess
+  supplying mate/stalemate/50-move and the spike counting repetition over cozy's
+  `same_position`, which implements exactly FIDE 9.2's definition): (a) threefold
+  live at ply 7, draw at exactly ply 8; (a') the lost-castling-right visual
+  repetition at ply 8 does **not** count; (b) the en-passant-capturable ply-1
+  occurrence does **not** count, live at ply 9; (c) clock 99 live / 100 draw, a
+  pawn move and a capture at 99 both reset to 0; (d) mate on the move that reaches
+  clock 100 is a **win**. All start from a FEN (decision recorded: the fixtures are
+  FEN-anchored; `from_fen` exists for the perft suite regardless). Longest fixture:
+  13 plies — well under the 30-move readability target. **Two findings Phase 2's
+  tests must carry:** (1) in a shuffle cycle the *earliest-seen* position reaches
+  three occurrences first, so (a') and (b) draw at ply 10 via the position after
+  ply 2 — the naive "the salient position repeated thrice" expectation is wrong by
+  two plies; (2) cozy-chess encodes castling king-takes-rook (`e1h1`,
+  Chess960-style) — a spike-only quirk to translate when these fixtures are
+  re-expressed against chess-core's standard `e1g1` wire form. Move lists in
+  `spike/chess-search/src/main.rs` (`FIXTURES`), which is the keep-as-fixture
+  artifact Phase 2 transcribes.
   - **Probe:** Four concrete fixtures, each as `(start FEN, move list in UCI)`:
     (a) threefold — a king-and-rook shuffle that is *live* after the second
     occurrence and `Draw` on exactly the third, plus a variant where a castling
@@ -748,7 +800,12 @@ decision as evidence rather than opinion.
     exact ply and not before.
   - **Disposition:** `keep-as-fixture` — they become Phase 2 tests.
 
-- [ ] **D5: How do chess pieces render on the two Androids?**
+- [ ] **D5 (page built; the device half is the open part): OWED.** The probe page
+  is `spike/chess-glyphs/index.html` — Unicode natural glyphs, CSS-coloured
+  filled glyphs, and a first-cut own-SVG set, at 44px, light/dark toggle. No
+  Android was attached on 2026-08-30 (adb shows none), so the decision waits for
+  a phone; it gates Phase 9, not Phases 1–8. **D5: How do chess pieces render on
+  the two Androids?**
   - **Probe:** A static HTML page under `spike/chess-glyphs/` with the twelve
     Unicode glyphs at 44px in the shelf's two themes, and the same twelve as
     inline SVG paths (a first cut of our own set). Open it on the Samsung and the
@@ -763,7 +820,7 @@ decision as evidence rather than opinion.
     both branches named, so the disposition is declared whichever way D5 goes.)*
   - [device: android x2]
 
-- [ ] **D6: Documentation-reference sweep.** *(Resolved in Pass 1 — see
+- [x] **D6: Documentation-reference sweep.** *(Resolved in Pass 1 — see
   Documentation Impact's grep evidence. Re-run at Phase 14 as the closing gate.)*
 
 **Outputs fed back into the plan:** Verified Assumptions gains D2's table and D5's
@@ -1795,6 +1852,49 @@ PR open; `workspace-audit.sh` clean.
 ---
 
 ## Review Log
+
+### Phase 0 execution — 2026-08-30
+
+**Closed:** D1 (reading, in Pass 1), D2's native + Chromium halves, D3 (deferred
+to Phase 4 by design), D4 (all seven fixtures), D6 (in Pass 1). **Owed:** D2's
+Samsung timing and D5's two-Android glyph check — no device was attached
+(`adb devices` empty); the `[device: …]` tags stay on their task lines and the
+workspace device queue picks them up from there.
+
+**D2, measured** (spike `spike/chess-search`, cozy-chess 0.3.4 for move
+generation only; 50 positions = 16 opening lines + 9 endgame FENs + 25 seeded
+random-play boards; fresh 16 MiB TT per search; native = this M-series Mac,
+browser = Playwright Chromium): the full table is in D2's task entry. The
+headlines: depth 5 quiescent = 90k/682k/881k nodes (med/p95/worst), 254 ms p95
+in Chromium at ~2.6M nps, 0/50 over 400 ms; quiescence multiplies nodes 2.5–3×
+at every depth; the re-plan trigger is nowhere near tripping. Provisional Phase
+4 ladder: Easy d2 · Medium d3 · Hard d4 · Expert d5 + ~500k `NodeBudget`.
+The depth-3 hang probe found **0/50 hangs with quiescence off as well as on** —
+a null result of a crude metric (≥ 700cp capture swing), recorded as
+non-discriminating rather than as evidence against quiescence; Phase 4's
+quiescence-earns-its-cost test therefore needs a **constructed** tactical
+position, not a sampled one.
+
+**D4, validated by running** (`chess-search-spike fixtures`, all seven PASS):
+the fixture list and the two findings are recorded in D4's task entry. The
+plan-level lesson: my first expectations for (a') and (b) were wrong by two
+plies — in a shuffle cycle the *earliest-seen* position reaches three
+occurrences first — caught because the fixtures were executed against a real
+rules engine rather than reasoned about. Phase 2 inherits the corrected plies.
+
+**Two mechanical traps hit and recorded:** bare `rustc` on this machine is
+Homebrew 1.98.0 while the pin is 1.97.1, and cargo resolves `rustc` from PATH —
+the spike's wasm build failed with E0463 until `RUSTC` was set to the rustup
+toolchain's binary (the exact trap `tools/build-wasm.sh` documents; the spike
+now carries the same discipline). And cozy-chess castles king-takes-rook
+(`e1h1`), which cost one panic in the opening lines before it was recognized as
+the library's Chess960-style convention rather than a bad line.
+
+**Dispositions honored:** the spike stays under `spike/chess-search/`
+(throwaway, out of the workspace and the gate; `spike/*/target/` is already
+git-ignored); the 50-FEN set and the seven fixtures are the keep-as-fixture
+artifacts (in the spike's source, transcribed by Phases 2/4); the glyph page
+awaits its device run before its promote/throwaway branch is taken.
 
 ### Pass 3: Quality Gates — 2026-08-30
 
