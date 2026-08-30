@@ -519,6 +519,38 @@ export function setColorSortStrict(on: boolean): void {
   write(CS_STRICT_KEY, on);
 }
 
+/** The pour's speed (plan D3; mock E proposal 5): Slow · Normal · Fast · Off. */
+export type PourSpeed = "slow" | "normal" | "fast" | "off";
+const CS_POUR_SPEED_KEY = "fun-color-sort-pour-speed";
+
+/**
+ * Pure resolver: an explicit stored speed wins; otherwise `prefers-reduced-motion`
+ * selects Off, and everything else is Normal. Reduced motion is the DEFAULT, not
+ * a lock — a player who picks a speed under it keeps that speed (mock E5.3).
+ */
+export function resolvePourSpeed(stored: string | null, reducedMotion: boolean): PourSpeed {
+  if (stored === "slow" || stored === "normal" || stored === "fast" || stored === "off") return stored;
+  return reducedMotion ? "off" : "normal";
+}
+
+export function colorSortPourSpeed(): PourSpeed {
+  const reduce = typeof window !== "undefined" && typeof window.matchMedia === "function"
+    ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    : false;
+  try {
+    return resolvePourSpeed(localStorage.getItem(CS_POUR_SPEED_KEY), reduce);
+  } catch {
+    return resolvePourSpeed(null, reduce);
+  }
+}
+export function setColorSortPourSpeed(speed: PourSpeed): void {
+  try {
+    localStorage.setItem(CS_POUR_SPEED_KEY, speed);
+  } catch {
+    // Storage denied (private mode): the setting still applies for the session.
+  }
+}
+
 // ---------- Furrow (mancala) ----------
 
 /** Furrow difficulty. **Expert**, not Perfect — Phase 0 could not solve the

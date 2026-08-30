@@ -30,6 +30,19 @@ const ROUTES = {
   "color-sort": [
     { route: "board", url: "/color-sort/?seed=4242", after: null },
     { route: "select", url: "/color-sort/?seed=4242", after: (page) => page.evaluate(() => window.__colorSort?.select(0)) },
+    // Mid-pour, at Slow so the frame lands inside the stream phase (lift 210 + travel 350 + …).
+    {
+      route: "pour",
+      url: "/color-sort/?level=3",
+      before: (page) => page.evaluate(() => localStorage.setItem("fun-color-sort-pour-speed", "slow")),
+      after: async (page) => {
+        const mv = await page.evaluate(() => window.__colorSort.game.hint());
+        await page.click(`.cs-tube[data-tube="${mv.from}"]`);
+        await page.click(`.cs-tube[data-tube="${mv.to}"]`);
+        await page.waitForTimeout(650);
+      },
+      settle: 0,
+    },
   ],
 };
 
@@ -69,8 +82,13 @@ try {
     for (const r of ROUTES[id]) {
       await page.goto(`http://localhost:${PORT}${r.url}`);
       await page.waitForFunction(() => Boolean(window.__colorSort), null, { timeout: 15000 });
+      if (r.before) {
+        await r.before(page);
+        await page.reload();
+        await page.waitForFunction(() => Boolean(window.__colorSort), null, { timeout: 15000 });
+      }
       if (r.after) await r.after(page);
-      await page.waitForTimeout(500); // let the pour-in / selection transition settle
+      await page.waitForTimeout(r.settle ?? 500); // let the selection transition settle
       const file = `${id}.${r.route}.${name}.png`;
       await page.screenshot({ path: join(OUT, file) });
       manifest.files.push({ file, game: id, route: r.route, url: r.url, viewport: name, ...vp });

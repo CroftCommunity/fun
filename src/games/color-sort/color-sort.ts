@@ -22,17 +22,22 @@ import {
   type VerifyResult,
 } from "./color-sort-outcome.js";
 import { dayIndexUTC } from "../share.js";
+import { runPour, type PourPlan, type RunningPour } from "./pour.js";
+import { ColorSortSound, cueFor, type Cue, type CueKind, type PlayLog } from "./sound.js";
 import {
   colorSortIconsFor,
+  colorSortPourSpeed,
   colorSortSkin,
   colorSortStrict,
   declareAssistanceEnabled,
   hintsEnabled,
   iconsDefaultFor,
   setColorSortIcons,
+  setColorSortPourSpeed,
   setColorSortSkin,
   setColorSortStrict,
   type ColorSortSkin,
+  type PourSpeed,
 } from "../../settings.js";
 
 declare global {
@@ -46,12 +51,18 @@ declare global {
       board: () => BoardView;
       seed: bigint;
       startEndless: (level: number) => void;
+      /** The most recent pour's plan (mock E3.x reads it back). */
+      lastPour: PourPlan | null;
+      /** Every sound attempt, and the pure cue table (mock E8.1). */
+      sound: { log: readonly PlayLog[]; cue: (skin: ColorSortSkin, kind: CueKind) => Cue };
     };
   }
 }
 
 /** The fixed colour-id → fruit-icon map (brief §6), in colour-id order. */
 const ICONS = ["🍎", "🍋", "🍇", "🥝", "🫐", "🍊", "🍓", "🥥", "🟣", "🌽", "🥕", "🍑"];
+/** The same colours as words, for the live region ("Poured 2 lemon into tube 4"). */
+const NAMES = ["apple", "lemon", "grape", "kiwi", "blueberry", "orange", "strawberry", "coconut", "purple", "corn", "carrot", "peach"];
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -250,9 +261,25 @@ export function colorSortModule(): GameModule {
   let toasted = false;
   /** The deadlock toast fires once per stuck position, not on every re-render of it. */
   let deadlockToasted = false;
-  // The most recent pour, so the target tube's newly-arrived units animate in
-  // once. Cleared after the render that consumes it.
-  let pourAnim: { tube: number; count: number } | null = null;
+  // The pour to show on the next render — the core has already applied it; the
+  // re-rendered DOM is the true state and the animation plays FROM the old one.
+  let pendingPour: {
+    from: number;
+    to: number;
+    units: number;
+    color: number;
+    targetBefore: number;
+    sourceAfter: number;
+    reverse: boolean;
+  } | null = null;
+  let running: RunningPour | null = null;
+  let lastPour: PourPlan | null = null;
+  const sound = new ColorSortSound();
+  /** Tubes already celebrated as complete in this deal (the beat fires once per tube). */
+  let celebrated = new Set<number>();
+  /** `?fast=1`: every pour collapses to a frame, for the browser suite (mock E3.7). */
+  let fast = false;
+  const pourSpeed = (): PourSpeed => (fast ? "off" : colorSortPourSpeed());
 
   const statusEl = el("p", { class: "sol-status", role: "status", "aria-live": "polite" });
   const setStatus = (msg: string): void => {
@@ -327,9 +354,8 @@ export function colorSortModule(): GameModule {
     });
     // Units stack from the bottom (flex column-reverse in CSS). Each slot is a
     // full-width centring box; a filled slot holds a nested unit (the fill / ball
-    // / nut) so every skin centres its unit and its icon. The top `pourAnim.count`
-    // units of the just-poured target animate in.
-    const pourCount = pourAnim && pourAnim.tube === t ? pourAnim.count : 0;
+    // / nut) so every skin centres its unit and its icon. The pour animation
+    // (pour.ts) finds the arrived units and the emptied slots by index.
     const stack = el("div", { class: "cs-stack" });
     for (let i = 0; i < b.cap; i++) {
       const slot = el("div", { class: "cs-slot" });
@@ -338,18 +364,15 @@ export function colorSortModule(): GameModule {
         const unit = el("div", { class: "cs-unit" });
         unit.style.setProperty("--cs-fill", colors[c] ?? "#888");
         unit.setAttribute("data-color", String(c));
-        // Newly-poured units sit in the top `pourCount` positions of the target.
-        const fromTop = tube.length - 1 - i;
-        if (pourCount > 0 && fromTop < pourCount) {
-          unit.classList.add("cs-pour-in");
-          unit.style.setProperty("--pour-i", String(pourCount - 1 - fromTop));
-        }
         if (iconsOn()) unit.append(el("span", { class: "cs-icon", "aria-hidden": "true" }, ICONS[c] ?? ""));
         slot.append(unit);
       }
       stack.append(slot);
     }
-    if (locked) btn.append(el("div", { class: "cs-cap", "aria-hidden": "true" }));
+    if (locked) {
+      if (celebrated.has(t)) btn.classList.add("cs-complete-done");
+      btn.append(el("div", { class: "cs-cap", "aria-hidden": "true" }));
+    }
     btn.append(stack);
     return btn;
   };
@@ -412,6 +435,22 @@ export function colorSortModule(): GameModule {
           },
         },
         {
+          kind: "choice",
+          id: "pour-speed",
+          label: "Pour speed",
+          hint: "How long a pour takes to play out. Off keeps the count and the target and drops the motion — it is what reduced motion picks.",
+          value: colorSortPourSpeed(),
+          options: [
+            { value: "slow", label: "Slow" },
+            { value: "normal", label: "Normal" },
+            { value: "fast", label: "Fast" },
+            { value: "off", label: "Off" },
+          ],
+          onChange: (v) => {
+            setColorSortPourSpeed(v as PourSpeed);
+          },
+        },
+        {
           kind: "toggle",
           id: "icons",
           label: "Fruit icons (colourblind)",
@@ -445,14 +484,18 @@ export function colorSortModule(): GameModule {
   function render(): void {
     if (disposed || !container || !game) return;
     const b = game.board();
+    running?.cancel();
+    running = null;
     if (b.won) {
-      pourAnim = null;
+      const last = pendingPour;
+      pendingPour = null;
+      if (last) celebrate(last.to, b);
       void presentResult();
       return;
     }
     const wrap = el("div", { class: "cs-game" }, renderBoard(b), statusEl);
     container.replaceChildren(wrap);
-    pourAnim = null; // the pour animation plays once, on the render that follows it
+    showPour(b, wrap);
     if (!toasted) {
       toasted = true;
       frame?.toast("Tap a tube, then a tube it can pour into — same colour on top, room below. Sort every colour into its own tube.", 6000);
@@ -465,6 +508,48 @@ export function colorSortModule(): GameModule {
     }
     declare();
   }
+
+  /** Play the pending pour over the just-rendered board, then the completion beat if a tube locked. */
+  const showPour = (b: BoardView, wrap: HTMLElement): void => {
+    const pp = pendingPour;
+    pendingPour = null;
+    if (!pp) return;
+    const board = wrap.querySelector<HTMLElement>(".cs-board");
+    const source = wrap.querySelector<HTMLElement>(`.cs-tube[data-tube="${pp.from}"]`);
+    const target = wrap.querySelector<HTMLElement>(`.cs-tube[data-tube="${pp.to}"]`);
+    if (!board || !source || !target) return;
+    const speed = pourSpeed();
+    running = runPour(
+      {
+        board,
+        source,
+        target,
+        units: pp.units,
+        color: palette()[pp.color] ?? "#888",
+        targetBefore: pp.targetBefore,
+        sourceAfter: pp.sourceAfter,
+        icon: iconsOn() ? ICONS[pp.color] : undefined,
+      },
+      { skin, speed, from: pp.from, to: pp.to, reverse: pp.reverse },
+    );
+    lastPour = running.plan;
+    exposeHook();
+    if (!pp.reverse) sound.play(skin, "pour", pp.units);
+    setStatus(`${pp.reverse ? "Undid: poured" : "Poured"} ${pp.units} ${NAMES[pp.color] ?? "unit"} into tube ${pp.to + 1}.`);
+    if (!pp.reverse) celebrate(pp.to, b, target);
+  };
+
+  /** The tube-complete beat (mock E proposal 4): once per tube per deal. */
+  const celebrate = (t: number, b: BoardView, tubeEl?: HTMLElement | null): void => {
+    if (!b.locked[t] || celebrated.has(t)) return;
+    celebrated.add(t);
+    const target = tubeEl ?? container?.querySelector<HTMLElement>(`.cs-tube[data-tube="${t}"]`);
+    if (target) {
+      target.classList.add("cs-complete");
+      target.append(el("span", { class: "cs-tick", "aria-hidden": "true" }, "✓"));
+    }
+    sound.play(skin, "complete");
+  };
 
   const rebuild = (): void => {
     selected = null;
@@ -505,24 +590,28 @@ export function colorSortModule(): GameModule {
     const from = selected;
     selected = null;
     const toLenBefore = b.tubes[t]!.length;
+    const color = b.tubes[from]![b.tubes[from]!.length - 1]!;
     const status = game.pour(from, t);
     if (status !== "applied") {
       render();
       return;
     }
-    // How many units actually landed — those top slots animate the pour in.
-    pourAnim = { tube: t, count: Math.max(1, game.board().tubes[t]!.length - toLenBefore) };
-    setStatus("");
+    const after = game.board();
+    pendingPour = {
+      from,
+      to: t,
+      units: Math.max(1, after.tubes[t]!.length - toLenBefore),
+      color,
+      targetBefore: toLenBefore,
+      sourceAfter: after.tubes[from]!.length,
+      reverse: false,
+    };
     persist();
-    afterMove(t);
+    afterMove();
   };
 
-  const afterMove = (poured: number): void => {
+  const afterMove = (): void => {
     render();
-    // A brief pour highlight on the target tube (reduced-motion safe in CSS).
-    const tubeEl = container?.querySelector<HTMLElement>(`.cs-tube[data-tube="${poured}"]`);
-    tubeEl?.classList.add("cs-poured");
-    window.setTimeout(() => tubeEl?.classList.remove("cs-poured"), 320);
     if (!game) return;
     const b = game.board();
     if (b.won) {
@@ -547,18 +636,37 @@ export function colorSortModule(): GameModule {
 
   const doUndo = (): void => {
     if (!game || strict()) return;
+    const last = replayMoves().at(-1);
+    const before = game.board();
     if (game.undo()) {
       game.markAssistance();
       selected = null;
-      setStatus("Undid the last pour (counts as assistance).");
+      if (last) {
+        // The pour, reversed: the units come back out of `to` into `from` (mock E4.2).
+        const after = game.board();
+        const units = before.tubes[last.to]!.length - after.tubes[last.to]!.length;
+        const color = after.tubes[last.from]![after.tubes[last.from]!.length - 1]!;
+        pendingPour = {
+          from: last.to,
+          to: last.from,
+          units: Math.max(1, units),
+          color,
+          targetBefore: after.tubes[last.from]!.length - units,
+          sourceAfter: after.tubes[last.to]!.length,
+          reverse: true,
+        };
+        celebrated.delete(last.to);
+      }
       persist();
       render();
+      setStatus("Undid the last pour (counts as assistance).");
     }
   };
 
   const doRestart = (): void => {
     if (!game) return;
     game.restart();
+    celebrated = new Set();
     selected = null;
     setStatus("Restarted this deal.");
     persist();
@@ -712,6 +820,7 @@ export function colorSortModule(): GameModule {
     const day = dayIndexUTC(new Date());
     game.newDaily(day);
     seed = game.seed();
+    celebrated = new Set();
     // Resume today's in-progress deal if the seed still matches.
     const saved = load<DailySave>(`daily/${todayKey()}`);
     if (saved && saved.seed === seed.toString() && !saved.solved) applyMoves(saved.moves);
@@ -735,6 +844,7 @@ export function colorSortModule(): GameModule {
     level = Math.max(1, atLevel);
     game.newEndless(level);
     seed = game.seed();
+    celebrated = new Set();
     const saved = load<EndlessSave>("endless");
     if (saved && saved.level === level && saved.seed === seed.toString()) applyMoves(saved.moves);
     selected = null;
@@ -758,6 +868,8 @@ export function colorSortModule(): GameModule {
       board: () => game!.board(),
       seed,
       startEndless: (l: number) => void startEndless(l),
+      lastPour,
+      sound: { log: sound.log, cue: (s: ColorSortSkin, k: CueKind) => cueFor(s, k) },
     };
   };
 
@@ -788,6 +900,7 @@ export function colorSortModule(): GameModule {
         }
         if (disposed) return;
         const url = new URL(location.href);
+        fast = url.searchParams.get("fast") === "1";
         const shared = url.searchParams.get("r");
         if (shared) {
           await showShared(shared);
@@ -821,6 +934,9 @@ export function colorSortModule(): GameModule {
     },
     unmount(): void {
       disposed = true;
+      running?.cancel();
+      running = null;
+      sound.close();
       document.removeEventListener("keydown", onKeydown);
       delete window.__colorSort;
       container?.replaceChildren();

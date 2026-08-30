@@ -3154,6 +3154,10 @@ body:has(> .play-area > .gf) {
   gap: 1rem 0.85rem;
   justify-content: center;
   align-items: flex-end;
+  /* Headroom for the pour: a tilted tube reaches ~one tube-width above its
+     spout, a hopping ball peaks 70px up — and the stage clips (overflow-y).
+     Above the tubes, reserved, so the board never moves to make room. */
+  padding-top: 5.5rem;
   --cs-tw: 2.9rem;      /* tube width  */
   --cs-uh: 1.7rem;      /* unit height */
   --cs-cols: 12;        /* max tubes per row */
@@ -3262,53 +3266,104 @@ body:has(> .play-area > .gf) {
 }
 .cs-skin-ball .cs-stack { background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.01)); }
 
-/* --- Bolt skin: a threaded post; each unit is a bevelled hex nut. --- */
+/* --- Bolt skin: a threaded BOLT on a base plate, not a tube (mock E v2 —
+   owner: "nuts go on a bolt, they screw and unscrew"). No glass: the stack is
+   transparent, its ::before is the threaded shaft, its ::after the plate; each
+   unit is a bevelled hex nut with a bore. --- */
+.cs-skin-bolt .cs-tube::before { display: none; }
 .cs-skin-bolt .cs-stack {
-  border-radius: 0.2rem 0.2rem 0.35rem 0.35rem;
-  background:
-    linear-gradient(90deg, transparent 46%, rgba(0, 0, 0, 0.25) 50%, transparent 54%) center / 0.5rem 100% no-repeat,
-    linear-gradient(var(--cs-post), color-mix(in srgb, var(--cs-post) 80%, black)) center / 0.4rem 100% no-repeat,
-    linear-gradient(180deg, color-mix(in srgb, var(--cs-plate) 88%, white), var(--cs-plate));
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  overflow: visible;
+}
+.cs-skin-bolt .cs-stack::before {
+  content: "";
+  position: absolute; left: 50%; top: -0.4rem; bottom: 0.3rem; width: 0.85rem;
+  transform: translateX(-50%);
+  border-radius: 0.25rem 0.25rem 0 0;
+  background: repeating-linear-gradient(180deg,
+    color-mix(in srgb, var(--cs-post) 70%, white) 0 3px,
+    color-mix(in srgb, var(--cs-post) 60%, black) 3px 6px);
+  box-shadow: inset 2px 0 0 rgba(255, 255, 255, 0.18), inset -2px 0 0 rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+.cs-skin-bolt .cs-stack::after {
+  top: auto; left: -0.12rem; right: -0.12rem; bottom: -0.45rem; width: auto; height: 0.85rem;
+  border-radius: 0.25rem;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cs-plate) 80%, white), var(--cs-plate));
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45);
 }
 .cs-skin-bolt .cs-unit {
-  width: calc(var(--cs-tw) - 0.3rem);
+  position: relative; z-index: 1;
+  width: calc(var(--cs-tw) - 0.2rem);
   height: calc(var(--cs-uh) - 0.16rem);
   margin-inline: auto;
-  background: linear-gradient(180deg,
-    color-mix(in srgb, var(--cs-fill) 80%, white),
-    var(--cs-fill) 55%,
-    color-mix(in srgb, var(--cs-fill) 78%, black));
+  background:
+    radial-gradient(circle at 50% 50%, var(--cs-plate) 0 0.28rem, transparent 0.32rem),
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--cs-fill) 80%, white),
+      var(--cs-fill) 55%,
+      color-mix(in srgb, var(--cs-fill) 78%, black));
   clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
+.cs-skin-bolt.cs-icons .cs-unit { background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--cs-fill) 80%, white),
+      var(--cs-fill) 55%,
+      color-mix(in srgb, var(--cs-fill) 78%, black)); }
+.cs-skin-bolt .cs-tube.legal .cs-stack, .cs-skin-bolt .cs-tube.selected .cs-stack, .cs-skin-bolt .cs-tube.cs-hint-to .cs-stack { box-shadow: none; }
+.cs-skin-bolt .cs-tube.legal .cs-stack::before { box-shadow: 0 0 0 3px var(--active); }
+.cs-skin-bolt .cs-tube.selected .cs-stack::before, .cs-skin-bolt .cs-tube.cs-hint-to .cs-stack::before { box-shadow: 0 0 0 3px var(--accent); }
 .cs-skin-bolt .cs-cap { background: linear-gradient(180deg, color-mix(in srgb, var(--cs-post) 80%, white), var(--cs-post)); height: 0.75rem; border-radius: 0.16rem; }
 
 /* Pour, pulse, and illegal feedback (reduced-motion safe below). */
 @keyframes cs-shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
 @keyframes cs-legal-pulse { 0%,100% { transform: scale(1); opacity: 0.85; } 50% { transform: scale(1.35); opacity: 1; } }
-/* A poured unit drops in from above the tube mouth, with a tiny squash-settle. */
-@keyframes cs-pour-in {
-  0%   { transform: translateY(-160%) scaleY(1.15); opacity: 0; }
-  55%  { opacity: 1; }
-  78%  { transform: translateY(4%) scaleY(0.9); }
-  100% { transform: translateY(0) scaleY(1); }
-}
-/* The receiving tube gives a little bounce as the fruit lands. */
-@keyframes cs-poured { 0% { transform: translateY(0); } 35% { transform: translateY(0.22rem); } 100% { transform: translateY(0); } }
 .cs-tube.cs-shake { animation: cs-shake 0.28s ease; }
-.cs-tube.cs-poured .cs-stack { animation: cs-poured 0.34s ease; }
-.cs-unit.cs-pour-in {
-  animation: cs-pour-in 0.36s cubic-bezier(0.3, 1.3, 0.6, 1) backwards;
-  animation-delay: calc(var(--pour-i, 0) * 70ms);
+
+/* --- The pour (src/games/color-sort/pour.ts; mock E proposal 3) ---------------
+   The tube animates with Web Animations; these are the pieces it needs from
+   CSS: the board is the positioning context for the stream and flying units, a
+   pouring tube sits above its neighbours and is not clipped, a ghost unit is
+   a unit that is leaving, and a stream is a column of the moved colour. */
+.cs-board { position: relative; }
+.cs-tube.cs-pouring { z-index: 5; transition: none; }
+.cs-tube.cs-pouring .cs-stack { overflow: visible; }
+.cs-unit.cs-ghost { transform-origin: 50% 0; }
+.cs-unit.cs-ghost.cs-fly { position: absolute; z-index: 6; pointer-events: none; transform-origin: 50% 50%; }
+.cs-stream {
+  position: absolute; width: 7px; border-radius: 4px; z-index: 4; pointer-events: none;
+  transform-origin: 50% 0; transform: scaleY(0);
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--cs-fill) 70%, white),
+    var(--cs-fill) 60%,
+    color-mix(in srgb, var(--cs-fill) 80%, black));
+}
+/* Tube complete (mock E proposal 4): the cap drops on, the glass flashes the
+   success green once, a tick rises. `cs-complete` is added once per tube. */
+@keyframes cs-cap-drop { 0% { transform: translate(-50%, -26px); opacity: 0; } 60% { transform: translate(-50%, 0); opacity: 1; } 75% { transform: translate(-50%, 2px); } 100% { transform: translate(-50%, 0); } }
+@keyframes cs-cap-glow { 0% { box-shadow: 0 0 0 0 transparent; } 35% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--active) 60%, transparent), 0 0 24px color-mix(in srgb, var(--active) 50%, transparent); } 100% { box-shadow: 0 0 0 0 transparent; } }
+@keyframes cs-tick { 0% { opacity: 0; transform: translate(-50%, 6px); } 30% { opacity: 1; transform: translate(-50%, -2px); } 100% { opacity: 0; transform: translate(-50%, -12px); } }
+.cs-tube.cs-complete .cs-cap { animation: cs-cap-drop 0.42s cubic-bezier(0.3, 1.3, 0.6, 1) both; }
+.cs-tube.cs-complete .cs-stack { animation: cs-cap-glow 0.9s ease-out 0.25s both; }
+.cs-tick {
+  position: absolute; left: 50%; top: -1.6rem; transform: translateX(-50%);
+  color: var(--active); font-weight: 700; font-size: 1.1rem; pointer-events: none;
+  animation: cs-tick 1.1s ease-out 0.3s both;
 }
 
-/* Settings: the skin segmented control. */
 .cs-share-line { font-family: var(--font-mono); font-size: 0.85rem; color: var(--ink-muted); }
 
 @media (prefers-reduced-motion: reduce) {
-  .cs-tube, .cs-tube.cs-shake, .cs-tube.cs-poured .cs-stack, .cs-unit.cs-pour-in, .cs-tube.legal::after {
+  .cs-tube, .cs-tube.cs-shake, .cs-tube.legal::after, .cs-tube.cs-complete .cs-cap, .cs-tube.cs-complete .cs-stack, .cs-tick {
     animation: none; transition: none;
   }
+  /* The completion beat still says complete: the flash stays, the tick does not travel. */
+  .cs-tube.cs-complete .cs-stack { box-shadow: 0 0 0 4px color-mix(in srgb, var(--active) 60%, transparent); }
+  .cs-tick { opacity: 1; }
 }
 /* Mobile portrait: keep tubes big and touch-friendly, capped at 6 per row so a
    daily lands on two tidy rows instead of a cramped single line. */
