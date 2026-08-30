@@ -125,6 +125,8 @@ export interface GameFrame {
   renderStart(opts: StartOptions): void;
   /** Remove the start screen if it is showing. */
   clearStart(): void;
+  /** Called after any row in the "Every game" section changes — Hints flips a game's verb label. */
+  onSettingsChange(cb: () => void): void;
   /**
    * A transient line over the stage — the first-move hint, the AI's banter — that is
    * never in flow and so never moves the board. Replaces any toast showing; gone after
@@ -340,6 +342,16 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
   root.append(stage);
   if (spec) declareMeters(spec.meters);
 
+  // --- the common rows, with the game's listeners attached --------------------
+  const settingsListeners = new Set<() => void>();
+  const commonRows = (): readonly SettingRow[] =>
+    (opts.common?.() ?? []).map((row) => {
+      const notify = (): void => settingsListeners.forEach((l) => l());
+      if (row.kind === "toggle") return { ...row, onChange: (v: boolean) => { row.onChange(v); notify(); } };
+      if (row.kind === "range") return { ...row, onChange: (v: number) => { row.onChange(v); notify(); } };
+      return { ...row, onChange: (v: string) => { row.onChange(v); notify(); } };
+    });
+
   // --- sheets: a dialog over the frame (phone), replaced never stacked -------
   let sheet: HTMLElement | null = null;
   let scrim: HTMLElement | null = null;
@@ -367,7 +379,7 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
     return renderSettingsSheet({
       rows: [],
       sections: [
-        { label: "Every game", rows: opts.common?.() ?? [] },
+        { label: "Every game", rows: commonRows() },
         { label: s.title, rows: s.preferences ?? [] },
       ],
     });
@@ -418,7 +430,7 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
         renderSettingsSheet({
           rows: [],
           sections: [
-            { label: "Every game", rows: opts.common?.() ?? [] },
+            { label: "Every game", rows: commonRows() },
             { label: s.title, rows: s.preferences ?? [] },
           ],
         }),
@@ -577,6 +589,9 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
     renderStart,
     clearStart,
     toast,
+    onSettingsChange(cb: () => void): void {
+      settingsListeners.add(cb);
+    },
     destroy(): void {
       if (destroyed) return;
       destroyed = true;

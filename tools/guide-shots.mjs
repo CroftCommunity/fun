@@ -58,7 +58,7 @@ const SHOTS = [
       await page.goto(`${origin}/solitaire/?seed=0`, { waitUntil: "networkidle" });
       await page.waitForSelector(".sol-board");
       await page.click(".sol-stock"); // draw first, so the hint is a real move (Ace -> foundation)
-      await page.click(".sol-hint");
+      await page.click('.gf-verb[data-verb="hint"]');
       await page.waitForSelector(".hint-to");
     },
   },
@@ -681,7 +681,7 @@ const SHOTS = [
           "RotCW", "HardDrop", "ShiftR", "HardDrop", "ShiftL", "RotCW", "HardDrop"];
         for (const a of seq) { h.input(a); h.tick(2); }
       });
-      await page.click(".sol-hint");
+      await page.click('.gf-verb[data-verb="hint"]');
       await page.waitForTimeout(120);
     },
   },

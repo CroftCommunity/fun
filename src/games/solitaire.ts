@@ -5,7 +5,11 @@
 //! the core is the sole authority. A win yields a verifiable `pond-outcome`
 //! record shown on a verification-forward result screen, shareable via `?r=`.
 
-import type { GameModule } from "../contract.js";
+import type { GameModule, GameServices } from "../contract.js";
+import type { GameFrame, GameFrameSpec } from "../game-frame.js";
+import type { Progress } from "../progress.js";
+import type { SettingRow } from "../settings-sheet.js";
+import { today } from "../shelf.js";
 import { Solitaire, type BoardView, type CardView, type SolMove } from "./solitaire-wasm.js";
 import {
   dailySeed,
@@ -21,8 +25,6 @@ import {
   declareAssistanceEnabled,
   hintsEnabled,
   setAutoPlay,
-  setDeclareAssistance,
-  setHintsEnabled,
 } from "../settings.js";
 
 declare global {
@@ -208,12 +210,39 @@ export function renderResultScreen(
 
 // ---------- the game module ----------
 
+/** Which deal the next game is: today's (winnable, shared) or a fresh random one. */
+let chosenMode: "daily" | "free" = "daily";
+
+/** The New deal card — one builder for the poster and the sheet. */
+export function solitaireSetupRows(): SettingRow[] {
+  return [
+    {
+      kind: "choice",
+      id: "deal",
+      label: "Deal",
+      value: chosenMode,
+      options: [
+        { value: "daily", label: "Today’s deal", hint: "the same winnable hand everyone gets today" },
+        { value: "free", label: "New deal", hint: "a fresh random hand" },
+      ],
+      onChange: (v) => {
+        chosenMode = v === "free" ? "free" : "daily";
+      },
+    },
+  ];
+}
+
+/** The poster's setup card — the registry's `setup` factory. */
+export const solitaireSetup = (): SettingRow[] => solitaireSetupRows();
+
 /** Construct a fresh solitaire module (the registry `load`). */
 export function solitaireModule(): GameModule {
   let game: Solitaire | null = null;
   let verifier: Solitaire | null = null;
   let pack: DealPack | null = null;
   let container: HTMLElement | null = null;
+  let frame: GameFrame | null = null;
+  let pendingResume: Progress | null = null;
   let disposed = false;
 
   let mode: "daily" | "free" = "daily";
@@ -593,6 +622,7 @@ export function solitaireModule(): GameModule {
     setStatus(`Hint: ${describeHint(h)} (a hint counts as assistance)`);
     applySelectionStyles(); // clears any prior glow (selected is null)
     applyHintStyles();
+    declare(); // the store must learn the assistance flag now, not at the next move
   };
 
   // Hints OFF: "I'm stuck" ends the game, honestly reporting whether a legal
@@ -606,81 +636,51 @@ export function solitaireModule(): GameModule {
     );
   };
 
-  const renderControls = (): HTMLElement => {
-    const bar = el("div", { class: "sol-controls" });
-
-    const modes = el("div", { class: "sol-modes", role: "group", "aria-label": "Deal mode" });
-    const daily = el(
-      "button",
-      { type: "button", class: "sol-mode-daily", "aria-pressed": String(mode === "daily") },
-      "Today’s deal",
-    );
-    // "New deal" always deals a fresh random game (free play), so the up-turned
-    // cards change on every click — a daily "New deal" would re-deal the same
-    // fixed seed and appear to do nothing.
-    const fresh = el(
-      "button",
-      { type: "button", class: "sol-new", "aria-pressed": String(mode === "free") },
-      "New deal",
-    );
-    daily.addEventListener("click", () => void startDeal("daily"));
-    fresh.addEventListener("click", () => void startDeal("free"));
-    modes.append(daily, fresh);
-
-    const undoBtn = el("button", { type: "button", class: "sol-undo" }, "Undo");
-    undoBtn.addEventListener("click", () => {
-      if (game!.undo()) {
-        moveCount = Math.max(0, moveCount - 1);
-        setStatus("Move undone (counts as assistance).");
-      }
-      selected = null;
-      render(true);
-    });
-
-    // Hints on → "Hint" points at a legal move (counts as assistance); the
-    // control flips to "I'm stuck" (ends the game) when hints are off.
-    const hints = hintsEnabled();
-    const actionBtn = el(
-      "button",
-      { type: "button", class: hints ? "sol-hint" : "sol-stuck" },
-      hints ? "Hint" : "I’m stuck",
-    );
-    actionBtn.addEventListener("click", hints ? showHint : declareStuck);
-
-    // Settings (standard across games), persisted; both on by default.
-    const setting = (
-      checked: boolean,
-      label: string,
-      cls: string,
-      onChange: (on: boolean) => void,
-    ): HTMLElement => {
-      const wrap = el("label", { class: "sol-setting" });
-      const input = el("input", { type: "checkbox", class: cls });
-      (input as HTMLInputElement).checked = checked;
-      input.addEventListener("change", () => onChange((input as HTMLInputElement).checked));
-      wrap.append(input, document.createTextNode(` ${label}`));
-      return wrap;
-    };
-    const settings = el("details", { class: "sol-settings" });
-    settings.append(
-      el("summary", {}, "Settings"),
-      setting(hints, "Enable hints", "sol-set-hints", (on) => {
-        setHintsEnabled(on);
-        render(); // relabel the action control (Hint ↔ I'm stuck)
-      }),
-      setting(declareAssistanceEnabled(), "Declare assistance used", "sol-set-assist", (on) => {
-        setDeclareAssistance(on);
-      }),
-      setting(autoPlayEnabled(), "Auto-play safe cards to foundations", "sol-set-autoplay", (on) => {
-        setAutoPlay(on);
-      }),
-    );
-
-    const counter = el("span", { class: "sol-moves" }, `Moves: ${moveCount}`);
-
-    bar.append(modes, undoBtn, actionBtn, settings, counter);
-    return bar;
+  // --- what the frame shows: the deal chip, three meters, the verbs, setup, preferences ---
+  const doUndo = (): void => {
+    if (game!.undo()) {
+      moveCount = Math.max(0, moveCount - 1);
+      setStatus("Move undone (counts as assistance).");
+    }
+    selected = null;
+    render(true);
   };
+  const spec = (): GameFrameSpec => {
+    const b = game?.board();
+    const home = b ? b.foundations.reduce((n, f) => n + f, 0) : 0;
+    const hints = hintsEnabled();
+    return {
+      title: "Solitaire",
+      mode: mode === "daily" ? "Today’s deal" : "Free deal",
+      meters: [
+        { kind: "stat", id: "moves", value: moveCount, label: "moves" },
+        { kind: "stat", id: "stock", value: b?.stockCount ?? 0, label: "in stock" },
+        { kind: "stat", id: "home", value: `${home} / 52`, label: "home" },
+      ],
+      verbs: [
+        { id: "undo", label: "Undo", icon: "↶", onPress: doUndo },
+        // Hints on → "Hint" points at a legal move (counts as assistance); the verb
+        // flips to "I'm stuck" (ends the game) when hints are off (§6).
+        hints
+          ? { id: "hint", label: "Hint", icon: "✦", primary: true, onPress: showHint }
+          : { id: "stuck", label: "I’m stuck", icon: "⇥", onPress: declareStuck },
+        { id: "new", label: "New deal", icon: "⟳", onPress: (btn) => frame?.openSheet("setup", btn) },
+      ],
+      setup: solitaireSetupRows(),
+      preferences: [
+        {
+          kind: "toggle",
+          id: "autoplay",
+          label: "Auto-play safe cards to foundations",
+          hint: "Obvious moves the core offers — a convenience, not assistance.",
+          value: autoPlayEnabled(),
+          onChange: (on) => setAutoPlay(on),
+        },
+      ],
+      onStart: () => void startDeal(chosenMode),
+    };
+  };
+  const declare = (): void => frame?.update(spec());
 
   const renderBoard = (board: BoardView): HTMLElement => {
     const boardEl = el("div", { class: "sol-board", tabindex: "-1" });
@@ -907,6 +907,7 @@ export function solitaireModule(): GameModule {
         onPlayAgain: () => void startDeal(mode),
       });
     container.replaceChildren(build());
+    declare();
   };
 
   function render(focusBoard = false): void {
@@ -919,9 +920,10 @@ export function solitaireModule(): GameModule {
       void presentResult("stuck");
       return;
     }
-    container.replaceChildren(renderControls(), renderBoard(game.board()), statusEl);
+    container.replaceChildren(renderBoard(game.board()), statusEl);
     applySelectionStyles();
     if (focusBoard) container.querySelector<HTMLElement>(".sol-board")?.focus();
+    declare();
   }
 
   async function startDeal(nextMode: "daily" | "free", seedOverride?: bigint): Promise<void> {
@@ -941,6 +943,7 @@ export function solitaireModule(): GameModule {
       seed = seedOverride ?? randomSeed();
     }
     mode = nextMode;
+    chosenMode = nextMode;
     stuckDeclared = false;
     stuckNote = "";
     selected = null;
@@ -951,6 +954,29 @@ export function solitaireModule(): GameModule {
     exposeHook();
     render();
   }
+
+  /** Replay a stored deal: the seed, every move, and the assistance flag. */
+  const applyResume = (p: Progress): void => {
+    if (!game || disposed) return;
+    const rec = p.record as { seed?: unknown; moves?: unknown; assistance?: unknown };
+    mode = p.setup.mode.startsWith("daily:") ? "daily" : "free";
+    chosenMode = mode;
+    stuckDeclared = false;
+    stuckNote = "";
+    selected = null;
+    hint = null;
+    seed = typeof rec.seed === "string" ? BigInt(rec.seed) : randomSeed();
+    game.newGame(seed);
+    moveCount = 0;
+    for (const m of Array.isArray(rec.moves) ? (rec.moves as SolMove[]) : []) {
+      if (game.play(m) !== "applied") break;
+      moveCount += 1;
+    }
+    if (rec.assistance === true) game.markAssistance();
+    setStatus("");
+    exposeHook();
+    render();
+  };
 
   const fetchPack = async (): Promise<DealPack> => {
     const res = await fetch("/daily-pack.json");
@@ -1006,9 +1032,14 @@ export function solitaireModule(): GameModule {
   };
 
   return {
-    mount(c: HTMLElement): void {
+    mount(c: HTMLElement, services?: GameServices): void {
       container = c;
+      frame = services?.frame ?? null;
       disposed = false;
+      // Hints on/off is an "Every game" row of the frame's sheet; it relabels this
+      // game's verb, so re-render when it changes.
+      frame?.onSettingsChange(() => render());
+      declare();
       container.replaceChildren(el("div", { class: "sol-loading" }, "Loading solitaire…"));
       void (async () => {
         try {
@@ -1030,12 +1061,18 @@ export function solitaireModule(): GameModule {
           await showShared(shared);
           return;
         }
+        if (pendingResume) {
+          const p = pendingResume;
+          pendingResume = null;
+          applyResume(p);
+          return;
+        }
         const seedParam = url.searchParams.get("seed");
         if (seedParam !== null) {
           await startDeal("free", BigInt(seedParam));
           return;
         }
-        await startDeal("daily");
+        await startDeal(chosenMode);
       })();
     },
     unmount(): void {
@@ -1045,9 +1082,37 @@ export function solitaireModule(): GameModule {
       cascadeEl = null;
       container?.replaceChildren();
       container = null;
+      frame = null;
       game = null;
       verifier = null;
       selected = null;
+    },
+    // --- the progress store: the seed and the core's own move list; resume is replay ---
+    snapshot(): Progress {
+      const env = game ? (game.outcome("abandoned", declareAssistanceEnabled()) as OutcomeEnvelope) : null;
+      const b = game?.board();
+      const home = b ? b.foundations.reduce((n, f) => n + f, 0) : 0;
+      const now = new Date().toISOString();
+      const done = (game?.isWon() ?? false) || stuckDeclared;
+      return {
+        v: 1,
+        status: done ? "finished" : "in-progress",
+        startedAt: now,
+        updatedAt: now,
+        setup: { mode: mode === "daily" ? `daily:${today(new Date())}` : "free", seed: seed.toString() },
+        record: { seed: seed.toString(), moves: env?.payload.moves ?? [], assistance: env?.payload.assistance === true },
+        summary: {
+          line: done
+            ? game?.isWon()
+              ? `Cleared in ${moveCount} moves`
+              : `Stuck after ${moveCount} moves`
+            : `${moveCount} move${moveCount === 1 ? "" : "s"} · ${home} of 52 home`,
+        },
+      };
+    },
+    resume(p: Progress): void {
+      if (game) applyResume(p);
+      else pendingResume = p;
     },
   };
 }
