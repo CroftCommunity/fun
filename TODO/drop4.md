@@ -182,5 +182,7 @@ The next adversarial games are tracked in the shelf-wide slate, not here, so the
 don't drift as a parallel list: see `TODO/README.md` → "Next games" and
 `TODO/checkers.md`. In short: **checkers** next (the 3rd adversarial game; `adversary-solver` was
 extracted ahead of it and Drop 4 migrated onto it 2026-08-05 — this crate no
-longer carries its own `select_in_band`/`LiveBand`), then **chess** (heavier — vetted move-gen + Stockfish-WASM
-oracle, gated on larger-binary hosting).
+longer carries its own `select_in_band`/`LiveBand`), then **chess** (planned
+2026-08-30 as a build-fresh core verified by perft, our own Oracle, no hosting
+gate — `plans/2026-08-30-plan-chess-vs-engine.md` supersedes the vetted-move-gen
++ Stockfish note that stood here).

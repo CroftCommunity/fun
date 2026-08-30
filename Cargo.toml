@@ -52,6 +52,7 @@ members = [
     "crates/drop4-harness",
     "crates/drop4-wasm",
     "crates/checkers-core",
+    "crates/chess-core",
     "crates/cribbage-core",
     "crates/cribbage-solver",
     "crates/cribbage-wasm",

@@ -20,7 +20,8 @@ fn main() {
         }
         Some("measure") => measure(),
         Some("fixtures") => fixtures(),
-        _ => eprintln!("usage: chess-search-spike positions|measure|fixtures"),
+        Some("diffperft") => diffperft(),
+        _ => eprintln!("usage: chess-search-spike positions|measure|fixtures|diffperft"),
     }
 }
 
@@ -85,6 +86,84 @@ fn measure() {
             if use_q { "ON " } else { "OFF" },
             boards.len()
         );
+    }
+}
+
+// -------------------------------------------------- Phase 1: differential perft
+
+fn cozy_moves(b: &Board) -> Vec<Move> {
+    let mut moves = Vec::new();
+    b.generate_moves(|pm| {
+        moves.extend(pm);
+        false
+    });
+    moves
+}
+
+fn cozy_perft(b: &Board, depth: u32) -> u64 {
+    if depth == 0 {
+        return 1;
+    }
+    let moves = cozy_moves(b);
+    if depth == 1 {
+        return moves.len() as u64;
+    }
+    moves
+        .into_iter()
+        .map(|mv| {
+            let mut c = b.clone();
+            c.play_unchecked(mv);
+            cozy_perft(&c, depth - 1)
+        })
+        .sum()
+}
+
+/// Phase 1's risk mitigation, run once: perft(3) on 200 random-play positions,
+/// chess-core vs cozy-chess. Positions travel between the engines as FEN, so a
+/// disagreement can also mean a FEN chess-core rejects — reported distinctly.
+fn diffperft() {
+    use rand::{RngCore, SeedableRng};
+    use rand_chacha::ChaCha20Rng;
+    let mut rng = ChaCha20Rng::seed_from_u64(0xD1FF);
+    let mut checked = 0u32;
+    let mut disagreements = 0u32;
+    while checked < 200 {
+        let target = rng.next_u32() % 61;
+        let mut b = Board::default();
+        let mut ok = true;
+        for _ in 0..target {
+            if b.status() != GameStatus::Ongoing {
+                ok = false;
+                break;
+            }
+            let moves = cozy_moves(&b);
+            let mv = moves[(rng.next_u32() as usize) % moves.len()];
+            b.play(mv);
+        }
+        if !ok || b.status() != GameStatus::Ongoing {
+            continue;
+        }
+        let fen = format!("{b}");
+        let ours = match chess_core::Board::from_fen(&fen) {
+            Ok(board) => board,
+            Err(e) => {
+                println!("REJECTED {fen}: {e}");
+                disagreements += 1;
+                checked += 1;
+                continue;
+            }
+        };
+        let mine = chess_core::perft(&ours, 3);
+        let theirs = cozy_perft(&b, 3);
+        if mine != theirs {
+            println!("DISAGREE {fen}: chess-core {mine}, cozy {theirs}");
+            disagreements += 1;
+        }
+        checked += 1;
+    }
+    println!("{checked} positions, {disagreements} disagreements");
+    if disagreements > 0 {
+        std::process::exit(1);
     }
 }
 

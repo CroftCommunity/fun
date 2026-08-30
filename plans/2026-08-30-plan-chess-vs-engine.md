@@ -5,7 +5,7 @@ analysis) 2026-08-30; Pass 3 (quality gates) 2026-08-30. Every open question is
 owner-confirmed and none is BLOCKING-unresolved; the two PHASE-GATED items gate Phases 2
 and 9 and are already reflected in those phases. **Phase 0 executed 2026-08-30**
 (D1 / D2-desktop / D3-deferral / D4 / D6 closed; D2's Samsung half and D5's
-two-Android half owed, `[device: …]` tags on their task lines) — **Phase 1 next.**
+two-Android half owed, `[device: …]` tags on their task lines) — **Phase 1 executed 2026-08-30** (perft green at CI depth on all six positions; differential perft 200/0) — **Phase 2 next.**
 Worktree `worktrees/chess/fun`, branch `claude/chess`.
 **Standards anchor:** `docs/BUILDING-GAMES.md` §10 + both new-game checklists;
 `docs/AI-PLAYERS.md` (search cost, honesty gate); `docs/HARNESS.md` (adding a game).
@@ -854,31 +854,31 @@ be concrete values and images, not "it seems fine".
 **Goal:** Every legal move of every position, verified by perft.
 
 **Changes:**
-- [ ] `crates/chess-core` (workspace member, `[lints] workspace = true`; deps:
+- [x] `crates/chess-core` (workspace member, `[lints] workspace = true`; deps:
   `adversary-core`, `serde`, `sha2`, `hex`, `pond-outcome`): `Square` (0..63),
   `Piece`/`Color`, `Board` as a mailbox (a 64-cell array plus the FEN fields:
   side, castling rights, ep square, halfmove clock, fullmove number).
-- [ ] `RULES.md` — **written first**: the table from Reasoning, with FIDE article
+- [x] `RULES.md` — **written first**: the table from Reasoning, with FIDE article
   numbers, the move-code layout, the square numbering, the text-bridge grammar, and
   the seed's reserved meaning. Every test below cites a section.
-- [ ] `Board::from_fen` / `to_fen` — the test-and-bridge constructor (settled in Pass
+- [x] `Board::from_fen` / `to_fen` — the test-and-bridge constructor (settled in Pass
   3: the perft suite needs it); `Board::start()` is `from_fen(START)`. Round-trips
   pinned on the six perft FENs — both directions: `to_fen(from_fen(s)) == s` for each
   string, and `from_fen` of a malformed string (seven ranks; a rank summing to nine;
   a castling right with no rook on its square) is an `Err`, never a panic.
-- [ ] `Move {from, to, promo}` with `code()` / `from_code()` (15 bits,
+- [x] `Move {from, to, promo}` with `code()` / `from_code()` (15 bits,
   `MAX_MOVE_CODE`), `Serialize`/`Deserialize` as one `u16`, reject-above-max
   (the checkers pattern).
-- [ ] Pseudo-legal generation per piece; `attacked(sq, by)`; castling with all four
+- [x] Pseudo-legal generation per piece; `attacked(sq, by)`; castling with all four
   bars (3.8.2.2); en passant; promotion ×4; **legality by make-and-check** (apply,
   test own king attacked, discard). `legal_moves(&Board) -> Vec<Move>` in a
   deterministic order (the order is part of `variant`-free determinism: the band's
   tie-breaks read it).
-- [ ] `apply_move(&Board, Move) -> Board`: moves the piece, handles the rook in
+- [x] `apply_move(&Board, Move) -> Board`: moves the piece, handles the rook in
   castling, the captured pawn in ep, the promotion piece, castling-right loss (king
   move, rook move, rook captured on its home square), ep-square set/clear, the
   halfmove clock (reset on pawn move or capture), the fullmove number.
-- [ ] **Perft** (`perft(&Board, depth) -> u64`) with the six positions asserted at
+- [x] **Perft** (`perft(&Board, depth) -> u64`) with the six positions asserted at
   the CI depths and the deeper rows under `#[ignore]`. Plus per-move split perft
   (`divide`) as a test helper for locating a divergence. **The CI-depth tests
   carry `#[cfg_attr(debug_assertions, ignore = "release only: ~16M nodes")]`**
@@ -888,11 +888,11 @@ be concrete values and images, not "it seems fine".
   in debug. Record the release wall-clock of the suite in the Review Log (Pass 1's
   question about the 53 s Rust job: ~16M nodes of a mailbox make-and-check
   generator is single-digit seconds in release; the ≤ 10 s budget below decides).
-- [ ] `crates/chess-core/vectors/` — the golden vectors as JSON in the xbuild
+- [x] `crates/chess-core/vectors/` — the golden vectors as JSON in the xbuild
   shape (`{name, note, seed, moves, final_state_hash}`; `moves` are the `u16`
   codes), written in Phase 2, **directory created here** so Phase 3's `run.sh`
   argument has a home.
-- [ ] **RED first, item by item (Pass 3 — the order a reader writes this phase).**
+- [x] **RED first, item by item (Pass 3 — the order a reader writes this phase).**
   `RULES.md` → the FEN round-trip tests → `from_fen`/`to_fen` → the move-code tests →
   `Move` → the depth-1/2/3 perfts on all six positions → generation and `apply_move` →
   the depth-4/5 perfts → whatever is still wrong. Every test is watched RED before its
@@ -902,7 +902,7 @@ be concrete values and images, not "it seems fine".
   deserialize (the serde boundary pair, checkers' `game.rs:523-527`); `promo` 4 is
   accepted and 5 rejected at `from_code`; square 63 round-trips and 64 does not
   construct.
-- [ ] **The edges perft cannot name (Pass 3 — mutation resistance).** Perft is an
+- [x] **The edges perft cannot name (Pass 3 — mutation resistance).** Perft is an
   aggregate: a bar mutated away would still change the count, but only a `divide`
   hunt would say *which* rule. So every rule with a branch also gets a direct test on
   a hand-built FEN, **both sides of the branch**, each citing its `RULES.md` section:
@@ -919,13 +919,13 @@ be concrete values and images, not "it seems fine".
   incremented by a quiet piece move; a pinned piece may move along the pin line and
   not off it; a king may not capture a defended piece; a move that gives check is
   generated and a move that leaves the mover in check is not.
-- [ ] **When a perft disagrees, the log names the subtree (Pass 3 — diagnostics).**
+- [x] **When a perft disagrees, the log names the subtree (Pass 3 — diagnostics).**
   The CI-depth assertions run through `divide`: on a mismatch the failure message
   prints the per-move split beside the reference total, so the divergent first move
   is in the log and not reconstructed by hand. The differential perft records in the
   Review Log the first disagreeing FEN if there is one, and "200 positions, 0
   disagreements" if there is not — a count either way, never "agreed".
-- [ ] **Docs this phase makes false (Pass 3 — moved from Phase 14):**
+- [x] **Docs this phase makes false (Pass 3 — moved from Phase 14):**
   `TODO/drop4.md:185` ("vetted move-gen + Stockfish-WASM oracle, gated on
   larger-binary hosting") → one line pointing at this plan; `TODO/README.md:110-112`
   "Needs a vetted move generator …" → "build-fresh, verified by perft — see the plan".
@@ -1852,6 +1852,52 @@ PR open; `workspace-audit.sh` clean.
 ---
 
 ## Review Log
+
+### Phase 1 execution — 2026-08-30
+
+**Green, and the wiring tests are the perfts:** `cargo test -p chess-core --release`
+— 20 passed, 0 failed, 1 ignored (the on-demand ~500M-node deep rows), **0.29 s**
+against the ≤ 10 s budget; depths 1–3 on all six positions also run un-ignored in
+debug (0.33 s). The full declared gate (`npm run test:rust` via `tools/check.sh`,
+2073-line log read at the PASS line) is green on the pinned 1.97.1 — fmt, clippy
+`-D warnings`, workspace tests including the new crate.
+
+**The differential perft: 200 positions, 0 disagreements** (`chess-search-spike
+diffperft`, perft(3) per position, chess-core vs cozy-chess, positions travelling
+as FEN — a rejected FEN would have been reported distinctly, and none was).
+
+**What the RED cycles caught, recorded because each is a rule lesson:**
+- The FEN malformed-case *test* had the en-passant rank semantics backwards
+  (`e6` with White to move is the CORRECT rank — Black just pushed); the code and
+  RULES §2 agreed and the test was wrong. Caught by watching the run.
+- `from_fen`'s one-king-per-side strictness rejected one of my own edge-test
+  FENs (no black king) — the strictness working as designed, on its author.
+- Perft depths 1–3 matched the published table on the **first run** of the
+  implemented generator; the CI depths then passed unchanged — the edge tests
+  (castling bars, rights causes and non-causes, ep timing, promotion ×4, clock
+  inputs, pins, defended-piece capture) were all green against the same
+  generation the perfts verified.
+
+**Gate friction, recorded:** 8 clippy pedantic errors on the first gate run
+(missing `# Panics`/`# Errors` docs, two `too_many_lines`, `naive_bytecount`,
+single-char bindings, `doc_markdown`) — fixed by splitting `from_fen`
+(`parse_placement` + `parse_castling`, king-count folded into placement) and
+`pseudo_legal` (per-piece helpers over shared delta tables), and making
+`square_text` panic-free. And the PATH trap fired again mid-phase: a bare
+`$TOOLCHAIN/cargo clippy` still resolved Homebrew's cargo-clippy 1.98 (the lint
+links betrayed it); the verdict that counts is `npm run test:rust`, which
+resolves via rustup — exactly why the phase's Done-when names that command.
+
+**Also this phase:** `TODO/drop4.md` and `TODO/README.md` chess entries updated
+to the build-fresh plan (the Pass 3 doc moves); `crates/chess-core/vectors/`
+created with its README for Phase 3; the owner supplied splash + icon art
+mid-phase — converted to `src/games/chess/assets/{splash,icon}.jpg` (512×512;
+572×1024 portrait, cribbage's convention), registry-wired in Phase 9.
+
+**Production `expect()` audit (grep read in full):** three `expect("not
+possible: …")` sites with recorded reasons (START_FEN, occupied-cell kind ×2)
+plus one `unreachable!` (kingless board) — the discipline's allowed shape;
+every other hit is under `#[cfg(test)]`.
 
 ### Phase 0 execution — 2026-08-30
 

@@ -1,0 +1,17 @@
+[package]
+name = "chess-core"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Deterministic, headless chess engine core: FIDE rules with automatic threefold/50-move draws, a 15-bit (from, to, promo) move code, mailbox board, perft-verified move generation, canonical state hash. Implements the shared Adversary trait so the harness and solver are generic over it, and native==wasm. No floats on the hashed path, no network."
+
+[dependencies]
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[lints]
+workspace = true

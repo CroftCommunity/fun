@@ -18,6 +18,9 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 cozy-chess = "=0.3.4"
+# The differential-perft oracle target (plan Phase 1 → Risks): the spike checks
+# chess-core's move generation against cozy-chess on random positions, once.
+chess-core = { path = "../../crates/chess-core" }
 rand = { version = "=0.8.6", default-features = false }
 rand_chacha = { version = "=0.3.1", default-features = false }
 

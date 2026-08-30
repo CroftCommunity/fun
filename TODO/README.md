@@ -107,9 +107,11 @@ field:
    three result classes reachable, and dots' extra-turn rule **transferring** with
    no change to anything shared, which is what makes the dots result a property of
    the abstraction rather than luck.
-1. **Chess** — Tier-1 adversarial, **heavy**. Needs a vetted move generator
-   (castling, en passant, promotion, checkmate/stalemate/draws), which is the real
-   weight. Its own multi-phase plan.
+1. **Chess** — Tier-1 adversarial, **heavy**. IN BUILD (2026-08-30):
+   `plans/2026-08-30-plan-chess-vs-engine.md` — build-fresh `chess-core` verified
+   by perft against the six published reference positions, not a vetted library
+   (the licence, sourcing and verification reasoning is the plan's "Build-fresh"
+   section; this entry previously said a vetted generator was needed).
    - **The "gated on larger-binary hosting" note was wrong, corrected 2026-08-07.**
      It was written in a documentation pass (`2327dbc`) and attached chess to the
      WebLLM weights thread by analogy; no binary was ever measured. Those are
