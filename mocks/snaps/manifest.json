@@ -19,6 +19,15 @@
       "height": 844
     },
     {
+      "file": "color-sort.pour.phone.png",
+      "game": "color-sort",
+      "route": "pour",
+      "url": "/color-sort/?level=3",
+      "viewport": "phone",
+      "width": 390,
+      "height": 844
+    },
+    {
       "file": "color-sort.board.desktop.png",
       "game": "color-sort",
       "route": "board",
@@ -35,9 +44,18 @@
       "viewport": "desktop",
       "width": 1280,
       "height": 900
+    },
+    {
+      "file": "color-sort.pour.desktop.png",
+      "game": "color-sort",
+      "route": "pour",
+      "url": "/color-sort/?level=3",
+      "viewport": "desktop",
+      "width": 1280,
+      "height": 900
     }
   ],
-  "baseline": "fun@bac0c55",
+  "baseline": "fun@1452290",
   "capturedAt": "2026-08-30",
   "population": "deep link, fixed seed (hermetic)"
 }

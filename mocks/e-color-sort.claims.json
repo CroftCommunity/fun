@@ -1,7 +1,7 @@
 {
   "$comment": "The parity contract for mocks/e-color-sort.html. Every promise the mock makes that a build could fail to keep, as a claim with the exact title of the browser/unit test that proves it. tests/mock-parity.test.ts requires a spec per claim once the claim's phase is declared COMPLETE in the plan's Status line, and guards the numbers here against the mock's own text. Add a claim when the mock gains a promise; never delete one to go green.",
   "mock": "mocks/e-color-sort.html",
-  "mockVersion": 3,
+  "mockVersion": 4,
   "plan": "plans/2026-08-29-plan-color-sort-redesign.md",
   "claims": [
     { "id": "E1.1", "proposal": 1, "phase": "A", "kind": "structure", "claim": "A bare /color-sort/ land shows the frame's poster (splash, title, pitch, setup card, Play) — not a board.", "spec": "mock E1.1: a bare land opens the poster, not a board" },
