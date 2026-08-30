@@ -1,7 +1,14 @@
 # Plan — the Game Frame: one structure for every game page, and a progress store
 
-**Status:** Pass 1 + Pass 2 COMPLETE (2026-08-30); Pass 3 (quality gates, fresh context)
-pending; all six open questions' severities CONFIRMED by the owner 2026-08-30 ("accept all as recommended"). No phase started. Mocks
+**Status:** Pass 1 + Pass 2 + **Pass 3 COMPLETE** (2026-08-30, fresh context). Six open
+questions CONFIRMED by the owner 2026-08-30 ("accept all as recommended"); Pass 3 added
+**Q7 and Q8**; both ADOPTED as recommended under the owner's blanket "go until all phases
+are done, PR and merge when ready" (2026-08-30) — **Q7 (what a URL with query
+parameters does once every bare URL opens on a start screen) gates Phase 5** and is the one
+thing between this plan and execution: Phases 0–4 may start now. D5 was resolved during
+planning (read-only, see Verified Assumptions) and is struck from Phase 0. Phases 1, 2, 3
+and 5 carry sub-phases (1a/1b, 2a/2b, 3a/3b, 5a/5b) — each with its own Done-when and
+wiring test — because each touched four or more files. No phase started. Mocks
 landed on `main` (`mocks/d-game-frame.html`, PR #45, `6c4dd9c`); owner decisions D1–D5
 recorded.
 
@@ -212,6 +219,58 @@ not a redesign — not built in this pass.
   (Porcelain Afternoon, The Last Cab Home, Tuesday Night Rainfall) and are **not** in
   `assets/new/` or the library yet — a side landing, not this plan (see below).
 
+Added by Pass 3 (2026-08-30, read-only spot-checks of this worktree at `197275f` =
+`origin/main`):
+
+- **D5 is answered without a probe.** `build.mjs` imports nothing from `src/` — its 18
+  page ids are a hard-coded literal, `GAME_PAGES` (`build.mjs` L17), pinned to `REGISTRY`
+  by **no test** (grep `GAME_PAGES` in `tests/`: 0 hits). It already imports one plain-Node
+  helper, `tools/skin-init.mjs` (L7), which reads `src/skins.ts` **as text** and throws when
+  it parses nothing (`skin-init.mjs` L23); `tools/intake.mjs` L56 reads `src/registry.ts`
+  the same way. `TODO/README.md` L149–158 prescribes exactly this mechanism for the title
+  and warns that `gameAliases()` did it with an index-zip bug — "parse each entry as a
+  unit". So the mechanism is: a `tools/registry-titles.mjs` that parses `src/registry.ts`
+  as text into `{ id → displayName }`, imported by `build.mjs` for both `GAME_PAGES` and
+  the `<title>`, unit-tested against the real `REGISTRY` (Phase 2b). No generated
+  `registry.json` is needed.
+- `tests/othello-tutor.test.ts` and `tests/othello-harness.test.ts` read **no DOM
+  classes** — every `othello-` hit is an import path (`othello-harness`, `othello-oracle`,
+  `othello-outcome`, `othello-wasm`); `querySelector`/`.othello-`: 0 hits. Phase 6's
+  Pass-2 risk is retired. The DOM-class readers that DO break on a migration are
+  `tests/<game>.spec.ts` (already in each phase) and **`tools/guide-shots.mjs`**, whose
+  recipes click `.othello-tutor-explain`, `.sol-settings summary`, `.sol-hint`, `.sol-stuck`,
+  `.crib-throw`, `.crib-go`, `.*-tutor-explain` (50 `goto`s, 22 distinct click selectors)
+  — it is in every migration's write-set from Pass 3 on.
+- `npm run guide:shots -- <name>` regenerates only shots whose name contains `<name>`
+  (`tools/guide-shots.mjs` L963–970) — "Othello's shots only" is a supported invocation,
+  not a `git add` discipline.
+- `src/settings.ts` already exports the pure `resolveBool(stored, fallback)` (L27–31),
+  tested in `tests/settings.test.ts` L109; Phase 3b's preference reuses it and tests only
+  what is new (the key, the default, the accessor pair).
+- **The start screen changes what every test lands on.** 299 `page.goto(` calls across the
+  browser suite, 50 in `tools/guide-shots.mjs`, and `tests/a11y-matrix.spec.ts` L94 visits
+  the **bare** `/${id}/` of every game × every skin — all of them expect a board. Rule 5 as
+  written puts a poster there. Most specs pass `?seed=7` (some `?fast=1`); the a11y matrix,
+  `home.spec.ts` L56–62 and a handful of others use bare URLs. This is **Q7**.
+- Observability convention: six games log `console.debug("[<game>] mount seed=… mode=…")`
+  at mount (`2048.ts` L410, `align.ts` L748, `color-sort.ts` L700/721, `drop4.ts` L856,
+  `wyrdle.ts` L464); nothing in `src/` logs at `warn`/`error`. The frame and the store
+  follow the same shape at `debug` (Phases 1a, 4, 5a, 22).
+- `CHANGELOG.md` declares `Contexts: shelf · cribbage · furrow · dots · drop4 · blockdoku ·
+  orchard · sinker · solitaire` (L8); workspace check 40 FLAGs an entry whose context is
+  not declared. Each migration whose game is not yet listed (othello, trio-tumble, wyrdle,
+  checkers, bubble, 2048, align, color-sort, looseends) adds its context on that line in
+  the same landing.
+- Browser wiring tests carry `{ tag: "@smoke" }` (19 spec files; `home.spec.ts` L24,
+  `othello.spec.ts` L32) so `npm run smoke` runs them — the frame's wiring tests do too.
+- `tests/chrome.test.ts` is jsdom (`vitest.config.ts`: `environment: "jsdom"`, with
+  `tests/setup/webstorage.ts` repairing `localStorage`); jsdom has no
+  `requestFullscreen`, so Phase 22's unit test installs one on
+  `document.documentElement` and asserts the three cases named there.
+- `docs/adr/0001-chrome-and-game-tokens.md` is the only ADR; `0002` is free.
+- `styles.css` is 4741 lines; `.wrapped-banner` / `.wrapped-game-frame` (L162–200) are
+  Tier-2 residue with no caller since 2026-08-29 — Phase 22's sweep, as planned.
+
 ## Side task (not a phase of this plan)
 
 **Intake the three new tracks** from `~/Downloads/new/` via `assets/new/` + `npm run
@@ -245,9 +304,14 @@ Scheduled in the phase that makes the reference stale, not at the end.
 - `docs/STATE-OF-PLAY.md` — dated addendum, **Phase 22** (the closing phase).
 - `mocks/README.md` — Direction D's row marks what shipped, **Phase 22**.
 - `CLAUDE.md` — one line under "The shelf model" pointing at §4c, **Phase 1**.
-- `TODO/README.md` — the slug-`<title>` item closes in **Phase 2** (the game bar knows the
-  title; the `build.mjs` mechanism is D5's answer).
-- `CHANGELOG.md` — one `shelf:` entry per shelf phase, one `<game>:` entry per migration.
+- `TODO/README.md` — the slug-`<title>` item closes in **Phase 2b** (D5's answer: `build.mjs`
+  reads the registry as text through `tools/registry-titles.mjs`, the mechanism the item
+  itself prescribes).
+- `CHANGELOG.md` — one `shelf:` entry per shelf phase, one `<game>:` entry per migration;
+  a game not yet on the `Contexts:` line (L8) is added there in its own migration (check 40).
+- `tools/guide-shots.mjs` — not a doc, but the shots are the how-to guide's pictures and
+  its recipes click controls this plan removes; updated in **each game's phase** together
+  with the regenerated shots (see Phase 6 and the 7–21 recipe).
 - Grepped for references to files this plan **removes**: none are removed; per-game CSS
   blocks in `styles.css` are deleted per game phase and have no doc references (grep
   `sol-controls` in `docs/`: 0 hits).
@@ -261,6 +325,16 @@ would parallelise if each game's CSS lived in `src/games/<id>/<id>.css` — surf
 ADVISORY open question Q4 rather than restructured here. Each phase runs in this worktree on
 `claude/game-frame`; no phase invokes `git checkout` / `stash` / `rebase` in the shared
 `fun/` checkout; the e2e web server binds :4180 only for the duration of `npm run e2e`.
+
+Pass 3 re-checked the map after splitting Phases 1, 2, 3 and 5 into sub-phases: still
+sequential. Every sub-phase pair shares `styles.css` or `CHANGELOG.md` except **5a ‖ 5b**
+(5a: `game-frame.ts`, `chrome.ts`, `styles.css`; 5b: `shelf.ts`, `home.ts`) — 5b's only
+overlap is `CHANGELOG.md`, and 5b's wiring test needs 5a's store-writing Play button to
+exist, so it stays sequential by dependency, not by write-set. Flagged, not restructured.
+Two more shared-state facts the map did not name: `npm run e2e` and `npm run smoke` both
+bind :4180 with `reuseExistingServer: false`, so two phases' verifications cannot run at
+once even from different worktrees; and `npm run guide:shots` writes `assets/guide/*.jpg`
+for **every** game unless filtered — each migration filters to its own game.
 
 ## Phases
 
@@ -300,16 +374,36 @@ ADVISORY open question Q4 rather than restructured here. Each phase runs in this
     the DOM mutation (`.drop4-thinking`-style) instead of geometry.
   - **Disposition:** `promote` → the sampler becomes `tests/helpers/board-top.ts` in
     Phase 6, under TDD there.
-- [ ] **D5: Can `build.mjs` (plain Node, no TS) read each game's `displayName` for the
-  page `<title>`?**
-  - **Probe:** check how `build.mjs` already enumerates the registry for its 19 pages
-    (L250–260) and whether a JSON export of titles exists or is cheap.
-  - **Success criteria:** a one-line mechanism named, or "needs a generated
-    `registry.json`" recorded.
-  - **Disposition:** `throwaway`.
+- [x] **D5: Can `build.mjs` (plain Node, no TS) read each game's `displayName` for the
+  page `<title>`?** — **RESOLVED during Pass 3 planning (2026-08-30), read-only.**
+  `build.mjs` does not enumerate the registry at all: `GAME_PAGES` is a literal (L17), and
+  the file imports one text-parsing helper already (`tools/skin-init.mjs`). Mechanism:
+  `tools/registry-titles.mjs` parses `src/registry.ts` as text, entry by entry, into
+  `{ id → displayName }`; `build.mjs` derives both `GAME_PAGES` and each `<title>` from it.
+  Evidence and the index-zip warning in Verified Assumptions; executed in **Phase 2b**.
+  - ~~**Probe:** check how `build.mjs` already enumerates the registry for its 19 pages
+    (L250–260) and whether a JSON export of titles exists or is cheap.~~
+  - **Disposition:** `throwaway` (nothing was written).
 
-**Done when:** D1–D5 recorded in Verified Assumptions with evidence; Phases 1, 3, 6, 22
-adjusted if any answer differs from the assumption they carry.
+Pass 3 discipline notes for D1–D4, so each probe answers its question and nothing else:
+- **D1** records three facts, not one: whether `requestFullscreen()` resolves, the
+  **exact** error name/message when it rejects (Phase 22's toast test asserts on the
+  recorded shape), and whether `fullscreenchange` fires under each project. A probe that
+  only says "webkit rejects" leaves Phase 22 guessing again.
+- **D2** must use the real `styles.css` type scale, not the mock's — the mock is what the
+  question is about. Record the fold-back width as a number; Q2 and Phase 3a read it.
+- **D3**'s table lists every game's board height at 390 wide, including Bubble's aim bar
+  and Wyrdle's keyboard as part of "the board" — the question is what the stage must hold,
+  not what the grid alone measures.
+- **D4** is a flake study: 10/10 is the bar because the stability spec will run on CI with
+  2 workers and a slower engine move; record the per-run frame count, not just pass/fail.
+
+**Checkpoint (Phase 0):** the Verified Assumptions section carries a dated entry per
+probe with a number, a screenshot path or an error string — not an adjective. Nothing is
+committed except the plan doc's own update (`plans:` subject).
+
+**Done when:** D1–D4 recorded in Verified Assumptions with evidence (D5 already is);
+Phases 1, 3, 6, 22 adjusted if any answer differs from the assumption they carry.
 
 ### Phase 1: The frame's bands, its spec, and the ADR
 
@@ -350,6 +444,51 @@ one-verb dock; (verification) `npx playwright test tests/game-frame.spec.ts
 --project=chromium --project=mobile-webkit` and `npm run unit -- game-frame` green.
 **Validation:** narrow — tests, plus one screenshot at 390 in the Review Log.
 
+**Pass 3 — the split applied (five files: three source, two tests; the rule counts
+files, and the changes list above is what one head must hold).** The phase's shape
+above stands as the description; execution runs it as two commits:
+
+#### Phase 1a: the component and its stylesheet block
+**Changes:** `src/game-frame.ts`, `styles.css` (`.gf-*`), `tests/game-frame.test.ts`.
+**RED first, named cases (each is one `it`):**
+- six verbs → throws; **five verbs → renders five** (the boundary, not just the
+  overflow); zero verbs → no `.gf-dock` at all (rule 1: nothing, not an empty band). The
+  thrown message names the game's `title` and lists the verbs, so a migration that
+  overflows fails with the offending list in the stack, not "invalid spec".
+- a seat with no `sub` still has a `.sub` element, empty; `update()` to
+  `state:"thinking"` sets the class and `sub` text "thinking…" and `childElementCount` of
+  band ③ is unchanged **before and after**; `update()` back to `idle` clears both.
+- `update()` with a spec whose `meters.length` differs from the mounted one → throws
+  (slots are fixed; a game that changes its meter count mid-game is the jump rule 1
+  forbids, caught at the seam).
+- no spec → `.gf-game-bar` and `.gf-stage` only; `.gf-meters` and `.gf-dock` absent.
+- band heights: `.gf-game-bar`, `.gf-meters`, `.gf-dock` carry the reserved-height class
+  hooks the CSS pins (jsdom has no layout — the **pixel** assertion is 1b's browser spec).
+- `destroy()` empties the host and a second `destroy()` is a no-op.
+**Observability:** `renderGameFrame` logs `console.debug("[frame] mount title=… verbs=n
+meters=n")` once — the same shape as the six games' mount lines.
+**Wiring test (1a):** the exported `renderGameFrame` is the only entry point that exists
+before 1b; the unit test mounts it into a `.play-area` host and asserts the band order.
+The product-level wiring test (`/placeholder/` in a frame) is RED from 1a's first commit
+and GREEN at 1b's — 1a never lands without 1b following on the same branch.
+**Done when:** `bash tools/check.sh gf-unit npm run unit -- game-frame` green and
+`tests/tokens.test.ts` still green (no hex in the new block).
+**Checkpoint:** commit `frame: the game frame component — bands, spec, reserved heights`.
+
+#### Phase 1b: the placeholder mounts through it
+**Changes:** `src/games/placeholder.ts`, `tests/game-frame.spec.ts` (new, `@smoke` on the
+wiring test), the five doc files listed above.
+**RED first:** the `/placeholder/` spec — both projects — asserting `.gf-game-bar` height
+**48 ± 0**, `.gf-dock` **72 ± 0** at 390×844 via `boundingBox()`, and `.placeholder-game`
+inside `.gf-stage`; plus the stage's top edge is identical before and after the
+placeholder's one verb is clicked (the first reserved-height proof, cheap here).
+**Wiring test:** the spec above.
+**Done when:** `bash tools/check.sh gf-spec npx playwright test tests/game-frame.spec.ts
+--project=chromium --project=mobile-webkit` green; `npm run smoke` green (the
+placeholder's existing chrome tests still pass through the frame).
+**Checkpoint:** commit `frame: the placeholder mounts inside the frame` + the docs; one
+screenshot at 390 attached to the Review Log.
+
 ### Phase 2: The chrome mounts the frame for every game; the header stops wrapping
 
 **Goal:** Every `/<id>/` page renders inside the frame; "How to play" and "↗" move into
@@ -380,6 +519,52 @@ sit one level deeper — run `npm run smoke` after the mount change, not just th
 still plays; (verification) `npm run smoke` + `tests/game-frame.spec.ts`.
 **Validation:** moderate — tests + open three games on the Samsung (`.claude/TESTBED.md`)
 and confirm the header.
+
+**Pass 3 — split applied (Pass 2 did not flag this phase, but it writes eight files and
+the `<title>` work is independent of the mount change).**
+
+#### Phase 2a: the chrome mounts the frame; the header stops wrapping
+**Changes:** `src/chrome.ts`, `styles.css`, `tests/game-frame.spec.ts`,
+`tests/chrome.test.ts`, `README.md`, `CHANGELOG.md`.
+**RED first, named cases:**
+- browser: for every `status:"playable"` entry in `REGISTRY`, at 390×844,
+  `.chrome-header` `boundingBox().height` **≤ 64** — and the spec first asserts the
+  header is **> 64 on at least one game page** when run against a build without the
+  change (record that red run in the Review Log; a test that has never failed proves
+  nothing about wrapping).
+- browser: the ⋯ menu button has `aria-expanded`, opens on click and on Enter, closes on
+  Escape and on click-off, and contains `a[href="/how-to/?game=<id>"]` and an `↗` with
+  `target="_blank" rel="noopener"` — mirror the drawer's focus/ESC tests in
+  `tests/chrome.test.ts` L34–72 rather than inventing a second pattern.
+- jsdom: the game mounts into `.gf-stage` (`placeholderMountCount()` unchanged by a
+  full-screen toggle — the existing "same instance" test L22 keeps passing); `.how-to-link`
+  is **absent** from `.chrome-header` on a game page and the ⋯ menu holds it; on the home
+  page there is **no** game bar (`gameId` empty → no frame).
+**Observability:** none beyond 1a's mount line — the chrome change is structural.
+**Wiring test:** the header-height test (`@smoke`).
+**Done when:** `bash tools/check.sh smoke npm run smoke` green and
+`tests/game-frame.spec.ts` green in both projects.
+**Checkpoint:** commit `shelf: every game page renders inside the frame; the header is one
+row`. Then the Samsung check named under Validation, before 2b.
+
+#### Phase 2b: page titles from the registry (D5)
+**Changes:** `tools/registry-titles.mjs` (new), `build.mjs`, `tests/page-titles.test.ts`
+(new), `TODO/README.md`, `CHANGELOG.md`.
+**RED first, named cases:**
+- unit: `readRegistryTitles()` returns exactly `Object.fromEntries(REGISTRY.map(e => [e.id,
+  displayName(e)]))` — every id, the same set (this is also the first test pinning
+  `GAME_PAGES` to `REGISTRY`; it fails the day a game is registered without a page or
+  vice versa); a registry text with **two** entries on one line still parses two (the
+  index-zip regression named in `TODO/README.md`); an entry without `subtitle` yields
+  `title` alone; a registry text that parses **zero** entries throws (the `skin-init.mjs`
+  convention — an empty parse must not build 0 pages green).
+- browser (`@smoke`): `page.title()` on `/trio-tumble/` is `Croft · fun — Trio Tumble:
+  Jewel Drop` and on `/color-sort/` is `Croft · fun — Color Sort` — through the built
+  page, not the parser.
+**Wiring test:** the browser title assertion above.
+**Done when:** `bash tools/check.sh titles npm run unit -- page-titles` and the two title
+specs green; `TODO/README.md` item struck.
+**Checkpoint:** commit `shelf: every game page's tab reads the game's name, not its slug`.
 
 ### Phase 3: Dock ↔ rail, the sheets, and "Controls on the left"
 
@@ -414,6 +599,66 @@ is inline on desktop, and the preference mirrors both; (verification)
 `tests/game-frame.spec.ts` both projects.
 **Validation:** moderate — tests + a phone screenshot of the sheet in the Review Log.
 
+**Pass 3 — split applied (four source files; the mirror preference is a separable
+behaviour with its own store key).**
+
+#### Phase 3a: dock ↔ rail, and the two sheets
+**Changes:** `src/game-frame.ts`, `src/settings-sheet.ts` (`section` headings, additive),
+`styles.css`, `tests/game-frame.test.ts`, `tests/game-frame.spec.ts`,
+`tests/settings-sheet.test.ts` (existing suite gains the section cases), docs §4c
+(dock/rail, sheets), `DESIGN.md` sheet tokens, `CHANGELOG.md`.
+**RED first, named cases:**
+- unit (`settings-sheet`): a spec with two sections renders two headings in order; a spec
+  with **no** sections renders no heading element (Bubble's existing caller must not grow
+  an empty `<h3>`); a section with zero rows is not rendered.
+- unit (`game-frame`): the settings sheet's rows are `[...common, ...game.preferences]`
+  with the common section **first**; a game with no `preferences` still gets the common
+  section; `openSheet("setup")` renders `setup` rows and **not** `preferences`, and vice
+  versa; a second `openSheet` while one is open replaces, never stacks (one `.gf-sheet`
+  in the DOM).
+- browser: at 1000×680 `.gf-rail` visible and `.gf-dock` hidden; at **899×680** the
+  reverse (the breakpoint's edge, not just "phone" and "desktop"); at 390 the sheet opens
+  as a bottom sheet with `role="dialog"` `aria-modal="true"`, focus moves inside, Escape
+  and scrim-click close it and return focus to the verb that opened it; at 1000 the same
+  Settings verb renders the rows **inline** in the rail and no `.gf-scrim` exists.
+- `tests/a11y-matrix.spec.ts` stays green with the sheet open on one game — add the
+  open-sheet state to the matrix's reachable states for `/placeholder/` only (the matrix
+  reaches "mid-game, result, tutor" today; the sheet is a new state it cannot reach on its
+  own).
+**Observability:** `console.debug("[frame] sheet=settings|setup open")` — one line per
+open, so a phone trace shows which sheet a stuck scrim belongs to.
+**Wiring test:** the placeholder's one verb opens the settings sheet from the dock at 390
+and inline at 1000 (`@smoke`).
+**Done when:** `bash tools/check.sh gf-spec npx playwright test tests/game-frame.spec.ts
+--project=chromium --project=mobile-webkit` green; `npm run unit -- settings-sheet
+game-frame` green.
+**Checkpoint:** commit `frame: dock on phones, rail on desktop; settings and new-game
+sheets`; phone screenshot of the sheet in the Review Log.
+
+#### Phase 3b: "Controls on the left"
+**Changes:** `src/settings.ts` (`controlsOnLeft()` / `setControlsOnLeft()`, key
+`fun-controls-left`, via the existing `resolveBool`), `src/game-frame.ts`
+(`data-gf-side`), `styles.css` (mirror rules), `tests/settings.test.ts`,
+`tests/game-frame.spec.ts`, docs §6, `CHANGELOG.md`.
+**RED first, named cases:**
+- unit: `controlsOnLeft()` is **false** with nothing stored, true after
+  `setControlsOnLeft(true)`, false again after `setControlsOnLeft(false)`; a stored garbage
+  value reads false; storage throwing → false, no throw (the settings module's stated
+  degrade rule). Do **not** re-test `resolveBool`'s `"on"`/`"off"`/`null` — that suite
+  exists (`tests/settings.test.ts` L109).
+- browser: with the preference on, at 1000 the rail's `boundingBox().x` **<** the stage's
+  `x`; off, **>**; at 390 the dock's verb order is **reversed** (first verb's `x` is the
+  largest) — three assertions, because "mirror" means different things in the two shapes
+  and a CSS rule that flips one but not the other survives a single check.
+- the toggle lives in the common section of the settings sheet and takes effect **without
+  a reload** (the sheet's `onChange` re-renders the panel).
+**Wiring test:** the browser spec toggling the preference from the sheet and measuring
+both shapes (`@smoke`).
+**Done when:** `bash tools/check.sh gf-spec npx playwright test tests/game-frame.spec.ts
+--project=chromium --project=mobile-webkit` green; `npm run unit -- settings` green.
+**Checkpoint:** commit `frame: a "Controls on the left" preference mirrors the dock and the
+rail`.
+
 ### Phase 4: The progress store
 
 **Goal:** `src/progress.ts` reads, validates, writes, expires and clears one record per
@@ -441,6 +686,30 @@ contract type (compile-time), and the placeholder's `snapshot()` round-trips thr
 **Done when:** (behavioral) a record written today survives a reload and a daily record
 from yesterday does not; (verification) `npm run unit -- progress`.
 **Validation:** narrow — tests.
+
+**Pass 3 additions:**
+- **Write-set gains `src/games/placeholder.ts`.** The wiring test above round-trips "the
+  placeholder's `snapshot()`" and Phase 5a's spec needs "one placeholder move" — so the
+  placeholder gains a counter that a click increments, `snapshot()` carrying it and
+  `resume(p)` restoring it, **here**, not in Phase 5. Four files is still the ceiling
+  (three source + two tests, docs aside); no further split.
+- **More edges for `resolveProgress`, each its own `it`:** `v: 1` accepted, `v: 0` and
+  `v: 2` and `v: "1"` rejected; `status` outside the two literals rejected; a `free`
+  record from last week **kept** (only daily expires); a daily record made at 23:59:59
+  kept at 23:59:59.999 and dropped at 00:00:00.000 next day (both sides of the boundary,
+  in the local zone the test fixes with a constructed `Date`); `summary.line` missing →
+  rejected (the card would be blank); `record` of any shape accepted (opaque to the store).
+- **Newest wins, no history:** `writeProgress` overwrites; a test writes two records and
+  reads one, the second.
+- **Observability:** a rejected record logs `console.debug("[progress] <id> rejected:
+  <reason>")` with the reason `resolveProgress` returns alongside `null` — make the pure
+  function return `{ ok: false, reason }` | `{ ok: true, progress }` so the reason is a
+  tested value, not a string in a log call. Storage denial logs once at `debug`, never
+  throws (the `settings.ts` degrade rule, quoted in the module comment).
+- **Q8** (whether a rejected record is cleared on read) is decided before this phase's
+  RED tests are written — the test list differs by one case.
+- **Checkpoint:** commit `progress: a per-game progress store with expiry and validation`;
+  `bash tools/check.sh progress npm run unit -- progress contract`.
 
 ### Phase 5: The start screen — poster, continue card, `?r=` precedence; home Continue
 
@@ -473,6 +742,71 @@ page's Continue reads the store.
 returning shows Continue; (verification) `tests/game-frame.spec.ts` + `tests/home.spec.ts`.
 **Validation:** moderate — tests + the Samsung: open Othello, play two moves, kill the tab,
 reopen, see the card.
+
+**Pass 3 — split applied (five source files), and one gate: Q7 must be decided before
+5a's RED tests are written**, because the answer changes which URLs show the poster and
+therefore which of the 299 existing `goto`s, 50 shots recipes and the a11y matrix's bare
+`/${id}/` visits land on a board. Measured, not estimated — see Verified Assumptions.
+
+#### Phase 5a: the start screen
+**Changes:** `src/game-frame.ts` (`renderStart`), `src/chrome.ts`, `styles.css`,
+`tests/game-frame.spec.ts`, `tests/a11y-matrix.spec.ts`, `CHANGELOG.md`, docs §4c (start
+screen).
+**RED first, named cases:**
+- `/placeholder/` (bare) shows `.gf-poster` with `img[src="/placeholder/assets/splash.jpg"]`
+  (the placeholder ships no art today — **give it a splash and icon in this phase**, so
+  the frame's own exercise game satisfies `tests/art.test.ts` in both directions), the
+  name, the pitch, the setup card and a **Play** button; **no** `.placeholder-game` in the
+  DOM until Play.
+- Play → `.placeholder-game` mounts, the poster is gone, `readProgress("placeholder")` is
+  non-null (Play writes); the poster-to-board transition does not move `.gf-stage`'s top.
+- after Play + one click, `reload()` shows `.gf-continue` with `summary.line` text and
+  **Continue / New game**; Continue mounts and `resume` restored the counter (the card's
+  number and the board's number agree); New game shows the poster and
+  `readProgress` is null.
+- `/placeholder/?r=x` shows **neither** card and mounts directly (the `?r=` precedence).
+- a record with `status:"finished"` shows the continue card in its "play again" form
+  (Q6) — the card's primary button reads **New game**, not Continue.
+- storage denied (`page.context()` with `localStorage` stubbed to throw in an
+  `addInitScript`) → poster, no error overlay, no console `error`.
+- the URL forms Q7 decides (`?seed=`, `?fast=`, `?daily=`…) do what Q7 says — one `it`
+  per form, written after the decision.
+- `tests/a11y-matrix.spec.ts`: the matrix visits every game's **poster** (bare URL) and
+  its **board** (the Q7 form or a Play click) — both states, every skin; the poster is a
+  new surface for axe and must not be the only one scanned.
+**Observability:** `console.debug("[frame] start=poster|continue|record id=<id>
+progress=<status|none>")` at every land — the one line a phone trace needs to explain
+which card appeared and why.
+**Wiring test:** reload-shows-continue-card (`@smoke`).
+**Done when:** `bash tools/check.sh gf-spec npx playwright test tests/game-frame.spec.ts
+--project=chromium --project=mobile-webkit` green **and** `bash tools/check.sh e2e npm run
+e2e` green — the full suite, because this is the phase that changes what every URL shows.
+**Checkpoint:** commit `frame: every game opens on a start screen — poster, or a continue
+card from the store`; then the Samsung check under Validation.
+
+#### Phase 5b: home Continue reads the store
+**Changes:** `src/shelf.ts`, `src/home.ts`, `tests/home.spec.ts`, `tests/shelf.test.ts`
+(the model's `resume` field), `CHANGELOG.md`.
+**Decision recorded (not an open question):** `noteOpened` keeps firing at **land**, as
+today (`chrome.ts` L291), not at Play — so "Last played" still means the last game
+visited, and the store adds the summary line on top. The alternative (record at Play)
+makes a poster visit invisible to the home page, which is a bigger change than this
+phase wants.
+**RED first, named cases:**
+- unit (`buildShelfModel`): given a progress map with an in-progress entry, `resume`
+  carries `{ id, title, line }`; with a store entry **and** a newer last-opened for a
+  different game, the store entry wins (Continue is about unfinished games, not
+  recency); with no store entry, `resume` is the last-opened without a line (today's
+  behaviour, pinned); with an in-progress entry for a game **not in `REGISTRY`** (a
+  removed game's stale key), it is ignored.
+- browser: after playing one placeholder move, `/` shows `.home-resume` containing the
+  summary line; after New game, it shows "Last played" without a line; `home.spec.ts` L56
+  ("opening a game makes it the one you jump back into") keeps passing **unchanged** —
+  it visits the bare `/othello/`, so under Q7's answer that visit still records an open.
+**Wiring test:** the `/` summary-line spec (`@smoke`).
+**Done when:** `bash tools/check.sh home npx playwright test tests/home.spec.ts
+--project=chromium --project=mobile-webkit` and `npm run unit -- shelf` green.
+**Checkpoint:** commit `shelf: home's Continue reads the progress store`.
 
 ### Phase 6: Othello migrates (the versus archetype) — and the first stability test
 
@@ -507,11 +841,52 @@ gone; thinking is a seat state; the board does not move.
 `tests/helpers/board-top.ts` (+ how-to, shots, changelog, docs).
 **Shared-state contract:** as Phase 1.
 **Risks:** `tests/othello-tutor.test.ts` and `othello-harness.test.ts` read DOM classes —
-check before deleting any.
+check before deleting any. *(Pass 3: checked — they do not; every `othello-` hit is an
+import path. Risk retired. The real reader is `tools/guide-shots.mjs`, below.)*
 **Done when:** (behavioral) Othello on a phone: the board's top edge is unchanged from move
 1 through the engine's reply, a hint, a tutor toggle and the settings sheet; (verification)
 `npx playwright test tests/othello.spec.ts` both projects.
 **Validation:** broad for the first migration — tests + both phones, one full game each.
+
+**Pass 3 additions (Phase 6 stays one phase: four source-ish files — `othello.ts`,
+`styles.css`, `othello.spec.ts`, `board-top.ts` — with the how-to copy, shots recipe,
+changelog and docs riding along as the migration's fixed tail; splitting the archetype
+would split the recipe every later phase copies):**
+- **Write-set gains `tools/guide-shots.mjs`** (the `othello-*` recipes click
+  `.othello-tutor-explain` and wait on `.othello-board`; the tutor toggle they set through
+  `localStorage` survives, the explain button must still exist in the stage) and
+  `CHANGELOG.md`'s `Contexts:` line (adds `othello`).
+- **The sampler's unit test (`tests/helpers/board-top.test.ts`), named cases:** zero
+  frames sampled → `boardTopStable` **throws** ("no frames observed" — a sampler that saw
+  nothing must not report stable; this is the D4 flake turned into a loud failure);
+  one frame → reports that value as both min and max; tops `[100, 100.4, 100]` → stable
+  under the `< 1` rule (sub-pixel is allowed); `[100, 101, 100]` → **not** stable (the
+  boundary is 1px); the sampler stops when the awaited action resolves and takes no
+  frame after.
+- **Prove the stability spec can fail:** before migrating `othello.ts`, run the new spec
+  against the unmigrated page and record the measured `max − min` in the Review Log (the
+  `*-ai-say` splice and the banner swap are the expected movers). A stability test that
+  was green on day one is the "check that grades an empty set" shape from
+  `VERIFICATION.md`.
+- **Stability triggers, each its own `it`:** the engine's reply at Medium (no `?fast=1`),
+  a Hint, opening and closing Settings, toggling the tutor from the sheet, the AI's
+  banter arriving (Q3's toast — anchored or stage, it must not be in flow), and a pass
+  turn (`mustPass`, `othello.ts` L322 — the "no move — passing" sentence today lands in
+  the status line).
+- **Rewritten assertions, not deleted ones:** every existing `othello.spec.ts` assertion on
+  `.othello-turnbar` / `.othello-level` / `.othello-banner` gets a named replacement
+  (`.gf-seat[data-seat="engine"].thinking`, the setup sheet's difficulty choice, the
+  first-move toast); the test count in the file does not go down. "the difficulty picker
+  persists the chosen level" (L71) becomes "the New game sheet's difficulty choice
+  persists" against the same `fun-othello-level` key.
+- **`snapshot()`/`resume()` edges:** resume after 0 moves is the initial position;
+  resume of a finished game shows the result screen, not a board; a snapshot taken
+  mid-thinking (the engine's move pending) records the position **before** the engine's
+  move — resume replays the human's last move and re-triggers the engine.
+- **Checkpoint:** `bash tools/check.sh othello npx playwright test tests/othello.spec.ts
+--project=chromium --project=mobile-webkit`; `npm run guide:shots -- othello`; `git add`
+only `assets/guide/othello-*.jpg`; commit `othello: plays inside the game frame — seats,
+verbs, a start screen, and a board that does not move`. Then both phones.
 
 ### Phases 7–21: one phase per game, the Phase 6 recipe
 
@@ -543,6 +918,31 @@ sequential (Concurrency Map). Per-game deltas:
 - **21 Loose Ends**: already splash-driven; its home becomes the frame's poster + a Levels
   setup sheet; the overlay HUD stays as a stage overlay.
 
+**Pass 3 — the recipe's fixed tail, applied to every one of 7–21 (so each phase is
+self-describing without re-reading Phase 6):**
+1. **RED:** the game's stability spec on its named trigger, **run once against the
+   unmigrated page with the measured movement recorded** in the Review Log; plus the
+   named replacements for every assertion that reads a class the migration deletes.
+2. **Write-set:** `src/games/<id>/<id>.ts`, `styles.css`, `tests/<id>.spec.ts`,
+   `tools/guide-shots.mjs` (its `<id>-*` recipes — grep the file for the game's selectors
+   **before** deleting a class), `src/games/<id>/<id>-howto.ts`, `assets/guide/<id>-*.jpg`
+   (`npm run guide:shots -- <id>`; `git add` only those), `README.md` (the game's
+   paragraph), `CHANGELOG.md` (entry + `Contexts:` line if the game is new there).
+3. **Reserved-height check per game:** any `.<id>-status`-style element that the game
+   keeps below the board gets a `min-height`, asserted by the stability spec's trigger
+   (Furrow, Cribbage, Solitaire keep theirs).
+4. **`snapshot`/`resume` edges** as Phase 6: zero moves, finished, mid-thinking where the
+   game has an engine.
+5. **Checkpoint:** `bash tools/check.sh <id> npx playwright test tests/<id>.spec.ts
+   --project=chromium --project=mobile-webkit`; `bash tools/check.sh smoke npm run smoke`
+   (the other games did not regress through the shared stylesheet); commit `<id>: plays
+   inside the game frame — …`. **One migration per commit; a phase that is red at the
+   end of the day is reverted, not left half-migrated on the branch** — the frame renders
+   an unmigrated game as-is, so there is no half state to keep.
+6. **Validation** is moderate from Phase 7 on (tests + one phone), not broad — Phase 6
+   paid for the archetype's broad validation; Cribbage (15, hidden information, table
+   verbs) and Loose Ends (21, canvas + HUD) go back to **broad**, both phones.
+
 ### Phase 22: Full screen means full screen (D5), and the closing sweep
 
 **Goal:** ⤢ requests the Fullscreen API; the frame stays; the shelf bar goes; iOS gets an
@@ -570,6 +970,32 @@ honest message. Dead CSS gone; STATE-OF-PLAY addendum; `docs-guardian` sweep.
 says why not on iOS; (verification) `npm run gate`.
 **Validation:** broad — both phones + a desktop browser, plus `docs-guardian`.
 
+**Pass 3 additions:**
+- **This phase hides no deferred doc work** (checked): `STATE-OF-PLAY.md`'s addendum and
+  `mocks/README.md`'s "what shipped" row are closing records that can only be written
+  when the migrations are done; every other doc is scheduled in the phase that makes it
+  stale. The `docs-guardian` run is a sweep, not a schedule.
+- **Unit cases for `toggleFullscreen()` in jsdom (which has no Fullscreen API — the test
+  installs `document.documentElement.requestFullscreen` per case):** present and
+  resolving → called once, no toast, `aria-pressed="true"`; present and **rejecting** with
+  the error shape D1 recorded → the toast with Q1's copy, `aria-pressed` stays `"false"`,
+  `body.fullscreen` **not** set; **absent** (`undefined`, the iOS shape) → the same toast
+  without a thrown `TypeError`; a `fullscreenchange` event with `fullscreenElement` null
+  (the user pressed Esc) → `aria-pressed="false"` and `body.fullscreen` removed — the
+  state must follow the browser, not the button.
+- **The "same instance" invariant survives:** `tests/chrome.test.ts` L22 keeps passing —
+  `placeholderMountCount()` unchanged across a real fullscreen round-trip.
+- **Dead-CSS gate as a real test:** `tests/dead-css.test.ts` lists the classes the
+  migrations deleted (`.sol-controls`, `.sol-modes`, `*-turnbar`, `*-banner`,
+  `.wrapped-*`) and asserts each appears in **neither** `src/` nor `styles.css`; it is
+  written RED here (the `.wrapped-*` block is present today) and stays as the reachability
+  guard for the next game.
+- **Observability:** the rejection path logs `console.debug("[frame] fullscreen rejected:
+  <name>: <message>")` so an iOS report can be matched to D1's recorded string.
+- **Checkpoint:** `bash tools/check.sh gate npm run gate` — the whole declared gate,
+  named — before the landing PR; the Review Log records the run's exit code and test
+  counts, not "green".
+
 ## Open Questions
 
 1. [CONFIRMED: PHASE-GATED (Phase 22)] **What should ⤢ do on iOS Safari, which grants
@@ -596,7 +1022,110 @@ says why not on iOS; (verification) `npm run gate`.
    *Recommendation: keep `finished` until the next daily rollover, then drop — it costs
    nothing and makes the home page's Today strip honest.*
 
+Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
+
+7. [CONFIRMED: PHASE-GATED (Phase 5a) — ADOPTED as recommended under the owner's 2026-08-30 "go until all phases are done"; bare `/<id>/` is the front door, any query-parameterised URL is a deep link that mounts directly] **What does a game URL with query parameters
+   open on, once every bare URL opens on a start screen?** Rule 5 says "every URL"; the
+   plan already carves out `?r=`. Measured: 299 `page.goto(` calls in the browser suite,
+   50 in `tools/guide-shots.mjs`, and `tests/a11y-matrix.spec.ts`'s bare `/${id}/` visit
+   for every game × skin all expect a board on land; most specs pass `?seed=7`, some
+   `?fast=1`, the daily links carry their own parameters. *Recommendation: a URL that
+   names a game state (`?seed=`, `?fast=`, `?daily=`, any game-defined parameter) is a
+   deep link and mounts directly, exactly as `?r=` does; only the bare `/<id>/` is the
+   front door. It keeps the product rule where a person meets it (the shelf tile, the
+   address bar, the home Continue card all produce bare URLs), leaves the 299 + 50
+   existing navigations honest without a test-only seam, and the a11y matrix adds the
+   poster as a second state rather than losing the board. The alternative — Play on every
+   URL — costs an edit to every spec and recipe in Phase 5a, and the seam it needs
+   (`?play=1`) is a state no player ever sees. Gates 5a because its RED tests differ by
+   one `it` per URL form and the matrix change depends on it.*
+8. [CONFIRMED: ADVISORY — ADOPTED as recommended under the same authorization: a rejected record is cleared and the reason logged at debug] **When `readProgress` rejects a stored record (wrong `v`,
+   malformed), should it clear the key or leave it?** *Recommendation: clear it and log
+   the reason at `debug` — a record that fails validation will fail on every land and
+   blocks nothing (Play overwrites), but a stale `v: 1` record after a future `v: 2`
+   would otherwise sit in storage forever. Resolvable while writing Phase 4's RED list;
+   it changes one test case either way.*
+
 ## Review Log
+
+### Pass 3: Quality Gates — 2026-08-30
+**TDD ordering:**
+- Every phase already led with RED items; Pass 3 sharpened them into **named cases**
+  with boundaries instead of single points: five-vs-six verbs and zero verbs (1a);
+  header ≤ 64 **and** > 64 on the pre-change build (2a); 899 vs 1000 at the breakpoint,
+  dialog semantics, one sheet at a time (3a); mirror measured in **both** shapes (3b);
+  `v` 0/1/2/"1", the 23:59:59.999 / 00:00:00.000 daily edge, free records never expire,
+  newest wins (4); poster / Play / reload / New game / `?r=` / finished / storage denied
+  (5a); store-beats-recency and stale-key-ignored (5b); the sampler's zero-frame throw
+  and the 1px boundary, six stability triggers, resume at 0 / finished / mid-thinking
+  (6); the four fullscreen cases incl. Esc (22).
+- Two "watch it fail" steps added where a green-on-day-one test would prove nothing: the
+  header test against the unchanged build (2a) and every stability spec against the
+  unmigrated page with the movement recorded (6, 7–21 recipe).
+- Wiring tests now carry `@smoke` so `npm run smoke` runs them; every verification is
+  wrapped in `bash tools/check.sh` (the repo's unpiped-verification rule).
+- Phases 1, 3, 5 split as Pass 2 proposed (1a/1b, 3a/3b, 5a/5b), and Phase 2 too
+  (2a/2b — eight files, and the `<title>` work is independent). Phase 6 deliberately
+  **not** split: the archetype's recipe is what 7–21 copy. 1a's wiring test is the
+  exported `renderGameFrame` (no product entry point exists before 1b) — recorded as such,
+  with 1b required to follow on the same branch.
+- Phase 4's write-set gains `src/games/placeholder.ts`: its `snapshot()` was named in
+  Phase 4's wiring test and its "move" in Phase 5's spec, but no phase gave it either.
+- `resolveProgress` returns a tagged result with a `reason`, so the rejection reason is a
+  tested value that the log line prints — not an untested string.
+**Observability:**
+- The repo's one convention is `console.debug("[<game>] mount seed=…")` at mount, nothing
+  at warn/error. The frame and the store follow it: `[frame] mount`, `[frame] sheet=…
+  open`, `[frame] start=poster|continue|record …`, `[progress] <id> rejected: <reason>`,
+  `[frame] fullscreen rejected: …`. Fail-loud stays where it belongs — the six-verb and
+  meter-count-change throws name the game and the offending list.
+**Debugging readiness:**
+- A **Checkpoint** line per phase and sub-phase: the `check.sh` command, the commit
+  subject (`scope: sentence`), what is attached to the Review Log (a screenshot, a
+  measured number, an exit code). The 7–21 recipe adds "red at end of day is reverted,
+  not left half-migrated" — the frame renders an unmigrated game as-is, so there is no
+  half state worth keeping.
+**Validation calibration:**
+- 5a's verification raised from its own spec to the **full `npm run e2e`** — it is the
+  phase that changes what every URL shows. 7–21 lowered from Phase 6's broad to
+  moderate, except Cribbage and Loose Ends (back to broad). Phase 22's gate named
+  (`npm run gate`) with exit code and counts recorded, not "green".
+- Phase 0: **D5 resolved during planning** (read-only: `build.mjs` L17 hard-codes
+  `GAME_PAGES`, imports `tools/skin-init.mjs`'s text-parse precedent; `TODO/README.md`
+  prescribes the mechanism) — struck from Phase 0, executed as Phase 2b with a parser
+  test that also pins `GAME_PAGES` to `REGISTRY` for the first time. D1–D4 kept, each
+  with a note on what its record must contain (an error string, a width, a per-game
+  table, per-run frame counts). Dispositions all declared (Pass 2 had them).
+**Concurrency honesty:**
+- Map confirmed after the splits: sequential. 5a ‖ 5b is the one disjoint pair
+  (dependency, not write-set, keeps it sequential) — flagged. Two shared-state facts
+  added: :4180 with `reuseExistingServer: false` serialises every browser verification
+  across worktrees; `guide:shots` writes every game's JPEGs unless filtered.
+**Discovery (if Phase 0 exists):**
+- Reviewed above under Validation calibration. Nothing was executed.
+**Coherence:**
+- The plan still solves the measured problem (110px header, moving boards, no front door,
+  no progress). One gap surfaced that Passes 1–2 did not see because it is a **test-suite
+  consequence of rule 5**: 299 + 50 navigations and the a11y matrix land on bare or
+  parameterised URLs and expect a board — **Q7**, gating 5a, with a recommendation.
+  Q8 (clear a rejected record?) is ADVISORY. Phase 6's Pass-2 risk (unit tests reading
+  DOM classes) checked and **retired**; the real reader (`tools/guide-shots.mjs`, 22
+  click selectors) added to every migration's write-set. 5b records `noteOpened` stays
+  at land as a decision with its reason.
+- Project conventions checked: `scope: sentence` subjects in every checkpoint; changelog
+  entry per landing plus the `Contexts:` line (workspace check 40) per new game context;
+  `tokens.css`-only hex (1a's Done-when names `tests/tokens.test.ts`); shots regenerated
+  per game with the filter the tool supports; `resolveBool` reused not re-tested; the
+  sheet mirrors the drawer's dialog/focus/ESC tests instead of a second pattern.
+**Documentation impact:**
+- Every doc has a phase item; none deferred. Phase 22 checked: `STATE-OF-PLAY` and
+  `mocks/README` are closing records, not deferred work. Added `tools/guide-shots.mjs`
+  (the guide's pictures) to the impact list and the recipe. `TODO/README.md`'s line
+  corrected to the D5 answer. Placeholder art (`splash.jpg`, `icon.jpg`) added in 5a so
+  `tests/art.test.ts` holds in both directions.
+**Confirmed ready:** **Phases 0–4: yes.** **Phase 5a onward: no until the owner confirms
+Q7's severity and answer** (recommended: parameterised URLs are deep links). Q8 is
+advisory. No BLOCKING items. Q1–Q6 unchanged, confirmed by the owner 2026-08-30.
 
 - 2026-08-30 — owner confirmed all six open-question severities as recommended (4 PHASE-GATED, 2 ADVISORY); none BLOCKING.
 
