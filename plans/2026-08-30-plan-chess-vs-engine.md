@@ -5,7 +5,7 @@ analysis) 2026-08-30; Pass 3 (quality gates) 2026-08-30. Every open question is
 owner-confirmed and none is BLOCKING-unresolved; the two PHASE-GATED items gate Phases 2
 and 9 and are already reflected in those phases. **Phase 0 executed 2026-08-30**
 (D1 / D2-desktop / D3-deferral / D4 / D6 closed; D2's Samsung half and D5's
-two-Android half owed, `[device: …]` tags on their task lines) — **Phase 1 executed 2026-08-30** (perft green at CI depth on all six positions; differential perft 200/0) — **Phase 2 executed 2026-08-30** (terminals, both trait impls, hash, SAN, vectors; gate green) — **Phase 3 executed 2026-08-30** (both chess cases green in wasm) — **Phase 4 executed 2026-08-30** (search green, deepen adopted ≥ d4, budgeted ladder 0/50 over 400 ms in Chromium; Samsung half owed) — **Phase 5 executed 2026-08-30** (band + tutor green; Expert v Easy 20/20, Easy v random 14/20) — **Phase 6 executed 2026-08-30** (core 674: 60→23 all equivalent; solver 422: 302→69, real gaps closed and hand-verified) — **Phase 7 executed 2026-08-30** (binding green, 205 KB wasm, 1.06 MiB memory) — **Phase 8 next.**
+two-Android half owed, `[device: …]` tags on their task lines) — **Phase 1 executed 2026-08-30** (perft green at CI depth on all six positions; differential perft 200/0) — **Phase 2 executed 2026-08-30** (terminals, both trait impls, hash, SAN, vectors; gate green) — **Phase 3 executed 2026-08-30** (both chess cases green in wasm) — **Phase 4 executed 2026-08-30** (search green, deepen adopted ≥ d4, budgeted ladder 0/50 over 400 ms in Chromium; Samsung half owed) — **Phase 5 executed 2026-08-30** (band + tutor green; Expert v Easy 20/20, Easy v random 14/20) — **Phase 6 executed 2026-08-30** (core 674: 60→23 all equivalent; solver 422: 302→69, real gaps closed and hand-verified) — **Phase 7 executed 2026-08-30** (binding green, 205 KB wasm, 1.06 MiB memory) — **Phase 8 executed 2026-08-30** (wrapper + outcome, 6/6 over the real wasm) — **Phase 9 next.**
 Worktree `worktrees/chess/fun`, branch `claude/chess`.
 **Standards anchor:** `docs/BUILDING-GAMES.md` §10 + both new-game checklists;
 `docs/AI-PLAYERS.md` (search cost, honesty gate); `docs/HARNESS.md` (adding a game).
@@ -1405,20 +1405,20 @@ natively and not on a phone is Phase 13's to find, and it will have the numbers.
 **Goal:** A TypeScript surface the page and the rig share.
 
 **Changes:**
-- [ ] `src/games/chess/chess-wasm.ts` — `Chess` class over the exports
+- [x] `src/games/chess/chess-wasm.ts` — `Chess` class over the exports
   (`newGame`, `board`, `legalMoves`, `play`, `liveMove(level)`, `assess`,
   `coach`, `tutor`, `fen`, `san`, `currentHash`, `renderText`, `outcome`);
   `Level` union `"Easy" | "Medium" | "Hard" | "Expert"`.
-- [ ] `src/games/chess/chess-outcome.ts` — `verifyRecord` replaying `(seed,
+- [x] `src/games/chess/chess-outcome.ts` — `verifyRecord` replaying `(seed,
   moves)` through the wasm; the `?r=` share format; the human-facing label from
   the A-centric result.
-- [ ] `tests/chess-unit.test.ts` (vitest over the real wasm, the checkers shim —
+- [x] `tests/chess-unit.test.ts` (vitest over the real wasm, the checkers shim —
   `readFile("target/wasm32-unknown-unknown/release/chess_wasm.wasm")` behind a
   `globalThis.fetch` override, `tests/checkers-unit.test.ts:19-31`; `preunit`
   builds it, which is why Phase 7's `build-wasm.sh` entry is a precondition):
   play a game, replay it, tamper it.
 
-- [ ] **The edges (Pass 3 — mutation resistance).** `verifyRecord`: a recorded game
+- [x] **The edges (Pass 3 — mutation resistance).** `verifyRecord`: a recorded game
   verifies; one move altered fails; the list truncated by one fails (a different
   hash, not a crash); a move appended after the terminal fails; a code above
   `MAX_MOVE_CODE` fails without throwing. The `Level` union maps to `0..3` at all four
@@ -1852,6 +1852,31 @@ PR open; `workspace-audit.sh` clean.
 ---
 
 ## Review Log
+
+### Phase 8 execution — 2026-08-30
+
+**Green:** `npm run unit -- chess-unit` — `tests/chess-unit.test.ts` **6
+passed** over the real `chess_wasm.wasm` through the fetch shim (the file
+name read from the log, per the phase's rule); `npm run typecheck` and
+`npm run lint` clean. The worktree gained its `node_modules` here (`npm ci`,
+219 packages on the pinned Node 22) — Phases 9+ need vitest and Playwright.
+
+**What landed:** `src/games/chess/chess-wasm.ts` — the `Chess` class over
+the exports (`fen`, `san(code)`, `legalMoveDetails` with `from`/`to`/`promo`
+unpacked, `oracleMoveValues` → `{moves, depth, nodes}`, the tutor reports
+with `depth`/`nodes`, the `LEVEL_CODE` map 0..3 exported for the rig, the
+unsigned coercion on the `MOVE_OVER` sentinel); `chess-outcome.ts` —
+`verifyRecord` counting applied moves so a move the core refuses (a tamper,
+or one appended after the terminal — chess's replay poisons rather than
+skips) fails without throwing, plus `resultLabel` from the human's seat.
+
+**The edges pinned:** the opening's twenty moves unpacked with `code == from
+| to << 6`; the FEN fields on `board()`; `lastSan` null → `"e4"` and the ep
+square after it; a whole game replaying to its hash and **four tampers each
+failing for its own reason** (altered, truncated, padded after the terminal,
+a code above `MAX_MOVE_CODE` without a throw); the share payload
+round-tripping as plain numbers; `liveMove`/`oracleBest` null at a terminal;
+the level union at all four values.
 
 ### Phase 7 execution — 2026-08-30
 
