@@ -8,7 +8,7 @@ parameters does once every bare URL opens on a start screen) gates Phase 5** and
 thing between this plan and execution: Phases 0–4 may start now. D5 was resolved during
 planning (read-only, see Verified Assumptions) and is struck from Phase 0. Phases 1, 2, 3
 and 5 carry sub-phases (1a/1b, 2a/2b, 3a/3b, 5a/5b) — each with its own Done-when and
-wiring test — because each touched four or more files. Phases 0–5 COMPLETE (2026-08-30). Mocks
+wiring test — because each touched four or more files. Phases 0–6 COMPLETE (2026-08-30). Mocks
 landed on `main` (`mocks/d-game-frame.html`, PR #45, `6c4dd9c`); owner decisions D1–D5
 recorded.
 
@@ -1104,6 +1104,39 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
    it changes one test case either way.*
 
 ## Review Log
+
+### Phase 6 — executed 2026-08-30 (Othello, the versus archetype)
+- **Red first, and the red was real.** The rewritten `tests/othello.spec.ts` against the
+  unmigrated page: 28 of 34 failed. The stability cases measured the board moving
+  **1.2px (chromium) / 24.8px (WebKit)** across the engine's reply and **121px / 23px**
+  across a run to a forced pass — the sampler's unit tests (`tests/helpers/board-top.test.ts`,
+  5 cases: zero frames throws, one frame, sub-pixel vs 1px, stop takes no more) came first.
+- The migration: `spec()` with two seats (thinking = the engine's seat state; a human's
+  forced pass = "passing…" on yours), one `New game` verb opening the setup sheet, `setup`
+  from a builder the registry's poster shares (`othelloSetupRows`), `preferences` for the
+  tutor and the local-AI toggle (its disclosure as the row's hint), `pitch` on the entry;
+  the turn bar, controls row, banner and `<details>` are gone (CSS blocks deleted); the
+  AI's banter and the opening hint are `frame.toast()`s; `snapshot()` is `{ seed, moves }`
+  with "Move N · you lead 9–4", `resume()` replays and re-enters the turn loop (a resume
+  before the engine loads is held until it does). `Verb.onPress` receives its button so
+  the sheet can return focus; `frame.toast()` added with a unit test.
+- **What the sampler caught in the migrated game — two rule-1 violations that would have
+  shipped:** (1) the rail's stage was vertically centring, so a status line growing
+  *below* the board moved it by half (1.2px) — centring removed; (2) the end-of-game
+  fanfare line rendered *above* the final board (50–81px) — it sits below now. And one
+  structural fix: a toast appended to the game's container was wiped by the game's own
+  `replaceChildren` (WebKit's fast WebGPU probe re-rendered before the assertion) — the
+  frame now mounts the game into `.gf-mount`, a child of the stage, and keeps overlays as
+  siblings.
+- The forced-pass trigger is real, not skipped: seeds 1–40 probed under first-legal play,
+  seed 6 passes at ply 16 (4 @20, 8 @21); the test uses seed 6 and skips with a message if
+  that ever changes. The "thinking" assertion watches the seat from inside the page (a
+  `MutationObserver`), because the think beat is shorter than an outside retry.
+- Green: `tests/othello.spec.ts` 68/68 with `--repeat-each=2` on both engines (no skips),
+  the Othello unit suites + chrome + art + tokens 203, typecheck, lint; guide shots
+  regenerated for Othello only (3 files). How-to copy, §4c worked example, §10 seats line,
+  both checklists, RESPONSIVE lessons log, CHANGELOG (`othello:` entry, Contexts line)
+  landed in-phase. **Owed:** the two-phone validation (no device session).
 
 ### Phase 5b — executed 2026-08-30
 - RED first (2 model cases), then green: `buildShelfModel` takes `progress` (validated

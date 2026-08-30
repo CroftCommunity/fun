@@ -55,7 +55,7 @@ export function placeholderModule(): GameModule {
       el.dataset.mode = services.mode;
       el.dataset.mountCount = String(totalMounts);
       el.textContent = `Placeholder game — mounted in "${services.mode}" mode (mount #${totalMounts}).`;
-      frame.stage.appendChild(el);
+      frame.mount.appendChild(el);
     },
     unmount(): void {
       el?.remove();

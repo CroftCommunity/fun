@@ -10,7 +10,10 @@
 //! endgame — Othello is unsolved from the opening, so there is no "perfect"
 //! level. Difficulty (Easy…Expert) and the chosen disc persist.
 
-import type { GameModule } from "../../contract.js";
+import type { GameModule, GameServices } from "../../contract.js";
+import type { GameFrame, GameFrameSpec } from "../../game-frame.js";
+import type { Progress } from "../../progress.js";
+import type { SettingRow } from "../../settings-sheet.js";
 import { WebLLMRuntime } from "../../harness/ai-runtime.js";
 import { speak } from "../../harness/banter.js";
 import { buildBand, HybridPlayer, type BandMove } from "../../harness/hybrid-player.js";
@@ -25,6 +28,7 @@ import {
   type OthelloLevel,
 } from "../../settings.js";
 import {
+  PASS_CODE,
   decodeRecord,
   encodeRecord,
   verifyRecord,
@@ -41,6 +45,8 @@ declare global {
       game: Othello;
       refresh: () => void;
       seed: bigint;
+      /** Forced passes so far (either side) — the stability spec's pass trigger. */
+      passes: () => number;
     };
     /** Test seam: override the local-AI model id (a smaller/faster model). */
     __OTHELLO_AI_MODEL?: string;
@@ -217,6 +223,48 @@ function renderResultScreen(
   return section;
 }
 
+// ---------- the New game card (setup) ----------
+
+/**
+ * The rows that decide a game before it starts: difficulty and which disc you
+ * play. One builder, so the poster (before the module exists) and the New game
+ * sheet (inside it) cannot disagree. Each change persists at once; `onChange`
+ * lets the module mirror the choice into its own state.
+ */
+export function othelloSetupRows(onChange?: { level?(l: OthelloLevel): void; disc?(d: OthelloDisc): void }): SettingRow[] {
+  return [
+    {
+      kind: "choice",
+      id: "level",
+      label: "Difficulty",
+      hint: "The Engine is a strong heuristic player; Othello is unsolved, so Expert is the top.",
+      value: othelloLevel(),
+      options: LEVELS.map((l) => ({ value: l, label: LEVEL_LABELS[l] })),
+      onChange: (v) => {
+        setOthelloLevel(v as OthelloLevel);
+        onChange?.level?.(v as OthelloLevel);
+      },
+    },
+    {
+      kind: "choice",
+      id: "disc",
+      label: "You play",
+      value: othelloDisc(),
+      options: [
+        { value: "black", label: "● Black, opens" },
+        { value: "white", label: "○ White" },
+      ],
+      onChange: (v) => {
+        setOthelloDisc(v as OthelloDisc);
+        onChange?.disc?.(v as OthelloDisc);
+      },
+    },
+  ];
+}
+
+/** The poster's setup card — the registry's `setup` factory. */
+export const othelloSetup = (): SettingRow[] => othelloSetupRows();
+
 // ---------- the game module ----------
 
 /** Construct a fresh Othello module (the registry `load`). */
@@ -224,8 +272,14 @@ export function othelloModule(): GameModule {
   let game: Othello | null = null;
   let verifier: Othello | null = null;
   let container: HTMLElement | null = null;
+  let frame: GameFrame | null = null;
   let disposed = false;
   let thinking = false;
+  /** The moves applied so far, as record codes — the store's record, and resume's replay. */
+  let moves: number[] = [];
+  let pendingResume: Progress | null = null;
+  let hinted = false;
+  let toasted: string | null = null;
   let ending = false;
   let seed = 0n;
   let level: OthelloLevel = othelloLevel();
@@ -285,7 +339,14 @@ export function othelloModule(): GameModule {
   const applyMove = (idx: number): boolean => {
     if (!game || game.play(idx) !== "applied") return false;
     lastMove = idx;
+    moves.push(idx);
     return true;
+  };
+  const applyPass = (): void => {
+    if (!game) return;
+    game.pass();
+    moves.push(PASS_CODE);
+    lastMove = null;
   };
 
   // --- turn loop: after any move, advance auto-turns (passes + the engine)
@@ -304,9 +365,8 @@ export function othelloModule(): GameModule {
         render();
         window.setTimeout(() => {
           if (disposed || !game) return;
-          game.pass();
+          applyPass();
           thinking = false;
-          lastMove = null;
           step();
         }, beats.pass);
         return;
@@ -319,18 +379,19 @@ export function othelloModule(): GameModule {
     // The opponent's turn (place or forced pass), after a brief beat.
     const who = opponentIdentity().name;
     thinking = true;
-    setStatus(b.mustPass ? `${who} has no move — passing.` : `${who} is thinking…`);
+    // Thinking is the engine's seat state (frame rule 2); a forced pass is still
+    // said in words, in the reserved-height status line below the board.
+    setStatus(b.mustPass ? `${who} has no move — passing.` : "");
     render();
     window.setTimeout(() => {
       void (async () => {
         if (disposed || !game) return;
         if (b.mustPass) {
-          game.pass();
-          lastMove = null;
+          applyPass();
         } else {
           const mv = opponentKind === LOCAL_AI ? await hybridMove() : game.liveMove(level as Level);
           if (disposed || !game) return;
-          if (mv === "pass") game.pass();
+          if (mv === "pass") applyPass();
           else if (typeof mv === "number") applyMove(mv);
         }
         thinking = false;
@@ -526,134 +587,98 @@ export function othelloModule(): GameModule {
     return boardEl;
   };
 
-  const renderTurnbar = (board: BoardView): HTMLElement => {
+  // --- what the frame shows: seats, the mode chip, verbs, setup, preferences ---
+  const spec = (): GameFrameSpec => {
+    const b = game?.board();
     const themSide = humanSide() === 1 ? 2 : 1;
-    const you = discCount(board.cells, humanSide());
-    const them = discCount(board.cells, themSide);
+    const you = b ? discCount(b.cells, humanSide()) : 2;
+    const them = b ? discCount(b.cells, themSide) : 2;
     const opp = opponentIdentity();
-    const turn =
-      board.result !== -1
-        ? ""
-        : board.toMove === humanSide()
-          ? "Your move"
-          : `${opp.name} to move`;
-    return el(
-      "div",
-      { class: "othello-turnbar" },
-      el("span", { class: "othello-score you" }, `You ${glyphFor(humanSide())} ${you}`),
-      el(
-        "span",
-        { class: "othello-score them" },
-        `${opp.name} ${opp.avatar} ${glyphFor(themSide)} ${them}`,
-      ),
-      el("span", { class: "othello-turn", role: "status", "aria-live": "polite" }, turn),
-    );
-  };
-
-  const renderControls = (): HTMLElement => {
-    const bar = el("div", { class: "sol-controls othello-controls" });
-
-    const levelSel = el("select", { class: "othello-level", "aria-label": "Difficulty" });
-    for (const l of LEVELS) {
-      const opt = el("option", { value: l }, LEVEL_LABELS[l]);
-      if (l === level) opt.setAttribute("selected", "");
-      levelSel.append(opt);
-    }
-    levelSel.addEventListener("change", () => {
-      level = levelSel.value as OthelloLevel;
-      setOthelloLevel(level);
-    });
-
-    const discSel = el("select", { class: "othello-disc-pick", "aria-label": "Your disc" });
-    for (const [val, txt] of [
-      ["black", "● Black (open)"],
-      ["white", "○ White"],
-    ] as const) {
-      const opt = el("option", { value: val }, txt);
-      if (val === disc) opt.setAttribute("selected", "");
-      discSel.append(opt);
-    }
-    discSel.addEventListener("change", () => {
-      disc = discSel.value as OthelloDisc;
-      setOthelloDisc(disc);
-      void startGame(); // a new colour restarts (it changes who opens)
-    });
-
-    const fresh = el("button", { type: "button", class: "sol-fresh" }, "New game");
-    fresh.addEventListener("click", () => void startGame());
-
-    bar.append(
-      el("label", { class: "othello-field" }, "Difficulty ", levelSel),
-      el("label", { class: "othello-field" }, "You play ", discSel),
-      fresh,
-    );
-
-    // Settings: the opt-in tutor, and (only on a real WebGPU adapter) the
-    // experimental local-AI opponent.
-    const toggle = (
-      checked: boolean,
-      label: string,
-      cls: string,
-      onChange: (on: boolean) => void,
-    ): HTMLElement => {
-      const input = el("input", { type: "checkbox", class: cls });
-      if (checked) input.setAttribute("checked", "");
-      input.addEventListener("change", () => onChange((input as HTMLInputElement).checked));
-      return el("label", { class: "othello-toggle" }, input, ` ${label}`);
-    };
-    const details = el("details", { class: "sol-settings othello-settings" });
-    details.append(el("summary", {}, "Settings"));
-    details.append(
-      toggle(othelloTutorEnabled(), "Show tutor", "othello-set-tutor", (on) => {
-        setOthelloTutor(on);
-        render();
-      }),
-    );
+    const live = b !== undefined && b.result === -1;
+    const humanTurn = live && b.toMove === humanSide();
+    const yourState: "active" | "idle" = humanTurn && !thinking ? "active" : "idle";
+    const yourSub = humanTurn ? (thinking ? "passing…" : "your move") : undefined;
+    const engineThinking = live && !humanTurn && thinking;
+    const engineSub = engineThinking ? (b.mustPass ? "passing…" : "thinking…") : undefined;
+    const preferences: SettingRow[] = [
+      {
+        kind: "toggle",
+        id: "tutor",
+        label: "Tutor",
+        hint: "Explains your options with the engine's own read of the position.",
+        value: othelloTutorEnabled(),
+        onChange: (on) => {
+          setOthelloTutor(on);
+          render();
+        },
+      },
+    ];
     if (localAiAvailable) {
-      details.append(
-        toggle(opponentKind === LOCAL_AI, "Experimental: local AI opponent", "othello-ai-toggle-input", (on) => {
+      preferences.push({
+        kind: "toggle",
+        id: "local-ai",
+        label: "Experimental: local AI opponent",
+        hint: `An in-browser model (${LOCAL_AI_PERSONA.name}) picks within the engine's safe moves and adds banter — a one-time model download on first use; it never plays a losing move (the engine's band decides).`,
+        value: opponentKind === LOCAL_AI,
+        onChange: (on) => {
           opponentKind = on ? LOCAL_AI : "engine";
           aiSay = null;
           render();
-        }),
-        el(
-          "p",
-          { class: "othello-ai-disclosure" },
-          `An in-browser model (${LOCAL_AI_PERSONA.name}) picks within the engine's safe moves and adds banter — a one-time model download on first use; it never plays a losing move (the engine's band decides).`,
-        ),
-      );
+        },
+      });
     }
-    bar.append(details);
-    return bar;
+    return {
+      title: "Othello",
+      mode: LEVEL_LABELS[level],
+      meters: [
+        { kind: "seat", id: "you", name: "You", glyph: glyphFor(humanSide()), score: you, state: yourState, ...(yourSub ? { sub: yourSub } : {}) },
+        {
+          kind: "seat",
+          id: "engine",
+          name: `${opp.name} ${opp.avatar}`,
+          glyph: glyphFor(themSide),
+          score: them,
+          state: engineThinking ? "thinking" : "idle",
+          ...(engineSub ? { sub: engineSub } : {}),
+        },
+      ],
+      verbs: [{ id: "new", label: "New game", icon: "⟳", onPress: (btn) => frame?.openSheet("setup", btn) }],
+      setup: othelloSetupRows({
+        level: (l) => {
+          level = l;
+        },
+        disc: (d) => {
+          disc = d;
+        },
+      }),
+      preferences,
+      onStart: () => void startGame(),
+    };
   };
+  const declare = (): void => frame?.update(spec());
 
   function render(): void {
     if (disposed || !container || !game) return;
     const board = game.board();
     const parts: (Node | string)[] = [
-      renderTurnbar(board),
-      renderControls(),
-      el(
-        "p",
-        { class: "othello-banner" },
-        "Tap a highlighted square to place your disc and flip the line. Most discs when neither side can move wins.",
-      ),
       buildBoard(board, true),
       ...(othelloTutorEnabled() ? [renderTutorPanel()] : []),
       statusEl,
     ];
-    // The local-AI opponent's spoken reason for its last move (personality).
-    if (aiSay && opponentKind === LOCAL_AI) {
-      parts.splice(
-        1,
-        0,
-        el("p", { class: "othello-ai-say", role: "status" }, `${LOCAL_AI_PERSONA.name}: ${aiSay}`),
-      );
-    }
-    // The player owns the open panel and the focus; the model does not.
+    // The player owns the focus; the model does not.
     const ui = captureUiState(container);
     container.replaceChildren(el("div", { class: "othello-game" }, ...parts));
     restoreUiState(container, ui);
+    declare();
+    // Transients overlay the stage — never in flow above the board (frame rule 1).
+    if (aiSay && opponentKind === LOCAL_AI && aiSay !== toasted) {
+      toasted = aiSay;
+      frame?.toast(`${LOCAL_AI_PERSONA.name}: ${aiSay}`, 6000);
+    }
+    if (!hinted && moves.length === 0 && humanToMove() && !thinking) {
+      hinted = true;
+      frame?.toast("Tap a glowing square to place your disc and flip the line.", 5000);
+    }
   }
 
   const outcomeLabel = (board: BoardView): string => {
@@ -681,9 +706,10 @@ export function othelloModule(): GameModule {
       { class: `othello-flash${board.result === humanSide() ? " win" : ""}`, role: "status" },
       board.result === 0 ? "Draw" : label,
     );
-    container.replaceChildren(
-      el("div", { class: "othello-game" }, renderTurnbar(board), flash, buildBoard(board, false)),
-    );
+    // The fanfare line sits BELOW the final board — above it, it moved the board
+    // (the sampler measured 50–81px across a game's end). Rule 1 holds to the end.
+    container.replaceChildren(el("div", { class: "othello-game" }, buildBoard(board, false), flash));
+    declare();
     window.setTimeout(() => {
       if (disposed) return;
       void presentResult();
@@ -716,12 +742,38 @@ export function othelloModule(): GameModule {
     thinking = false;
     ending = false;
     lastMove = null;
+    moves = [];
+    hinted = false;
     seed = seedOverride ?? randomSeed();
     game.newGame(seed);
     setStatus("");
     exposeHook();
     step(); // if the human is White, the engine (Black) opens here
   }
+
+  /** Replay a stored game: the seed and every move, then let the turn loop continue. */
+  const applyResume = (p: Progress): void => {
+    if (!game || disposed) return;
+    const rec = p.record as { seed?: unknown; moves?: unknown };
+    const setup = p.setup as { level?: unknown; disc?: unknown };
+    if (typeof setup.level === "string" && LEVELS.includes(setup.level as OthelloLevel)) level = setup.level as OthelloLevel;
+    if (setup.disc === "black" || setup.disc === "white") disc = setup.disc;
+    thinking = false;
+    ending = false;
+    lastMove = null;
+    hinted = true; // not a first move
+    seed = typeof rec.seed === "string" ? BigInt(rec.seed) : randomSeed();
+    game.newGame(seed);
+    moves = [];
+    for (const code of Array.isArray(rec.moves) ? (rec.moves as unknown[]) : []) {
+      if (typeof code !== "number") break;
+      if (code === PASS_CODE) applyPass();
+      else if (!applyMove(code)) break;
+    }
+    setStatus("");
+    exposeHook();
+    step();
+  };
 
   const showShared = async (payload: string): Promise<void> => {
     if (!container) return;
@@ -753,15 +805,17 @@ export function othelloModule(): GameModule {
 
   const exposeHook = (): void => {
     if (!game) return;
-    window.__othello = { game, refresh: () => render(), seed };
+    window.__othello = { game, refresh: () => render(), seed, passes: () => moves.filter((m) => m === PASS_CODE).length };
   };
 
   return {
-    mount(c: HTMLElement): void {
+    mount(c: HTMLElement, services?: GameServices): void {
       container = c;
+      frame = services?.frame ?? null;
       disposed = false;
       level = othelloLevel();
       disc = othelloDisc();
+      declare();
       container.replaceChildren(el("div", { class: "sol-loading" }, "Loading Othello…"));
       void (async () => {
         try {
@@ -784,7 +838,13 @@ export function othelloModule(): GameModule {
           return;
         }
         const seedParam = url.searchParams.get("seed");
-        await startGame(seedParam !== null ? BigInt(seedParam) : undefined);
+        if (pendingResume) {
+          const p = pendingResume;
+          pendingResume = null;
+          applyResume(p);
+        } else {
+          await startGame(seedParam !== null ? BigInt(seedParam) : undefined);
+        }
         // Probe WebGPU in the background; if present, the controls re-render with
         // the experimental local-AI opponent offered (classic engine otherwise).
         void probeLocalAi();
@@ -795,10 +855,32 @@ export function othelloModule(): GameModule {
       delete window.__othello;
       container?.replaceChildren();
       container = null;
+      frame = null;
       game = null;
       verifier = null;
       runtime = null; // release the WebGPU engine (local-AI) if it was created
       hybrid = null;
+    },
+    // --- the progress store: the seed and the moves ARE the game (resume is replay) ---
+    snapshot(): Progress {
+      const b = game?.board();
+      const you = b ? discCount(b.cells, humanSide()) : 2;
+      const them = b ? discCount(b.cells, humanSide() === 1 ? 2 : 1) : 2;
+      const now = new Date().toISOString();
+      const standing = you > them ? `you lead ${you}–${them}` : you < them ? `you trail ${you}–${them}` : `level ${you}–${them}`;
+      return {
+        v: 1,
+        status: gameOver() ? "finished" : "in-progress",
+        startedAt: now,
+        updatedAt: now,
+        setup: { mode: "free", seed: seed.toString(), level, disc },
+        record: { seed: seed.toString(), moves: [...moves] },
+        summary: { line: gameOver() && b ? outcomeLabel(b) : `Move ${moves.length} · ${standing}` },
+      };
+    },
+    resume(p: Progress): void {
+      if (game) applyResume(p);
+      else pendingResume = p; // the engine is still loading; mount() applies it
     },
   };
 }

@@ -10,7 +10,7 @@ import { bubbleModule } from "./games/bubble/bubble.js";
 import { wyrdleModule } from "./games/wyrdle/wyrdle.js";
 import { twenty48Module } from "./games/2048/2048.js";
 import { drop4Module } from "./games/drop4/drop4.js";
-import { othelloModule } from "./games/othello/othello.js";
+import { othelloModule, othelloSetup } from "./games/othello/othello.js";
 import { checkersModule } from "./games/checkers/checkers.js";
 import { dotsModule } from "./games/dots/dots.js";
 import { furrowModule } from "./games/furrow/furrow.js";
@@ -37,7 +37,17 @@ export const REGISTRY: readonly GameEntry[] = [
   { id: "wyrdle", title: "Wyrdle", emoji: "🐉", status: "playable", icon: true, load: wyrdleModule },
   { id: "2048", title: "2048", emoji: "🔢", status: "playable", icon: true, load: twenty48Module },
   { id: "drop4", title: "Drop 4", emoji: "🔴", status: "playable", icon: true, group: "versus", load: drop4Module },
-  { id: "othello", title: "Othello", emoji: "⚫", status: "playable", icon: true, group: "versus", load: othelloModule },
+  {
+    id: "othello",
+    title: "Othello",
+    emoji: "⚫",
+    status: "playable",
+    icon: true,
+    group: "versus",
+    pitch: "Flank a line of discs to flip it. Most discs when neither side can move wins.",
+    setup: othelloSetup,
+    load: othelloModule,
+  },
   { id: "checkers", title: "Checkers", emoji: "⛃", status: "playable", icon: true, group: "versus", load: checkersModule },
   { id: "dots", title: "Dots and Boxes", emoji: "▦", status: "playable", icon: true, group: "versus", load: dotsModule },
   { id: "furrow", title: "Furrow", emoji: "🌾", status: "playable", icon: true, group: "versus", load: furrowModule },

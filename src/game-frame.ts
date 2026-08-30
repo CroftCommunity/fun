@@ -42,7 +42,8 @@ export interface Verb {
   readonly icon: string;
   readonly primary?: boolean;
   readonly disabled?: boolean;
-  onPress(): void;
+  /** `button` is the verb's own element — pass it to `openSheet` so focus returns there. */
+  onPress(button: HTMLButtonElement): void;
 }
 
 /** Everything a game tells the frame. */
@@ -106,8 +107,10 @@ export type SheetKind = "settings" | "setup";
 /** A mounted frame. */
 export interface GameFrame {
   readonly root: HTMLElement;
-  /** Where the game renders. Fills whatever height the bands leave. */
+  /** The band that owns the board area and its overlays (toasts). */
   readonly stage: HTMLElement;
+  /** Where the game renders — a child of the stage, so a game's replaceChildren never wipes a toast. */
+  readonly mount: HTMLElement;
   update(spec: GameFrameSpec): void;
   /** Open the settings or the New game sheet (a dialog on a phone; on desktop settings are inline).
    *  `from` is the control to return focus to on close. */
@@ -122,6 +125,12 @@ export interface GameFrame {
   renderStart(opts: StartOptions): void;
   /** Remove the start screen if it is showing. */
   clearStart(): void;
+  /**
+   * A transient line over the stage — the first-move hint, the AI's banter — that is
+   * never in flow and so never moves the board. Replaces any toast showing; gone after
+   * `ms` (default 4000). Announced politely.
+   */
+  toast(text: string, ms?: number): void;
   destroy(): void;
 }
 
@@ -233,7 +242,7 @@ function renderVerb(v: Verb): HTMLButtonElement {
     el("span", { class: "gf-verb-label" }, v.label),
   );
   btn.disabled = v.disabled === true;
-  btn.addEventListener("click", () => v.onPress());
+  btn.addEventListener("click", () => v.onPress(btn));
   return btn;
 }
 
@@ -297,7 +306,8 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
   };
   setMode(spec?.mode);
 
-  const stage = el("div", { class: "gf-stage" });
+  const mountEl = el("div", { class: "gf-mount" });
+  const stage = el("div", { class: "gf-stage" }, mountEl);
   const root = el("div", { class: "gf" }, bar);
 
   // The shape is declared on the root so a test — and a game — can read it without
@@ -493,13 +503,28 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
     firstFocusable(start)?.focus();
   };
 
+  // --- toasts: absolutely positioned over the stage, one at a time ---------------
+  let toastEl: HTMLElement | null = null;
+  let toastTimer: number | null = null;
+  const toast = (text: string, ms = 4000): void => {
+    toastEl?.remove();
+    if (toastTimer !== null) clearTimeout(toastTimer);
+    toastEl = el("div", { class: "gf-toast", role: "status", "aria-live": "polite" }, text);
+    stage.append(toastEl);
+    toastTimer = window.setTimeout(() => {
+      toastEl?.remove();
+      toastEl = null;
+      toastTimer = null;
+    }, ms);
+  };
+
   let dock: HTMLElement | null = null;
   const settingsButton = (): HTMLButtonElement => {
     const btn: HTMLButtonElement = renderVerb({
       id: "settings",
       label: "Settings",
       icon: "☰",
-      onPress: () => openSheet("settings", btn),
+      onPress: (b) => openSheet("settings", b),
     });
     return btn;
   };
@@ -522,6 +547,7 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
   return {
     root,
     stage,
+    mount: mountEl,
     update(next: GameFrameSpec): void {
       assertVerbs(next);
       if (!declared) {
@@ -550,12 +576,14 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
     setSide,
     renderStart,
     clearStart,
+    toast,
     destroy(): void {
       if (destroyed) return;
       destroyed = true;
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("click", onDocClick);
       media?.removeEventListener("change", paintShape);
+      if (toastTimer !== null) clearTimeout(toastTimer);
       root.remove();
     },
   };
