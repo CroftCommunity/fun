@@ -121,6 +121,21 @@
   --chk-b: #f6f4ef;           /* Side B's men on --chk-dark   (4.23:1) */
   --chk-legal: #ffd76a;       /* tap-target hint on --chk-dark (3.36:1) */
 
+  /* Chess: a two-tone board where pieces stand on BOTH square colours (unlike
+     checkers' men), so a white piece reads by its dark outline and a black
+     piece by its fill, each against both squares; the three markers (legal
+     target, the checked king, the last move) are dark enough to clear the UI
+     floor on both. Pinned in tests/tokens.test.ts. */
+  --chs-light: #f0e2c0;       /* light squares                          */
+  --chs-dark: #b58863;        /* dark squares                           */
+  --chs-a: #f7f2e6;           /* white pieces' fill                     */
+  --chs-a-ink: #2b2622;       /* white pieces' outline (reads on both)  */
+  --chs-b: #1d1a17;           /* black pieces' fill (reads on both)     */
+  --chs-b-ink: #f7f2e6;       /* black pieces' outline                  */
+  --chs-legal: #1e3a5f;       /* tap-target hint (navy)                 */
+  --chs-check: #7a1712;       /* the checked king's ring                */
+  --chs-last: #1f3f21;        /* the last move's ring                   */
+
   /* Dots and Boxes — the "graph paper" identity: a warm paper surface with an
      ink lattice, and one saturated colour per side used for both that side's
      drawn edges and its claimed boxes. The box mark (▲ / ●) is painted in the

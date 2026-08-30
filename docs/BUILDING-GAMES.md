@@ -411,7 +411,11 @@ store adds Continue for every board.
 unchanged after the game's own triggers — the engine's reply, a hint, a rejected word, a
 selection, the settings sheet opening. Run it against the pre-migration page first and
 record the movement it finds (Othello moved 24.8px on WebKit; plan Phase 0 D4). A
-stability spec that was never red proves nothing.
+stability spec that was never red proves nothing. For a **new** game there is no
+pre-migration page to be red against: the first mount puts the turn text in flow above
+the board, the sampler records the jump on the engine's reply, the line moves into the
+seat's `sub`, and the delta is written in the plan (chess did this in its Phase 9;
+the number is in its Review Log).
 
 ## 5. Identity + tokens
 

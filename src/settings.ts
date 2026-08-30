@@ -315,6 +315,71 @@ export function setCheckersTutor(on: boolean): void {
   write(CHECKERS_TUTOR_KEY, on);
 }
 
+// ---------- chess ----------
+
+/** Chess difficulty. **Expert**, not Perfect — chess is unsolved, so the top
+ *  level is the deepest search, never a proof. */
+export type ChessLevel = "Easy" | "Medium" | "Hard" | "Expert";
+const CHESS_LEVELS: readonly ChessLevel[] = ["Easy", "Medium", "Hard", "Expert"];
+const CHESS_LEVEL_KEY = "fun-chess-level";
+
+/** Pure resolver: a stored known chess level wins; otherwise the default. */
+export function resolveChessLevel(stored: string | null, fallback: ChessLevel): ChessLevel {
+  return CHESS_LEVELS.includes(stored as ChessLevel) ? (stored as ChessLevel) : fallback;
+}
+
+/** The colour the human plays: white (Side A, opens), black, or a coin at New game. */
+export type ChessSide = "white" | "black" | "random";
+const CHESS_SIDES: readonly ChessSide[] = ["white", "black", "random"];
+const CHESS_SIDE_KEY = "fun-chess-side";
+const CHESS_TUTOR_KEY = "fun-chess-tutor";
+
+/** Pure resolver: a stored known side wins; otherwise the default. */
+export function resolveChessSide(stored: string | null, fallback: ChessSide): ChessSide {
+  return CHESS_SIDES.includes(stored as ChessSide) ? (stored as ChessSide) : fallback;
+}
+
+export function chessLevel(): ChessLevel {
+  try {
+    return resolveChessLevel(localStorage.getItem(CHESS_LEVEL_KEY), "Medium");
+  } catch {
+    return "Medium";
+  }
+}
+export function setChessLevel(level: ChessLevel): void {
+  try {
+    localStorage.setItem(CHESS_LEVEL_KEY, level);
+  } catch {
+    // Storage denied (private mode): the choice still applies for the session.
+  }
+}
+
+/** The colour the human plays in chess — **white by default** (the opener);
+ *  `"random"` is a stored preference resolved to a seat at each New game and
+ *  never written back as the seat. */
+export function chessSide(): ChessSide {
+  try {
+    return resolveChessSide(localStorage.getItem(CHESS_SIDE_KEY), "white");
+  } catch {
+    return "white";
+  }
+}
+export function setChessSide(side: ChessSide): void {
+  try {
+    localStorage.setItem(CHESS_SIDE_KEY, side);
+  } catch {
+    // Storage denied (private mode): the choice still applies for the session.
+  }
+}
+
+/** Show the engine-grounded tutor panel in chess — **off by default**. */
+export function chessTutorEnabled(): boolean {
+  return read(CHESS_TUTOR_KEY, false);
+}
+export function setChessTutor(on: boolean): void {
+  write(CHESS_TUTOR_KEY, on);
+}
+
 // ---------- Dots and Boxes ----------
 
 /** Dots and Boxes difficulty. **Perfect**, not Expert — 3x3 is solved, so the

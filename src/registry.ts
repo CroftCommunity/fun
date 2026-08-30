@@ -28,6 +28,7 @@ import { mahjongModule, mahjongSetup } from "./games/mahjong/mahjong.js";
 import { colorSortChip, colorSortModule, colorSortSetup } from "./games/color-sort/color-sort.js";
 import { orchardDropModule, orchardSetup } from "./games/orchard-drop/orchard-drop.js";
 import { cribbageModule, cribbageSetup } from "./games/cribbage/cribbage.js";
+import { chessModule, chessSetup } from "./games/chess/chess.js";
 
 /** What fun.croft.ing ships, in drawer order. */
 export const SHIPPED: readonly GameEntry[] = [
@@ -212,6 +213,17 @@ export const SHIPPED: readonly GameEntry[] = [
     pitch: "Throw two to the crib, play to 31, count your hand. The engine never sees your cards — a rig proves it.",
     setup: cribbageSetup,
     load: cribbageModule,
+  },
+  {
+    id: "chess",
+    title: "Chess",
+    emoji: "♞",
+    status: "playable",
+    icon: true,
+    group: "versus",
+    pitch: "Tap a piece, then where it goes — only legal moves light up. Castle, take en passant, promote. The Engine plays back; every finished game is a record anyone can re-verify.",
+    setup: chessSetup,
+    load: chessModule,
   },
 ];
 

@@ -80,6 +80,7 @@ const BY_GAME: Readonly<Record<string, string>> = {
   wyrdle: "six-sides-of-logic",
   othello: "the-unfolding-hour",
   checkers: "sunday-drive-south",
+  chess: "the-unfolding-hour",
   drop4: "six-sides-of-logic",
   dots: "six-sides-of-logic",
   furrow: "morning-in-the-lower-valley",

@@ -20,6 +20,8 @@ import {
   resolveDotsLevel,
   resolveCribbageBoard,
   resolveDotsSeat,
+  resolveChessLevel,
+  resolveChessSide,
 } from "../src/settings.js";
 
 describe("resolveLevel (Drop 4 difficulty)", () => {
@@ -85,6 +87,29 @@ describe("resolveCheckersSide (which men the human plays)", () => {
   it("falls back to the default for null or a garbage value", () => {
     expect(resolveCheckersSide(null, "black")).toBe("black");
     expect(resolveCheckersSide("red", "black")).toBe("black");
+  });
+});
+
+describe("resolveChessLevel (chess difficulty)", () => {
+  it("honours a stored valid level (Expert tops it — chess is unsolved)", () => {
+    expect(resolveChessLevel("Easy", "Medium")).toBe("Easy");
+    expect(resolveChessLevel("Expert", "Medium")).toBe("Expert");
+  });
+  it("falls back to the default for null or a garbage value", () => {
+    expect(resolveChessLevel(null, "Medium")).toBe("Medium");
+    expect(resolveChessLevel("Perfect", "Hard")).toBe("Hard"); // no perfect level
+  });
+});
+
+describe("resolveChessSide (the colour the human plays)", () => {
+  it("honours a stored valid side, random included", () => {
+    expect(resolveChessSide("white", "white")).toBe("white");
+    expect(resolveChessSide("black", "white")).toBe("black");
+    expect(resolveChessSide("random", "white")).toBe("random");
+  });
+  it("falls back to the default for null or a garbage value", () => {
+    expect(resolveChessSide(null, "white")).toBe("white");
+    expect(resolveChessSide("red", "white")).toBe("white");
   });
 });
 

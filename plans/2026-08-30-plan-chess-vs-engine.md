@@ -5,7 +5,7 @@ analysis) 2026-08-30; Pass 3 (quality gates) 2026-08-30. Every open question is
 owner-confirmed and none is BLOCKING-unresolved; the two PHASE-GATED items gate Phases 2
 and 9 and are already reflected in those phases. **Phase 0 executed 2026-08-30**
 (D1 / D2-desktop / D3-deferral / D4 / D6 closed; D2's Samsung half and D5's
-two-Android half owed, `[device: …]` tags on their task lines) — **Phase 1 executed 2026-08-30** (perft green at CI depth on all six positions; differential perft 200/0) — **Phase 2 executed 2026-08-30** (terminals, both trait impls, hash, SAN, vectors; gate green) — **Phase 3 executed 2026-08-30** (both chess cases green in wasm) — **Phase 4 executed 2026-08-30** (search green, deepen adopted ≥ d4, budgeted ladder 0/50 over 400 ms in Chromium; Samsung half owed) — **Phase 5 executed 2026-08-30** (band + tutor green; Expert v Easy 20/20, Easy v random 14/20) — **Phase 6 executed 2026-08-30** (core 674: 60→23 all equivalent; solver 422: 302→69, real gaps closed and hand-verified) — **Phase 7 executed 2026-08-30** (binding green, 205 KB wasm, 1.06 MiB memory) — **Phase 8 executed 2026-08-30** (wrapper + outcome, 6/6 over the real wasm) — **Phase 9 next.**
+two-Android half owed, `[device: …]` tags on their task lines) — **Phase 1 executed 2026-08-30** (perft green at CI depth on all six positions; differential perft 200/0) — **Phase 2 executed 2026-08-30** (terminals, both trait impls, hash, SAN, vectors; gate green) — **Phase 3 executed 2026-08-30** (both chess cases green in wasm) — **Phase 4 executed 2026-08-30** (search green, deepen adopted ≥ d4, budgeted ladder 0/50 over 400 ms in Chromium; Samsung half owed) — **Phase 5 executed 2026-08-30** (band + tutor green; Expert v Easy 20/20, Easy v random 14/20) — **Phase 6 executed 2026-08-30** (core 674: 60→23 all equivalent; solver 422: 302→69, real gaps closed and hand-verified) — **Phase 7 executed 2026-08-30** (binding green, 205 KB wasm, 1.06 MiB memory) — **Phase 8 executed 2026-08-30** (wrapper + outcome, 6/6 over the real wasm) — **Phase 9 executed 2026-08-30** (playable /chess/, 30/30 both engines, a11y auto-enrolled) — **Phase 10 next.**
 Worktree `worktrees/chess/fun`, branch `claude/chess`.
 **Standards anchor:** `docs/BUILDING-GAMES.md` §10 + both new-game checklists;
 `docs/AI-PLAYERS.md` (search cost, honesty gate); `docs/HARNESS.md` (adding a game).
@@ -1444,7 +1444,7 @@ lint` clean.
 **Goal:** A person can play a full game against The Engine on a phone.
 
 **Changes:**
-- [ ] `src/games/chess/chess.ts` — `chessModule` + `chessSetup` (rows: *Play as*
+- [x] `src/games/chess/chess.ts` — `chessModule` + `chessSetup` (rows: *Play as*
   White / Black / Random; *Difficulty*); `GameFrameSpec` with two seats (You / The
   Engine, glyph by colour, `score` = captured material, **`state`** = `"active"` /
   `"thinking"` / `"idle"` per `SeatMeter`, **`sub`** = the text: "your move" ·
@@ -1453,25 +1453,25 @@ lint` clean.
   `summary.line` like "Move 14 · you're up a knight"); the `declare global {
   Window.__chess }` E2E hook (checkers' `:50-60` shape) set on mount, deleted on
   unmount.
-- [ ] `src/settings.ts` — `ChessLevel` / `ChessSide` types, `resolveChessLevel` /
+- [x] `src/settings.ts` — `ChessLevel` / `ChessSide` types, `resolveChessLevel` /
   `resolveChessSide` (pure), `chessLevel()` (default `"Medium"`), `chessSide()`
   (default `"white"`, with `"random"` as a third stored value resolved at New
   game), `chessTutorEnabled()` (default off), keys `fun-chess-{level,side,tutor}`;
   `tests/settings.test.ts` gains the resolver cases (the checkers block at `:69`).
-- [ ] `tokens.css` — the chess board tokens (`--chs-light`, `--chs-dark`,
+- [x] `tokens.css` — the chess board tokens (`--chs-light`, `--chs-dark`,
   `--chs-a`, `--chs-b` for the piece fills, `--chs-legal`, `--chs-check`,
   `--chs-last`), and `tests/tokens.test.ts` gains their contrast pairs beside the
   `chk-*` rows at `:121-123` (piece on **both** square colours — chess pieces
   stand on light squares too, which checkers' men never do). `styles.css` uses
   only `var()` (the no-raw-hex unit test).
-- [ ] `tests/chrome.test.ts:192` — insert `"chess"` in the drawer id list at the
+- [x] `tests/chrome.test.ts:192` — insert `"chess"` in the drawer id list at the
   position the registry gives it: the list is **`SHIPPED`'s array order** (shipping
   order; `chrome.ts` reads no `group`), chess's entry is appended after cribbage's
   (`registry.ts:195`), so `"chess"` goes between `"cribbage"` and `"placeholder"`.
   *(Pass 3 corrected Pass 2's "after `"checkers"`".)*
-- [ ] `src/music.ts` `BY_GAME` — name a track for chess from the shelf library
+- [x] `src/music.ts` `BY_GAME` — name a track for chess from the shelf library
   (optional; unnamed falls back to `SHELF_TRACK`). See Open Questions.
-- [ ] The board: an 8×8 CSS grid in the stage, oriented to the human (D5's pieces
+- [x] The board: an 8×8 CSS grid in the stage, oriented to the human (D5's pieces
   as SVG or glyphs, coloured by tokens); tap a piece → the core's legal
   destinations glow; tap a destination → `play`; a promotion destination opens
   the **picker** (four pieces, ≥ 44px each, absolutely positioned over the stage,
@@ -1479,17 +1479,17 @@ lint` clean.
   move shown with a beat; on a decisive end the mating move shown with fanfare
   before the result screen. Files and ranks labelled at the edges (a11y: each
   square is a button with an `aria-label` like "e4, white knight").
-- [ ] Keyboard: arrows move a focus ring over the squares, Enter/Space taps
+- [x] Keyboard: arrows move a focus ring over the squares, Enter/Space taps
   (checkers' pattern).
-- [ ] Undo takes back a pair of plies (yours and The Engine's) and marks
+- [x] Undo takes back a pair of plies (yours and The Engine's) and marks
   assistance; Hint asks `coach_json` and rings the suggestion (marks assistance);
   hints-off → "I'm stuck" ends + reports, per §6.
-- [ ] `src/registry.ts` entry in `SHIPPED` (`id: "chess"`, `group: "versus"`,
+- [x] `src/registry.ts` entry in `SHIPPED` (`id: "chess"`, `group: "versus"`,
   `status: "playable"`, `emoji: "♞"`, `icon: true`, `pitch`, `setup: chessSetup`,
   `load: chessModule`); `src/games/chess/assets/{icon,splash}.jpg` —
   `tests/art.test.ts` asserts `icon: true` ⇔ the file exists, both directions, so
   the flag and the JPEG land in the same commit.
-- [ ] `tests/chess.spec.ts` — the browser suite: a full game against Easy to a
+- [x] `tests/chess.spec.ts` — the browser suite: a full game against Easy to a
   result screen (`@long`, `?fast=1` — the seam that collapses the engine's beats,
   so the test asserts rules, not pacing; `checkers.spec.ts:147-151`); the render
   and seat-state tests tagged `@smoke`; castling by tapping the king two squares;
@@ -1502,7 +1502,7 @@ lint` clean.
   and the delta is written in the Review Log; axe clean in both themes; 44px
   squares at 390px. `tests/a11y-matrix.spec.ts` picks chess up automatically
   from the registry — no edit, but one more game in a per-game budget.
-- [ ] **RED first, and the edges (Pass 3).** The pure functions get their tests
+- [x] **RED first, and the edges (Pass 3).** The pure functions get their tests
   before they exist: `viewSquare(sq, flipped)` — unflipped is the identity at 0 and
   63; flipped maps 0 ↔ 63 and 7 ↔ 56; flipping twice is the identity for all 64
   squares. `resolveChessLevel` / `resolveChessSide` — a stored valid value, `null`,
@@ -1515,12 +1515,12 @@ lint` clean.
   Undo at move 0 is a no-op, after the engine's reply takes back two plies, and is
   disabled while the engine's seat is `thinking`; the checked king is marked when
   `in_check` and not otherwise.
-- [ ] **The debugging seams, declared (Pass 3).** `window.__chess` (`game`,
+- [x] **The debugging seams, declared (Pass 3).** `window.__chess` (`game`,
   `refresh`, `seed`); `?seed=` to reproduce a game and `?fast=1` to collapse the
   beats; the stability delta before/after in the Review Log. A Phase 13 report of
   "it did X on the Pixel" reproduces from a seed and a move list, or it is not a
   report.
-- [ ] `docs/BUILDING-GAMES.md:414` — the one sentence for a **new** game (the
+- [x] `docs/BUILDING-GAMES.md:414` — the one sentence for a **new** game (the
   stability spec is made red by mounting the turn text in flow first; the delta is
   recorded; then it moves into the seat) — written in this phase from this phase's
   measurement *(Pass 3: moved from Phase 14)*.
@@ -1852,6 +1852,54 @@ PR open; `workspace-audit.sh` clean.
 ---
 
 ## Review Log
+
+### Phase 9 execution — 2026-08-30
+
+**Green:** `tests/chess.spec.ts` **30 passed** (15 tests × chromium +
+mobile-webkit, 8.6 s) — the full game to a result screen whose `?r=` share
+re-verifies, castling by the king's two-square tap, en passant offered and
+taken, a promotion through the picker (all four pieces reachable, Escape
+cancels with the hash unchanged), the checked king marked, Undo disabled at
+move 0 and taking back a pair, playing Black flipping the board, axe clean in
+both themes, 44px squares at 390px with no horizontal overflow, the
+stability sampler across the engine's reply, Continue from the bare URL.
+`tests/a11y-matrix.spec.ts` picked chess up from the registry with no edit
+(its `chess: poster and entry state are clean under every skin` row read in
+the log). `npm run unit` in full: **831 passed** (chrome, settings, tokens,
+art and the new `chess-view` suite among them); typecheck and lint clean.
+
+**The RED-first stability step, measured:** the first mount put the turn
+text in flow above the board as the plan prescribed — and the sampler
+reported it **stable (< 1px)** across the engine's reply, because the line's
+text is never empty mid-game (it collapses only at the end, where the whole
+container is replaced anyway). So the movement the rule guards against did
+not occur for this shape; the text moved into the seats' `sub` regardless,
+per the frame's own rule ("thinking is a seat state, not a line of text"),
+and the sampler stayed green. `docs/BUILDING-GAMES.md:414` gained the
+new-game sentence; this is its recorded number: 0.
+
+**Two real bugs the browser suite caught in the first run:** cancelling the
+promotion picker left the pawn *selected*, so the next tap on it deselected
+instead of re-picking (fixed: cancel puts the piece down); and the
+last-move ring token `#2c5f2e` read 2.40:1 on dark squares under the tokens
+test (darkened to `#1f3f21`).
+
+**What landed:** `chess.ts` (the versus archetype: seats with captured
+material, `sub` = "your move" / "check!" / the last SAN, verbs Undo · Hint
+(when hints are on) · New game…, `viewSquare` as the one geometry, the
+picker as an absolutely positioned overlay with a first-button focus and
+Escape/scrim cancel, arrow-key navigation over the view grid, edge labels
+riding on the squares so a flipped board labels itself, `snapshot`/`resume`,
+the `window.__chess` hook); the settings block with `"random"` as a stored
+side resolved to a seat at New game; the `chs-*` tokens with ten pinned
+contrast pairs (pieces read on BOTH square colours — a white piece by its
+outline, a black by its fill); the styles block; the registry entry with the
+owner's art; music, chrome-ids and the shared tests.
+
+**Pieces are Unicode glyphs for now** (the filled shapes for both sides,
+CSS-coloured with an outline) — D5's device answer is still owed; the swap
+to an SVG set, if the phones say so, is one function (`pieceNode`).
+[device: android x2] — the tap flow, the picker at 44px, the glyphs.
 
 ### Phase 8 execution — 2026-08-30
 
