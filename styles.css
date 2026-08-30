@@ -2847,33 +2847,6 @@ body:has(> .play-area > .gf) {
   align-items: center;
   gap: 0.5rem;
 }
-.checkers-turnbar {
-  display: flex;
-  gap: 0.9rem;
-  align-items: baseline;
-  font-weight: 600;
-}
-.checkers-turn {
-  color: var(--ink-soft, var(--ink));
-  font-weight: 500;
-}
-.checkers-controls {
-  flex-wrap: wrap;
-  justify-content: center;
-}
-.checkers-field {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.9rem;
-}
-.checkers-banner {
-  max-width: 26rem;
-  margin: 0;
-  text-align: center;
-  font-size: 0.9rem;
-  color: var(--ink-soft, var(--ink));
-}
 .checkers-board {
   --chk-cell: clamp(1.7rem, 9.5vw, 2.6rem);
   display: grid;
@@ -2988,23 +2961,6 @@ body:has(> .play-area > .gf) {
   margin: 0;
   font-weight: 600;
   color: var(--active);
-}
-.checkers-ai-say {
-  margin: 0;
-  text-align: center;
-  font-style: italic;
-  color: var(--ink-soft, var(--ink));
-}
-.checkers-toggle {
-  display: block;
-  font-size: 0.9rem;
-  margin: 0.2rem 0;
-}
-.checkers-ai-disclosure {
-  margin: 0.2rem 0 0;
-  font-size: 0.8rem;
-  color: var(--ink-soft, var(--ink));
-  max-width: 26rem;
 }
 
 /* Tutor panel — engine-grounded coaching (on by default, no model download).

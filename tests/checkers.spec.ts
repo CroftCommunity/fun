@@ -14,6 +14,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
+import { boardTopStable } from "./helpers/board-top.js";
+
 async function ready(page: Page): Promise<void> {
   await expect(page.locator(".checkers-board")).toBeVisible();
   await page.waitForFunction(() => Boolean(window.__checkers));
@@ -58,13 +60,17 @@ test("the board, turn bar, and pickers render", { tag: "@smoke" }, async ({ page
   // rank) — so exactly 4 squares are offered, one per movable piece.
   expect((await legal(page)).length).toBe(7);
   await expect(page.locator(".checkers-square.selectable")).toHaveCount(4);
-  await expect(page.locator(".checkers-banner")).toContainText(/capture/i);
-  await expect(page.locator(".checkers-turnbar")).toContainText(/you/i);
-  await expect(page.locator(".checkers-turnbar")).toContainText(/the engine/i);
+  // The rules sentence is the opening toast (and the poster's pitch), not a banner in flow.
+  await expect(page.locator(".gf-toast")).toContainText(/capture/i);
+  await expect(page.locator(".checkers-banner, .checkers-turnbar, .checkers-controls")).toHaveCount(0);
+  await expect(page.locator('.gf-seat[data-meter="you"]')).toContainText(/you/i);
+  await expect(page.locator('.gf-seat[data-meter="you"] .gf-seat-score')).toHaveText("12");
+  await expect(page.locator('.gf-seat[data-meter="engine"]')).toContainText(/the engine/i);
   // Four levels, topped by Expert — checkers is unsolved, so no "Perfect".
-  await expect(page.locator(".checkers-level option")).toHaveCount(4);
-  await expect(page.locator(".checkers-level")).toContainText("Expert");
-  await expect(page.locator(".checkers-level")).not.toContainText("Perfect");
+  await page.locator('.gf-verb[data-verb="new"]').click();
+  const labels = await page.locator('.gf-sheet [data-setting="level"] .sheet-choice-opt').allTextContents();
+  expect(labels).toEqual(["Easy", "Medium", "Hard", "Expert"]);
+  await page.keyboard.press("Escape");
 });
 
 test("tapping a man glows its destinations; tapping one moves it and the engine replies", async ({
@@ -120,14 +126,19 @@ test("no axe violations on the board", async ({ page }) => {
 test("the difficulty picker persists the chosen level", async ({ page }) => {
   await page.goto("/checkers/?seed=7");
   await ready(page);
-  await page.locator(".checkers-level").selectOption("Hard");
+  await page.locator('.gf-verb[data-verb="new"]').click();
+  await page.locator('.gf-sheet [data-setting="level"] input[value="Hard"]').check();
+  await page.locator(".gf-sheet .gf-start").click();
+  await expect(page.locator(".gf-mode")).toHaveText("Hard");
   expect(await page.evaluate(() => localStorage.getItem("fun-checkers-level"))).toBe("Hard");
 });
 
 test("the side picker restarts the game with the engine opening", async ({ page }) => {
   await page.goto("/checkers/?seed=7");
   await ready(page);
-  await page.locator(".checkers-side-pick").selectOption("white");
+  await page.locator('.gf-verb[data-verb="new"]').click();
+  await page.locator('.gf-sheet [data-setting="side"] input[value="white"]').check();
+  await page.locator(".gf-sheet .gf-start").click();
   expect(await page.evaluate(() => localStorage.getItem("fun-checkers-side"))).toBe("white");
   // Playing White means the engine (Black) opens, so it moves without a tap.
   await page.waitForFunction(() => window.__checkers!.game.board().toMove === 2);
@@ -182,8 +193,9 @@ test("the tutor panel is off by default and appears when enabled in settings", a
   await page.goto("/checkers/?seed=7");
   await ready(page);
   await expect(page.locator(".checkers-tutor")).toHaveCount(0);
-  await page.locator(".checkers-settings summary").click();
-  await page.locator(".checkers-set-tutor").check();
+  await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-input').click({ force: true });
   await expect(page.locator(".checkers-tutor-explain")).toBeVisible();
 });
 
@@ -217,8 +229,9 @@ test("the experimental local-AI opponent is hidden with no real WebGPU adapter",
   });
   await page.goto("/checkers/?seed=7");
   await ready(page);
-  await page.locator(".checkers-settings summary").click();
-  await expect(page.locator(".checkers-ai-toggle-input")).toHaveCount(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await expect(page.locator('.gf-sheet [data-setting="local-ai"]')).toHaveCount(0);
 });
 
 test("the experimental local-AI toggle appears with a real adapter and discloses the download", async ({
@@ -232,11 +245,11 @@ test("the experimental local-AI toggle appears with a real adapter and discloses
   });
   await page.goto("/checkers/?seed=7");
   await ready(page);
-  await page.locator(".checkers-settings summary").click();
-  const toggle = page.locator(".checkers-ai-toggle-input");
-  await expect(toggle).toHaveCount(1);
-  await toggle.check();
-  await expect(page.locator(".checkers-ai-disclosure")).toContainText(/download|one[- ]time|GB|MB/i);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  const row = page.locator('.gf-sheet [data-setting="local-ai"]');
+  await expect(row).toHaveCount(1);
+  await expect(row.locator(".sheet-hint")).toContainText(/download|one[- ]time|GB|MB/i);
 });
 
 test("the board has no axe violations in light and dark", async ({ page }) => {
@@ -250,22 +263,19 @@ test("the board has no axe violations in light and dark", async ({ page }) => {
   }
 });
 
-test("the settings panel stays open when something re-renders the board", async ({ page }) => {
-  // Same defect as dots': render() is container.replaceChildren, so a re-render
-  // rebuilt the panel the player had opened. This game re-renders on its own when
-  // the WebGPU probe resolves, at a moment nothing in the UI predicts — toggling a
-  // setting fires the same render(), which makes the race a deterministic click.
+test("the settings sheet stays open when something re-renders the board", async ({ page }) => {
+  // The sheet is the frame's, outside the game's replaceChildren — a re-render
+  // (toggling the tutor re-renders the board) cannot close it.
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/checkers/?seed=7");
   await ready(page);
-  const panel = page.locator(".checkers-settings");
-  await page.locator(".checkers-settings summary").click();
-  await expect(panel).toHaveAttribute("open", "");
-
-  await page.locator(".checkers-set-tutor").click();
-
-  await expect(panel).toHaveAttribute("open", "");
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  const sheet = page.locator(".gf-sheet");
+  await expect(sheet).toBeVisible();
+  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-input').click({ force: true });
+  await expect(page.locator(".checkers-tutor")).toBeVisible();
+  await expect(sheet).toBeVisible();
 });
-
 test("the tutor's explained options survive a re-render on the same position", async ({ page }) => {
   // TODO/dots.md:81 — the reading used to live only in the DOM, so any render()
   // erased it. Hiding and re-showing the tutor is the board-neutral re-render
@@ -283,10 +293,56 @@ test("the tutor's explained options survive a re-render on the same position", a
   await expect(items.first()).toBeVisible();
   const before = await items.count();
 
-  await page.locator(".checkers-settings summary").click();
-  await page.locator(".checkers-set-tutor").click(); // hide  -> render()
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  const tutor = page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-input');
+  await tutor.click({ force: true }); // hide  -> render()
   await expect(page.locator(".checkers-tutor")).toHaveCount(0);
-  await page.locator(".checkers-set-tutor").click(); // show  -> render()
+  await tutor.click({ force: true }); // show  -> render()
 
   await expect(items).toHaveCount(before);
+});
+
+// --- the frame (plan Phase 12): the board does not move while the engine replies; resume ---
+
+test("thinking is the engine's seat state and the board does not move across its reply", { tag: "@smoke" }, async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/checkers/?seed=7");
+  await ready(page);
+  await page.evaluate(() => {
+    const el = document.querySelector('.gf-seat[data-meter="engine"]')!;
+    const w = window as unknown as { __seen: boolean };
+    w.__seen = false;
+    new MutationObserver(() => {
+      if (el.getAttribute("data-state") === "thinking") w.__seen = true;
+    }).observe(el, { attributes: true });
+  });
+  const v = await boardTopStable(page, ".checkers-board", async () => {
+    await tapMove(page, (await legal(page))[0]!);
+    await page.waitForFunction(() => {
+      const b = window.__checkers!.game.board();
+      return b.result !== -1 || b.toMove === 1;
+    });
+  });
+  expect(await page.evaluate(() => (window as unknown as { __seen: boolean }).__seen)).toBe(true);
+  expect(v.frames).toBeGreaterThan(5);
+  expect(v, `board top moved ${v.delta}px over ${v.frames} frames`).toMatchObject({ stable: true });
+});
+
+test("leaving mid-game and returning to the bare URL resumes the same position", async ({ page }) => {
+  await page.goto("/checkers/?seed=7");
+  await ready(page);
+  await tapMove(page, (await legal(page))[0]!);
+  await page.waitForFunction(() => {
+    const b = window.__checkers!.game.board();
+    return b.result !== -1 || b.toMove === 1;
+  });
+  const hash = await page.evaluate(() => window.__checkers!.game.currentHash());
+  await page.goto("/checkers/");
+  const card = page.locator(".gf-continue");
+  await expect(card).toBeVisible();
+  await card.locator(".gf-continue-btn").click();
+  await ready(page);
+  await page.waitForFunction(() => window.__checkers!.game.board().toMove === 1);
+  expect(await page.evaluate(() => window.__checkers!.game.currentHash())).toBe(hash);
 });

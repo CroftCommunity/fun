@@ -19,13 +19,13 @@ export const CHECKERS_GUIDE: Guide = {
         },
         {
           kind: "prose",
-          text: 'You can choose which side you play — ● Black (which opens) or ○ White — with the "You play" picker, and set how strong The Engine is with the Difficulty picker (Easy, Medium, Hard, or Expert). Both choices are remembered for next time.',
+          text: 'You choose which side you play — ● Black (which opens) or ○ White — and how strong The Engine is (Easy, Medium, Hard, or Expert) on the start screen, or from the New game button under the board. Both choices are remembered for next time, and the level shows beside the game\u2019s name.',
         },
         {
           kind: "shot",
           name: "checkers-board",
-          alt: "A checkers game: a turn bar showing both players' piece counts, a difficulty picker and side chooser, and an 8×8 wooden board with black and white men on the dark squares, one man selected and gold dots marking where it can go.",
-          caption: "The turn bar, the difficulty and side pickers, and the board — gold dots mark where the selected man can go.",
+          alt: "A checkers game inside the game frame: two seats above the board showing You and The Engine with their piece counts, an 8×8 wooden board with black and white men on the dark squares, one man selected and gold dots marking where it can go, and New game and Settings buttons under it.",
+          caption: "The two seats (yours is ringed on your move; The Engine’s pulses while it thinks), and the board — gold dots mark where the selected man can go.",
         },
       ],
     },
@@ -103,7 +103,7 @@ export const CHECKERS_GUIDE: Guide = {
         },
         {
           kind: "prose",
-          text: 'A built-in tutor (Settings → Show tutor) coaches you using the engine\'s own read of the position, so its facts are never wrong — and it needs no download. Tap "Explain my options" for the reasonable moves, each with a one-line idea (takes a piece, your strongest line, or stays safe).',
+          text: 'A built-in tutor (Settings → Tutor) coaches you using the engine\'s own read of the position, so its facts are never wrong — and it needs no download. Tap "Explain my options" for the reasonable moves, each with a one-line idea (takes a piece, your strongest line, or stays safe).',
         },
         {
           kind: "prose",

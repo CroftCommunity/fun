@@ -5,13 +5,19 @@ landing *is* releasing: sections are months, each entry dated by its landing. Pe
 `CroftC/.claude/CHANGELOGS.md`, the branch that changes something a player runs adds its
 entry here before it lands. Contexts are the shelf's chrome and the individual games.
 
-Contexts: shelf · wyrdle · trio-tumble · othello · cribbage · furrow · dots · drop4 · blockdoku · orchard · sinker · solitaire
+Contexts: shelf · checkers · wyrdle · trio-tumble · othello · cribbage · furrow · dots · drop4 · blockdoku · orchard · sinker · solitaire
 
 Started 2026-08-29; the August entries below are the landings of that month, and everything
 earlier is in `git log`.
 
 ## 2026-08
 
+- 2026-08-30 **checkers:** inside the frame, the Othello shape: two seats with piece counts
+  and whose move it is (The Engine’s pulses while it thinks), Difficulty and your men on
+  the start screen and the New game sheet, the tutor and the local-AI opponent in
+  Settings, the rules sentence and the banter as toasts, the fanfare under the final
+  board. Leave mid-game and the continue card replays it.
+  (`plans/2026-08-30-plan-game-frame.md` Phase 12)
 - 2026-08-30 **drop4:** inside the frame. Two seats above the board say who is who and whose
   move it is — The Engine’s pulses while it thinks, instead of a "thinking…" word that
   wrapped the turn bar; Difficulty and your mark are the start screen’s card and the New

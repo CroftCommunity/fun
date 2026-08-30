@@ -14,7 +14,10 @@
 //! `i` at row `i / 4`, column `2 * (i % 4) + (row even ? 1 : 0)`. Row 0 is the
 //! top, which is where Side A (black) starts and away from which it advances.
 
-import type { GameModule } from "../../contract.js";
+import type { GameModule, GameServices } from "../../contract.js";
+import type { GameFrame, GameFrameSpec } from "../../game-frame.js";
+import type { Progress } from "../../progress.js";
+import type { SettingRow } from "../../settings-sheet.js";
 import { WebLLMRuntime } from "../../harness/ai-runtime.js";
 import { speak } from "../../harness/banter.js";
 import { buildBand, HybridPlayer, type BandMove } from "../../harness/hybrid-player.js";
@@ -275,6 +278,41 @@ function renderResultScreen(
 
 // ---------- the game module ----------
 
+/** The New game card: difficulty and which men you play. One builder for the poster and the sheet. */
+export function checkersSetupRows(onChange?: { level?(l: CheckersLevel): void; side?(s: CheckersSide): void }): SettingRow[] {
+  return [
+    {
+      kind: "choice",
+      id: "level",
+      label: "Difficulty",
+      hint: "A strong searching engine; checkers is unsolved from the opening, so Expert is the top.",
+      value: checkersLevel(),
+      options: LEVELS.map((l) => ({ value: l, label: l })),
+      onChange: (v) => {
+        setCheckersLevel(v as CheckersLevel);
+        onChange?.level?.(v as CheckersLevel);
+      },
+    },
+    {
+      kind: "choice",
+      id: "side",
+      label: "You play",
+      value: checkersSide(),
+      options: [
+        { value: "black", label: "● Black, opens" },
+        { value: "white", label: "○ White" },
+      ],
+      onChange: (v) => {
+        setCheckersSide(v as CheckersSide);
+        onChange?.side?.(v as CheckersSide);
+      },
+    },
+  ];
+}
+
+/** The poster's setup card — the registry's `setup` factory. */
+export const checkersSetup = (): SettingRow[] => checkersSetupRows();
+
 /** Construct a fresh checkers module (the registry `load`). */
 export function checkersModule(): GameModule {
   let game: Checkers | null = null;
@@ -282,6 +320,11 @@ export function checkersModule(): GameModule {
   let container: HTMLElement | null = null;
   let disposed = false;
   let thinking = false;
+  let frame: GameFrame | null = null;
+  let pendingResume: Progress | null = null;
+  let moves: number[] = [];
+  let hinted = false;
+  let toasted: string | null = null;
   let ending = false;
   let seed = 0n;
   let level: CheckersLevel = checkersLevel();
@@ -348,6 +391,7 @@ export function checkersModule(): GameModule {
     if (!game) return false;
     const detail = game.board().legal.find((m) => m.code === code) ?? null;
     if (game.play(code) !== "applied") return false;
+    moves.push(code);
     lastFrom = detail?.from ?? null;
     lastTo = detail?.to ?? null;
     selected = null;
@@ -371,7 +415,7 @@ export function checkersModule(): GameModule {
       return;
     }
     thinking = true;
-    setStatus(`${opponentIdentity().name} is thinking…`);
+    setStatus(""); // thinking is the engine's seat state (frame rule 2)
     render();
     window.setTimeout(() => {
       void (async () => {
@@ -668,140 +712,95 @@ export function checkersModule(): GameModule {
     return boardEl;
   };
 
-  const renderTurnbar = (board: BoardView): HTMLElement => {
-    const them: SideCode = humanSide() === 1 ? 2 : 1;
-    const turn =
-      board.result !== -1
-        ? ""
-        : board.toMove === humanSide()
-          ? "Your move"
-          : `${opponentIdentity().name} to move`;
-    return el(
-      "div",
-      { class: "checkers-turnbar" },
-      el(
-        "span",
-        { class: "checkers-score you" },
-        `You ${humanSide() === 1 ? "●" : "○"} ${pieceCount(board.cells, humanSide())}`,
-      ),
-      el(
-        "span",
-        { class: "checkers-score them" },
-        `${opponentIdentity().name} ${opponentIdentity().avatar} ${them === 1 ? "●" : "○"} ${pieceCount(board.cells, them)}`,
-      ),
-      el("span", { class: "checkers-turn", role: "status", "aria-live": "polite" }, turn),
-    );
-  };
-
-  const renderControls = (): HTMLElement => {
-    const bar = el("div", { class: "sol-controls checkers-controls" });
-
-    const levelSel = el("select", { class: "checkers-level", "aria-label": "Difficulty" });
-    for (const l of LEVELS) {
-      const opt = el("option", { value: l }, l);
-      if (l === level) opt.setAttribute("selected", "");
-      levelSel.append(opt);
-    }
-    levelSel.addEventListener("change", () => {
-      level = levelSel.value as CheckersLevel;
-      setCheckersLevel(level);
-    });
-
-    const sideSel = el("select", { class: "checkers-side-pick", "aria-label": "Your men" });
-    for (const [val, txt] of [
-      ["black", "● Black (opens)"],
-      ["white", "○ White"],
-    ] as const) {
-      const opt = el("option", { value: val }, txt);
-      if (val === side) opt.setAttribute("selected", "");
-      sideSel.append(opt);
-    }
-    sideSel.addEventListener("change", () => {
-      side = sideSel.value as CheckersSide;
-      setCheckersSide(side);
-      void startGame(); // a new colour restarts (it changes who opens)
-    });
-
-    const fresh = el("button", { type: "button", class: "sol-fresh" }, "New game");
-    fresh.addEventListener("click", () => void startGame());
-
-    bar.append(
-      el("label", { class: "checkers-field" }, "Difficulty ", levelSel),
-      el("label", { class: "checkers-field" }, "You play ", sideSel),
-      fresh,
-    );
-
-    // Settings: the opt-in tutor, and (only on a real WebGPU adapter) the
-    // experimental local-AI opponent.
-    const toggle = (
-      checked: boolean,
-      label: string,
-      cls: string,
-      onChange: (on: boolean) => void,
-    ): HTMLElement => {
-      const input = el("input", { type: "checkbox", class: cls });
-      if (checked) input.setAttribute("checked", "");
-      input.addEventListener("change", () => onChange((input as HTMLInputElement).checked));
-      return el("label", { class: "checkers-toggle" }, input, ` ${label}`);
-    };
-    const details = el("details", { class: "sol-settings checkers-settings" });
-    details.append(el("summary", {}, "Settings"));
-    details.append(
-      toggle(checkersTutorEnabled(), "Show tutor", "checkers-set-tutor", (on) => {
-        setCheckersTutor(on);
-        render();
-      }),
-    );
+  // --- what the frame shows: seats, the level chip, the New game verb, setup, preferences ---
+  const spec = (): GameFrameSpec => {
+    const b = game?.board();
+    const them = humanSide() === 1 ? 2 : 1;
+    const you = b ? pieceCount(b.cells, humanSide()) : 12;
+    const themN = b ? pieceCount(b.cells, them) : 12;
+    const opp = opponentIdentity();
+    const live = b !== undefined && b.result === -1;
+    const humanTurn = live && b.toMove === humanSide();
+    const engineThinking = live && !humanTurn && thinking;
+    const preferences: SettingRow[] = [
+      {
+        kind: "toggle",
+        id: "tutor",
+        label: "Tutor",
+        hint: "Explains your options with the engine's own read of the position.",
+        value: checkersTutorEnabled(),
+        onChange: (on) => {
+          setCheckersTutor(on);
+          render();
+        },
+      },
+    ];
     if (localAiAvailable) {
-      details.append(
-        toggle(
-          opponentKind === LOCAL_AI,
-          "Experimental: local AI opponent",
-          "checkers-ai-toggle-input",
-          (on) => {
-            opponentKind = on ? LOCAL_AI : "engine";
-            aiSay = null;
-            render();
-          },
-        ),
-        el(
-          "p",
-          { class: "checkers-ai-disclosure" },
-          `An in-browser model (${LOCAL_AI_PERSONA.name}) picks within the engine's safe moves and adds banter — a one-time model download on first use; it never plays a losing move (the engine's band decides).`,
-        ),
-      );
+      preferences.push({
+        kind: "toggle",
+        id: "local-ai",
+        label: "Experimental: local AI opponent",
+        hint: `An in-browser model (${LOCAL_AI_PERSONA.name}) picks within the engine's safe moves and adds banter — a one-time model download on first use; it never plays a losing move (the engine's band decides).`,
+        value: opponentKind === LOCAL_AI,
+        onChange: (on) => {
+          opponentKind = on ? LOCAL_AI : "engine";
+          aiSay = null;
+          render();
+        },
+      });
     }
-    bar.append(details);
-    return bar;
+    return {
+      title: "Checkers",
+      mode: level,
+      meters: [
+        { kind: "seat", id: "you", name: "You", glyph: humanSide() === 1 ? "●" : "○", score: you, state: humanTurn && !thinking ? "active" : "idle", ...(humanTurn && !thinking ? { sub: "your move" } : {}) },
+        {
+          kind: "seat",
+          id: "engine",
+          name: `${opp.name} ${opp.avatar}`,
+          glyph: them === 1 ? "●" : "○",
+          score: themN,
+          state: engineThinking ? "thinking" : "idle",
+          ...(engineThinking ? { sub: "thinking…" } : {}),
+        },
+      ],
+      verbs: [{ id: "new", label: "New game", icon: "⟳", onPress: (btn) => frame?.openSheet("setup", btn) }],
+      setup: checkersSetupRows({
+        level: (l) => {
+          level = l;
+        },
+        side: (sd) => {
+          side = sd;
+        },
+      }),
+      preferences,
+      onStart: () => void startGame(),
+    };
   };
+  const declare = (): void => frame?.update(spec());
 
   function render(): void {
     if (disposed || !container || !game) return;
     const board = game.board();
     const parts: (Node | string)[] = [
-      renderTurnbar(board),
-      renderControls(),
-      el(
-        "p",
-        { class: "checkers-banner" },
-        "Tap a man, then tap where it goes. Capture is mandatory — when a jump is on offer it is your only move — and a multi-jump is tapped one landing at a time. Reach the far row to be crowned.",
-      ),
       buildBoard(board, true),
       ...(checkersTutorEnabled() ? [renderTutorPanel()] : []),
       statusEl,
     ];
-    // The local-AI opponent's spoken reason for its last move (personality).
-    if (aiSay && opponentKind === LOCAL_AI) {
-      parts.splice(
-        1,
-        0,
-        el("p", { class: "checkers-ai-say", role: "status" }, `${LOCAL_AI_PERSONA.name}: ${aiSay}`),
-      );
-    }
-    // The player owns the open panel and the focus; the model does not.
+    // The player owns the focus; the model does not.
     const ui = captureUiState(container);
     container.replaceChildren(el("div", { class: "checkers-game" }, ...parts));
     restoreUiState(container, ui);
+    declare();
+    // Transients overlay the stage — never a <p> in flow above the board (frame rule 1).
+    if (aiSay && opponentKind === LOCAL_AI && aiSay !== toasted) {
+      toasted = aiSay;
+      frame?.toast(`${LOCAL_AI_PERSONA.name}: ${aiSay}`, 6000);
+    }
+    if (!hinted && moves.length === 0 && humanToMove() && !thinking) {
+      hinted = true;
+      frame?.toast("Tap a man, then tap where it goes. Capture is mandatory, and a multi-jump is tapped one landing at a time.", 5000);
+    }
   }
 
   const outcomeLabel = (board: BoardView): string => {
@@ -829,9 +828,10 @@ export function checkersModule(): GameModule {
       { class: `checkers-flash${board.result === humanSide() ? " win" : ""}`, role: "status" },
       board.result === 0 ? "Draw" : label,
     );
-    container.replaceChildren(
-      el("div", { class: "checkers-game" }, renderTurnbar(board), flash, buildBoard(board, false)),
-    );
+    // The fanfare sits BELOW the final board (above it, it moved the board — the
+    // Othello measurement); rule 1 holds to the end.
+    container.replaceChildren(el("div", { class: "checkers-game" }, buildBoard(board, false), flash));
+    declare();
     window.setTimeout(() => {
       if (disposed) return;
       void presentResult();
@@ -872,10 +872,40 @@ export function checkersModule(): GameModule {
     aiSay = null;
     seed = seedOverride ?? randomSeed();
     game.newGame(seed);
+    moves = [];
+    hinted = false;
     setStatus("");
     exposeHook();
     step(); // if the human plays White, the engine (Black) opens here
   }
+
+  /** Replay a stored game: the seed and every move code, then re-enter the turn loop. */
+  const applyResume = (p: Progress): void => {
+    if (!game || disposed) return;
+    const rec = p.record as { seed?: unknown; moves?: unknown };
+    const setup = p.setup as { level?: unknown; side?: unknown };
+    if (LEVELS.includes(setup.level as CheckersLevel)) level = setup.level as CheckersLevel;
+    if (setup.side === "black" || setup.side === "white") side = setup.side;
+    thinking = false;
+    ending = false;
+    selected = null;
+    prefix = [];
+    lastFrom = null;
+    lastTo = null;
+    coachMsg = null;
+    pendingCoach = null;
+    aiSay = null;
+    hinted = true;
+    seed = typeof rec.seed === "string" ? BigInt(rec.seed) : randomSeed();
+    game.newGame(seed);
+    moves = [];
+    for (const code of Array.isArray(rec.moves) ? (rec.moves as unknown[]) : []) {
+      if (typeof code !== "number" || !applyMove(code)) break;
+    }
+    setStatus("");
+    exposeHook();
+    step();
+  };
 
   const showShared = async (payload: string): Promise<void> => {
     if (!container) return;
@@ -911,11 +941,13 @@ export function checkersModule(): GameModule {
   };
 
   return {
-    mount(c: HTMLElement): void {
+    mount(c: HTMLElement, services?: GameServices): void {
       container = c;
+      frame = services?.frame ?? null;
       disposed = false;
       level = checkersLevel();
       side = checkersSide();
+      declare();
       container.replaceChildren(el("div", { class: "sol-loading" }, "Loading checkers…"));
       void (async () => {
         try {
@@ -937,10 +969,16 @@ export function checkersModule(): GameModule {
           await showShared(shared);
           return;
         }
-        const seedParam = url.searchParams.get("seed");
-        await startGame(seedParam !== null ? BigInt(seedParam) : undefined);
-        // Probe WebGPU in the background; if present, the controls re-render with
-        // the experimental local-AI opponent offered (classic engine otherwise).
+        if (pendingResume) {
+          const p = pendingResume;
+          pendingResume = null;
+          applyResume(p);
+        } else {
+          const seedParam = url.searchParams.get("seed");
+          await startGame(seedParam !== null ? BigInt(seedParam) : undefined);
+        }
+        // Probe WebGPU in the background; if present, the settings sheet offers
+        // the experimental local-AI opponent (classic engine otherwise).
         void probeLocalAi();
       })();
     },
@@ -949,10 +987,32 @@ export function checkersModule(): GameModule {
       delete window.__checkers;
       container?.replaceChildren();
       container = null;
+      frame = null;
       game = null;
       verifier = null;
       runtime = null; // release the WebGPU engine (local-AI) if it was created
       hybrid = null;
+    },
+    // --- the progress store: the seed and the move codes; resume is replay ---
+    snapshot(): Progress {
+      const b = game?.board();
+      const you = b ? pieceCount(b.cells, humanSide()) : 12;
+      const them = b ? pieceCount(b.cells, humanSide() === 1 ? 2 : 1) : 12;
+      const now = new Date().toISOString();
+      const done = gameOver();
+      return {
+        v: 1,
+        status: done ? "finished" : "in-progress",
+        startedAt: now,
+        updatedAt: now,
+        setup: { mode: "free", seed: seed.toString(), level, side },
+        record: { seed: seed.toString(), moves: [...moves] },
+        summary: { line: done && b ? outcomeLabel(b) : `Move ${moves.length} · ${you} men to ${them}` },
+      };
+    },
+    resume(p: Progress): void {
+      if (game) applyResume(p);
+      else pendingResume = p;
     },
   };
 }

@@ -11,7 +11,7 @@ import { wyrdleModule, wyrdleSetup } from "./games/wyrdle/wyrdle.js";
 import { twenty48Module } from "./games/2048/2048.js";
 import { drop4Module, drop4Setup } from "./games/drop4/drop4.js";
 import { othelloModule, othelloSetup } from "./games/othello/othello.js";
-import { checkersModule } from "./games/checkers/checkers.js";
+import { checkersModule, checkersSetup } from "./games/checkers/checkers.js";
 import { dotsModule } from "./games/dots/dots.js";
 import { furrowModule } from "./games/furrow/furrow.js";
 import { alignModule } from "./games/align/align.js";
@@ -86,7 +86,17 @@ export const REGISTRY: readonly GameEntry[] = [
     setup: othelloSetup,
     load: othelloModule,
   },
-  { id: "checkers", title: "Checkers", emoji: "⛃", status: "playable", icon: true, group: "versus", load: checkersModule },
+  {
+    id: "checkers",
+    title: "Checkers",
+    emoji: "⛃",
+    status: "playable",
+    icon: true,
+    group: "versus",
+    pitch: "Tap a man, then where it goes. Capture is mandatory; reach the far row to be crowned.",
+    setup: checkersSetup,
+    load: checkersModule,
+  },
   { id: "dots", title: "Dots and Boxes", emoji: "▦", status: "playable", icon: true, group: "versus", load: dotsModule },
   { id: "furrow", title: "Furrow", emoji: "🌾", status: "playable", icon: true, group: "versus", load: furrowModule },
   { id: "align", title: "Align", emoji: "🟪", status: "playable", icon: true, load: alignModule },

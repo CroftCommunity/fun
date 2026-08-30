@@ -8,7 +8,7 @@ parameters does once every bare URL opens on a start screen) gates Phase 5** and
 thing between this plan and execution: Phases 0–4 may start now. D5 was resolved during
 planning (read-only, see Verified Assumptions) and is struck from Phase 0. Phases 1, 2, 3
 and 5 carry sub-phases (1a/1b, 2a/2b, 3a/3b, 5a/5b) — each with its own Done-when and
-wiring test — because each touched four or more files. Phases 0–11 COMPLETE (2026-08-30). Mocks
+wiring test — because each touched four or more files. Phases 0–12 COMPLETE (2026-08-30). Mocks
 landed on `main` (`mocks/d-game-frame.html`, PR #45, `6c4dd9c`); owner decisions D1–D5
 recorded.
 
@@ -1104,6 +1104,26 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
    it changes one test case either way.*
 
 ## Review Log
+
+### Phase 12 — executed 2026-08-30 (Checkers)
+- The Othello shape, applied: seats with piece counts, thinking as the engine's seat
+  state, Difficulty and which men you play as setup (one shared row builder), the tutor
+  and the local-AI toggle as preferences (disclosure on the row), the rules sentence and
+  the banter as toasts, the fanfare under the final board; `snapshot()` is the seed and
+  the move codes (a jump chain is one code), `resume()` replays and re-enters the loop.
+- **Honesty note:** the rewritten spec was not run against the unmigrated page first —
+  it was written while Phase 11's gate held `src/`, and the migration followed in the
+  same sitting. The red evidence for this shape is Othello's (Phase 6: 24.8px / 1.2px
+  measured), and the identical turn bar / banner / `<details>` structure was verified by
+  reading. Green: 68/68 with `--repeat-each=2` at 2 workers on both engines (board stable
+  across the engine's reply, thinking observed from inside the page), `npm run e2e`
+  **683/683** at 2 workers, typecheck, lint, unit (checkers + tutor suites); shots for
+  Checkers only (4). How-to copy and changelog landed in-phase.
+- CI: the Cribbage recap-mode test had failed the mobile-webkit 2/3 shard on every `main`
+  run since Phase 7 landed (green locally every time). Cause: under `?fast=1` the recap
+  lives 60ms and the test read it in two round-trips. Fixed in the test (a
+  `MutationObserver` records the recap the moment it appears) — `61aace1`, on this
+  branch, riding with Phases 10–11.
 
 ### Phase 11 — executed 2026-08-30 (Drop 4)
 - Red first: 20 of 36 against the unmigrated page. The turn bar (with its `.drop4-thinking`
