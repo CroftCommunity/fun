@@ -20,6 +20,15 @@ export interface GameServices {
    * Absent only when a module is mounted outside the chrome (a unit test).
    */
   readonly frame?: GameFrame;
+  /**
+   * The shelf's sign-in (src/signin): who is signed in, if anyone, and a way to
+   * open the atmo-provider sheet — for a game's own offer after a solve
+   * (mock E6.1). Absent outside the chrome (a unit test).
+   */
+  readonly signIn?: {
+    readonly current: () => { readonly did: string; readonly handle: string } | null;
+    readonly open: () => void;
+  };
 }
 
 /** A live, mountable game instance. */
@@ -84,6 +93,12 @@ export interface GameEntry {
    * the poster and the New game sheet cannot disagree. A factory, read at render.
    */
   readonly setup?: () => readonly SettingRow[];
+  /**
+   * A short chip above the name on the start screen — "Today's puzzle · par 32 ·
+   * not yet played" — or null for none. A factory, read when the poster renders,
+   * so it can reflect the game's record without the engine loaded.
+   */
+  readonly chip?: () => string | null;
 }
 
 /**

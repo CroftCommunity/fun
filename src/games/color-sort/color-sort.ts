@@ -11,6 +11,16 @@
 import type { GameModule, GameServices } from "../../contract.js";
 import type { GameFrame, GameFrameSpec } from "../../game-frame.js";
 import type { Progress } from "../../progress.js";
+import {
+  DAILY_UNLOCK_SOLVES,
+  emptyRecord,
+  readRecord,
+  recordSolve,
+  solvesToDaily,
+  writeRecord,
+  type GameRecord,
+  type InProgress,
+} from "../../record.js";
 import type { SettingRow } from "../../settings-sheet.js";
 import { today } from "../../shelf.js";
 import { ColorSort, type BoardView, type Move } from "./color-sort-wasm.js";
@@ -22,17 +32,22 @@ import {
   type VerifyResult,
 } from "./color-sort-outcome.js";
 import { dayIndexUTC } from "../share.js";
+import { runPour, type PourPlan, type RunningPour } from "./pour.js";
+import { ColorSortSound, cueFor, type Cue, type CueKind, type PlayLog } from "./sound.js";
 import {
   colorSortIconsFor,
+  colorSortPourSpeed,
   colorSortSkin,
   colorSortStrict,
   declareAssistanceEnabled,
   hintsEnabled,
   iconsDefaultFor,
   setColorSortIcons,
+  setColorSortPourSpeed,
   setColorSortSkin,
   setColorSortStrict,
   type ColorSortSkin,
+  type PourSpeed,
 } from "../../settings.js";
 
 declare global {
@@ -46,12 +61,18 @@ declare global {
       board: () => BoardView;
       seed: bigint;
       startEndless: (level: number) => void;
+      /** The most recent pour's plan (mock E3.x reads it back). */
+      lastPour: PourPlan | null;
+      /** Every sound attempt, and the pure cue table (mock E8.1). */
+      sound: { log: readonly PlayLog[]; cue: (skin: ColorSortSkin, kind: CueKind) => Cue };
     };
   }
 }
 
 /** The fixed colour-id → fruit-icon map (brief §6), in colour-id order. */
 const ICONS = ["🍎", "🍋", "🍇", "🥝", "🫐", "🍊", "🍓", "🥥", "🟣", "🌽", "🥕", "🍑"];
+/** The same colours as words, for the live region ("Poured 2 lemon into tube 4"). */
+const NAMES = ["apple", "lemon", "grape", "kiwi", "blueberry", "orange", "strawberry", "coconut", "purple", "corn", "carrot", "peach"];
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -140,66 +161,65 @@ export function renderResultScreen(
   return section;
 }
 
-// ---------- persistence (namespaced per shelf convention) ----------
+// ---------- persistence: the game record (src/record.ts; plan D9) ----------
+//
+// One `$type`-shaped record per game — stats (the Daily gate reads `played`) and
+// the deal in progress — through the local substrate. The three ad-hoc keys this
+// game kept before (`color-sort/stats`, `color-sort/endless`, `color-sort/daily/…`)
+// are read once, folded in, and left behind.
 
-const NS = "color-sort";
-interface DailySave {
-  seed: string;
-  moves: Move[];
-  solved: boolean;
-  par: number;
-  strict: boolean;
-}
-interface EndlessSave {
-  level: number;
-  seed: string;
-  moves: Move[];
-  bestLevel: number;
-}
-interface Stats {
-  solved: number;
-  strictSolved: number;
-  streak: number;
-  maxStreak: number;
-  lastDay: number;
-}
+const GAME_ID = "color-sort";
 
-function load<T>(key: string): T | null {
+function legacy<T>(key: string): T | null {
   try {
-    const raw = localStorage.getItem(`${NS}/${key}`);
+    const raw = localStorage.getItem(`${GAME_ID}/${key}`);
     return raw ? (JSON.parse(raw) as T) : null;
   } catch {
     return null;
   }
 }
-function save(key: string, value: unknown): void {
-  try {
-    localStorage.setItem(`${NS}/${key}`, JSON.stringify(value));
-  } catch {
-    // storage denied — session-only, no failure
-  }
+
+/** The record, migrating the pre-record keys the first time. */
+function record(): GameRecord {
+  const r = readRecord(GAME_ID);
+  if (r) return r;
+  const stats = legacy<{ solved: number; strictSolved: number; streak: number; maxStreak: number; lastDay: number }>("stats");
+  const endless = legacy<{ bestLevel: number }>("endless");
+  const fresh = emptyRecord(GAME_ID);
+  const migrated: GameRecord = {
+    ...fresh,
+    stats: {
+      ...fresh.stats,
+      solved: stats?.solved ?? 0,
+      strictSolved: stats?.strictSolved ?? 0,
+      streak: stats?.streak ?? 0,
+      maxStreak: stats?.maxStreak ?? 0,
+      lastDay: stats?.lastDay ?? -1,
+      bestLevel: endless?.bestLevel ?? 1,
+      played: stats?.solved ?? 0,
+    },
+  };
+  return migrated;
+}
+
+function saveRecord(r: GameRecord): void {
+  writeRecord({ ...r, updatedAt: new Date().toISOString() });
 }
 
 function todayKey(): string {
   return new Date().toISOString().slice(0, 10); // UTC YYYY-MM-DD
 }
 
-function recordDailySolved(strict: boolean): void {
+/** The poster's chip: today's puzzle, once the Daily is unlocked (mock E1.4). */
+export function colorSortChip(): string | null {
+  const r = record();
+  if (solvesToDaily(r) > 0) return null;
   const day = dayIndexUTC(new Date());
-  const s = load<Stats>("stats") ?? {
-    solved: 0,
-    strictSolved: 0,
-    streak: 0,
-    maxStreak: 0,
-    lastDay: -1,
-  };
-  if (s.lastDay === day) return; // already counted today
-  s.streak = s.lastDay === day - 1 ? s.streak + 1 : 1;
-  s.maxStreak = Math.max(s.maxStreak, s.streak);
-  s.solved += 1;
-  if (strict) s.strictSolved += 1;
-  s.lastDay = day;
-  save("stats", s);
+  const p = r.inProgress;
+  const today = p && p.mode === "daily" && p.level === day ? p : null;
+  const par = today?.par ? ` · par ${today.par}` : "";
+  const state = today?.solved ? "solved" : today && today.moves.length > 0 ? "in progress" : "not yet played";
+  return `Today's puzzle${par} · ${state}`;
 }
 
 // ---------- the game module ----------
@@ -208,23 +228,29 @@ type ModeChoice = "daily" | "endless";
 
 // The New game card's choice lives at module scope: the poster renders the card
 // before the module exists, and the module reads it when a game starts.
-let chosenMode: ModeChoice = "daily";
+// Endless first (plan D5/D6): a first-timer lands on level 1, not a par-32 daily.
+let chosenMode: ModeChoice = "endless";
 
-/** The New game card: today's puzzle with its par, or endless from your best level. */
+/** The New game card: Endless from your best level, or — after five solves — today's puzzle. */
 export function colorSortSetupRows(): SettingRow[] {
+  const toGo = solvesToDaily(record());
+  const locked = toGo > 0;
+  if (locked) chosenMode = "endless";
   return [
     {
       kind: "choice",
       id: "mode",
       label: "Mode",
-      hint: "Daily is one fixed puzzle a day with a par to beat; Endless keeps going from your best level, adding a colour as you climb.",
+      hint: locked
+        ? `Endless keeps going from your best level, adding a colour as you climb. Daily — one fixed puzzle a day, the same for everyone, with a par — unlocks after ${DAILY_UNLOCK_SOLVES} solves · ${toGo} to go.`
+        : "Endless keeps going from your best level, adding a colour as you climb; Daily is one fixed puzzle a day, the same for everyone, with a par to beat.",
       value: chosenMode,
       options: [
-        { value: "daily", label: "Daily" },
         { value: "endless", label: "Endless" },
+        { value: "daily", label: locked ? "Daily 🔒" : "Daily", disabled: locked },
       ],
       onChange: (v) => {
-        chosenMode = v === "endless" ? "endless" : "daily";
+        chosenMode = v === "daily" && !locked ? "daily" : "endless";
       },
     },
   ];
@@ -246,13 +272,32 @@ export function colorSortModule(): GameModule {
   let skin: ColorSortSkin = colorSortSkin();
   let selected: number | null = null;
   let frame: GameFrame | null = null;
+  let signIn: GameServices["signIn"] | undefined;
   let pendingResume: Progress | null = null;
   let toasted = false;
   /** The deadlock toast fires once per stuck position, not on every re-render of it. */
   let deadlockToasted = false;
-  // The most recent pour, so the target tube's newly-arrived units animate in
-  // once. Cleared after the render that consumes it.
-  let pourAnim: { tube: number; count: number } | null = null;
+  // The pour to show on the next render — the core has already applied it; the
+  // re-rendered DOM is the true state and the animation plays FROM the old one.
+  let pendingPour: {
+    from: number;
+    to: number;
+    units: number;
+    color: number;
+    targetBefore: number;
+    sourceAfter: number;
+    reverse: boolean;
+  } | null = null;
+  let running: RunningPour | null = null;
+  let lastPour: PourPlan | null = null;
+  const sound = new ColorSortSound();
+  /** Tubes already celebrated as complete in this deal (the beat fires once per tube). */
+  let celebrated = new Set<number>();
+  /** The solve of this deal has been written to the record (once, however the win arrived). */
+  let solveRecorded = false;
+  /** `?fast=1`: every pour collapses to a frame, for the browser suite (mock E3.7). */
+  let fast = false;
+  const pourSpeed = (): PourSpeed => (fast ? "off" : colorSortPourSpeed());
 
   const statusEl = el("p", { class: "sol-status", role: "status", "aria-live": "polite" });
   const setStatus = (msg: string): void => {
@@ -262,29 +307,20 @@ export function colorSortModule(): GameModule {
   const strict = (): boolean => colorSortStrict();
   const iconsOn = (): boolean => colorSortIconsFor(skin);
 
-  // ---- persistence of the in-progress deal ----
+  // ---- persistence of the in-progress deal: the record's `inProgress` ----
   const persist = (solved = false): void => {
     if (!game) return;
     const b = game.board();
-    if (mode === "daily") {
-      const s: DailySave = {
-        seed: seed.toString(),
-        moves: replayMoves(),
-        solved,
-        par: b.par,
-        strict: strict(),
-      };
-      save(`daily/${todayKey()}`, s);
-    } else {
-      const prev = load<EndlessSave>("endless");
-      const s: EndlessSave = {
-        level,
-        seed: seed.toString(),
-        moves: replayMoves(),
-        bestLevel: Math.max(prev?.bestLevel ?? 1, level),
-      };
-      save("endless", s);
-    }
+    const r = record();
+    const inProgress: InProgress = {
+      mode,
+      level: mode === "daily" ? dayIndexUTC(new Date()) : level,
+      seed: seed.toString(),
+      moves: replayMoves().map((m) => [m.from, m.to] as const),
+      solved,
+      ...(mode === "daily" ? { par: b.par, strict: strict() } : {}),
+    };
+    saveRecord({ ...r, inProgress, stats: { ...r.stats, bestLevel: Math.max(r.stats.bestLevel, mode === "endless" ? level : 1) } });
   };
 
   // The moves played so far, reconstructed from the outcome record (the binding
@@ -327,9 +363,8 @@ export function colorSortModule(): GameModule {
     });
     // Units stack from the bottom (flex column-reverse in CSS). Each slot is a
     // full-width centring box; a filled slot holds a nested unit (the fill / ball
-    // / nut) so every skin centres its unit and its icon. The top `pourAnim.count`
-    // units of the just-poured target animate in.
-    const pourCount = pourAnim && pourAnim.tube === t ? pourAnim.count : 0;
+    // / nut) so every skin centres its unit and its icon. The pour animation
+    // (pour.ts) finds the arrived units and the emptied slots by index.
     const stack = el("div", { class: "cs-stack" });
     for (let i = 0; i < b.cap; i++) {
       const slot = el("div", { class: "cs-slot" });
@@ -338,18 +373,15 @@ export function colorSortModule(): GameModule {
         const unit = el("div", { class: "cs-unit" });
         unit.style.setProperty("--cs-fill", colors[c] ?? "#888");
         unit.setAttribute("data-color", String(c));
-        // Newly-poured units sit in the top `pourCount` positions of the target.
-        const fromTop = tube.length - 1 - i;
-        if (pourCount > 0 && fromTop < pourCount) {
-          unit.classList.add("cs-pour-in");
-          unit.style.setProperty("--pour-i", String(pourCount - 1 - fromTop));
-        }
         if (iconsOn()) unit.append(el("span", { class: "cs-icon", "aria-hidden": "true" }, ICONS[c] ?? ""));
         slot.append(unit);
       }
       stack.append(slot);
     }
-    if (locked) btn.append(el("div", { class: "cs-cap", "aria-hidden": "true" }));
+    if (locked) {
+      if (celebrated.has(t)) btn.classList.add("cs-complete-done");
+      btn.append(el("div", { class: "cs-cap", "aria-hidden": "true" }));
+    }
     btn.append(stack);
     return btn;
   };
@@ -369,20 +401,27 @@ export function colorSortModule(): GameModule {
   const spec = (): GameFrameSpec => {
     const b = game?.board();
     const hints = hintsEnabled();
+    // The dock, left to right, as mock E draws it: Undo · Hint · New game · Restart
+    // (the frame appends Settings). Strict takes Undo away rather than greying it.
     const verbs: GameFrameSpec["verbs"] = [
       ...(strict() ? [] : [{ id: "undo", label: "Undo", icon: "↶", onPress: doUndo }]),
-      { id: "restart", label: "Restart", icon: "↺", onPress: doRestart },
       hints
         ? { id: "hint", label: "Hint", icon: "✦", primary: true, onPress: showHint }
         : { id: "stuck", label: "I’m stuck", icon: "⇥", onPress: declareStuck },
-      { id: "new", label: "New game", icon: "⟳", onPress: (btn: HTMLButtonElement) => frame?.openSheet("setup", btn) },
+      { id: "new", label: "New game", icon: "＋", onPress: (btn: HTMLButtonElement) => frame?.openSheet("setup", btn) },
+      { id: "restart", label: "Restart", icon: "↺", onPress: doRestart },
     ];
     return {
       title: "Color Sort",
       mode: mode === "daily" ? "Daily" : `Level ${level}`,
+      // Three stats for the life of the frame (mock E2.1): moves · the mark to beat
+      // (par on a daily, the level in endless) · the best level reached.
       meters: [
         { kind: "stat", id: "moves", value: b?.moveCount ?? 0, label: "moves" },
-        { kind: "stat", id: "par", value: b?.par ? b.par : "—", label: "par" },
+        mode === "daily"
+          ? { kind: "stat", id: "mark", value: b?.par ? b.par : "—", label: "par" }
+          : { kind: "stat", id: "mark", value: level, label: "level" },
+        { kind: "stat", id: "best", value: bestLevel(), label: "best" },
       ],
       verbs,
       setup: colorSortSetupRows(),
@@ -402,6 +441,22 @@ export function colorSortModule(): GameModule {
             skin = v as ColorSortSkin;
             setColorSortSkin(skin);
             rebuild();
+          },
+        },
+        {
+          kind: "choice",
+          id: "pour-speed",
+          label: "Pour speed",
+          hint: "How long a pour takes to play out. Off keeps the count and the target and drops the motion — it is what reduced motion picks.",
+          value: colorSortPourSpeed(),
+          options: [
+            { value: "slow", label: "Slow" },
+            { value: "normal", label: "Normal" },
+            { value: "fast", label: "Fast" },
+            { value: "off", label: "Off" },
+          ],
+          onChange: (v) => {
+            setColorSortPourSpeed(v as PourSpeed);
           },
         },
         {
@@ -438,14 +493,27 @@ export function colorSortModule(): GameModule {
   function render(): void {
     if (disposed || !container || !game) return;
     const b = game.board();
+    running?.cancel();
+    running = null;
     if (b.won) {
-      pourAnim = null;
+      const last = pendingPour;
+      pendingPour = null;
+      if (last) celebrate(last.to, b);
+      if (!solveRecorded) {
+        // Every solve counts toward the Daily gate; a daily also feeds the streak.
+        solveRecorded = true;
+        const day = dayIndexUTC(new Date());
+        saveRecord(
+          recordSolve(record(), mode === "daily" ? { kind: "daily", strict: strict(), day } : { kind: "endless", level, strict: strict(), day }),
+        );
+        persist(true);
+      }
       void presentResult();
       return;
     }
     const wrap = el("div", { class: "cs-game" }, renderBoard(b), statusEl);
     container.replaceChildren(wrap);
-    pourAnim = null; // the pour animation plays once, on the render that follows it
+    showPour(b, wrap);
     if (!toasted) {
       toasted = true;
       frame?.toast("Tap a tube, then a tube it can pour into — same colour on top, room below. Sort every colour into its own tube.", 6000);
@@ -458,6 +526,48 @@ export function colorSortModule(): GameModule {
     }
     declare();
   }
+
+  /** Play the pending pour over the just-rendered board, then the completion beat if a tube locked. */
+  const showPour = (b: BoardView, wrap: HTMLElement): void => {
+    const pp = pendingPour;
+    pendingPour = null;
+    if (!pp) return;
+    const board = wrap.querySelector<HTMLElement>(".cs-board");
+    const source = wrap.querySelector<HTMLElement>(`.cs-tube[data-tube="${pp.from}"]`);
+    const target = wrap.querySelector<HTMLElement>(`.cs-tube[data-tube="${pp.to}"]`);
+    if (!board || !source || !target) return;
+    const speed = pourSpeed();
+    running = runPour(
+      {
+        board,
+        source,
+        target,
+        units: pp.units,
+        color: palette()[pp.color] ?? "#888",
+        targetBefore: pp.targetBefore,
+        sourceAfter: pp.sourceAfter,
+        icon: iconsOn() ? ICONS[pp.color] : undefined,
+      },
+      { skin, speed, from: pp.from, to: pp.to, reverse: pp.reverse },
+    );
+    lastPour = running.plan;
+    exposeHook();
+    if (!pp.reverse) sound.play(skin, "pour", pp.units);
+    setStatus(`${pp.reverse ? "Undid: poured" : "Poured"} ${pp.units} ${NAMES[pp.color] ?? "unit"} into tube ${pp.to + 1}.`);
+    if (!pp.reverse) celebrate(pp.to, b, target);
+  };
+
+  /** The tube-complete beat (mock E proposal 4): once per tube per deal. */
+  const celebrate = (t: number, b: BoardView, tubeEl?: HTMLElement | null): void => {
+    if (!b.locked[t] || celebrated.has(t)) return;
+    celebrated.add(t);
+    const target = tubeEl ?? container?.querySelector<HTMLElement>(`.cs-tube[data-tube="${t}"]`);
+    if (target) {
+      target.classList.add("cs-complete");
+      target.append(el("span", { class: "cs-tick", "aria-hidden": "true" }, "✓"));
+    }
+    sound.play(skin, "complete");
+  };
 
   const rebuild = (): void => {
     selected = null;
@@ -498,33 +608,31 @@ export function colorSortModule(): GameModule {
     const from = selected;
     selected = null;
     const toLenBefore = b.tubes[t]!.length;
+    const color = b.tubes[from]![b.tubes[from]!.length - 1]!;
     const status = game.pour(from, t);
     if (status !== "applied") {
       render();
       return;
     }
-    // How many units actually landed — those top slots animate the pour in.
-    pourAnim = { tube: t, count: Math.max(1, game.board().tubes[t]!.length - toLenBefore) };
-    setStatus("");
+    const after = game.board();
+    pendingPour = {
+      from,
+      to: t,
+      units: Math.max(1, after.tubes[t]!.length - toLenBefore),
+      color,
+      targetBefore: toLenBefore,
+      sourceAfter: after.tubes[from]!.length,
+      reverse: false,
+    };
     persist();
-    afterMove(t);
+    afterMove();
   };
 
-  const afterMove = (poured: number): void => {
+  const afterMove = (): void => {
     render();
-    // A brief pour highlight on the target tube (reduced-motion safe in CSS).
-    const tubeEl = container?.querySelector<HTMLElement>(`.cs-tube[data-tube="${poured}"]`);
-    tubeEl?.classList.add("cs-poured");
-    window.setTimeout(() => tubeEl?.classList.remove("cs-poured"), 320);
     if (!game) return;
     const b = game.board();
-    if (b.won) {
-      if (mode === "daily") {
-        recordDailySolved(strict());
-        persist(true);
-      }
-      return; // render() already routed to the result on next tick
-    }
+    if (b.won) return; // render() recorded the solve and routed to the result
     if (b.deadlocked) setStatus("No moves left — restart" + (strict() ? "." : " or undo."));
   };
 
@@ -540,18 +648,38 @@ export function colorSortModule(): GameModule {
 
   const doUndo = (): void => {
     if (!game || strict()) return;
+    const last = replayMoves().at(-1);
+    const before = game.board();
     if (game.undo()) {
       game.markAssistance();
       selected = null;
-      setStatus("Undid the last pour (counts as assistance).");
+      if (last) {
+        // The pour, reversed: the units come back out of `to` into `from` (mock E4.2).
+        const after = game.board();
+        const units = before.tubes[last.to]!.length - after.tubes[last.to]!.length;
+        const color = after.tubes[last.from]![after.tubes[last.from]!.length - 1]!;
+        pendingPour = {
+          from: last.to,
+          to: last.from,
+          units: Math.max(1, units),
+          color,
+          targetBefore: after.tubes[last.from]!.length - units,
+          sourceAfter: after.tubes[last.to]!.length,
+          reverse: true,
+        };
+        celebrated.delete(last.to);
+      }
       persist();
       render();
+      setStatus("Undid the last pour (counts as assistance).");
     }
   };
 
   const doRestart = (): void => {
     if (!game) return;
     game.restart();
+    celebrated = new Set();
+    solveRecorded = false;
     selected = null;
     setStatus("Restarted this deal.");
     persist();
@@ -642,7 +770,24 @@ export function colorSortModule(): GameModule {
             : () => void startDaily(),
         playAgainLabel: mode === "endless" ? "Next level" : "Play again",
       });
-    container.replaceChildren(build());
+    const section = build();
+    const o = offer();
+    if (o) section.append(o);
+    container.replaceChildren(section);
+  };
+
+  /** After a solve, for an anonymous record: keep this streak — sign in (mock E6.1). */
+  const offer = (): HTMLElement | null => {
+    if (!signIn || signIn.current()) return null;
+    const box = el("aside", { class: "cs-signin-offer", "aria-label": "Keep this streak" });
+    box.append(
+      el("b", {}, "Keep this streak"),
+      el("p", {}, "Sign in with your atmo provider and your solves, streak and best level stay yours on any device. Nothing is sent until you say so."),
+    );
+    const btn = el("button", { type: "button", class: "cs-signin-btn" }, "Sign in or create an account");
+    btn.addEventListener("click", () => signIn?.open());
+    box.append(btn);
+    return box;
   };
 
   const showShared = async (payload: string): Promise<void> => {
@@ -669,7 +814,9 @@ export function colorSortModule(): GameModule {
   };
 
   // ---- lifecycle ----
-  const bestLevel = (): number => load<EndlessSave>("endless")?.bestLevel ?? 1;
+  const bestLevel = (): number => record().stats.bestLevel;
+  const savedGame = (): InProgress | null => record().inProgress;
+  const savedMoves = (p: InProgress): Move[] => p.moves.map(([from, to]) => ({ from, to }));
 
   const applyMoves = (moves: Move[]): void => {
     if (!game) return;
@@ -705,16 +852,21 @@ export function colorSortModule(): GameModule {
     const day = dayIndexUTC(new Date());
     game.newDaily(day);
     seed = game.seed();
-    // Resume today's in-progress deal if the seed still matches.
-    const saved = load<DailySave>(`daily/${todayKey()}`);
-    if (saved && saved.seed === seed.toString() && !saved.solved) applyMoves(saved.moves);
+    celebrated = new Set();
+    solveRecorded = false;
+    // Resume today's in-progress deal if the record holds it.
+    const saved = savedGame();
+    const today = saved && saved.mode === "daily" && saved.level === day && saved.seed === seed.toString() ? saved : null;
+    if (today && !today.solved) applyMoves(savedMoves(today));
     selected = null;
     setStatus("");
     console.debug(`[color-sort] daily seed=${seed}`);
+    persist(today?.solved ?? false);
     exposeHook();
-    if (saved?.solved && saved.seed === seed.toString()) {
+    if (today?.solved) {
       // Already solved today — replay to the solved state and show the result.
-      applyMoves(saved.moves);
+      solveRecorded = true;
+      applyMoves(savedMoves(today));
       void presentResult();
       return;
     }
@@ -728,8 +880,11 @@ export function colorSortModule(): GameModule {
     level = Math.max(1, atLevel);
     game.newEndless(level);
     seed = game.seed();
-    const saved = load<EndlessSave>("endless");
-    if (saved && saved.level === level && saved.seed === seed.toString()) applyMoves(saved.moves);
+    celebrated = new Set();
+    solveRecorded = false;
+    const saved = savedGame();
+    // A solved level is not resumed — replaying its pours would land on the result again.
+    if (saved && saved.mode === "endless" && saved.level === level && saved.seed === seed.toString() && !saved.solved) applyMoves(savedMoves(saved));
     selected = null;
     setStatus("");
     console.debug(`[color-sort] endless level=${level} seed=${seed}`);
@@ -751,6 +906,8 @@ export function colorSortModule(): GameModule {
       board: () => game!.board(),
       seed,
       startEndless: (l: number) => void startEndless(l),
+      lastPour,
+      sound: { log: sound.log, cue: (s: ColorSortSkin, k: CueKind) => cueFor(s, k) },
     };
   };
 
@@ -758,6 +915,7 @@ export function colorSortModule(): GameModule {
     mount(c: HTMLElement, services?: GameServices): void {
       container = c;
       frame = services?.frame ?? null;
+      signIn = services?.signIn;
       disposed = false;
       skin = colorSortSkin();
       frame?.onSettingsChange(() => rebuild()); // Hints flips the verb
@@ -781,6 +939,7 @@ export function colorSortModule(): GameModule {
         }
         if (disposed) return;
         const url = new URL(location.href);
+        fast = url.searchParams.get("fast") === "1";
         const shared = url.searchParams.get("r");
         if (shared) {
           await showShared(shared);
@@ -790,6 +949,10 @@ export function colorSortModule(): GameModule {
           const p = pendingResume;
           pendingResume = null;
           applyResume(p);
+          return;
+        }
+        if (url.searchParams.get("daily") === "1") {
+          await startDaily();
           return;
         }
         const levelParam = url.searchParams.get("level");
@@ -814,6 +977,9 @@ export function colorSortModule(): GameModule {
     },
     unmount(): void {
       disposed = true;
+      running?.cancel();
+      running = null;
+      sound.close();
       document.removeEventListener("keydown", onKeydown);
       delete window.__colorSort;
       container?.replaceChildren();

@@ -1,0 +1,9 @@
+{
+  "_why": "The provider registry DATA, one source for the sheet. Facts and wrong-first-guesses are recorded in providers.ts; postures were probed in croft-pwa and forage (tests/live/signin-providers.live.spec.ts there). Ported verbatim from croft-pwa/src/signin/providers.json (2026-08-30).",
+  "providers": [
+    { "id": "bsky", "label": "Bluesky", "entryway": "https://bsky.social", "signups": "open" },
+    { "id": "blacksky", "label": "Blacksky", "entryway": "https://blacksky.app", "signups": "open" },
+    { "id": "eurosky", "label": "EuroSky", "entryway": "https://eurosky.social", "signups": "open" },
+    { "id": "northsky", "label": "Northsky", "entryway": "https://northsky.social", "signups": "invite" }
+  ]
+}

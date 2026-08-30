@@ -5,7 +5,7 @@ import type { Guide } from "../../how-to.js";
 
 export const COLOR_SORT_GUIDE: Guide = {
   title: "How to play Color Sort",
-  lede: "Pour the colours until every tube holds just one. You play by tapping — tap a tube to pick it up, then tap another to pour. Water, balls, or nuts-and-bolts: same puzzle, your choice of look. Every solve is a record anyone can re-verify.",
+  lede: "Pour the colours until every tube holds just one. You play by tapping — tap a tube to pick it up, then tap another to pour, and watch it pour. Water, balls, or nuts on a bolt: same puzzle, your choice of look. Endless levels from the first tap; the daily puzzle opens after five solves. Every solve is a record anyone can re-verify.",
   entries: [
     {
       testid: "howto-goal",
@@ -14,7 +14,7 @@ export const COLOR_SORT_GUIDE: Guide = {
       blocks: [
         {
           kind: "prose",
-          text: "Every colour starts jumbled across the tubes. Rearrange them by pouring until each tube is either empty or filled with a single colour. Two spare empty tubes give you room to work. Today's puzzle is the same for everyone and is always solvable.",
+          text: "Every colour starts jumbled across the tubes. Rearrange them by pouring until each tube is either empty or filled with a single colour. Two spare empty tubes give you room to work. You start in Endless — level 1 is four colours in six tubes, and a colour joins as you climb. Every deal is checked solvable before you see it.",
         },
         {
           kind: "shot",
@@ -40,6 +40,7 @@ export const COLOR_SORT_GUIDE: Guide = {
             "Tap a highlighted tube to pour. Tap the same tube again to put it back down.",
             "You can only pour onto an empty tube or onto a matching colour, and only as much as fits — the whole run of the top colour moves at once, up to the space available.",
             "Tapping an illegal tube just shakes it; the board never changes on an illegal tap.",
+            "The pour plays out: the tube lifts, tilts over its target and streams; balls hop across; nuts unscrew and screw down. You can tap the next pour before it has finished.",
           ],
         },
         {
@@ -61,7 +62,7 @@ export const COLOR_SORT_GUIDE: Guide = {
       blocks: [
         {
           kind: "prose",
-          text: "The same puzzle renders three ways — water tubes, balls, or nuts on threaded bolts. Switch any time in Settings; it’s instant and never changes the puzzle. Fruit icons put a distinct shape on each colour so the board reads without relying on hue; they’re off by default for water and on for balls and bolts, and your choice sticks.",
+          text: "The same puzzle renders three ways — water tubes, balls, or nuts on threaded bolts. Switch any time in Settings; it’s instant and never changes the puzzle. Fruit icons put a distinct shape on each colour so the board reads without relying on hue; they’re off by default for water and on for balls and bolts, and your choice sticks. Pour speed — Slow, Normal, Fast or Off — is in Settings too; Off keeps what moved and where and drops the motion, and it is what a reduced-motion preference picks until you choose otherwise.",
         },
       ],
     },
@@ -92,7 +93,7 @@ export const COLOR_SORT_GUIDE: Guide = {
       blocks: [
         {
           kind: "prose",
-          text: "Daily is one fixed-size puzzle a day, with a par to beat; endless keeps going, adding a colour as you climb. When you solve a puzzle you get a result you can prove: it replays every pour against the game’s core and re-derives the outcome, so nothing is taken on trust.",
+          text: "Endless keeps going, adding a colour as you climb. Daily is one fixed-size puzzle a day, the same for everyone, with a par to beat — it unlocks after five solves of any kind, so the first thing you meet is never a par-32 board. When you solve a puzzle you get a result you can prove: it replays every pour against the game’s core and re-derives the outcome, so nothing is taken on trust. Your solves, streak and best level are kept in this browser; sign in with your atmo provider (the ◎ in the header) and they are tied to you — nothing is sent anywhere until you say so.",
         },
         {
           kind: "steps",

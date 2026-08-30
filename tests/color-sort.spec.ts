@@ -12,7 +12,7 @@ async function ready(page: Page): Promise<void> {
 }
 
 test("daily board renders 12 tubes (10 colours + 2 empty)", { tag: "@smoke" }, async ({ page }) => {
-  await page.goto("/color-sort/?play=1");
+  await page.goto("/color-sort/?daily=1"); // the deep link to today's puzzle (the front door is Endless)
   await ready(page);
   await expect(page.locator(".cs-tube")).toHaveCount(12);
   const colors = await page.evaluate(() => window.__colorSort!.board().colors);
@@ -20,7 +20,8 @@ test("daily board renders 12 tubes (10 colours + 2 empty)", { tag: "@smoke" }, a
   // Moves and par are the frame's meters, the chip says Daily, and the game's own
   // bar, HUD line and settings disclosure are gone. Undo, Restart and Hint are dock verbs.
   await expect(page.locator('.gf-stat[data-meter="moves"]')).toContainText(/moves/i);
-  await expect(page.locator('.gf-stat[data-meter="par"]')).toContainText(/par/i);
+  await expect(page.locator('.gf-stat[data-meter="mark"]')).toContainText(/par/i);
+  await expect(page.locator('.gf-stat[data-meter="best"]')).toContainText(/best/i);
   await expect(page.locator(".gf-mode")).toHaveText(/daily/i);
   await expect(page.locator(".sol-controls, .cs-hud, .sol-settings, .cs-banner")).toHaveCount(0);
   for (const verb of ["undo", "restart", "hint", "new"]) {
@@ -162,10 +163,19 @@ test("Strict mode is a preference: it takes the Undo verb away and gives it back
 test("the New game card picks Daily or Endless, and the chip says which", async ({ page }) => {
   await page.goto("/color-sort/?level=1");
   await ready(page);
+  // Daily is locked until five solves (mock E1.3); a seeded record opens it here.
+  await page.evaluate(() => {
+    localStorage.setItem(
+      "fun-record-color-sort",
+      JSON.stringify({ $type: "ing.croft.fun.progress", game: "color-sort", did: null, stats: { solved: 5, strictSolved: 0, streak: 0, maxStreak: 0, lastDay: -1, bestLevel: 1, played: 5 }, inProgress: null, updatedAt: new Date().toISOString() }),
+    );
+  });
+  await page.reload();
+  await ready(page);
   await expect(page.locator(".gf-mode")).toHaveText(/level 1/i);
   await page.locator('.gf-verb[data-verb="new"]').click();
   const sheet = page.locator(".gf-sheet");
-  await expect(sheet.locator('[data-setting="mode"] .sheet-choice-opt')).toHaveText(["Daily", "Endless"]);
+  await expect(sheet.locator('[data-setting="mode"] .sheet-choice-opt')).toHaveText(["Endless", "Daily"]);
   await sheet.locator('[data-setting="mode"] input[value="daily"]').check();
   await sheet.locator(".gf-sheet-start").click();
   await ready(page);
@@ -210,7 +220,7 @@ test("leaving mid-game and returning to the bare URL resumes the same position",
 
 test("the board fits a narrow phone with no horizontal overflow", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 780 });
-  await page.goto("/color-sort/?play=1");
+  await page.goto("/color-sort/?daily=1");
   await ready(page);
   const noOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
@@ -219,7 +229,7 @@ test("the board fits a narrow phone with no horizontal overflow", async ({ page 
 });
 
 test("the in-game 'How to play' link reaches the guide", async ({ page }) => {
-  await page.goto("/color-sort/?play=1");
+  await page.goto("/color-sort/?level=1");
   await ready(page);
   await page.locator(".gf-more").click(); // the link lives in the game bar's ⋯ menu
   await page.getByRole("link", { name: /how to play/i }).click();
