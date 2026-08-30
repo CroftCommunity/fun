@@ -198,26 +198,116 @@ filter. The numbering is left alone so existing cross-references still resolve.
   move-derived-pressure contract as the bubble shooter, applied to a clock-driven
   game.
 
-### Centre the play surface — the default layout
+### Centre the play surface — the frame does it
 
-A game mounts into the shared play area as a **single centred column**: controls,
-board, and any on-screen control keys stack on one vertical axis, centred in the
-play area, not hugging the left edge. Centre by default; only deviate with a
-reason. The full layout playbook + running lessons log is `docs/RESPONSIVE-DESIGN.md`.
+A game renders into the **stage** of the game frame (§4c), which centres its content and
+owns whatever height the frame's fixed bands leave. The rules that used to live here —
+one centred column, on-screen keys on the board's centreline, the `inline-flex`
+centring trap, the 360px no-overflow check — still hold *inside* the stage: a board
+still wants a column wrapper (`display: flex; flex-direction: column; align-items:
+center`) so its d-pad or keyboard sits under it, and every board still ships a
+narrow-viewport check and ≥ 44px touch targets. The full playbook and the lessons log
+are `docs/RESPONSIVE-DESIGN.md`. What changed: controls, HUD, banners and settings are
+**no longer the game's to stack above the board** — they are declared to the frame.
 
-- **This matters most when the board has directional/on-screen keys** (a 2048-style
-  d-pad, an on-screen keyboard). Those keys only read as belonging to the board
-  when they sit on the board's centreline directly beneath it. A left-aligned board
-  over a centred key cluster looks broken. An E2E should assert the board and its
-  key cluster share a centreline (`boundingBox` centres within a few px).
-- **Watch the `inline-flex` trap.** `margin-inline: auto` does **not** centre an
-  `inline-flex`/`inline-block` element — it is inline-level, so the margins
-  collapse. Centre via the column wrapper (`display: flex; flex-direction: column;
-  align-items: center`) or `width: fit-content; margin-inline: auto` on a
-  block-level element.
-- **Mobile is part of the pass, not a follow-up.** Every board ships with a
-  narrow-viewport check (no horizontal overflow at 360 px) and comfortable touch
-  targets for any on-screen keys (`touch-action: manipulation`, ≥ 44 px hit area).
+### 4c. The game frame — declaring your controls, and how the game will be shown
+
+Every game page shares one structure, `src/game-frame.ts`. A game declares a
+`GameFrameSpec` once, calls `frame.update(spec)` whenever its model changes, and never
+touches the chrome. Plan and reasoning: `plans/2026-08-30-plan-game-frame.md`; the
+mocks it was built from: `mocks/d-game-frame.html`.
+
+```
+ PHONE (≤ 899px)                          DESKTOP (≥ 900px)            ← Phase 3
+┌──────────────────────────────┐          ┌───────────────────────────┬────────────┐
+│ ① shelf bar        56px fixed│          │ ① shelf bar               │            │
+├──────────────────────────────┤          ├───────────────────────────┤ ② name  ⋯  │
+│ ② game bar   ‹ Othello  ⋯ 48 │          │                           │ ③ meters   │
+├──────────────────────────────┤          │                           │            │
+│ ③ meter row  (seats / stats) │          │        ④ stage            │ ⑤ verbs    │
+│                        56px  │          │    board fills the height │            │
+├──────────────────────────────┤          │                           │ setup      │
+│ ④ stage — the board          │          │                           │ (read-only)│
+│   owns the remaining height  │          │                           │            │
+│   transient things overlay   │          │                           │ settings   │
+├──────────────────────────────┤          │                           │ (inline)   │
+│ ⑤ dock  ↶ Undo · ✦ Hint · ⟳ │          └───────────────────────────┴────────────┘
+│                        72px  │            the dock and the rail are ONE panel, reflowed
+└──────────────────────────────┘
+```
+
+**The rule the frame exists for: nothing above the board changes height while you
+play.** Bands ①②③⑤ are fixed-height. Text swaps inside slots that already have the
+room. Anything transient overlays the stage. The board's top edge is the same pixel
+from the first move to the last — and a browser test per game asserts it.
+
+#### What a game declares
+
+```ts
+interface GameFrameSpec {
+  title: string;        // "Othello"
+  mode?: string;        // a chip beside the title: "Medium" · "Today's deal" · "Campaign · 3 of 6"
+  pitch?: string;       // the one line under the name on the start screen (Phase 5)
+  meters: Meter[];      // band ③ — seats (versus) or stats (solo). The COUNT is fixed for the life of the frame.
+  verbs: Verb[];        // band ⑤ — at most FIVE. Six throws, naming your game and listing them.
+  setup?: SettingRow[];        // the New game card (Phase 3/5): decides the game before it starts
+  preferences?: SettingRow[];  // your section of the settings sheet (Phase 3): outlives the game
+}
+```
+
+- **A seat** (`kind: "seat"`): `name`, `glyph`, `score`, an optional `sub` ("your move",
+  "thinking…") and a `state` (`idle | active | thinking`). The sub-label is a 12px line
+  whether or not it has text — that is the reservation. **"Thinking" is a seat state,
+  not a line of text you append anywhere.** So is "goes again".
+- **A stat** (`kind: "stat"`): a `value` and a `label` — moves, score, lives, swaps left.
+- **A verb** acts on the game in progress: `id`, `label`, `icon`, `onPress`, optional
+  `primary` / `disabled`. The reserved verbs, in this order when you have them: **Undo ·
+  Hint · New game… · Settings**, plus at most one of your own (Solitaire's *Auto*, Trio
+  Tumble's *Levels*). A move that is the game itself — Cribbage's *Throw to crib*,
+  Bubble's *Fire* — is not a verb; it stays on the board.
+
+#### The test for sorting a control into its home
+
+Ask what it does. **Does it act on the game in progress?** → a verb (dock / rail).
+**Does it decide the game before it starts** — daily or free, opponent, difficulty, which
+side, which objective? → setup (the start screen and the New game sheet; read-only in the
+rail while playing). **Does it outlive the game** — hints on/off, declare assistance,
+tutor, sound, a skin, a control feel? → a preference (the settings sheet, common rows
+first, yours second). A Difficulty `<select>` beside the board is setup wearing a verb's
+clothes; changing it restarts the game, and the New game card says so.
+
+#### What goes in the stage, and what must not
+
+The stage is yours: the board, its on-board inputs (a d-pad, an aim bar, a keyboard),
+and any **absolutely positioned** transient — a toast, a first-move hint, the AI's
+banter. What must not go there: anything **in flow above the board** whose height can
+change — an instruction banner, a status line that appears and disappears, a `<details>`
+that opens in place. The instruction sentence belongs on the start screen, in How to play
+(§7), and as a one-time toast. A status line that must stay below the board keeps a
+`min-height` (Solitaire's `.sol-status` is the model; `.furrow-status` without one was the
+bug).
+
+#### How the game will be shown
+
+- **The game bar** (②) carries `‹` back to the shelf, your `title`, the `mode` chip, and
+  the `⋯` menu (How to play, open in a new tab — the chrome fills it).
+- **Unmigrated games** get the game bar and the stage only, and keep rendering their own
+  controls inside the stage until they migrate. The frame with no spec is a legal state,
+  not a broken one.
+- **The dock becomes a rail on desktop** (Phase 3) — the same spec, reflowed; a common
+  preference mirrors it to the left. **The start screen** (Phase 5) shows your
+  `splash.jpg`, `title`, `pitch` and setup card on first land, and a continue card (your
+  `icon.jpg` plus a summary line from the progress store) when a game is in progress; a
+  game opts into Continue by implementing `snapshot()` / `resume()` on its module (Phase 4).
+  Each of those sections is written into this doc in the phase that ships it.
+
+#### The test every migration ships
+
+`tests/<game>.spec.ts` records the board's `boundingBox().y` at move 1 and asserts it is
+unchanged after the game's own triggers — the engine's reply, a hint, a rejected word, a
+selection, the settings sheet opening. Run it against the pre-migration page first and
+record the movement it finds (Othello moved 24.8px on WebKit; plan Phase 0 D4). A
+stability spec that was never red proves nothing.
 
 ## 5. Identity + tokens
 

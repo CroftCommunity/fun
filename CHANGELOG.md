@@ -12,6 +12,10 @@ earlier is in `git log`.
 
 ## 2026-08
 
+- 2026-08-30 **shelf:** the game frame arrives — one structure for every game page, with
+  fixed-height bands (game bar, meters, dock) around the board so nothing above it can
+  move while you play. This landing wires the placeholder page only; the games follow one
+  at a time. (`plans/2026-08-30-plan-game-frame.md` Phase 1)
 - 2026-08-30 **shelf:** three more pieces in the library — *Porcelain Afternoon*, *The
   Last Cab Home*, *Tuesday Night Rainfall* (each about three minutes, so they play out
   rather than loop). No game names them by default yet; they are in the track list.
