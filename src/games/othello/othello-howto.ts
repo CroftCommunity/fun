@@ -19,13 +19,13 @@ export const OTHELLO_GUIDE: Guide = {
         },
         {
           kind: "prose",
-          text: 'You can choose which disc you play — ● Black (which opens) or ○ White — with the "You play" picker, and set how strong The Engine is with the Difficulty picker (Easy, Medium, Hard, or Expert). Both choices are remembered for next time.',
+          text: 'You choose which disc you play — ● Black (which opens) or ○ White — and how strong The Engine is (Easy, Medium, Hard, or Expert) on the start screen, or from the New game button under the board. Both choices are remembered for next time, and the level shows beside the game\u2019s name.',
         },
         {
           kind: "shot",
           name: "othello-board",
-          alt: "An Othello game: a turn bar showing both players' disc counts, a difficulty picker and disc chooser, and an 8×8 green board with black and white discs in the centre and a few gold dots marking the legal moves.",
-          caption: "The turn bar, the difficulty and disc pickers, and the board with gold dots marking your legal moves.",
+          alt: "An Othello game inside the game frame: two seats above the board showing You and The Engine with their disc counts and whose move it is, an 8×8 green board with black and white discs in the centre and a few gold dots marking the legal moves, and New game and Settings buttons under it.",
+          caption: "The two seats (yours is ringed when it is your move; The Engine's pulses while it thinks), the board with gold dots marking your legal moves, and the verbs under it.",
         },
       ],
     },
@@ -70,7 +70,7 @@ export const OTHELLO_GUIDE: Guide = {
       blocks: [
         {
           kind: "prose",
-          text: 'A built-in tutor (Settings → Show tutor) coaches you using the engine\'s own read of the position, so its facts are never wrong — and it needs no download. Tap "Explain my options" for the reasonable moves, each with a one-line idea (takes a corner, your strongest line, or stays safe).',
+          text: 'A built-in tutor (Settings → Tutor) coaches you using the engine\'s own read of the position, so its facts are never wrong — and it needs no download. Tap "Explain my options" for the reasonable moves, each with a one-line idea (takes a corner, your strongest line, or stays safe).',
         },
         {
           kind: "prose",

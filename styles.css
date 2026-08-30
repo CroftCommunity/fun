@@ -406,6 +406,12 @@ body:has(> .play-area > .gf) {
      flowing under the dock, where its controls could not be tapped (furrow) */
   overflow-y: auto;
 }
+.gf-mount {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
 .gf-toast {
   position: absolute;
   left: 50%;
@@ -761,7 +767,8 @@ body:has(> .play-area > .gf) {
   .gf[data-gf-shape="rail"] > .gf-stage {
     grid-area: stage;
     padding: 1.25rem;
-    justify-content: center;
+    /* no vertical centring: it would move the board by half of any change BELOW
+       it (the sampler caught 1.2px from a status line's height) — rule 1 */
   }
   .gf[data-gf-shape="rail"] > .gf-dock {
     grid-area: dock;
@@ -2856,33 +2863,6 @@ body:has(> .play-area > .gf) {
   align-items: center;
   gap: 0.5rem;
 }
-.othello-turnbar {
-  display: flex;
-  gap: 0.9rem;
-  align-items: baseline;
-  font-weight: 600;
-}
-.othello-turn {
-  color: var(--ink-soft, var(--ink));
-  font-weight: 500;
-}
-.othello-controls {
-  flex-wrap: wrap;
-  justify-content: center;
-}
-.othello-field {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.9rem;
-}
-.othello-banner {
-  max-width: 26rem;
-  margin: 0;
-  text-align: center;
-  font-size: 0.9rem;
-  color: var(--ink-soft, var(--ink));
-}
 .othello-board {
   --oth-cell: clamp(1.7rem, 9.5vw, 2.6rem);
   display: grid;
@@ -2987,23 +2967,6 @@ body:has(> .play-area > .gf) {
   margin: 0;
   font-weight: 600;
   color: var(--active);
-}
-.othello-ai-say {
-  margin: 0;
-  text-align: center;
-  font-style: italic;
-  color: var(--ink-soft, var(--ink));
-}
-.othello-toggle {
-  display: block;
-  font-size: 0.9rem;
-  margin: 0.2rem 0;
-}
-.othello-ai-disclosure {
-  margin: 0.2rem 0 0;
-  font-size: 0.8rem;
-  color: var(--ink-soft, var(--ink));
-  max-width: 26rem;
 }
 /* ---------- Checkers ---------- */
 .checkers-game {

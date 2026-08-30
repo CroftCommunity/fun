@@ -312,3 +312,26 @@ describe("renderGameFrame — the mirror preference", () => {
     expect(renderGameFrame(host, spec()).root.dataset.gfSide).toBe("right");
   });
 });
+
+describe("renderGameFrame — toasts and verb buttons", () => {
+  it("a toast sits in the stage, replaces the previous one, and is gone after its time", () => {
+    vi.useFakeTimers();
+    const frame = renderGameFrame(host, spec());
+    frame.toast("Tap a glowing square");
+    frame.toast("Rowan: nice try", 1000);
+    expect(frame.root.querySelectorAll(".gf-toast")).toHaveLength(1);
+    expect(frame.stage.querySelector(".gf-toast")?.textContent).toBe("Rowan: nice try");
+    expect(frame.stage.querySelector(".gf-toast")?.getAttribute("role")).toBe("status");
+    vi.advanceTimersByTime(1001);
+    expect(frame.root.querySelector(".gf-toast")).toBeNull();
+    vi.useRealTimers();
+  });
+
+  it("a verb's onPress receives its own button, so a game can hand it to openSheet", () => {
+    const seen: HTMLButtonElement[] = [];
+    const frame = renderGameFrame(host, spec({ verbs: [{ id: "new", label: "New", icon: "⟳", onPress: (b) => seen.push(b) }] }));
+    const btn = frame.root.querySelector<HTMLButtonElement>('.gf-verb[data-verb="new"]')!;
+    btn.click();
+    expect(seen).toEqual([btn]);
+  });
+});

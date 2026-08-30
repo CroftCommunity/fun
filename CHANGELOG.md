@@ -5,13 +5,21 @@ landing *is* releasing: sections are months, each entry dated by its landing. Pe
 `CroftC/.claude/CHANGELOGS.md`, the branch that changes something a player runs adds its
 entry here before it lands. Contexts are the shelf's chrome and the individual games.
 
-Contexts: shelf · cribbage · furrow · dots · drop4 · blockdoku · orchard · sinker · solitaire
+Contexts: shelf · othello · cribbage · furrow · dots · drop4 · blockdoku · orchard · sinker · solitaire
 
 Started 2026-08-29; the August entries below are the landings of that month, and everything
 earlier is in `git log`.
 
 ## 2026-08
 
+- 2026-08-30 **othello:** the first game inside the frame. Two seats above the board say
+  who is who, the score, and whose move it is — The Engine's seat pulses while it thinks
+  instead of a line of text appearing; Difficulty and which disc you play moved to the
+  start screen and the New game sheet; the tutor and the local-AI opponent are in
+  Settings; the opening hint is a passing toast. Leave a game and come back to the bare
+  URL and the continue card says "Move 14 · you lead 9–4" — Continue replays it. And the
+  board no longer moves while you play: it did, by 24.8px, on every engine turn on a
+  phone. (`plans/2026-08-30-plan-game-frame.md` Phase 6)
 - 2026-08-30 **shelf:** the game frame arrives — one structure for every game page, with
   fixed-height bands (game bar, meters, dock) around the board so nothing above it can
   move while you play. Every game page now renders inside it: the shelf header is one row

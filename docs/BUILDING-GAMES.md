@@ -347,6 +347,37 @@ in and a rejected one is cleared with its reason at `debug` — a store written 
 version is untrusted data. The placeholder (`src/games/placeholder.ts`) is the smallest
 possible client: its counter is its record.
 
+#### A worked example — the versus archetype (Othello, `src/games/othello/othello.ts`)
+
+```ts
+const spec = (): GameFrameSpec => ({
+  title: "Othello",
+  mode: LEVEL_LABELS[level],                                    // the chip beside the name
+  meters: [
+    { kind: "seat", id: "you",    name: "You", glyph: "●", score: you,
+      state: humanTurn ? "active" : "idle", sub: humanTurn ? "your move" : undefined },
+    { kind: "seat", id: "engine", name: "The Engine 🤖", glyph: "○", score: them,
+      state: engineThinking ? "thinking" : "idle", sub: engineThinking ? "thinking…" : undefined },
+  ],
+  verbs: [{ id: "new", label: "New game", icon: "⟳", onPress: (btn) => frame?.openSheet("setup", btn) }],
+  setup: othelloSetupRows({ level: (l) => (level = l), disc: (d) => (disc = d) }),   // one builder, shared with the poster
+  preferences: [tutorToggle, ...(localAiAvailable ? [localAiToggle] : [])],
+  onStart: () => void startGame(),
+});
+// in render(): container.replaceChildren(board, tutor?, statusLine); frame?.update(spec());
+// banter and the opening hint: frame?.toast(text) — never a <p> above the board
+// the store: snapshot() → { setup: { mode, seed, level, disc }, record: { seed, moves }, summary: { line } }; resume() replays
+```
+
+What moved where: the turn bar → seats; "X is thinking…" → the engine's seat state; the
+Difficulty / You play selects → `setup` (start screen + New game sheet, read-only in the
+rail); Show tutor and the local-AI toggle → `preferences`; the two-sentence banner →
+`pitch` on the registry entry plus a one-time toast; the AI's banter `<p>` → a toast.
+The status line stays **below** the board for the forced-pass sentence, in its
+reserved-height slot. Two things the sampler caught on the way: the fanfare line at the
+end of a game rendered *above* the final board (it sits below now), and the rail's stage
+was vertically centring, so a status line growing below the board moved it by half.
+
 #### The test every migration ships
 
 `tests/<game>.spec.ts` records the board's `boundingBox().y` at move 1 and asserts it is
@@ -693,7 +724,7 @@ What is the same, and what is new:
   horizon-visible loss) — the full-solve speed wall means those are the honest
   bounds. See `docs/AI-PLAYERS.md` → "How Drop 4 ships it".
 - **Give the opponent an identity.** A computer opponent should be legible as a
-  *who*, not a silent force: a turn bar naming both sides (Drop 4: "The Engine
+  *who*, not a silent force: a turn bar naming both sides (Drop 4: "The Engine — since the game frame, the seats in band ③ with "thinking" as a seat state (§4c)
   🤖") and showing whose turn it is, the opponent's move made **visible** (a ring
   on its last drop + a brief "thinking" beat), and — on a decisive end — the
   winning move shown with a beat of fanfare before the result screen (which
@@ -834,6 +865,12 @@ Pin it with a `coachFor`-style unit test.
 - [ ] Gate green (`npm run gate` — Rust + typecheck + lint + unit + build + e2e)
   and deployed. CI runs the same three parts as parallel jobs and **`deploy` needs
   all three**, so a failing wiring test or axe violation blocks publication.
+
+- [ ] **The game frame (§4c):** a `GameFrameSpec` declared with `frame.update()` — meters,
+      at most four verbs, `setup`, `preferences`; `pitch` (and a `setup` factory) on the
+      registry entry; nothing in flow above the board; transients via `frame.toast()`;
+      `snapshot()` / `resume()` for Continue; a browser stability spec
+      (`tests/helpers/board-top.ts`) run red against the pre-migration page first.
 
 ## New-game checklist (adversarial + AI opponent — §10, on top of Tier-1)
 
@@ -1029,6 +1066,10 @@ first-party standard** everywhere except the one property the engine denies it.
 | Tap-first (§4) | **required** |
 | Standard settings (§6) | **required** |
 | Accessibility | **whole surface** |
+
+- [ ] **Seats, not a turn bar (§4c):** both sides as `kind: "seat"` meters; "thinking",
+      "passing", "goes again" as seat states / sub-labels; the AI's banter as a toast;
+      difficulty, side and opponent as `setup`; tutor and local-AI as `preferences`.
 
 ## New-game checklist (Tier-3 engine-backed original — see §11)
 

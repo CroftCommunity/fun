@@ -358,7 +358,7 @@ export function boot(root: HTMLElement = document.body): Chrome {
     };
     const mountGame = (resume?: Progress): void => {
       mounted = game.load!();
-      mounted.mount(theFrame.stage, { mode, frame: theFrame });
+      mounted.mount(theFrame.mount, { mode, frame: theFrame });
       if (resume) mounted.resume?.(resume);
       save();
     };

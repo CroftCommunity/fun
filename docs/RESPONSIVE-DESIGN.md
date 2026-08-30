@@ -149,6 +149,12 @@ vitest. Assert them with Playwright `boundingBox()` across **both** projects
   one exception).
 - **Rule:** Principle 1b. The frame owns the bands and their heights; a game declares
   meters and verbs and renders only into the stage.
+- **Measured on the first migration (Othello, 2026-08-30):** the sampler
+  (`tests/helpers/board-top.ts`) read 24.8px per engine turn on WebKit before, 0 after —
+  and caught two more on the way: the rail's stage was vertically centring (a status line
+  growing *below* the board moved it 1.2px), and the end-of-game fanfare rendered above
+  the final board (50–81px). Both fixed at the cause; both are now cases in
+  `tests/othello.spec.ts`.
 
 Append dated entries as we learn. Keep each to the symptom, the cause, and the
 rule it produced.
