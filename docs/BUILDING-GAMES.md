@@ -312,11 +312,18 @@ bug).
   sheet and calls your `onStart()`. Open it from your own *New game…* verb with
   `frame.openSheet("setup", button)` — pass the button so focus returns to it.
   A second `openSheet` replaces the first; there is never more than one sheet.
-  **The start screen** (Phase 5) shows your
-  `splash.jpg`, `title`, `pitch` and setup card on first land, and a continue card (your
-  `icon.jpg` plus a summary line from the progress store) when a game is in progress; a
-  game opts into Continue by implementing `snapshot()` / `resume()` on its module (Phase 4).
-  Each of those sections is written into this doc in the phase that ships it.
+  **The start screen** shows your
+  `splash.jpg`, `title`, `pitch` and setup card on a **bare** `/<id>/` land, and a
+  **continue card** (your `icon.jpg`, "In progress · 2 hours ago", the store's summary
+  line, Continue / New game…) when the store holds a game — in its "play again" form (no
+  Continue, New game primary) when that game is finished. **Any URL with a query — `?r=`,
+  `?seed=`, `?play=1` — is a deep link and mounts the board directly**, so every test,
+  guide shot and share link keeps landing on a board (plan Q7). Put your `pitch` (and, if
+  your New game card has rows, a `setup` factory) on the **registry entry**, because the
+  poster renders before your module exists. Play mounts you and writes the store from
+  your `snapshot()`; Continue mounts you and calls `resume(progress)`; New game on the card
+  clears the store and shows the poster. The frame logs which it showed:
+  `[frame] start=poster|continue|direct id=… progress=…`.
 
 #### Continue — the progress store
 

@@ -1105,6 +1105,34 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
 
 ## Review Log
 
+### Phase 5a — executed 2026-08-30
+- RED first: 7 jsdom cases in `tests/chrome.test.ts` (poster on a bare URL, Play mounts +
+  writes, the continue card + Continue resumes, New game clears, the finished form, every
+  query form is a deep link, the frame writes the store after a move) and the browser
+  cases. `GameEntry` gained `pitch` and a `setup` factory — the poster renders before the
+  module exists, so they cannot live on the module. The placeholder got real art
+  (generated: a die on the felt gradient, 669×1200 and 512²) and `icon: true`, so
+  `tests/art.test.ts` holds in both directions.
+- Q7 applied: bare `/<id>/` → start screen; any query → direct mount, logged
+  `[frame] start=direct`. The 299 existing `goto`s: 13 bare visits that expected a board
+  (`drawer`, `color-sort`, `looseends` ×6, `trio-tumble` ×2, the frame's own) became
+  `?play=1`; `home.spec.ts` L56 passes unchanged (the land is recorded at the poster).
+- What the full suite caught (36 red on the first run, all fixed at the cause):
+  (1) **the stage moved 56px at Play** — the meter band is declared at mount, so under
+  the poster there was none; the start screen now covers the whole frame, not the stage,
+  and the test asserts stability from first paint on; (2) `align-items: center` on the
+  stage let an unmigrated game's wrapper grow past 360px (drop4 363, trio-tumble 365 —
+  measured) → `stretch`, the games centre themselves as they did in `.play-area`;
+  (3) an unmigrated game taller than the stage flowed **under the dock**, where furrow's
+  settings checkboxes could not be tapped on WebKit → the stage scrolls (`overflow-y:
+  auto`); (4) three centring specs measured against `#play-area`, which now includes the
+  rail on a desktop viewport — they measure `.gf-stage`; (5) two "How to play" link tests
+  open the ⋯ menu first; (6) the matrix's placeholder loop saw the continue card on the
+  second skin (the `?play=1` visit had written the store) — it now scans `.gf-start`,
+  which is either card, both surfaces.
+- Green: `npm run e2e` **639/639** (both engines, 1.3m), unit 223+, typecheck, lint, hex
+  scan. **Owed:** the Samsung check (Phases 2a and 5a) — no device session; see Phase 6.
+
 ### Phase 4 — executed 2026-08-30
 - RED first (module absent), then green: `resolveProgress` returns a tagged result whose
   `reason` is the tested value (`version 2`, `status: paused`, `not JSON`, `nothing

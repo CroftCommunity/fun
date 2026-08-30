@@ -21,7 +21,10 @@ earlier is in `git log`.
   setting inline; on a phone, Settings opens a bottom sheet with the shared rows (Hints,
   Declare assistance, Sound, and a new *Controls on the left* that moves the rail to the
   left of the board and reverses the dock's buttons) first and the game's own second. The
-  games' own controls migrate one at a time. Also: a game page's tab now reads the game's name ("Trio Tumble: Jewel Drop")
+  games' own controls migrate one at a time. And every game now opens on a **start
+  screen** — the game's splash, its name, one line, Play — or, if you left a game
+  unfinished, a continue card with where you were; a shared `?r=` link and any other
+  deep link still open straight onto the board. Also: a game page's tab now reads the game's name ("Trio Tumble: Jewel Drop")
   rather than its slug. (`plans/2026-08-30-plan-game-frame.md` Phases 1–2)
 - 2026-08-30 **shelf:** three more pieces in the library — *Porcelain Afternoon*, *The
   Last Cab Home*, *Tuesday Night Rainfall* (each about three minutes, so they play out

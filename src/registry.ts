@@ -27,6 +27,8 @@ export const REGISTRY: readonly GameEntry[] = [
     title: "Placeholder",
     emoji: "🎲",
     status: "playable",
+    icon: true,
+    pitch: "Nothing to play; everything to prove.",
     load: placeholderModule,
   },
   { id: "solitaire", title: "Solitaire", emoji: "♠", status: "playable", icon: true, load: solitaireModule },

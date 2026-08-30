@@ -397,8 +397,14 @@ body:has(> .play-area > .gf) {
   position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  /* stretch, not center: a game's column wrapper centres ITSELF (max-width +
+     auto margins) as it did in .play-area; centring here let a wrapper grow past
+     the stage and overflow 360px (drop4, trio-tumble — measured). */
+  align-items: stretch;
   padding: 0.5rem 0.75rem;
+  /* an unmigrated game taller than the stage scrolls inside it rather than
+     flowing under the dock, where its controls could not be tapped (furrow) */
+  overflow-y: auto;
 }
 .gf-toast {
   position: absolute;
@@ -547,6 +553,167 @@ body:has(> .play-area > .gf) {
 .gf-readonly-value {
   color: var(--ink-muted);
   text-align: right;
+}
+
+/* --- the start screen: over the stage, in the frame that is already painted --- */
+.gf-start {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+}
+.gf-poster .gf-start-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+.gf-poster .gf-start-veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 25%, var(--bg) 68%);
+}
+.gf-poster .gf-start-body {
+  position: relative;
+  margin-top: auto;
+  padding: 0 1.25rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.gf-start-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  line-height: 1;
+}
+.gf-start-pitch {
+  margin: 0;
+  color: var(--ink-muted);
+}
+.gf-start-setup {
+  padding: 0.25rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+.gf-play,
+.gf-continue-btn,
+.gf-newgame {
+  font: inherit;
+  font-weight: 600;
+  height: 46px;
+  padding: 0 1.2rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+}
+.gf-play,
+.gf-continue-btn.primary,
+.gf-newgame.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.gf-play:focus-visible,
+.gf-continue-btn:focus-visible,
+.gf-newgame:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.gf-continue {
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.gf-continue-card {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  width: 100%;
+  max-width: 24rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+}
+.gf-continue-icon {
+  width: 96px;
+  height: 96px;
+  border-radius: 18px;
+  object-fit: cover;
+  flex: 0 0 auto;
+}
+.gf-continue-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.gf-continue .gf-start-title {
+  font-size: 1.5rem;
+}
+.gf-start-eyebrow {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.gf-start-line {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+}
+.gf-start-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+.gf-start-actions .gf-continue-btn,
+.gf-start-actions .gf-newgame {
+  height: 40px;
+  padding: 0 0.9rem;
+}
+@media (min-width: 900px) {
+  .gf-poster {
+    flex-direction: row;
+  }
+  .gf-poster .gf-start-art {
+    position: relative;
+    inset: auto;
+    width: 50%;
+    height: 100%;
+  }
+  .gf-poster .gf-start-veil {
+    left: 40%;
+    right: 50%;
+    background: linear-gradient(90deg, transparent, var(--bg));
+  }
+  .gf-poster .gf-start-body {
+    margin: auto 0;
+    width: 50%;
+    padding: 2rem 2.25rem;
+  }
+  .gf-start-title {
+    font-size: 2.6rem;
+  }
+  .gf-continue-card {
+    max-width: 32rem;
+    padding: 1.4rem;
+    gap: 1.4rem;
+  }
+  .gf-continue-icon {
+    width: 128px;
+    height: 128px;
+  }
 }
 
 /* --- "Controls on the left" (plan D4): one attribute, both shapes ----------- */

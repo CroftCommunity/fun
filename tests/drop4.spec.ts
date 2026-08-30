@@ -258,7 +258,7 @@ test("the board is centered in the play area", async ({ page }) => {
   await page.goto("/drop4/?seed=7");
   await ready(page);
   const board = await page.locator(".drop4-board").boundingBox();
-  const area = await page.locator("#play-area").boundingBox();
+  const area = await page.locator(".gf-stage").boundingBox();
   expect(board).not.toBeNull();
   expect(area).not.toBeNull();
   const boardCenter = board!.x + board!.width / 2;

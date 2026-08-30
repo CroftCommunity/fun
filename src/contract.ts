@@ -4,6 +4,7 @@
 
 import type { GameFrame } from "./game-frame.js";
 import type { Progress } from "./progress.js";
+import type { SettingRow } from "./settings-sheet.js";
 
 /** How the game is currently presented. */
 export type PresentationMode = "drawer" | "fullscreen" | "standalone";
@@ -72,6 +73,17 @@ export interface GameEntry {
   readonly icon?: true;
   /** Construct a fresh module instance. Absent for `soon` games. */
   readonly load?: () => GameModule;
+  /**
+   * The one line under the name on the start screen (`docs/BUILDING-GAMES.md` §4c).
+   * On the ENTRY, not the module, because the poster shows before the game mounts.
+   */
+  readonly pitch?: string;
+  /**
+   * The setup card the poster shows before the game mounts — the same rows the
+   * module's `GameFrameSpec.setup` declares, built from the persisted settings so
+   * the poster and the New game sheet cannot disagree. A factory, read at render.
+   */
+  readonly setup?: () => readonly SettingRow[];
 }
 
 /**

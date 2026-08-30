@@ -11,7 +11,7 @@ async function ready(page: Page): Promise<void> {
 }
 
 test("daily board renders 12 tubes (10 colours + 2 empty)", { tag: "@smoke" }, async ({ page }) => {
-  await page.goto("/color-sort/");
+  await page.goto("/color-sort/?play=1");
   await ready(page);
   await expect(page.locator(".cs-tube")).toHaveCount(12);
   const colors = await page.evaluate(() => window.__colorSort!.board().colors);
@@ -137,7 +137,7 @@ test("toggling skin mid-game leaves the engine state bit-identical (§10.7)", as
 
 test("the board fits a narrow phone with no horizontal overflow", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 780 });
-  await page.goto("/color-sort/");
+  await page.goto("/color-sort/?play=1");
   await ready(page);
   const noOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
@@ -146,8 +146,9 @@ test("the board fits a narrow phone with no horizontal overflow", async ({ page 
 });
 
 test("the in-game 'How to play' link reaches the guide", async ({ page }) => {
-  await page.goto("/color-sort/");
+  await page.goto("/color-sort/?play=1");
   await ready(page);
+  await page.locator(".gf-more").click(); // the link lives in the game bar's ⋯ menu
   await page.getByRole("link", { name: /how to play/i }).click();
   await expect(page).toHaveURL(/\/how-to\/\?game=color-sort/);
   await expect(page.locator("h1")).toContainText(/how to play color sort/i);

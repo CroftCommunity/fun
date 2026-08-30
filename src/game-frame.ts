@@ -11,6 +11,7 @@
 //! Plan: `plans/2026-08-30-plan-game-frame.md`. Mocks: `mocks/d-game-frame.html`.
 
 import { renderSettingsSheet, type SettingRow } from "./settings-sheet.js";
+import type { Progress } from "./progress.js";
 
 /** A seat in a versus game: who, their glyph, their score, and what they are doing. */
 export interface SeatMeter {
@@ -80,6 +81,23 @@ export interface GameFrameOptions {
   readonly common?: () => readonly SettingRow[];
   /** Which side the controls sit on: the rail's column, the dock's verb order. Default right. */
   readonly side?: "left" | "right";
+  /** Called after every `update()` — the chrome snapshots the game into the store here. */
+  onUpdate?(): void;
+}
+
+/** What the start screen needs. */
+export interface StartOptions {
+  readonly id: string;
+  readonly title: string;
+  readonly pitch?: string;
+  /** The poster's setup card (the entry's `setup` factory), if the game has one. */
+  readonly setup?: readonly SettingRow[];
+  /** A record in the store, if any — decides poster vs continue card. */
+  readonly progress: Progress | null;
+  onPlay(): void;
+  onResume(progress: Progress): void;
+  /** New game from the continue card: the chrome clears the store and shows the poster. */
+  onNewGame(): void;
 }
 
 /** Which sheet to open. */
@@ -97,6 +115,13 @@ export interface GameFrame {
   closeSheet(): void;
   /** Flip the controls' side live — the mirror preference's onChange calls this. */
   setSide(side: "left" | "right"): void;
+  /**
+   * The start screen, over the stage: the poster (no record) or the continue card
+   * (a record). Removed by Play / Continue; New game swaps the card for the poster.
+   */
+  renderStart(opts: StartOptions): void;
+  /** Remove the start screen if it is showing. */
+  clearStart(): void;
   destroy(): void;
 }
 
@@ -135,6 +160,19 @@ function describeRow(row: SettingRow): string {
   if (row.kind === "toggle") return row.value ? "On" : "Off";
   if (row.kind === "range") return row.format ? row.format(row.value) : String(row.value);
   return row.options.find((o) => o.value === row.value)?.label ?? row.value;
+}
+
+/** "2 hours ago" for the continue card's eyebrow; coarse on purpose. */
+function ago(iso: string, now: Date): string {
+  const ms = now.getTime() - new Date(iso).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return "just now";
+  const m = Math.round(ms / 60000);
+  if (m < 2) return "just now";
+  if (m < 60) return `${m} minutes ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h} hour${h === 1 ? "" : "s"} ago`;
+  const d = Math.round(h / 24);
+  return `${d} day${d === 1 ? "" : "s"} ago`;
 }
 
 /** A focusable element inside `root`, in document order. */
@@ -381,6 +419,80 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
     extra = next;
   };
 
+  // --- the start screen ---------------------------------------------------------
+  let start: HTMLElement | null = null;
+  const clearStart = (): void => {
+    start?.remove();
+    start = null;
+  };
+  const renderStart = (o: StartOptions): void => {
+    clearStart();
+    const p = o.progress;
+    const kind = p ? "continue" : "poster";
+    console.debug(`[frame] start=${kind} id=${o.id} progress=${p?.status ?? "none"}`);
+    if (!p) {
+      const play = el("button", { class: "gf-play", type: "button" }, "▸ Play");
+      play.addEventListener("click", () => {
+        clearStart();
+        o.onPlay();
+      });
+      const body = el(
+        "div",
+        { class: "gf-start-body" },
+        el("h2", { class: "gf-start-title" }, o.title),
+      );
+      if (o.pitch) body.append(el("p", { class: "gf-start-pitch" }, o.pitch));
+      if (o.setup && o.setup.length > 0) {
+        body.append(el("div", { class: "gf-start-setup" }, renderSettingsSheet({ rows: [...o.setup] })));
+      }
+      body.append(play);
+      start = el(
+        "section",
+        { class: "gf-start gf-poster", "aria-label": `Start ${o.title}` },
+        el("img", { class: "gf-start-art", src: `/${o.id}/assets/splash.jpg`, alt: "" }),
+        el("div", { class: "gf-start-veil", "aria-hidden": "true" }),
+        body,
+      );
+    } else {
+      const finished = p.status === "finished";
+      const eyebrow = `${finished ? "Finished" : "In progress"} · ${ago(p.updatedAt, new Date())}`;
+      const newGame = el("button", { class: finished ? "gf-newgame primary" : "gf-newgame", type: "button" }, "New game…");
+      newGame.addEventListener("click", () => o.onNewGame());
+      const actions = el("div", { class: "gf-start-actions" });
+      if (!finished) {
+        const cont = el("button", { class: "gf-continue-btn primary", type: "button" }, "▸ Continue");
+        cont.addEventListener("click", () => {
+          clearStart();
+          o.onResume(p);
+        });
+        actions.append(cont);
+      }
+      actions.append(newGame);
+      start = el(
+        "section",
+        { class: "gf-start gf-continue", "aria-label": `Continue ${o.title}` },
+        el(
+          "div",
+          { class: "gf-continue-card" },
+          el("img", { class: "gf-continue-icon", src: `/${o.id}/assets/icon.jpg`, alt: "" }),
+          el(
+            "div",
+            { class: "gf-continue-text" },
+            el("span", { class: "gf-start-eyebrow" }, eyebrow),
+            el("h2", { class: "gf-start-title" }, o.title),
+            el("p", { class: "gf-start-line" }, p.summary.line),
+            actions,
+          ),
+        ),
+      );
+    }
+    // Over the WHOLE frame, not the stage: the bands under it are not declared
+    // until the game mounts (a meter row appears at Play), and the poster hides
+    // that layout entirely. Once the board is visible, nothing moves.
+    root.append(start);
+    firstFocusable(start)?.focus();
+  };
+
   let dock: HTMLElement | null = null;
   const settingsButton = (): HTMLButtonElement => {
     const btn: HTMLButtonElement = renderVerb({
@@ -431,10 +543,13 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
       current = next;
       renderDock(next.verbs);
       renderExtra(next);
+      opts.onUpdate?.();
     },
     openSheet,
     closeSheet,
     setSide,
+    renderStart,
+    clearStart,
     destroy(): void {
       if (destroyed) return;
       destroyed = true;
