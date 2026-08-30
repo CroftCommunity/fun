@@ -3008,10 +3008,11 @@ body:has(> .play-area > .gf) {
 /* A column that gives the board whatever height the pad and the readouts leave:
    at 390×844 the stage is 604px and this column measured 687px (a 430px board +
    the 166px pad), so a tap on the pad scrolled the stage 46px. The board's height
-   is EXPLICIT (100% of its flexed row, capped at the canvas's own 616px) rather
-   than a clamp on an auto height — WebKit kept the width under a max-height clamp
-   and squashed the canvas (measured: 196 wide at 331 tall). Below the 14rem floor
-   the stage scrolls instead; the pad is the tap target, the cells are not. */
+   is set in PIXELS by the module (`fitBoard`, a ResizeObserver on this column):
+   a max-height clamp on an auto height kept the aspect on Chromium and squashed
+   the canvas on WebKit (196 wide at 331 tall), and `height: 100%` of the flexed
+   row never settled on CI's Linux WebKit. Below the 14rem floor the stage scrolls
+   instead; the pad is the tap target, the cells are not. */
 .al-game {
   display: flex;
   flex-direction: column;
@@ -3029,9 +3030,7 @@ body:has(> .play-area > .gf) {
   justify-content: center;
   gap: 0.7rem;
   max-width: 100%;
-  flex: 1 1 auto;
-  min-height: 14rem;
-  max-height: 616px; /* ROWS_SHOWN × CELL: the canvas's own size; never upscale it */
+  flex: 0 0 auto;
 }
 .al-board {
   display: block;
@@ -3040,7 +3039,7 @@ body:has(> .play-area > .gf) {
   touch-action: manipulation;
   max-width: 100%;
   width: auto;
-  height: 100%;
+  height: auto; /* the module sets a pixel height; width follows the canvas's aspect */
   flex: 0 0 auto;
   min-width: 0;
 }
@@ -3476,40 +3475,6 @@ body:has(> .play-area > .gf) {
   color: var(--ink-muted);
 }
 
-/* --- home --- */
-.le-home {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 2rem 1rem;
-  text-align: center;
-}
-.le-logo {
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: clamp(2.2rem, 8vw, 3.4rem);
-  color: var(--ink);
-  letter-spacing: -0.01em;
-}
-.le-tagline {
-  max-width: 28rem;
-  color: var(--ink-muted);
-  margin: 0 0 1rem;
-}
-.le-home-actions {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.6rem;
-  width: min(20rem, 90vw);
-}
-.le-note {
-  margin: -0.1rem 0 0.4rem;
-  color: var(--ink-muted);
-  font-size: 0.9rem;
-}
-
 /* --- pill buttons --- */
 .le-btn {
   font: inherit;
@@ -3712,13 +3677,20 @@ a.le-btn {
 }
 
 /* --- the game stage: canvas fills it, HUD floats on top --- */
+/* The board fills the frame's stage: the column grows to it and the stage inside
+   takes the height that leaves (it was a fixed 72vh against a padded play area). */
 .le-game {
-  margin: -1.5rem; /* fill the play-area padding */
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: -0.5rem -0.75rem; /* fill the stage padding */
 }
 .le-stage {
   position: relative;
   width: 100%;
-  height: 72vh;
+  flex: 1;
+  min-height: 16rem;
   overflow: hidden;
   background: var(--le-bg);
   touch-action: none;

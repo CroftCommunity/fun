@@ -661,9 +661,43 @@ export function alignModule(): GameModule {
     return wrap;
   };
 
+  // The board's height is set in pixels from the room the pad and the readouts
+  // leave, floored at 14rem (the stage scrolls below that) and capped at the
+  // canvas's own 616px so it never upscales. Pixels, not a percentage: a
+  // `height: 100%` inside the flexed row read differently per engine (CI's Linux
+  // WebKit never settled it — the pad moved every frame and no tap was "stable").
+  // Width follows the canvas's own aspect, which every engine does for an
+  // explicit height. Re-fit on any resize of the column.
+  let fitObserver: ResizeObserver | null = null;
+  const fitBoard = (): void => {
+    const gameEl = container?.querySelector<HTMLElement>(".al-game");
+    const stageEl = gameEl?.querySelector<HTMLElement>(".al-stage");
+    if (!gameEl || !stageEl || !canvas) return;
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const gap = parseFloat(getComputedStyle(gameEl).rowGap) || 0;
+    const kids = [...gameEl.children] as HTMLElement[];
+    const others = kids.filter((k) => k !== stageEl).reduce((sum, k) => sum + k.offsetHeight, 0) + gap * (kids.length - 1);
+    const available = gameEl.clientHeight - others;
+    const h = Math.min(ROWS_SHOWN * CELL, Math.max(14 * rem, available));
+    canvas.style.height = `${Math.round(h)}px`;
+  };
+  const watchFit = (): void => {
+    fitObserver?.disconnect();
+    fitObserver = null;
+    const gameEl = container?.querySelector<HTMLElement>(".al-game");
+    if (!gameEl || typeof ResizeObserver === "undefined") {
+      fitBoard();
+      return;
+    }
+    fitObserver = new ResizeObserver(() => fitBoard());
+    fitObserver.observe(gameEl);
+    fitBoard();
+  };
+
   const rebuild = (): void => {
     if (!container || !game) return;
     container.replaceChildren(buildStage());
+    watchFit();
     canvas?.focus();
     shown = "";
     render(game.board());
@@ -801,6 +835,8 @@ export function alignModule(): GameModule {
     unmount(): void {
       disposed = true;
       running = false;
+      fitObserver?.disconnect();
+      fitObserver = null;
       cancelAnimationFrame(raf);
       document.removeEventListener("keydown", onKeydown);
       document.removeEventListener("keyup", onKeyup);
