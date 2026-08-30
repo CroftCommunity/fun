@@ -17,9 +17,13 @@
 #![warn(missing_docs)]
 
 pub mod board;
+pub mod game;
+pub mod hash;
 pub mod movegen;
 
 pub use board::{Board, Color, FenError, PieceKind, START_FEN};
+pub use game::{result, san_of, Chess, Position};
+pub use hash::{position_key, Key};
 pub use movegen::{
     apply_move, attacked, divide, king_square, legal_moves, perft, Move, MAX_MOVE_CODE,
 };

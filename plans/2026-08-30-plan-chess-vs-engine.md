@@ -5,7 +5,7 @@ analysis) 2026-08-30; Pass 3 (quality gates) 2026-08-30. Every open question is
 owner-confirmed and none is BLOCKING-unresolved; the two PHASE-GATED items gate Phases 2
 and 9 and are already reflected in those phases. **Phase 0 executed 2026-08-30**
 (D1 / D2-desktop / D3-deferral / D4 / D6 closed; D2's Samsung half and D5's
-two-Android half owed, `[device: …]` tags on their task lines) — **Phase 1 executed 2026-08-30** (perft green at CI depth on all six positions; differential perft 200/0) — **Phase 2 next.**
+two-Android half owed, `[device: …]` tags on their task lines) — **Phase 1 executed 2026-08-30** (perft green at CI depth on all six positions; differential perft 200/0) — **Phase 2 executed 2026-08-30** (terminals, both trait impls, hash, SAN, vectors; gate green) — **Phase 3 next.**
 Worktree `worktrees/chess/fun`, branch `claude/chess`.
 **Standards anchor:** `docs/BUILDING-GAMES.md` §10 + both new-game checklists;
 `docs/AI-PLAYERS.md` (search cost, honesty gate); `docs/HARNESS.md` (adding a game).
@@ -973,7 +973,7 @@ positions the six do not exercise).
 **Goal:** A complete game as a pure state machine with a replayable record.
 
 **Changes:**
-- [ ] `Position` = `Board` + `history` (position keys since the last irreversible
+- [x] `Position` = `Board` + `history` (position keys since the last irreversible
   move, ≤ 100) — **a fixed-capacity `[Key; 100]` + `len: u8` from the start, not a
   `Vec`** (Pass 2's answer to Pass 1's first question; see Open Questions). `Key`
   is a **Zobrist** hash (`hash.rs`) over piece placement, side, castling rights and
@@ -983,25 +983,25 @@ positions the six do not exercise).
   table init, and native == wasm by construction. The seed and the generator are
   recorded in `RULES.md` beside the move-code layout so a reader can regenerate
   the table.
-- [ ] `result(&Position)`: checkmate (loser = side to move), stalemate,
+- [x] `result(&Position)`: checkmate (loser = side to move), stalemate,
   insufficient material (the four cases), 50-move (clock ≥ 100), threefold
   (`history` holds the current key ≥ 2 more times). **Checkmate first** — D4(d).
-- [ ] `impl Adversary` (`KIND = "chess"`, `initial(seed)` ignores the seed with the
+- [x] `impl Adversary` (`KIND = "chess"`, `initial(seed)` ignores the seed with the
   reserved-meaning comment, `side_to_move`, `legal_moves` empty when terminal,
   `apply`, `result`, `state_hash` = sha256 over the canonical serialization of
   `Position` **including `history`**, `render_text` = ASCII board + FEN + "moves
   are long algebraic, e.g. e2e4", `move_to_text` / `parse_move` in UCI form).
-- [ ] `impl pond_outcome::Game` (`KIND = "chess"`, **`VERSION = 1`** — the trait
+- [x] `impl pond_outcome::Game` (`KIND = "chess"`, **`VERSION = 1`** — the trait
   requires it, `crates/pond-outcome/src/lib.rs:18-27`) — replay `(seed, moves)`,
   skipping moves not in `legal_moves` so a tampered list diverges
   (`othello-core/src/game.rs:252-276`).
-- [ ] `state_hash` is defined over the **logical** history (the `len` keys in
+- [x] `state_hash` is defined over the **logical** history (the `len` keys in
   order), never the container, so the array/ring choice can change later without
   moving a single pinned hash.
-- [ ] `san_of(&Position, Move) -> String` — the rendering the panel reads
+- [x] `san_of(&Position, Move) -> String` — the rendering the panel reads
   (disambiguation by file/rank/both, `x`, `=Q`, `+`/`#`, `O-O`/`O-O-O`). Rendered,
   never parsed.
-- [ ] Golden vectors, each citing `RULES.md`: the D4 fixtures (a–d); fool's mate and
+- [x] Golden vectors, each citing `RULES.md`: the D4 fixtures (a–d); fool's mate and
   scholar's mate (`WinB`, `WinA`); a stalemate; each insufficient-material case and
   the K+B v K+B *opposite* colours non-case; castling rights lost by a rook
   capture; en passant only for one move; promotion to each piece; a full game
@@ -1009,7 +1009,7 @@ positions the six do not exercise).
   different in `history` hashing differently. The full game and the D4(a)
   threefold game are **also** written to `crates/chess-core/vectors/01-full-game.json`
   and `02-threefold.json` (the xbuild shape) — the vectors Phase 3 replays in wasm.
-- [ ] **RED first, the data included (Pass 3).** The Zobrist table is 781 constants
+- [x] **RED first, the data included (Pass 3).** The Zobrist table is 781 constants
   and gets its test before the `const fn` is written: no key is zero, no two keys are
   equal, and the **first and last keys equal the two literal values written in
   `RULES.md`** beside the seed — so a reader can regenerate the table and a changed
@@ -1017,7 +1017,7 @@ positions the six do not exercise).
   material subset is data too: each of the four cases is a test, **and each named
   non-case** (K+B v K+B on opposite colours; K+R v K; K+P v K; K+N+N v K — not in the
   subset, live, and `RULES.md` says why; K+B+N v K) stays live.
-- [ ] **The boundaries, named (Pass 3 — mutation resistance).** Threefold: the second
+- [x] **The boundaries, named (Pass 3 — mutation resistance).** Threefold: the second
   occurrence is live and the **third** is `Draw` (D4a), the castling-right variant
   does not count (D4a′), the ep-possibility variant does not count (D4b). The clock:
   halfmove **99** live, **100** `Draw` (D4c), a capture at 99 resets to 0 and the game
@@ -1029,7 +1029,7 @@ positions the six do not exercise).
   guarded by an `unwrap` path. `state_hash`: two same-FEN positions with different
   histories differ (already listed) **and** two positions with the same logical
   history and any container state are equal.
-- [ ] **The gaps CLAUDE.md says the mutation audit finds first, closed now (Pass 3).**
+- [x] **The gaps CLAUDE.md says the mutation audit finds first, closed now (Pass 3).**
   *A trait impl that only delegates:* the terminal / replay / hash tests call
   `<Position as Adversary>::…`, never the free functions — plus one explicit pair:
   `Adversary::legal_moves` on the opening has 20 entries and on a mated position is
@@ -1040,7 +1040,7 @@ positions the six do not exercise).
   no piece) is `None`; a well-formed illegal move (`e2e5`) is `None`. *Replay:* a
   tampered move, a truncated list, and a move appended after the terminal all fail
   `verify`, each for its own reason — three tests, not one.
-- [ ] **A hash mismatch names its ply (Pass 3 — diagnostics).** The vector tests
+- [x] **A hash mismatch names its ply (Pass 3 — diagnostics).** The vector tests
   assert the pinned hash *and*, on failure, print the FEN and the move index at which
   the replay first diverged — the record a Phase 3 wasm disagreement is read against.
 
@@ -1852,6 +1852,40 @@ PR open; `workspace-audit.sh` clean.
 ---
 
 ## Review Log
+
+### Phase 2 execution — 2026-08-30
+
+**Green:** 36 debug tests (0.33 s) + the release run; the declared gate
+(`npm run test:rust`, 1968-line log read at PASS, rustc/clippy 1.97) green.
+The wiring test runs: a deterministic 60-ply record replays through
+`pond_outcome::verify` and each of the three tampers fails for its own,
+distinguishable reason. Vectors `01-full-game.json` / `02-threefold.json`
+generated by the in-crate `regenerate_vectors` and re-verified by the
+non-ignored replay test — Phase 3's inputs exist.
+
+**Zobrist pinned:** seed `0xC40F_7C55_2026_0830`, `KEYS[0] =
+0x76E9_A102_2C52_26D8`, `KEYS[780] = 0x45D0_CCC9_5E0D_7B5B`, recorded in RULES
+§15 (new section) beside the generator so the table is regenerable. The
+pinned-literal test ran RED first (placeholders), then was pinned from the run.
+
+**One deliberate deviation from precedent, recorded:** `replay` does NOT
+silently skip an inapplicable move (checkers/othello do). A skipped move at
+the END of a record cannot move the final hash, so a padded record would
+verify — Pass 3's "appended after the terminal fails" is unmeetable under
+silent-skip. Chess's replay poisons the result (`rejected-move-at-{i}`), which
+also names the ply in the verification's `actual` field. The older cores'
+records are unaffected; worth considering as a shelf-wide follow-up.
+
+**Two fixture lessons from the RED runs:** the three-queens SAN position had
+Qd5 already checking the a8 king (an illegal position — moved the king to a7);
+and a zsh no-word-split quirk mangled one pinned literal on the way into the
+test (`0x___`), caught immediately by the very test being pinned.
+
+**Also:** `ep_capturable` implements 9.2.3.1 by make-and-check of the specific
+capture (pins outlaw it correctly); the D4 fixtures transcribed from the spike
+all pass against the real core at the same plies the reference engine gave;
+`Position` is the fixed `[Key; 100]` + `len` from the start (the confirmed
+open question), `PartialEq` and the hash over the logical history only.
 
 ### Phase 1 execution — 2026-08-30
 

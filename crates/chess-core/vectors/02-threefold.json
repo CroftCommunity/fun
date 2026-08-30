@@ -1,0 +1,16 @@
+{
+  "name": "threefold",
+  "note": "The knight shuffle: the start position's third occurrence at ply 8 is the automatic threefold draw (RULES §10).",
+  "seed": 0,
+  "moves": [
+    1350,
+    2942,
+    405,
+    4013,
+    1350,
+    2942,
+    405,
+    4013
+  ],
+  "final_state_hash": "040d2d14e76f9fe7ec03d22f61c60b38b2209e70269fdaa60bafe137eb622aad"
+}

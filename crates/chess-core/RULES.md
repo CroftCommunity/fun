@@ -164,3 +164,19 @@ every hashed integer serializes little-endian; `native == wasm`.
 `initial(seed)` ignores the seed today — every game opens from the standard
 start. The seed is **reserved for Chess960** (a follow-up recorded in
 `TODO/chess.md`); nothing else may repurpose it.
+
+## §15 The Zobrist table
+
+The repetition keys (§10, §11) and the future transposition-table keys come
+from **781 constants** generated at compile time by a `const fn` splitmix64
+(Steele–Lea–Flood mixing constants `0x9E3779B97F4A7C15`,
+`0xBF58476D1CE4E5B9`, `0x94D049BB133111EB`) over the fixed seed
+**`0xC40F_7C55_2026_0830`**. Table order: 12 piece-square tables of 64 (white
+P N B R Q K, then black, square-major within each), the side-to-move key, the
+four castling keys (`K Q k q`), the eight en-passant file keys (`a..h`). The
+ep file is folded in **only when the capture is actually legal** (§10). Two
+values pin the whole table — a reader can regenerate it, and a changed seed is
+a deliberate red across every vector rather than a silent re-hash:
+
+- `KEYS[0]   = 0x76E9_A102_2C52_26D8`
+- `KEYS[780] = 0x45D0_CCC9_5E0D_7B5B`
