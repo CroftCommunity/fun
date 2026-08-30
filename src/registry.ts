@@ -21,11 +21,11 @@ import { othelloModule, othelloSetup } from "./games/othello/othello.js";
 import { checkersModule, checkersSetup } from "./games/checkers/checkers.js";
 import { dotsModule, dotsSetup } from "./games/dots/dots.js";
 import { furrowModule, furrowSetup } from "./games/furrow/furrow.js";
-import { alignModule } from "./games/align/align.js";
+import { alignModule, alignSetup } from "./games/align/align.js";
 import { blockdokuModule, blockdokuSetup } from "./games/blockdoku/blockdoku.js";
-import { looseendsModule } from "./games/looseends/looseends.js";
-import { colorSortModule } from "./games/color-sort/color-sort.js";
-import { orchardDropModule } from "./games/orchard-drop/orchard-drop.js";
+import { looseendsModule, looseendsSetup } from "./games/looseends/looseends.js";
+import { colorSortModule, colorSortSetup } from "./games/color-sort/color-sort.js";
+import { orchardDropModule, orchardSetup } from "./games/orchard-drop/orchard-drop.js";
 import { cribbageModule, cribbageSetup } from "./games/cribbage/cribbage.js";
 
 /** What fun.croft.ing ships, in drawer order. */
@@ -136,7 +136,16 @@ export const SHIPPED: readonly GameEntry[] = [
     setup: furrowSetup,
     load: furrowModule,
   },
-  { id: "align", title: "Align", emoji: "🟪", status: "playable", icon: true, load: alignModule },
+  {
+    id: "align",
+    title: "Align",
+    emoji: "🟪",
+    status: "playable",
+    icon: true,
+    pitch: "Falling pieces, thumb-first. Marathon speeds up as you clear; Sprint races to forty lines — every run replays to a verifiable score.",
+    setup: alignSetup,
+    load: alignModule,
+  },
   {
     id: "blockdoku",
     title: "Blockdoku",
@@ -147,8 +156,26 @@ export const SHIPPED: readonly GameEntry[] = [
     setup: blockdokuSetup,
     load: blockdokuModule,
   },
-  { id: "looseends", title: "Loose Ends", emoji: "🎯", status: "playable", icon: true, load: looseendsModule },
-  { id: "color-sort", title: "Color Sort", emoji: "🧪", status: "playable", icon: true, load: colorSortModule },
+  {
+    id: "looseends",
+    title: "Loose Ends",
+    emoji: "🎯",
+    status: "playable",
+    icon: true,
+    pitch: "Untangle the arrows: tap a free one to slip it off the board. A hundred levels in bands, and a daily with a streak.",
+    setup: looseendsSetup,
+    load: looseendsModule,
+  },
+  {
+    id: "color-sort",
+    title: "Color Sort",
+    emoji: "🧪",
+    status: "playable",
+    icon: true,
+    pitch: "Pour until every tube holds one colour. A daily puzzle with a par, or endless levels — every pour replays to a verifiable solve.",
+    setup: colorSortSetup,
+    load: colorSortModule,
+  },
   {
     id: "orchard-drop",
     title: "Orchard Drop",
@@ -159,6 +186,8 @@ export const SHIPPED: readonly GameEntry[] = [
     // record, a re-checkable `?r=` share. No `tier` key — Tier-1 is the default
     // — and no `attribution`, which `Tier1GameEntry` does not have a field for.
     // The Suika-lineage credit lives in the how-to guide instead.
+    pitch: "Drop fruit into the crate; two of a kind merge into the next one up. A daily crate to compare, or free play — every run replays to a verifiable score.",
+    setup: orchardSetup,
     load: orchardDropModule,
   },
   {

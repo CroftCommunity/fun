@@ -5,13 +5,61 @@ landing *is* releasing: sections are months, each entry dated by its landing. Pe
 `CroftC/.claude/CHANGELOGS.md`, the branch that changes something a player runs adds its
 entry here before it lands. Contexts are the shelf's chrome and the individual games.
 
-Contexts: shelf · 2048 · bubble · checkers · wyrdle · trio-tumble · othello · cribbage · furrow · dots · drop4 · blockdoku · orchard · sinker · solitaire
+Contexts: shelf · looseends · color-sort · align · 2048 · bubble · checkers · wyrdle · trio-tumble · othello · cribbage · furrow · dots · drop4 · blockdoku · orchard · sinker · solitaire
 
 Started 2026-08-29; the August entries below are the landings of that month, and everything
 earlier is in `git log`.
 
 ## 2026-08
 
+- 2026-08-30 **shelf:** ⤢ is the real thing. Full screen asks the browser's Fullscreen
+  API — the frame stays, the shelf bar goes, and leaving by Esc or a gesture un-presses
+  the toggle — and where a browser has no API for a page (iOS Safari; Playwright's WebKit)
+  it says so in a toast instead of pretending: "Full screen isn't available in this
+  browser — install the app for it." A feature-detect, not a try/catch: on those browsers
+  the function simply is not there. (`plans/2026-08-30-plan-game-frame.md` Phase 22, D5)
+- 2026-08-30 **shelf:** the control surfaces the games used to draw for themselves are
+  gone from `styles.css` — the Solitaire-era control bar, mode buttons and settings
+  disclosure, Drop 4's turn bar, Align's slider row, Color Sort's action row, the Tier-2
+  wrapped-game residue (3.4 KB) — and a unit test keeps them out of `src/` and the
+  stylesheet. Cribbage's `.crib-turnbar` survives as the final table's scoreline.
+  (`plans/2026-08-30-plan-game-frame.md` Phase 22)
+- 2026-08-30 **looseends:** inside the frame. The poster is the home now — its own home
+  screen is gone — and the Levels card (the dock's one verb) offers the next unsolved
+  level, the level grid or the daily calendar; the level and the solved tally are the
+  meters; the overlay HUD (back, droplets, hint) stays on the board; the tagline is a
+  toast. Back from the grid or the calendar returns to the board. The continue card
+  reopens the level you were on (a level is a short run of taps; it restarts).
+  (`plans/2026-08-30-plan-game-frame.md` Phase 21)
+- 2026-08-30 **align:** the board's height is now set in pixels from the room the pad
+  leaves (a ResizeObserver), not by CSS percentage. `height: 100%` of the flexed row
+  never settled on CI's Linux WebKit — the pad moved every frame and no tap was
+  "stable" — while macOS WebKit and Chromium were fine. Same sizes as before on both.
+- 2026-08-30 **orchard-drop:** inside the frame. Score, best and the next fruit are the
+  meters (told only when they change, not every frame); Daily or Free play is the New
+  game card, and the chip says which; the rules sentence is a toast. A `?seed=` link is
+  a free-play run of that seed, as on every other game. No continue card: the run is
+  wall-clock physics, and the core hands out its record only at the end.
+  (`plans/2026-08-30-plan-game-frame.md` Phase 20)
+- 2026-08-30 **color-sort:** inside the frame. Moves and par are the meters and the chip
+  says Daily or the level; Undo, Restart and Hint are dock verbs (Strict mode takes Undo
+  away); Daily/Endless is the New game card; skin, fruit icons and Strict mode are in
+  Settings; the rules and the no-moves-left notice are toasts. Leave mid-game and the
+  continue card replays every pour. (`plans/2026-08-30-plan-game-frame.md` Phase 19)
+- 2026-08-30 **shelf:** a choice in the settings sheet no longer loses its selection.
+  The sheet's radios were named by row id, and the frame renders a game's preferences
+  twice (the phone's sheet, and the rail's inline panel rebuilt on every update) — one
+  radio group across both copies, so the hidden copy unchecked the visible one. Seen as a
+  skin pick that "did not change its state" and as a CI-only unchecked peg-board mode on
+  Cribbage. Each sheet render now has its own group.
+- 2026-08-30 **align:** inside the frame. Score, level and lines are the meters (told only
+  when they change, not every frame); Marathon (daily), a new Marathon or Sprint 40 is the
+  New game card, and the chip says which; vibration and the left/right speed are in
+  Settings; the rules sentence is a toast. The board gives up height on a short phone so
+  the touch pad stays on screen — at 390×844 the column was 83px taller than the stage
+  and a tap on the pad scrolled the board 46px — and keeps its aspect on both engines
+  (WebKit squashed it under a plain max-height). No continue card yet: the core exposes
+  its input log only at the end of a run. (`plans/2026-08-30-plan-game-frame.md` Phase 18)
 - 2026-08-30 **2048:** inside the frame. Score and best tile are the meters; today's board
   or a fresh one is the New game card, and the chip says which; the rules sentence is a
   toast; the "+N" floats from the board's top edge. Leave mid-game and the continue card

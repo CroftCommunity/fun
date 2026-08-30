@@ -64,9 +64,76 @@ describe("games drawer chrome", () => {
     expect(document.querySelector(".gf-game-bar")).toBeNull();
   });
 
+  // jsdom has no Fullscreen API. `withFullscreenApi` installs one on the root
+  // element (D1: the feature-detect is `typeof requestFullscreen === "function" &&
+  // document.fullscreenEnabled`) and returns the spy; `withoutFullscreenApi` makes
+  // sure neither half is present, which is what Playwright's mobile-webkit reports.
+  const withFullscreenApi = (): ReturnType<typeof vi.fn> => {
+    const request = vi.fn(() => {
+      Object.defineProperty(document, "fullscreenElement", { value: document.documentElement, configurable: true });
+      return Promise.resolve();
+    });
+    Object.defineProperty(document.documentElement, "requestFullscreen", { value: request, configurable: true });
+    Object.defineProperty(document, "fullscreenEnabled", { value: true, configurable: true });
+    Object.defineProperty(document, "fullscreenElement", { value: null, configurable: true });
+    Object.defineProperty(document, "exitFullscreen", {
+      value: vi.fn(() => {
+        Object.defineProperty(document, "fullscreenElement", { value: null, configurable: true });
+        return Promise.resolve();
+      }),
+      configurable: true,
+    });
+    return request;
+  };
+  const withoutFullscreenApi = (): void => {
+    Object.defineProperty(document.documentElement, "requestFullscreen", { value: undefined, configurable: true });
+    Object.defineProperty(document, "fullscreenEnabled", { value: false, configurable: true });
+    Object.defineProperty(document, "fullscreenElement", { value: null, configurable: true });
+  };
+
+  it("⤢ asks the Fullscreen API where it exists, and the shelf bar goes", () => {
+    document.body.dataset.game = "placeholder";
+    deepLink("placeholder");
+    const request = withFullscreenApi();
+    const chrome = boot();
+    chrome.toggleFullscreen();
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(chrome.isFullscreen()).toBe(true);
+    expect(document.body.classList.contains("fullscreen")).toBe(true);
+    expect(document.querySelector(".fullscreen-toggle")?.getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("without the API (mobile-webkit, D1) ⤢ says so in a toast and stays unpressed", () => {
+    document.body.dataset.game = "placeholder";
+    deepLink("placeholder");
+    withoutFullscreenApi();
+    const chrome = boot();
+    chrome.toggleFullscreen();
+    expect(chrome.isFullscreen()).toBe(false);
+    expect(document.body.classList.contains("fullscreen")).toBe(false);
+    expect(document.querySelector(".fullscreen-toggle")?.getAttribute("aria-pressed")).toBe("false");
+    expect(document.querySelector(".gf-toast")?.textContent).toMatch(/install the app/i);
+  });
+
+  it("leaving full screen by the browser's own route (Esc) syncs the toggle", () => {
+    document.body.dataset.game = "placeholder";
+    deepLink("placeholder");
+    withFullscreenApi();
+    const chrome = boot();
+    chrome.toggleFullscreen();
+    expect(chrome.isFullscreen()).toBe(true);
+    // The browser exits on its own — the document fires fullscreenchange with no element.
+    Object.defineProperty(document, "fullscreenElement", { value: null, configurable: true });
+    document.dispatchEvent(new Event("fullscreenchange"));
+    expect(chrome.isFullscreen()).toBe(false);
+    expect(document.body.classList.contains("fullscreen")).toBe(false);
+    expect(document.querySelector(".fullscreen-toggle")?.getAttribute("aria-pressed")).toBe("false");
+  });
+
   it("full-screen preserves the same mounted instance (no remount)", () => {
     document.body.dataset.game = "placeholder";
     deepLink("placeholder");
+    withFullscreenApi();
     const before = placeholderMountCount();
     const chrome = boot();
     expect(placeholderMountCount()).toBe(before + 1);

@@ -794,17 +794,18 @@ const SHOTS = [
   },
   {
     name: "looseends-home",
-    clip: ".le-home",
+    clip: ".gf-poster",
     async run(page) {
       await page.goto(`${origin}/looseends/`, { waitUntil: "networkidle" });
-      await page.waitForSelector(".le-home");
+      await page.waitForSelector(".gf-poster");
     },
   },
   {
     name: "looseends-board",
     clip: ".le-stage",
     async run(page) {
-      await page.goto(`${origin}/looseends/`, { waitUntil: "networkidle" });
+      // A bare URL is the poster (plan Q7); ?play=1 mounts the game directly.
+      await page.goto(`${origin}/looseends/?play=1`, { waitUntil: "networkidle" });
       await page.waitForFunction(() => Boolean(window.__looseends));
       // Open a small early level so the arrows read clearly, then let the
       // canvas fit-view + first paint settle.

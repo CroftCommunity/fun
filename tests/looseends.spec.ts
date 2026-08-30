@@ -6,6 +6,7 @@
 
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { boardTopStable } from "./helpers/board-top.js";
 
 // The `window.__looseends` E2E hook is declared by the game module itself.
 
@@ -22,12 +23,16 @@ const board = (page: Page): Promise<{ arrows: { present: boolean; free: boolean 
     return { arrows: b.arrows.map((a) => ({ present: a.present, free: a.free })), remaining: b.remaining };
   });
 
-test("mounts at its own URL and shows the home screen", async ({ page }) => {
+test("Play opens the next unsolved level; the frame names it, and the game's own home is gone", async ({ page }) => {
   await page.goto("/looseends/?play=1");
   await ready(page);
-  await expect(page.locator(".le-home")).toBeVisible();
-  await expect(page.locator(".le-logo")).toContainText(/loose ends/i);
-  await expect(page.locator(".le-home-actions")).toContainText(/daily puzzle/i);
+  await expect(page.locator(".le-canvas")).toBeVisible();
+  await expect(page.locator(".le-home")).toHaveCount(0);
+  await expect(page.locator('.gf-stat[data-meter="level"]')).toContainText(/level 1/i);
+  await expect(page.locator('.gf-stat[data-meter="solved"]')).toContainText(/100/);
+  await expect(page.locator('.gf-verb[data-verb="new"]')).toHaveCount(1);
+  // The rule sentence that was the home's tagline is a toast over the board.
+  await expect(page.locator(".gf-toast")).toContainText(/untangle/i);
 });
 
 test("a level renders the canvas board, HUD, droplets, and hint", { tag: "@smoke" }, async ({ page }) => {
@@ -100,16 +105,44 @@ test("clearing the board reaches a verified win, and its share re-verifies", asy
 test("level select and daily calendar render from the home screen", async ({ page }) => {
   await page.goto("/looseends/?play=1");
   await ready(page);
-  await page.getByRole("button", { name: "All levels" }).click();
+  // Both live behind the New game card now: pick where to go, then Start.
+  const go = async (where: string): Promise<void> => {
+    await page.locator('.gf-verb[data-verb="new"]').click();
+    await page.locator(`.gf-sheet [data-setting="mode"] input[value="${where}"]`).check();
+    await page.locator(".gf-sheet .gf-sheet-start").click();
+  };
+  await go("levels");
   await expect(page.locator(".le-level-grid")).toBeVisible();
   await expect(page.locator(".le-tile")).toHaveCount(100);
 
+  // Back from the grid returns to the board, not to a home that no longer exists.
   await page.locator(".le-back").click();
-  await page.getByRole("button", { name: "Daily puzzle" }).click();
+  await expect(page.locator(".le-canvas")).toBeVisible();
+  await go("daily");
   await expect(page.locator(".le-cals .le-cal")).toHaveCount(12);
   await expect(page.locator(".le-streak-card")).toContainText(/daily streak/i);
   // Future days are locked (non-interactive).
   await expect(page.locator(".le-day-future").first()).toBeDisabled();
+});
+
+test("a release does not move the board, and neither does the settings sheet", { tag: "@smoke" }, async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/looseends/?play=1");
+  await ready(page);
+  await openLevel(page, 6);
+  const v = await boardTopStable(page, ".le-canvas", async () => {
+    await page.evaluate(() => {
+      const h = window.__looseends!;
+      const free = h.board().arrows.findIndex((a) => a.present && a.free);
+      if (free >= 0) h.tapArrow(free);
+    });
+    await page.waitForTimeout(250);
+    await page.locator('.gf-verb[data-verb="settings"]').click();
+    await expect(page.locator(".gf-sheet")).toBeVisible();
+    await page.keyboard.press("Escape");
+  });
+  expect(v.frames).toBeGreaterThan(5);
+  expect(v, `board top moved ${v.delta}px over ${v.frames} frames`).toMatchObject({ stable: true });
 });
 
 test("no axe violations in light and dark, and no horizontal overflow at 360px", async ({ page }) => {

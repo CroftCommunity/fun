@@ -8,7 +8,9 @@
 //! accumulator (how many `tick()`s this frame) and stamps captured inputs with
 //! the engine's current tick. Nothing time-based ever decides the outcome.
 
-import type { GameModule } from "../../contract.js";
+import type { GameModule, GameServices } from "../../contract.js";
+import type { GameFrame, GameFrameSpec } from "../../game-frame.js";
+import type { SettingRow } from "../../settings-sheet.js";
 import { Align, type Action, type BoardView, type Cell, type SharedVerify } from "./align-wasm.js";
 import { decodeRecord, encodeRecord, type AlignEnvelope } from "./align-outcome.js";
 import { dayIndexUTC } from "../share.js";
@@ -21,8 +23,6 @@ import {
   moveSpeedToMs,
   setAlignHaptics,
   setAlignMoveSpeed,
-  setDeclareAssistance,
-  setHintsEnabled,
 } from "../../settings.js";
 
 declare global {
@@ -170,6 +170,37 @@ function renderResultScreen(env: AlignEnvelope, v: SharedVerify, opts: ResultOpt
 
 // ---------- the game module ----------
 
+type ModeChoice = "daily" | "marathon" | "sprint";
+const MODE_LABEL: Record<ModeChoice, string> = { daily: "Marathon (daily)", marathon: "Marathon", sprint: "Sprint 40" };
+
+// The New game card's choice lives at module scope: the poster renders the card
+// before the module exists, and the module reads it when a run starts.
+let chosenMode: ModeChoice = "daily";
+
+/** The New game card: today's marathon, a fresh marathon, or a sprint to forty lines. */
+export function alignSetupRows(): SettingRow[] {
+  return [
+    {
+      kind: "choice",
+      id: "mode",
+      label: "Mode",
+      hint: "Marathon speeds up as you clear lines; the daily one is the same seed for everyone today. Sprint asks for forty rows as fast as you can.",
+      value: chosenMode,
+      options: [
+        { value: "daily", label: "Marathon (daily)" },
+        { value: "marathon", label: "New Marathon" },
+        { value: "sprint", label: "Sprint 40" },
+      ],
+      onChange: (v) => {
+        chosenMode = v === "sprint" ? "sprint" : v === "marathon" ? "marathon" : "daily";
+      },
+    },
+  ];
+}
+
+/** The poster's setup card — the registry's `setup` factory. */
+export const alignSetup = (): SettingRow[] => alignSetupRows();
+
 /** Construct a fresh Align module (the registry `load`). */
 export function alignModule(): GameModule {
   let game: Align | null = null;
@@ -186,7 +217,6 @@ export function alignModule(): GameModule {
   let canvas: HTMLCanvasElement | null = null;
   let holdCanvas: HTMLCanvasElement | null = null;
   let nextCanvas: HTMLCanvasElement | null = null;
-  let hud: HTMLElement | null = null;
   let callout: HTMLElement | null = null;
   let hintCells: Cell[] | null = null;
 
@@ -195,6 +225,10 @@ export function alignModule(): GameModule {
   let acc = 0;
   let running = false;
   let paused = false;
+  let gf: GameFrame | null = null;
+  let toasted = false;
+  /** The last stats the meters showed — the loop renders every frame; the frame is told only on a change. */
+  let shown = "";
 
   const statusEl = el("p", { class: "sol-status", role: "status", "aria-live": "polite" });
   const setStatus = (m: string): void => {
@@ -440,12 +474,10 @@ export function alignModule(): GameModule {
   };
 
   const updateHud = (b: BoardView): void => {
-    if (hud) {
-      hud.replaceChildren(
-        el("span", { class: "al-stat" }, "Score", el("b", {}, String(b.score))),
-        el("span", { class: "al-stat" }, "Level", el("b", {}, String(b.level))),
-        el("span", { class: "al-stat" }, "Lines", el("b", {}, `${b.lines}/${b.goalLines}`)),
-      );
+    const stats = `${b.score}|${b.level}|${b.lines}|${b.goalLines}`;
+    if (stats !== shown) {
+      shown = stats;
+      declare();
     }
     if (callout) {
       const parts: string[] = [];
@@ -529,95 +561,52 @@ export function alignModule(): GameModule {
     return b;
   };
 
-  const renderControls = (): HTMLElement => {
-    const bar = el("div", { class: "sol-controls" });
-    const modes = el("div", { class: "sol-modes", role: "group", "aria-label": "Mode" });
-    const daily = el(
-      "button",
-      { type: "button", class: "sol-mode-daily", "aria-pressed": String(mode === "daily") },
-      "Marathon (daily)",
-    );
-    const sprint = el(
-      "button",
-      { type: "button", class: "sol-new", "aria-pressed": String(mode === "free" && modeId === 1) },
-      "Sprint 40",
-    );
-    const fresh = el(
-      "button",
-      { type: "button", class: "al-mode-free", "aria-pressed": String(mode === "free" && modeId === 0) },
-      "New Marathon",
-    );
-    daily.addEventListener("click", () => void startGame("daily", 0));
-    sprint.addEventListener("click", () => void startGame("free", 1));
-    fresh.addEventListener("click", () => void startGame("free", 0));
-    modes.append(daily, fresh, sprint);
-
+  // --- what the frame shows: three stats, the mode chip, verbs, the New game card, preferences ---
+  const chosenOf = (): ModeChoice => (mode === "daily" ? "daily" : modeId === 1 ? "sprint" : "marathon");
+  const spec = (): GameFrameSpec => {
+    const b = game?.board();
     const hints = hintsEnabled();
-    const actionBtn = el(
-      "button",
-      { type: "button", class: hints ? "sol-hint" : "sol-stuck" },
-      hints ? "Hint" : "End run",
-    );
-    actionBtn.addEventListener("click", hints ? showHint : endNow);
-
-    const setting = (
-      checked: boolean,
-      label: string,
-      cls: string,
-      onChange: (on: boolean) => void,
-    ): HTMLElement => {
-      const wrap = el("label", { class: "sol-setting" });
-      const input = el("input", { type: "checkbox", class: cls });
-      (input as HTMLInputElement).checked = checked;
-      input.addEventListener("change", () => onChange((input as HTMLInputElement).checked));
-      wrap.append(input, document.createTextNode(` ${label}`));
-      return wrap;
+    return {
+      title: "Align",
+      mode: MODE_LABEL[chosenOf()],
+      meters: [
+        { kind: "stat", id: "score", value: b?.score ?? 0, label: "score" },
+        { kind: "stat", id: "level", value: b?.level ?? 1, label: "level" },
+        { kind: "stat", id: "lines", value: b ? `${b.lines} / ${b.goalLines}` : "0", label: "lines" },
+      ],
+      verbs: [
+        hints
+          ? { id: "hint", label: "Hint", icon: "✦", primary: true, onPress: showHint }
+          : { id: "done", label: "End run", icon: "⇥", onPress: endNow },
+        { id: "new", label: "New game", icon: "⟳", onPress: (btn) => gf?.openSheet("setup", btn) },
+      ],
+      setup: alignSetupRows(),
+      preferences: [
+        {
+          kind: "toggle",
+          id: "haptics",
+          label: "Vibration (haptics)",
+          hint: "A short buzz on each tap of the on-screen controls, where the device supports it.",
+          value: alignHapticsEnabled(),
+          onChange: (on) => setAlignHaptics(on),
+        },
+        {
+          kind: "range",
+          id: "speed",
+          label: "Left/right speed",
+          hint: "How fast the piece slides while you hold a move button — drag right for faster.",
+          value: alignMoveSpeed(),
+          min: ALIGN_MOVE_SPEED_SPEC.min,
+          max: ALIGN_MOVE_SPEED_SPEC.max,
+          step: 1,
+          format: (v) => `${v}/10`,
+          onChange: (v) => setAlignMoveSpeed(v),
+        },
+      ],
+      onStart: () => void startGame(chosenMode === "daily" ? "daily" : "free", chosenMode === "sprint" ? 1 : 0),
     };
-    // A 1–10 slider row (drag-right = faster) for the left/right hold speed.
-    const speedSetting = (): HTMLElement => {
-      const wrap = el("label", { class: "sol-setting al-range" });
-      const value = el("span", { class: "al-range-val" });
-      const input = el("input", {
-        type: "range",
-        class: "al-set-speed",
-        min: String(ALIGN_MOVE_SPEED_SPEC.min),
-        max: String(ALIGN_MOVE_SPEED_SPEC.max),
-        step: "1",
-      }) as HTMLInputElement;
-      input.value = String(alignMoveSpeed());
-      const sync = (): void => {
-        value.textContent = `${input.value}/10`;
-      };
-      sync();
-      input.addEventListener("input", () => {
-        setAlignMoveSpeed(Number(input.value));
-        sync();
-      });
-      wrap.append(
-        el("span", { class: "al-range-label" }, "Left/right speed"),
-        input,
-        value,
-      );
-      return wrap;
-    };
-    const settings = el("details", { class: "sol-settings" });
-    settings.append(
-      el("summary", {}, "Settings"),
-      setting(hints, "Enable hints", "sol-set-hints", (on) => {
-        setHintsEnabled(on);
-        rebuild();
-      }),
-      setting(declareAssistanceEnabled(), "Declare assistance used", "sol-set-assist", (on) => {
-        setDeclareAssistance(on);
-      }),
-      setting(alignHapticsEnabled(), "Vibration (haptics)", "al-set-haptics", (on) => {
-        setAlignHaptics(on);
-      }),
-      speedSetting(),
-    );
-    bar.append(modes, actionBtn, settings);
-    return bar;
   };
+  const declare = (): void => gf?.update(spec());
 
   const buildStage = (): HTMLElement => {
     canvas = el("canvas", {
@@ -631,16 +620,9 @@ export function alignModule(): GameModule {
 
     holdCanvas = el("canvas", { class: "al-mini", width: "72", height: "56", "aria-hidden": "true" }) as HTMLCanvasElement;
     nextCanvas = el("canvas", { class: "al-mini al-next", width: "72", height: "248", "aria-hidden": "true" }) as HTMLCanvasElement;
-    hud = el("div", { class: "al-hud" });
     callout = el("div", { class: "al-callout", role: "status", "aria-live": "polite" });
 
-    const sideL = el(
-      "div",
-      { class: "al-side" },
-      el("div", { class: "al-label" }, "Hold"),
-      holdCanvas,
-      hud,
-    );
+    const sideL = el("div", { class: "al-side" }, el("div", { class: "al-label" }, "Hold"), holdCanvas);
     const sideR = el("div", { class: "al-side" }, el("div", { class: "al-label" }, "Next"), nextCanvas);
     const stage = el("div", { class: "al-stage" }, sideL, canvas, sideR);
 
@@ -675,15 +657,54 @@ export function alignModule(): GameModule {
       dropRow,
     );
 
-    const wrap = el("div", { class: "al-game" }, renderControls(), callout, stage, pad, statusEl);
+    const wrap = el("div", { class: "al-game" }, callout, stage, pad, statusEl);
     return wrap;
+  };
+
+  // The board's height is set in pixels from the room the pad and the readouts
+  // leave, floored at 14rem (the stage scrolls below that) and capped at the
+  // canvas's own 616px so it never upscales. Pixels, not a percentage: a
+  // `height: 100%` inside the flexed row read differently per engine (CI's Linux
+  // WebKit never settled it — the pad moved every frame and no tap was "stable").
+  // Width follows the canvas's own aspect, which every engine does for an
+  // explicit height. Re-fit on any resize of the column.
+  let fitObserver: ResizeObserver | null = null;
+  const fitBoard = (): void => {
+    const gameEl = container?.querySelector<HTMLElement>(".al-game");
+    const stageEl = gameEl?.querySelector<HTMLElement>(".al-stage");
+    if (!gameEl || !stageEl || !canvas) return;
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const gap = parseFloat(getComputedStyle(gameEl).rowGap) || 0;
+    const kids = [...gameEl.children] as HTMLElement[];
+    const others = kids.filter((k) => k !== stageEl).reduce((sum, k) => sum + k.offsetHeight, 0) + gap * (kids.length - 1);
+    const available = gameEl.clientHeight - others;
+    const h = Math.min(ROWS_SHOWN * CELL, Math.max(14 * rem, available));
+    canvas.style.height = `${Math.round(h)}px`;
+  };
+  const watchFit = (): void => {
+    fitObserver?.disconnect();
+    fitObserver = null;
+    const gameEl = container?.querySelector<HTMLElement>(".al-game");
+    if (!gameEl || typeof ResizeObserver === "undefined") {
+      fitBoard();
+      return;
+    }
+    fitObserver = new ResizeObserver(() => fitBoard());
+    fitObserver.observe(gameEl);
+    fitBoard();
   };
 
   const rebuild = (): void => {
     if (!container || !game) return;
     container.replaceChildren(buildStage());
+    watchFit();
     canvas?.focus();
+    shown = "";
     render(game.board());
+    if (!toasted) {
+      toasted = true;
+      gf?.toast("Move, rotate, drop. Fill a row across to clear it; a T spun into a gap scores extra.", 6000);
+    }
   };
 
   // ---- result / share ----
@@ -707,6 +728,7 @@ export function alignModule(): GameModule {
         onPlayAgain: () => void startGame(mode, modeId),
       });
     container.replaceChildren(build());
+    declare();
   };
 
   const showShared = async (payload: string): Promise<void> => {
@@ -743,6 +765,7 @@ export function alignModule(): GameModule {
       seedOverride ??
       (nextMode === "daily" ? BigInt(game.dailySeed(dayIndexUTC(new Date()))) : randomSeed());
     game.newGame(seed, modeId, startLevel);
+    chosenMode = chosenOf();
     hintCells = null;
     setStatus("");
     console.debug(`[align] seed=${seed} mode=${modeId}`);
@@ -773,9 +796,12 @@ export function alignModule(): GameModule {
   };
 
   return {
-    mount(c: HTMLElement): void {
+    mount(c: HTMLElement, services?: GameServices): void {
       container = c;
+      gf = services?.frame ?? null;
       disposed = false;
+      gf?.onSettingsChange(() => declare()); // Hints flips the verb
+      declare();
       Object.assign(pal, palette());
       container.replaceChildren(el("div", { class: "sol-loading" }, "Loading Align…"));
       document.addEventListener("keydown", onKeydown);
@@ -803,18 +829,21 @@ export function alignModule(): GameModule {
           await startGame("free", modeParam === "sprint" ? 1 : 0, BigInt(seedParam));
           return;
         }
-        await startGame("daily", 0);
+        await startGame(chosenMode === "daily" ? "daily" : "free", chosenMode === "sprint" ? 1 : 0);
       })();
     },
     unmount(): void {
       disposed = true;
       running = false;
+      fitObserver?.disconnect();
+      fitObserver = null;
       cancelAnimationFrame(raf);
       document.removeEventListener("keydown", onKeydown);
       document.removeEventListener("keyup", onKeyup);
       delete window.__align;
       container?.replaceChildren();
       container = null;
+      gf = null;
       game = null;
       verifier = null;
     },

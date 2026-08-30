@@ -27,6 +27,36 @@ describe("renderSettingsSheet", () => {
     expect(sheet.querySelector('[data-setting="b"]')).not.toBeNull();
   });
 
+  it("two sheets carrying the same choice row keep separate radio groups", () => {
+    // The frame renders a game's preferences twice: in the phone's sheet and in
+    // the rail's inline panel, which is rebuilt on every update(). With one radio
+    // `name` per row id the two copies were one group, so re-rendering the hidden
+    // copy unchecked the visible sheet's radio (measured: a click that "did not
+    // change its state", and a CI-only unchecked assertion on cribbage).
+    const row = (onChange: (v: string) => void) => ({
+      kind: "choice" as const,
+      id: "skin",
+      label: "Skin",
+      value: "water",
+      options: [
+        { value: "water", label: "Water" },
+        { value: "ball", label: "Ball" },
+      ],
+      onChange,
+    });
+    const a = renderSettingsSheet({ rows: [row(() => {})] });
+    const b = renderSettingsSheet({ rows: [row(() => {})] });
+    document.body.append(a, b);
+    const radio = (sheet: HTMLElement, value: string): HTMLInputElement =>
+      sheet.querySelector<HTMLInputElement>(`input[value="${value}"]`)!;
+    expect(radio(a, "water").checked).toBe(true);
+    radio(b, "ball").checked = true;
+    expect(radio(b, "ball").checked).toBe(true);
+    expect(radio(a, "water").checked).toBe(true);
+    expect(radio(a, "ball").checked).toBe(false);
+    expect(radio(a, "water").name).not.toBe(radio(b, "water").name);
+  });
+
   it("reflects a toggle's value and reports changes", () => {
     const onChange = vi.fn();
     const sheet = renderSettingsSheet({

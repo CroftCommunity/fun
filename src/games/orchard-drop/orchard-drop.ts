@@ -11,7 +11,9 @@
 //! A finished run emits a `pond-outcome` record and a `?r=` share that
 //! re-verifies before it displays.
 
-import type { GameModule } from "../../contract.js";
+import type { GameModule, GameServices } from "../../contract.js";
+import type { GameFrame, GameFrameSpec } from "../../game-frame.js";
+import type { SettingRow } from "../../settings-sheet.js";
 import { dayIndexUTC } from "../share.js";
 import {
   bestScore,
@@ -26,7 +28,7 @@ import {
   type OrchardRecord,
 } from "./orchard-drop-outcome.js";
 import { OrchardDrop, type WorldView } from "./orchard-wasm.js";
-import { CRATE_H, CRATE_W, describe, draw, fruitColor, fruitName } from "./render.js";
+import { CRATE_H, CRATE_W, describe, draw, fruitName } from "./render.js";
 
 /** Simulation rate. Matches the core; the loop converts wall-clock to ticks. */
 const TICK_HZ = 64;
@@ -65,6 +67,36 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
+type ModeChoice = "daily" | "free";
+const MODE_LABEL: Record<ModeChoice, string> = { daily: "Daily", free: "Free play" };
+
+// The New game card's choice lives at module scope: the poster renders the card
+// before the module exists, and the module reads it when a run starts.
+let chosenMode: ModeChoice = "daily";
+
+/** The New game card: today's crate, or a fresh one. */
+export function orchardSetupRows(): SettingRow[] {
+  return [
+    {
+      kind: "choice",
+      id: "mode",
+      label: "Mode",
+      hint: "The daily crate is the same for everyone today, so a score is worth comparing. Free play deals a fresh crate.",
+      value: chosenMode,
+      options: [
+        { value: "daily", label: "Daily" },
+        { value: "free", label: "Free play" },
+      ],
+      onChange: (v) => {
+        chosenMode = v === "free" ? "free" : "daily";
+      },
+    },
+  ];
+}
+
+/** The poster's setup card — the registry's `setup` factory. */
+export const orchardSetup = (): SettingRow[] => orchardSetupRows();
+
 /** Construct a fresh Orchard Drop module (the registry `load`). */
 export function orchardDropModule(): GameModule {
   let binding: OrchardDrop | null = null;
@@ -85,10 +117,10 @@ export function orchardDropModule(): GameModule {
 
   // ---------- DOM ----------
   const status = el("p", { class: "sol-status", role: "status", "aria-live": "polite" });
-  const scoreEl = el("span", { class: "orch-score-value" }, "0");
-  const bestEl = el("span", { class: "orch-best-value" }, String(bestScore()));
-  const nextChip = el("span", { class: "orch-next-chip", "aria-hidden": "true" });
-  const nextName = el("span", { class: "orch-next-name" }, "cherry");
+  let gf: GameFrame | null = null;
+  let toasted = false;
+  /** The last stats the meters showed — the loop syncs every frame; the frame is told only on a change. */
+  let shown = "";
   const result = el("section", { class: "sol-result", role: "region", "aria-label": "Result" });
 
   /** The tick the core should be at, from wall clock plus any fast-forward. */
@@ -122,9 +154,7 @@ export function orchardDropModule(): GameModule {
     if (!w) return;
     held = w.held;
     scoreNow = w.score;
-    scoreEl.textContent = String(w.score);
-    nextChip.style.background = fruitColor(w.next);
-    nextName.textContent = fruitName(w.next);
+    declareIfChanged();
     if (w.over && !over) {
       over = true;
       finish();
@@ -179,8 +209,9 @@ export function orchardDropModule(): GameModule {
     const record = JSON.parse(json) as OrchardRecord;
     const env = envelope(record);
     const v = verifyRecord(binding, env);
-    const best = recordBest(record.score ?? 0);
-    bestEl.textContent = String(best);
+    recordBest(record.score ?? 0);
+    shown = "";
+    declareIfChanged();
     announce();
     showResult(env, v.ok);
   }
@@ -253,9 +284,36 @@ export function orchardDropModule(): GameModule {
 
   // ---------- lifecycle ----------
 
+  // --- what the frame shows: score, best and the next fruit; the mode chip; New game ---
+  const spec = (): GameFrameSpec => {
+    const w = binding?.world();
+    return {
+      title: "Orchard Drop",
+      mode: MODE_LABEL[mode],
+      meters: [
+        { kind: "stat", id: "score", value: w?.score ?? 0, label: "score" },
+        { kind: "stat", id: "best", value: bestScore(), label: "best" },
+        { kind: "stat", id: "next", value: w ? fruitName(w.next) : "—", label: "next" },
+      ],
+      verbs: [{ id: "new", label: "New game", icon: "⟳", onPress: (btn) => gf?.openSheet("setup", btn) }],
+      setup: orchardSetupRows(),
+      preferences: [],
+      onStart: () => void start(chosenMode),
+    };
+  };
+  const declare = (): void => gf?.update(spec());
+  const declareIfChanged = (): void => {
+    const w = binding?.world();
+    const key = `${w?.score ?? 0}|${bestScore()}|${w?.next ?? -1}|${mode}`;
+    if (key === shown) return;
+    shown = key;
+    declare();
+  };
+
   async function start(next: "daily" | "free"): Promise<void> {
     if (!binding) return;
     mode = next;
+    chosenMode = next;
     const params = new URLSearchParams(location.search);
     const override = params.get("seed");
     seed =
@@ -271,14 +329,22 @@ export function orchardDropModule(): GameModule {
     over = false;
     result.hidden = true;
     result.replaceChildren();
+    shown = "";
+    declareIfChanged();
     paint();
     announce();
+    if (!toasted) {
+      toasted = true;
+      gf?.toast("Drag across the crate to aim, let go to drop. Two of a kind merge into the next fruit up; keep the crate from overflowing.", 6000);
+    }
   }
 
   return {
-    mount(container: HTMLElement): void {
+    mount(container: HTMLElement, services?: GameServices): void {
       host = container;
+      gf = services?.frame ?? null;
       disposed = false;
+      declare();
 
       canvas = el("canvas", {
         class: "orch-canvas",
@@ -289,29 +355,6 @@ export function orchardDropModule(): GameModule {
       // it is the accessible view of the same state — not a courtesy, the
       // actual interface for anyone not looking at pixels.
       canvas.style.aspectRatio = `${CRATE_W} / ${CRATE_H}`;
-
-      const modes = el("div", { class: "orch-modes", role: "group", "aria-label": "Mode" });
-      const daily = el("button", { type: "button", class: "orch-mode", "aria-pressed": "true" }, "Daily");
-      const free = el("button", { type: "button", class: "orch-mode", "aria-pressed": "false" }, "Free play");
-      daily.addEventListener("click", () => {
-        daily.setAttribute("aria-pressed", "true");
-        free.setAttribute("aria-pressed", "false");
-        void start("daily");
-      });
-      free.addEventListener("click", () => {
-        daily.setAttribute("aria-pressed", "false");
-        free.setAttribute("aria-pressed", "true");
-        void start("free");
-      });
-      modes.append(daily, free);
-
-      const hud = el(
-        "div",
-        { class: "orch-hud" },
-        el("p", { class: "orch-score" }, "Score ", scoreEl),
-        el("p", { class: "orch-best" }, "Best ", bestEl),
-        el("p", { class: "orch-next" }, "Next ", nextChip, " ", nextName),
-      );
 
       // Tap-first: drag anywhere across the crate to aim, release to drop.
       canvas.addEventListener("pointerdown", (e) => {
@@ -347,7 +390,7 @@ export function orchardDropModule(): GameModule {
       });
 
       surface.append(canvas);
-      container.replaceChildren(modes, hud, surface, status, result);
+      container.replaceChildren(surface, status, result);
       result.hidden = true;
 
       window.__orchard = {
@@ -368,8 +411,11 @@ export function orchardDropModule(): GameModule {
       void (async () => {
         binding = await OrchardDrop.load("/orchard-drop.wasm");
         if (disposed) return;
-        const shared = new URLSearchParams(location.search).get("r");
-        await start("daily");
+        const params = new URLSearchParams(location.search);
+        const shared = params.get("r");
+        // A `?seed=` deep link is a free-play run of that seed, as on every other
+        // shelf game; the daily is the day's seed and nothing else.
+        await start(params.get("seed") !== null ? "free" : chosenMode);
         if (shared !== null) await openShared(shared);
         // No `prefers-reduced-motion` branch: in this game the motion IS the
         // game. There is no decorative animation to strip, and a still crate
@@ -387,6 +433,7 @@ export function orchardDropModule(): GameModule {
       canvas = null;
       host?.replaceChildren();
       host = null;
+      gf = null;
       delete window.__orchard;
     },
   };

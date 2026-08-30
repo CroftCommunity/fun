@@ -152,14 +152,21 @@ function renderRangeRow(row: RangeRow): HTMLElement {
   return wrap;
 }
 
-function renderChoiceRow(row: ChoiceRow): HTMLElement {
+// Radios group by `name` across the whole document. The frame renders a game's
+// preferences twice — the phone's sheet and the rail's inline panel, rebuilt on
+// every update() — so a name shared by row id made the two copies ONE group, and
+// re-rendering the hidden copy unchecked the visible sheet's radio. Each sheet
+// render gets its own suffix.
+let sheetSerial = 0;
+
+function renderChoiceRow(row: ChoiceRow, serial: number): HTMLElement {
   const wrap = el("fieldset", { class: "sheet-row sheet-choice", "data-setting": row.id });
   wrap.append(el("legend", { class: "sheet-choice-label" }, row.label));
   if (row.hint) wrap.append(el("p", { class: "sheet-hint" }, row.hint));
   for (const opt of row.options) {
     const input = el("input", {
       type: "radio",
-      name: `sheet-${row.id}`,
+      name: `sheet-${row.id}-${serial}`,
       value: opt.value,
       class: "sheet-choice-input",
     }) as HTMLInputElement;
@@ -179,9 +186,11 @@ function renderChoiceRow(row: ChoiceRow): HTMLElement {
  *  the caller places it wherever it likes (e.g. inside a `<details>`). */
 export function renderSettingsSheet(spec: SettingsSheetSpec): HTMLElement {
   const sheet = el("div", { class: "sheet" });
+  sheetSerial += 1;
+  const serial = sheetSerial;
   if (spec.intro) sheet.append(el("p", { class: "sheet-intro" }, spec.intro));
   const renderRow = (row: SettingRow): HTMLElement =>
-    row.kind === "toggle" ? renderToggleRow(row) : row.kind === "range" ? renderRangeRow(row) : renderChoiceRow(row);
+    row.kind === "toggle" ? renderToggleRow(row) : row.kind === "range" ? renderRangeRow(row) : renderChoiceRow(row, serial);
   for (const row of spec.rows) sheet.append(renderRow(row));
   for (const section of spec.sections ?? []) {
     if (section.rows.length === 0) continue;

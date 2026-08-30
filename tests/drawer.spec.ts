@@ -68,6 +68,7 @@ test("the open drawer scrolls its own content instead of the background page", a
 
 test("a game page mounts the module; full-screen preserves the same instance", async ({
   page,
+  browserName,
 }) => {
   await page.goto("/placeholder/?play=1");
   const game = page.locator(".placeholder-game");
@@ -75,7 +76,9 @@ test("a game page mounts the module; full-screen preserves the same instance", a
   await expect(game).toHaveAttribute("data-mount-count", "1");
 
   await page.getByRole("button", { name: /toggle full screen/i }).click();
-  await expect(page.locator("body")).toHaveClass(/fullscreen/);
+  // The Fullscreen API where there is one; WebKit under Playwright has none (D1).
+  if (browserName === "webkit") await expect(page.locator(".gf-toast")).toContainText(/install the app/i);
+  else await expect(page.locator("body")).toHaveClass(/fullscreen/);
   await expect(game).toBeVisible();
   // Same instance: full-screen re-styles the chrome, it does not remount.
   await expect(game).toHaveAttribute("data-mount-count", "1");

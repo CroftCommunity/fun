@@ -146,49 +146,6 @@ body {
   border-radius: var(--radius);
 }
 
-/* Tier-2 honest-representation banner: a wrapped game has no verifiable record,
-   and the shelf says so above the game. Uses semantic tokens only. */
-.wrapped-banner {
-  margin: 0 0 0.75rem;
-  padding: 0.6rem 0.9rem;
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--accent);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--ink-muted);
-  font-size: 0.85rem;
-  line-height: 1.35;
-}
-.wrapped-banner p {
-  margin: 0;
-}
-.wrapped-banner-claim {
-  color: var(--ink);
-  font-weight: 600;
-}
-.wrapped-banner-credit {
-  margin-top: 0.2rem;
-}
-.wrapped-banner a {
-  color: var(--link);
-}
-
-/* A wrapped game's sandboxed frame fills the play area with no chrome of its
-   own; the honest-representation banner sits above it (in our chrome). */
-.wrapped-game-frame {
-  display: block;
-  width: 100%;
-  height: 70vh;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-}
-body.fullscreen .wrapped-game-frame {
-  height: 100vh;
-  border: 0;
-  border-radius: 0;
-}
-
 /* Full-screen: hide the chrome, let the play area fill the viewport. */
 body.fullscreen .chrome-header,
 body.fullscreen .drawer {
@@ -865,14 +822,6 @@ body:has(> .play-area > .gf) {
    The board is a felt play surface; cards are warm ivory with classic suits;
    the brass accent marks legal targets and actions, moss marks the verifiable
    win, rust a failed verification. */
-.sol-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-.sol-controls button,
 .sol-result-controls button,
 .sol-result-controls .sol-share {
   font: inherit;
@@ -883,20 +832,6 @@ body:has(> .play-area > .gf) {
   border-radius: var(--radius);
   padding: 0.4rem 0.7rem;
   text-decoration: none;
-}
-.sol-modes {
-  display: flex;
-  gap: 0.25rem;
-}
-.sol-controls button[aria-pressed="true"] {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--accent-ink);
-}
-.sol-assist-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
 }
 .sol-status {
   min-height: 1.4em;
@@ -1060,23 +995,7 @@ body:has(> .play-area > .gf) {
   }
 }
 
-/* Settings disclosure + contextual result note. */
-.sol-settings {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 0.2rem 0.5rem;
-  background: var(--surface);
-}
-.sol-settings summary {
-  cursor: pointer;
-  padding: 0.2rem 0;
-}
-.sol-setting {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.15rem 0;
-}
+/* Contextual result note. */
 .sol-note {
   margin: 0 0 1rem;
   color: var(--ink-muted);
@@ -2532,40 +2451,6 @@ body:has(> .play-area > .gf) {
   padding-inline: 0.6rem;
 }
 
-/* Turn bar — the two players' identities, with the active side lit. */
-.drop4-player {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.25rem 0.6rem;
-  border-radius: 999px;
-  border: 2px solid transparent;
-  color: var(--ink);
-  font-weight: 600;
-}
-.drop4-player.active {
-  border-color: var(--active);
-  background: color-mix(in srgb, var(--active) 14%, transparent);
-}
-.drop4-vs {
-  color: var(--ink-muted);
-  font-size: 0.85rem;
-}
-/* A small disc chip, reused in the turn bar + the mark chooser. */
-.drop4-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.4rem;
-  height: 1.4rem;
-  border-radius: 50%;
-  font-size: 0.9rem;
-  line-height: 1;
-  color: rgb(255 255 255 / 92%);
-  text-shadow: 0 1px 1px rgb(0 0 0 / 45%);
-}
-.drop4-chip.x { background: var(--d4-x); }
-.drop4-chip.o { background: var(--d4-o); }
 
 /* Options: difficulty + which mark you play. */
 .drop4-mark {
@@ -3005,6 +2890,14 @@ body:has(> .play-area > .gf) {
 /* One centred column: controls, callout, stage (hold · board · next), the touch
    pad, status. The board canvas draws its own dark play surface (--al-board);
    the surrounding chrome uses semantic tokens so it stays theme-aware + AA. */
+/* A column that gives the board whatever height the pad and the readouts leave:
+   at 390×844 the stage is 604px and this column measured 687px (a 430px board +
+   the 166px pad), so a tap on the pad scrolled the stage 46px. The board's height
+   is set in PIXELS by the module (`fitBoard`, a ResizeObserver on this column):
+   a max-height clamp on an auto height kept the aspect on Chromium and squashed
+   the canvas on WebKit (196 wide at 331 tall), and `height: 100%` of the flexed
+   row never settled on CI's Linux WebKit. Below the 14rem floor the stage scrolls
+   instead; the pad is the tap target, the cells are not. */
 .al-game {
   display: flex;
   flex-direction: column;
@@ -3013,6 +2906,8 @@ body:has(> .play-area > .gf) {
   width: fit-content;
   margin-inline: auto;
   max-width: 100%;
+  flex: 1;
+  min-height: 0;
 }
 .al-stage {
   display: flex;
@@ -3020,6 +2915,7 @@ body:has(> .play-area > .gf) {
   justify-content: center;
   gap: 0.7rem;
   max-width: 100%;
+  flex: 0 0 auto;
 }
 .al-board {
   display: block;
@@ -3027,8 +2923,9 @@ body:has(> .play-area > .gf) {
   box-shadow: 0 6px 22px rgb(0 0 0 / 28%);
   touch-action: manipulation;
   max-width: 100%;
-  height: auto;
-  flex: 1 1 auto;
+  width: auto;
+  height: auto; /* the module sets a pixel height; width follows the canvas's aspect */
+  flex: 0 0 auto;
   min-width: 0;
 }
 .al-board:focus-visible {
@@ -3057,25 +2954,6 @@ body:has(> .play-area > .gf) {
   border-radius: var(--r-card);
   background: var(--surface);
   border: 1px solid var(--border);
-}
-.al-hud {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  margin-top: 0.4rem;
-}
-.al-stat {
-  display: flex;
-  flex-direction: column;
-  font-size: 0.72rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--ink-muted);
-}
-.al-stat b {
-  font-size: 1.15rem;
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
 }
 .al-callout {
   min-height: 1.4rem;
@@ -3134,25 +3012,6 @@ body:has(> .play-area > .gf) {
   .al-tbtn:active { transform: none; }
 }
 
-/* The left/right speed slider row inside the Align settings sheet. */
-.al-range {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.al-range-label {
-  flex: 0 0 auto;
-}
-.al-range .al-set-speed {
-  flex: 1 1 auto;
-  min-width: 6rem;
-  accent-color: var(--active);
-}
-.al-range-val {
-  flex: 0 0 auto;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-muted);
-}
 @media (min-width: 720px) {
   /* On a real keyboard the touch pad is optional — keep it but shrink it. */
   .al-touch { max-width: 22rem; }
@@ -3284,32 +3143,7 @@ body:has(> .play-area > .gf) {
    hues live in tokens.css as --cs-c0..c11).
    ============================================================================ */
 .cs-game { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; width: 100%; }
-.cs-hud {
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-  color: var(--ink-muted);
-  letter-spacing: 0.02em;
-}
-.cs-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; justify-content: center; }
-.cs-undo, .cs-restart {
-  padding: 0.35rem 0.7rem;
-  border-radius: var(--r-card);
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--ink);
-  cursor: pointer;
-}
-.cs-undo:hover, .cs-restart:hover { border-color: var(--accent); }
 
-.cs-banner {
-  display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; justify-content: center;
-  padding: 0.5rem 0.9rem;
-  border-radius: var(--r-card);
-  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
-  border: 1px solid var(--accent);
-  color: var(--ink);
-  font-weight: 600;
-}
 
 /* The board: tubes wrap into balanced rows and stay centred. `--cs-cols` caps
    how many tubes sit per row (the board width follows from it), so a 12-tube
@@ -3469,17 +3303,6 @@ body:has(> .play-area > .gf) {
 }
 
 /* Settings: the skin segmented control. */
-.cs-skin-row { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
-.cs-setting-label, .cs-skin-note { color: var(--ink-muted); }
-.cs-skin-btn {
-  padding: 0.25rem 0.6rem;
-  border-radius: var(--r-card);
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--ink);
-  cursor: pointer;
-}
-.cs-skin-btn[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 22%, var(--surface)); }
 .cs-share-line { font-family: var(--font-mono); font-size: 0.85rem; color: var(--ink-muted); }
 
 @media (prefers-reduced-motion: reduce) {
@@ -3506,40 +3329,6 @@ body:has(> .play-area > .gf) {
   padding: 2rem;
   text-align: center;
   color: var(--ink-muted);
-}
-
-/* --- home --- */
-.le-home {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 2rem 1rem;
-  text-align: center;
-}
-.le-logo {
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: clamp(2.2rem, 8vw, 3.4rem);
-  color: var(--ink);
-  letter-spacing: -0.01em;
-}
-.le-tagline {
-  max-width: 28rem;
-  color: var(--ink-muted);
-  margin: 0 0 1rem;
-}
-.le-home-actions {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.6rem;
-  width: min(20rem, 90vw);
-}
-.le-note {
-  margin: -0.1rem 0 0.4rem;
-  color: var(--ink-muted);
-  font-size: 0.9rem;
 }
 
 /* --- pill buttons --- */
@@ -3744,19 +3533,23 @@ a.le-btn {
 }
 
 /* --- the game stage: canvas fills it, HUD floats on top --- */
+/* The board fills the frame's stage: the column grows to it and the stage inside
+   takes the height that leaves (it was a fixed 72vh against a padded play area). */
 .le-game {
-  margin: -1.5rem; /* fill the play-area padding */
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: -0.5rem -0.75rem; /* fill the stage padding */
 }
 .le-stage {
   position: relative;
   width: 100%;
-  height: 72vh;
+  flex: 1;
+  min-height: 16rem;
   overflow: hidden;
   background: var(--le-bg);
   touch-action: none;
-}
-body.fullscreen .le-stage {
-  height: 100dvh;
 }
 .le-canvas {
   display: block;
@@ -4959,39 +4752,6 @@ body.fullscreen .le-stage {
    live in tokens.css with the rest of the palette. The eleven FRUIT colours are
    the game's own identity, are not skinned, and live in render.ts — a cherry is
    red in every skin. */
-.orch-modes {
-  display: flex;
-  justify-content: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-.orch-mode {
-  /* 44px tap floor — the mobile-first standard, not a suggestion. */
-  min-height: 44px;
-  min-width: 44px;
-  padding: 0 1rem;
-}
-.orch-hud {
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-  color: var(--ink);
-  font-family: var(--font-display);
-}
-.orch-hud p { margin: 0; }
-.orch-score-value,
-.orch-best-value { font-weight: 700; }
-.orch-next { display: inline-flex; align-items: center; gap: 0.35rem; }
-.orch-next-chip {
-  width: 0.9rem;
-  height: 0.9rem;
-  border-radius: 50%;
-  display: inline-block;
-  border: 1px solid rgb(0 0 0 / 20%);
-}
-.orch-next-name { color: var(--ink-muted); }
-
 .orch-surface {
   display: flex;
   justify-content: center;

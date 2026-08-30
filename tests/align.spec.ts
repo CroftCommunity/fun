@@ -6,6 +6,7 @@
 
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { boardTopStable } from "./helpers/board-top.js";
 
 async function ready(page: Page): Promise<void> {
   await expect(page.locator(".al-board")).toBeVisible();
@@ -23,8 +24,12 @@ test("the board, touch pad, and HUD render with an active piece", { tag: "@smoke
   await ready(page);
   await expect(page.locator(".al-board")).toBeVisible();
   await expect(page.locator(".al-touch")).toBeVisible();
-  await expect(page.locator(".al-hud")).toContainText(/score/i);
-  await expect(page.locator(".al-hud")).toContainText(/level/i);
+  // Score, level and lines are the frame's meters; the side panels keep Hold and Next.
+  await expect(page.locator('.gf-stat[data-meter="score"]')).toContainText(/score/i);
+  await expect(page.locator('.gf-stat[data-meter="level"]')).toContainText(/level/i);
+  await expect(page.locator('.gf-stat[data-meter="lines"]')).toContainText(/lines/i);
+  await expect(page.locator(".al-hud, .sol-controls, .sol-settings")).toHaveCount(0);
+  await expect(page.locator(".gf-mode")).toHaveText(/marathon/i);
   const hasActive = await page.evaluate(() => window.__align!.board().active !== null);
   expect(hasActive).toBe(true);
 });
@@ -100,8 +105,10 @@ test("turning haptics off stops the buzz", async ({ page }) => {
   await stubVibrate(page);
   await page.goto("/align/?seed=7");
   await ready(page);
-  await page.locator(".sol-settings summary").click();
-  await page.locator(".al-set-haptics").uncheck();
+  await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await page.locator('.gf-sheet [data-setting="haptics"] .sheet-toggle-input').click({ force: true });
+  await page.keyboard.press("Escape");
   await page.evaluate(() => {
     (window as unknown as { __vibes: unknown[] }).__vibes.length = 0;
   });
@@ -112,21 +119,24 @@ test("turning haptics off stops the buzz", async ({ page }) => {
 test("the left/right speed slider persists across a reload", async ({ page }) => {
   await page.goto("/align/?seed=7");
   await ready(page);
-  await page.locator(".sol-settings summary").click();
-  await page.locator(".al-set-speed").fill("1");
+  await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await page.locator('.gf-sheet [data-setting="speed"] .sheet-range').fill("1");
   await page.goto("/align/?seed=7");
   await ready(page);
-  await page.locator(".sol-settings summary").click();
-  await expect(page.locator(".al-set-speed")).toHaveValue("1");
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await expect(page.locator('.gf-sheet [data-setting="speed"] .sheet-range')).toHaveValue("1");
 });
 
 test("the speed setting drives the hold-repeat interval (slow is a longer gap than fast)", async ({ page }) => {
   await page.goto("/align/?seed=7");
   await ready(page);
-  await page.locator(".sol-settings summary").click();
-  await page.locator(".al-set-speed").fill("1"); // slowest
+  await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  const speed = page.locator('.gf-sheet [data-setting="speed"] .sheet-range');
+  await speed.fill("1"); // slowest
   const slow = await page.evaluate(() => window.__align!.moveRepeatMs());
-  await page.locator(".al-set-speed").fill("10"); // fastest
+  await speed.fill("10"); // fastest
   const fast = await page.evaluate(() => window.__align!.moveRepeatMs());
   expect(slow).toBe(250);
   expect(fast).toBe(50);
@@ -213,11 +223,42 @@ test("a full run tops out to a verifiable result; the share round-trips", async 
 test("with hints off, 'End run' ends the round with a verifiable result", async ({ page }) => {
   await page.goto("/align/?seed=7");
   await ready(page);
-  await page.locator(".sol-settings summary").click();
-  await page.locator(".sol-set-hints").uncheck();
-  await page.locator(".sol-stuck").click();
+  await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await page.locator('.gf-sheet [data-setting="hints"] .sheet-toggle-input').click({ force: true });
+  await page.keyboard.press("Escape");
+  await expect(page.locator('.gf-verb[data-verb="hint"]')).toHaveCount(0);
+  await page.locator('.gf-verb[data-verb="done"]').click();
   await expect(page.locator(".sol-result")).toBeVisible();
   await expect(page.locator(".sol-verify-badge.ok")).toBeVisible();
+});
+
+test("the New game card picks Marathon or Sprint, and the chip says which", async ({ page }) => {
+  await page.goto("/align/?seed=7");
+  await ready(page);
+  await page.locator('.gf-verb[data-verb="new"]').click();
+  const sheet = page.locator(".gf-sheet");
+  await expect(sheet.locator('[data-setting="mode"] .sheet-choice-opt')).toHaveText(["Marathon (daily)", "New Marathon", "Sprint 40"]);
+  await sheet.locator('[data-setting="mode"] input[value="sprint"]').check();
+  await sheet.locator(".gf-sheet-start").click();
+  await ready(page);
+  await expect(page.locator(".gf-mode")).toHaveText(/sprint/i);
+  await expect(page.locator('.gf-stat[data-meter="lines"]')).toContainText(/\/ ?40/);
+});
+
+test("a drop does not move the board, and neither does the settings sheet", { tag: "@smoke" }, async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/align/?seed=7");
+  await ready(page);
+  const v = await boardTopStable(page, ".al-board", async () => {
+    await page.getByRole("button", { name: /move left/i }).click();
+    await page.getByRole("button", { name: /hard drop/i }).click();
+    await page.locator('.gf-verb[data-verb="settings"]').click();
+    await expect(page.locator(".gf-sheet")).toBeVisible();
+    await page.keyboard.press("Escape");
+  });
+  expect(v.frames).toBeGreaterThan(5);
+  expect(v, `board top moved ${v.delta}px over ${v.frames} frames`).toMatchObject({ stable: true });
 });
 
 test("the board has no axe violations in light and dark", async ({ page }) => {

@@ -1,6 +1,6 @@
 # Plan — the Game Frame: one structure for every game page, and a progress store
 
-**Status:** Pass 1 + Pass 2 + **Pass 3 COMPLETE** (2026-08-30, fresh context). Six open
+**Status:** **LANDED — Phases 0–22 executed and merged 2026-08-30** (Review Log below, newest first). Planning history: Pass 1 + Pass 2 + **Pass 3 COMPLETE** (2026-08-30, fresh context). Six open
 questions CONFIRMED by the owner 2026-08-30 ("accept all as recommended"); Pass 3 added
 **Q7 and Q8**; both ADOPTED as recommended under the owner's blanket "go until all phases
 are done, PR and merge when ready" (2026-08-30) — **Q7 (what a URL with query
@@ -8,7 +8,7 @@ parameters does once every bare URL opens on a start screen) gates Phase 5** and
 thing between this plan and execution: Phases 0–4 may start now. D5 was resolved during
 planning (read-only, see Verified Assumptions) and is struck from Phase 0. Phases 1, 2, 3
 and 5 carry sub-phases (1a/1b, 2a/2b, 3a/3b, 5a/5b) — each with its own Done-when and
-wiring test — because each touched four or more files. Phases 0–17 COMPLETE (2026-08-30). Mocks
+wiring test — because each touched four or more files. Phases 0–22 COMPLETE — the plan is landed (2026-08-30). Mocks
 landed on `main` (`mocks/d-game-frame.html`, PR #45, `6c4dd9c`); owner decisions D1–D5
 recorded.
 
@@ -1104,6 +1104,139 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
    it changes one test case either way.*
 
 ## Review Log
+
+### Phase 22 — executed 2026-08-30 (full screen, the sweep, the docs)
+- Red first, three cases in `tests/chrome.test.ts` on a fake Fullscreen API installed on
+  the root (jsdom has none): ⤢ calls `requestFullscreen` where the detect passes and the
+  body takes `.fullscreen`; without the API it toasts Q1's copy and stays unpressed;
+  `fullscreenchange` with no element (Esc) un-presses it. `tests/dead-css.test.ts`: none
+  of the retired control classes in `src/`, none of their rules in `styles.css`, the only
+  `*-turnbar` rule Cribbage's final scoreline, no `*-banner` rule at all.
+- `src/chrome.ts`: the feature-detect D1 recorded (`typeof requestFullscreen ===
+  "function" && fullscreenEnabled`), the API call with a `.catch` that un-paints, exit
+  through `exitFullscreen`, and a `fullscreenchange` listener. The browser spec covers
+  both engines: chromium reaches `fullscreenElement = HTML` with the shelf bar hidden and
+  the game bar showing, and comes back on `exitFullscreen()`; WebKit sees the toast. The
+  two older specs that clicked ⤢ and expected the CSS-only class now branch on the engine.
+  Found on the way: the toggle has no accessible presence once the bar is hidden, so the
+  spec reads it by class.
+- `styles.css` −3,408 chars: `.wrapped-*` (Tier-2, no caller since 2026-08-29),
+  `.sol-controls` / `.sol-modes` / `.sol-settings` / `.sol-setting` / `.sol-assist-label`,
+  `.drop4-player` / `.drop4-vs` / `.drop4-chip`, `.al-range*`, `.cs-actions` / `.cs-undo` /
+  `.cs-restart`, `body.fullscreen .le-stage`. The shared button rule keeps its
+  `.sol-result-controls` selectors.
+- Docs: `README.md` (every game is on the frame; ⤢; Drop 4's seats), `docs/BUILDING-GAMES.md`
+  (a sentence §10 had garbled in an earlier phase), `docs/STATE-OF-PLAY.md` (the
+  2026-08-30 addendum: what the migration measured and what stays open), `mocks/README.md`
+  (Direction D marked shipped, with the two places the shipped thing differs from the mock).
+- **Owed, and recorded as owed:** the broad device pass (Samsung + Pixel) across the
+  migrated games and this phase's "fills the display on Android / says why not on iOS".
+  The sampler and both engines stood in for every phase; the phones did not run today.
+  Also open: Align's continue card (needs the core's input log).
+- Green: unit suite in full, typecheck, lint, the three ⤢ specs on both engines, the full
+  `npm run e2e` locally (shared code changed) — see the line below.
+
+### Phase 21 — executed 2026-08-30 (Loose Ends)
+- Red first: 3 of 7 against the unmigrated page (chromium). The game's own home screen
+  (logo, tagline, Play / Daily / All levels) is deleted: the poster is the home, the pitch
+  is the tagline, and the New game card ("Levels", the dock's one verb) routes to the next
+  unsolved level, the level grid or the daily calendar (module-scope `chosenDestination`).
+  Two stats: the level (or the daily's date) and `solved / 100`; the chip is the band.
+  The overlay HUD stays on the board as the plan said. Back from the grid or calendar
+  returns to the board (or starts the next level if none was played this visit) — the
+  home it returned to no longer exists. `?play=1` opens the next unsolved level directly.
+- `snapshot()`/`resume()`: the record is WHICH level or daily; resume reopens it. The core
+  keeps no mid-level tap log to replay, and a level is a short run of taps that a fresh
+  start does not cost much — recorded plainly in the changelog rather than dressed as a
+  replay.
+- The stage now fills the frame's stage (it was a fixed `72vh` against a padded play
+  area, with a `-1.5rem` margin to eat that padding; the frame's padding is
+  `0.5rem 0.75rem`).
+- Green (`E2E_PORT=4182`): 28/28 with `--repeat-each=2` at 2 workers on both engines,
+  smoke, typecheck, lint, touched unit suites. Shots for Loose Ends only (the "home"
+  shot is the poster now). How-to alt text and changelog landed in-phase.
+
+### Phase 18 — addendum 2026-08-30 (Align on CI)
+- The `height: 100%` sizing passed locally on both engines and failed the same pad-tap
+  test twice on CI's mobile-webkit shard: "waiting for element to be visible, enabled and
+  stable" for 30 s. Playwright's WebKit is macOS WebKit here and Linux WebKit there, and
+  a percentage height of a replaced element inside a flexed row is exactly the kind of
+  rule two builds can settle differently — on CI it apparently never settled, so the pad
+  moved every frame. Replaced with a pixel height computed by the module from the room
+  the pad and the readouts leave (`fitBoard`, a ResizeObserver on the column; floor 14rem,
+  cap 616px). Measured again on both engines at three sizes: ratio 0.455, pad below the
+  board, desktop 474×215.
+
+### Phase 20 — executed 2026-08-30 (Orchard Drop)
+- Red first: 3 of 11 against the unmigrated page (chromium). Three stats (score, best,
+  next fruit by name — the colour chip had no home in a text meter and the name is the
+  accessible form anyway); the sync runs every frame, so the frame is told on a change
+  of score/best/next/mode only. Daily/Free play is setup (module-scope `chosenMode`);
+  no preferences; one verb (New game); the rule sentence is a toast. The module already
+  had a `frame()` (its paint model), so the handle is `gf`, as in Align.
+- Two things the tests decided: a `?seed=` deep link now starts a FREE run (it started
+  the daily with the seed overridden — the chip said "Daily" for a seed that was not
+  the day's); and the stability sampler needs frames — the drop is a fast-forward, so
+  the test waits 250 ms on the settled crate before opening the sheet, or the sampler
+  sees five frames and cannot judge.
+- **No `snapshot()`/`resume()`**, as Align: the run is wall-clock physics and the core's
+  `record()` is the end-of-run proof, not a mid-run log. The poster shows; the continue
+  card never does. Recorded in the changelog.
+- Green (`E2E_PORT=4182`): 40/40 with `--repeat-each=2` at 2 workers on both engines,
+  smoke, typecheck, lint, touched unit suites. Shots for Orchard only (1). How-to copy and
+  changelog landed in-phase.
+
+### Phase 19 — executed 2026-08-30 (Color Sort)
+- Red first: 7 of 11 against the unmigrated page (chromium). Two stats (moves, par or
+  "—"); the chip is Daily or `Level N`; Undo (absent under Strict), Restart, Hint / I'm
+  stuck and New game are the verbs — four, the ceiling; Daily/Endless is setup
+  (module-scope `chosenMode`, Endless resuming from the best level); skin (a choice),
+  fruit icons (its hint carries the per-skin default note) and Strict are preferences;
+  the rule sentence and the deadlock card are toasts (the deadlock one once per stuck
+  position). `snapshot()` is the deal and the pours from the core's own replay list;
+  `resume()` re-deals (today's, or the level) and replays the STORE's pours — the first
+  version restarted from the game's own save and the test caught it: a pour made through
+  the core bypasses that save, so the hash differed.
+- **What the skin test found — a frame bug, and PR 68's CI flake with it.** Picking a
+  skin radio "did not change its state". The sheet's radios were named `sheet-<row id>`,
+  and the frame renders preferences twice — the phone's sheet and the rail's inline panel,
+  which `update()` rebuilds every time — so both copies were ONE radio group, and
+  re-rendering the hidden copy (with `checked = value === opt`) unchecked the visible one.
+  The same mechanism made Cribbage's peg-board radio read unchecked on one CI shard: an
+  engine render landed between opening the sheet and the assertion. Unit test red first
+  (two sheets, one row id, independent groups), then a per-render suffix on the name in
+  `src/settings-sheet.ts`. Shared code, so the full `npm run e2e` ran locally.
+- Green (`E2E_PORT=4182`): 44/44 with `--repeat-each=2` at 2 workers on both engines;
+  typecheck, lint, touched unit suites (52 incl. the new one); full e2e — see the line
+  below. Shots for Color Sort only (2). Changelog landed in-phase; the how-to's Settings
+  wording still holds.
+
+### Phase 18 — executed 2026-08-30 (Align)
+- Red first: 7 of 18 against the unmigrated page (chromium). Three stats (score, level,
+  `lines / goal`); the fixed-timestep loop renders every frame, so the frame is told only
+  when the three numbers change. Marathon (daily) / New Marathon / Sprint 40 is setup
+  (module-scope `chosenMode`, kept in step with a URL start); haptics and the 1–10 speed
+  range are preferences (the range row formats `n/10`); Hold and Next stay in the side
+  panels; the rule sentence is a toast. The loop's rAF callback is already named
+  `frame`, so the frame handle is `gf` here.
+- **No `snapshot()`/`resume()`.** The core exposes its input log only through
+  `outcome()` at the end of a run, and a falling-block game has ticks interleaved with
+  inputs — resume is not "replay the moves" without the core's help. Recorded in
+  `TODO/align.md`-shaped terms in the changelog; the poster still shows, the continue
+  card never does. A follow-up for the core, not this plan.
+- **Re-measured (D4), and it failed first.** At 390×844 the stage is 604px and Align's
+  column was 687px (board 430 + pad 166 + callout + status), so Playwright's tap on Hard
+  drop scrolled the stage and the board moved 46px on every engine. First fix (the Bubble
+  shape: `max-height: 100%` on an auto-height canvas) held the aspect on Chromium and
+  NOT on WebKit — measured 196 wide at 331 tall, a squashed board on the real phone
+  engine — and the 14rem floor let the pad overlap the board at 360×720. Second fix:
+  the board's height is explicit (`height: 100%` of its flex row, the row capped at the
+  canvas's own 616px so it never upscales, floored at 14rem so the stage scrolls below
+  that). Verified on both engines at 390×844, 360×720 and 1280×800: ratio 0.455
+  everywhere, pad below the board, desktop unchanged (462×210).
+- Green (scoped gate, `E2E_PORT=4182`): 72/72 with `--repeat-each=2` at 2 workers on
+  both engines, smoke, typecheck, lint, touched unit suites (33). Shots for Align only
+  (2). Changelog landed in-phase; the how-to's Settings sentence still holds.
 
 ### Phase 17 — executed 2026-08-30 (2048)
 - Red first: 6 of 10 against the unmigrated page (chromium). Two stats (score, best

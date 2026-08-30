@@ -10,6 +10,7 @@
 
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { boardTopStable } from "./helpers/board-top.js";
 
 async function ready(page: Page): Promise<void> {
   await expect(page.locator(".orch-canvas")).toBeVisible();
@@ -31,8 +32,48 @@ test("the crate renders natively — no iframe, no borrowed chrome", { tag: "@sm
 
   // ... and the native surface is here.
   await expect(page.locator(".orch-canvas")).toBeVisible();
-  await expect(page.locator(".orch-hud")).toContainText(/score/i);
-  await expect(page.locator(".orch-hud")).toContainText(/next/i);
+  // Score, best and the next fruit are the frame's meters; the game's own HUD and
+  // mode buttons are gone, and Daily/Free play is the New game card.
+  await expect(page.locator('.gf-stat[data-meter="score"]')).toContainText(/score/i);
+  await expect(page.locator('.gf-stat[data-meter="best"]')).toContainText(/best/i);
+  await expect(page.locator('.gf-stat[data-meter="next"]')).toContainText(/next/i);
+  await expect(page.locator('.gf-stat[data-meter="next"] .gf-stat-value')).toHaveText(/cherry|strawberry|grape|[a-z]+/);
+  await expect(page.locator(".orch-hud, .orch-modes")).toHaveCount(0);
+  await expect(page.locator(".gf-mode")).toHaveText(/free/i);
+});
+
+test("the New game card picks Daily or Free play, and the chip says which", async ({ page }) => {
+  await page.goto("/orchard-drop/?seed=7");
+  await ready(page);
+  await page.locator('.gf-verb[data-verb="new"]').click();
+  const sheet = page.locator(".gf-sheet");
+  await expect(sheet.locator('[data-setting="mode"] .sheet-choice-opt')).toHaveText(["Daily", "Free play"]);
+  await sheet.locator('[data-setting="mode"] input[value="daily"]').check();
+  await sheet.locator(".gf-sheet-start").click();
+  await ready(page);
+  await expect(page.locator(".gf-mode")).toHaveText(/daily/i);
+});
+
+test("a drop does not move the crate, and neither does the settings sheet", { tag: "@smoke" }, async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/orchard-drop/?seed=7");
+  await ready(page);
+  const v = await boardTopStable(page, ".orch-canvas", async () => {
+    await page.evaluate(() => {
+      const o = window.__orchard!;
+      o.aim(120);
+      o.release();
+      o.fastForward(40);
+    });
+    // The fast-forward is instantaneous; give the sampler frames to watch the
+    // settled crate before the sheet opens (the claim is about layout across both).
+    await page.waitForTimeout(250);
+    await page.locator('.gf-verb[data-verb="settings"]').click();
+    await expect(page.locator(".gf-sheet")).toBeVisible();
+    await page.keyboard.press("Escape");
+  });
+  expect(v.frames).toBeGreaterThan(5);
+  expect(v, `crate top moved ${v.delta}px over ${v.frames} frames`).toMatchObject({ stable: true });
 });
 
 test("a drop puts fruit in the crate through the core", async ({ page }) => {
