@@ -900,7 +900,6 @@ mod tests {
         assert!(tt.is_empty());
         let _ = move_scores_with(&pos, 2, &mut tt, &mut NodeBudget::unlimited());
         assert!(!tt.is_empty());
-        assert!(tt.len() > 0);
         assert!(tt.nodes() > 0);
         let mut off = Table::disabled();
         let _ = move_scores_with(&pos, 2, &mut off, &mut NodeBudget::unlimited());

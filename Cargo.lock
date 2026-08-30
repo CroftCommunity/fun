@@ -175,6 +175,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "chess-wasm"
+version = "0.0.0"
+dependencies = [
+ "adversary-core",
+ "chess-core",
+ "chess-solver",
+ "pond-outcome",
+ "rand_chacha",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "color-sort-core"
 version = "0.0.0"
 dependencies = [

@@ -1,0 +1,22 @@
+[package]
+name = "chess-wasm"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Browser binding over chess-core + chess-solver for the shelf: raw C-ABI + serde-JSON (no wasm-bindgen). Holds one chess game, exposes rules (legal moves unpacked / play / board with the last move's SAN / FEN / hash / result / render), the live opponent (difficulty Levels), the engine-grounded tutor (assess/coach/tutor with the per-move proven flag, depth and nodes reached), and the verifiable outcome. Never panics."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+adversary-core = { path = "../adversary-core" }
+chess-core = { path = "../chess-core" }
+chess-solver = { path = "../chess-solver" }
+pond-outcome = { workspace = true }
+serde = { workspace = true }
+serde_json.workspace = true
+rand_chacha.workspace = true
+
+[lints]
+workspace = true

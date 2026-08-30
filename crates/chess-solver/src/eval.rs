@@ -258,7 +258,7 @@ mod tests {
             assert_eq!(pst(PieceKind::King, Color::White, sq, 0), PST_KING_EG[i]);
             assert_eq!(
                 pst(PieceKind::King, Color::White, sq, 12),
-                (PST_KING_MG[i] + PST_KING_EG[i]) / 2
+                i32::midpoint(PST_KING_MG[i], PST_KING_EG[i])
             );
         }
     }

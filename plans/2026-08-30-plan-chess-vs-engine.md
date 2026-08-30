@@ -5,7 +5,7 @@ analysis) 2026-08-30; Pass 3 (quality gates) 2026-08-30. Every open question is
 owner-confirmed and none is BLOCKING-unresolved; the two PHASE-GATED items gate Phases 2
 and 9 and are already reflected in those phases. **Phase 0 executed 2026-08-30**
 (D1 / D2-desktop / D3-deferral / D4 / D6 closed; D2's Samsung half and D5's
-two-Android half owed, `[device: …]` tags on their task lines) — **Phase 1 executed 2026-08-30** (perft green at CI depth on all six positions; differential perft 200/0) — **Phase 2 executed 2026-08-30** (terminals, both trait impls, hash, SAN, vectors; gate green) — **Phase 3 executed 2026-08-30** (both chess cases green in wasm) — **Phase 4 executed 2026-08-30** (search green, deepen adopted ≥ d4, budgeted ladder 0/50 over 400 ms in Chromium; Samsung half owed) — **Phase 5 executed 2026-08-30** (band + tutor green; Expert v Easy 20/20, Easy v random 14/20) — **Phase 6 executed 2026-08-30** (core 674: 60→23 all equivalent; solver 422: 302→69, real gaps closed and hand-verified) — **Phase 7 next.**
+two-Android half owed, `[device: …]` tags on their task lines) — **Phase 1 executed 2026-08-30** (perft green at CI depth on all six positions; differential perft 200/0) — **Phase 2 executed 2026-08-30** (terminals, both trait impls, hash, SAN, vectors; gate green) — **Phase 3 executed 2026-08-30** (both chess cases green in wasm) — **Phase 4 executed 2026-08-30** (search green, deepen adopted ≥ d4, budgeted ladder 0/50 over 400 ms in Chromium; Samsung half owed) — **Phase 5 executed 2026-08-30** (band + tutor green; Expert v Easy 20/20, Easy v random 14/20) — **Phase 6 executed 2026-08-30** (core 674: 60→23 all equivalent; solver 422: 302→69, real gaps closed and hand-verified) — **Phase 7 executed 2026-08-30** (binding green, 205 KB wasm, 1.06 MiB memory) — **Phase 8 next.**
 Worktree `worktrees/chess/fun`, branch `claude/chess`.
 **Standards anchor:** `docs/BUILDING-GAMES.md` §10 + both new-game checklists;
 `docs/AI-PLAYERS.md` (search cost, honesty gate); `docs/HARNESS.md` (adding a game).
@@ -1346,7 +1346,7 @@ survivors for exactly this reason.
 **Goal:** The engine in the browser, holding one game, never panicking.
 
 **Changes:**
-- [ ] `crates/chess-wasm` mirroring `checkers-wasm`'s surface (Verified
+- [x] `crates/chess-wasm` mirroring `checkers-wasm`'s surface (Verified
   Assumptions) plus `fen()` and `san_json(code)`; `board_json` carries the 64
   cells, side, castling rights, ep square, halfmove clock, `in_check`, the last
   move **and its SAN (`lastSan`, computed at `play` time from the pre-move
@@ -1355,16 +1355,16 @@ survivors for exactly this reason.
   material per side, and `result`; `legal_moves_json` the codes **with**
   `from`/`to`/`promo` unpacked so the UI never re-derives them. `san_json(code)`
   stays for the one caller that names a move *not yet played* — the Hint ring.
-- [ ] `play(code)` returns 0 / 1 illegal / 2 over-or-invalid; `live_move`,
+- [x] `play(code)` returns 0 / 1 illegal / 2 over-or-invalid; `live_move`,
   `coach_json`, `tutor_json`, `assess_json` at the Phase 5 budgets;
   `outcome_json(declare)`.
-- [ ] `tools/build-wasm.sh` `-p chess-wasm`; `build.mjs` copies
+- [x] `tools/build-wasm.sh` `-p chess-wasm`; `build.mjs` copies
   `chess_wasm.wasm → dist/chess.wasm`.
-- [ ] C-ABI tests: a game through the exports to a pinned hash; the promotion code
+- [x] C-ABI tests: a game through the exports to a pinned hash; the promotion code
   round-trip; `assess_json` and `tutor_json` agree on `exact` for the same move
   (checkers' agreement test); every export on a terminal game returns its "over"
   sentinel rather than panicking.
-- [ ] **The edges (Pass 3 — mutation resistance).** `play` returns each of its three
+- [x] **The edges (Pass 3 — mutation resistance).** `play` returns each of its three
   values from its own input: a legal code → 0; a well-formed illegal code → 1;
   `MAX_MOVE_CODE + 1` → 2; any code after the terminal → 2. "Every export on a
   terminal game" is enumerated, not sampled: `live_move` → `MOVE_OVER`, `play` → 2,
@@ -1374,7 +1374,7 @@ survivors for exactly this reason.
   unpacks a promotion square as four entries with one `from`/`to` and `promo` 1..4.
   `tutor_json` and `oracle_move_values_json` carry Phase 4's `depth` and `nodes`, and
   a test pins that `depth ≤ level.depth()`.
-- [ ] **Sizes in the Review Log (Pass 3 — observability):** the TT size constant, the
+- [x] **Sizes in the Review Log (Pass 3 — observability):** the TT size constant, the
   bytes of `target/wasm32-unknown-unknown/release/chess_wasm.wasm`, and the wasm
   memory the module declares — the three numbers a "does not load on the Pixel"
   would be read against.
@@ -1852,6 +1852,39 @@ PR open; `workspace-audit.sh` clean.
 ---
 
 ## Review Log
+
+### Phase 7 execution — 2026-08-30
+
+**Green:** `cargo test -p chess-wasm` 5 debug (8.8 s — the coach/oracle
+searches) and 6 release (31 s, the agreement test dominating — checkers'
+shape); `npm run build:wasm` emits the artefact and `node build.mjs` copies
+it to `dist/chess.wasm` (two commands, two artefacts, as Pass 3 corrected);
+`npm run test:rust` green after two lints in the *solver's test code* from the
+audit rounds surfaced (per-crate runs had never run clippy on test targets)
+and one `struct_excessive_bools` on the wire-shaped `AssessView`, allowed with
+its reason like the solver's.
+
+**The three sizes (Pass 3's observability rule):** `dist/chess.wasm` =
+**205,347 bytes**; declared memory **17 pages = 1.06 MiB initial, no
+maximum** (parsed from the binary's memory section); the transposition table
+has **no fixed size constant** — it is a `HashMap` bounded by the search
+budget (Expert's 150k nodes → at most ~150k entries per move, freed with the
+table each call), which is the number a "does not load on the Pixel" would be
+read against.
+
+**What the binding adds beyond checkers' surface:** `fen()`; `san_json(code)`
+for a move not yet played (the Hint ring); `board_json` with the 64 cells,
+castling bits, ep square, both clocks, `inCheck`, `lastMove` + **`lastSan`**
+(computed at `play` time from the pre-move position), `captured` material
+points per side, the unpacked `legal` list and `result`; `legal_moves_json`
+as `{code, from, to, promo}` objects (a promotion square = four entries);
+`oracle_move_values_json` and the tutor reports carrying **`depth` and
+`nodes`** (Phase 4's rule — chess is the first shelf binding to report them).
+Pinned by tests: the committed threefold vector replayed through `play()` to
+its recorded hash; every export's terminal value enumerated; `play`'s three
+return values from their own inputs; `lastSan` null → `"e4"`; `inCheck`
+across `Qxf7+`; the promotion square as four entries and the queen's code
+round-tripping to `e8=Q+`; `depth ≤ level.depth()` on both reports.
 
 ### Phase 6 execution — 2026-08-30
 
