@@ -164,6 +164,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "chess-solver"
+version = "0.0.0"
+dependencies = [
+ "adversary-core",
+ "adversary-solver",
+ "chess-core",
+ "rand",
+ "rand_chacha",
+]
+
+[[package]]
 name = "color-sort-core"
 version = "0.0.0"
 dependencies = [

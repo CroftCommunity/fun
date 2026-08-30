@@ -124,6 +124,9 @@ pub enum FenError {
     /// A clock field is not a number.
     #[error("the clock fields must be numeric")]
     Clock,
+    /// The side that just moved is still in check — an unreachable position.
+    #[error("the side not to move is in check")]
+    OppositeCheck,
 }
 
 /// A chess position's board state: the mailbox and the five FEN fields.
@@ -207,14 +210,24 @@ impl Board {
         let halfmove: u16 = halfmove_field.parse().map_err(|_| FenError::Clock)?;
         let fullmove: u16 = fullmove_field.parse().map_err(|_| FenError::Clock)?;
 
-        Ok(Board {
+        let board = Board {
             cells,
             side,
             castling: rights,
             ep,
             halfmove,
             fullmove,
-        })
+        };
+        // RULES §2: a position where the side NOT to move is in check cannot
+        // arise from play (the mover would have had to leave their king en
+        // prise). Accepting one lets pseudo-legal generation offer a king
+        // capture — found by a Phase 4 test whose fixture was exactly such a
+        // position.
+        let them = side.other();
+        if crate::movegen::attacked(&board, crate::movegen::king_square(&board, them), side) {
+            return Err(FenError::OppositeCheck);
+        }
+        Ok(board)
     }
 
     /// Print the six-field FEN (RULES §2).

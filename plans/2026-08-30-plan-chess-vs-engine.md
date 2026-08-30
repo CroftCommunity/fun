@@ -5,7 +5,7 @@ analysis) 2026-08-30; Pass 3 (quality gates) 2026-08-30. Every open question is
 owner-confirmed and none is BLOCKING-unresolved; the two PHASE-GATED items gate Phases 2
 and 9 and are already reflected in those phases. **Phase 0 executed 2026-08-30**
 (D1 / D2-desktop / D3-deferral / D4 / D6 closed; D2's Samsung half and D5's
-two-Android half owed, `[device: …]` tags on their task lines) — **Phase 1 executed 2026-08-30** (perft green at CI depth on all six positions; differential perft 200/0) — **Phase 2 executed 2026-08-30** (terminals, both trait impls, hash, SAN, vectors; gate green) — **Phase 3 executed 2026-08-30** (both chess cases green in wasm) — **Phase 4 next.**
+two-Android half owed, `[device: …]` tags on their task lines) — **Phase 1 executed 2026-08-30** (perft green at CI depth on all six positions; differential perft 200/0) — **Phase 2 executed 2026-08-30** (terminals, both trait impls, hash, SAN, vectors; gate green) — **Phase 3 executed 2026-08-30** (both chess cases green in wasm) — **Phase 4 executed 2026-08-30** (search green, deepen adopted ≥ d4, budgeted ladder 0/50 over 400 ms in Chromium; Samsung half owed) — **Phase 5 next.**
 Worktree `worktrees/chess/fun`, branch `claude/chess`.
 **Standards anchor:** `docs/BUILDING-GAMES.md` §10 + both new-game checklists;
 `docs/AI-PLAYERS.md` (search cost, honesty gate); `docs/HARNESS.md` (adding a game).
@@ -1129,11 +1129,11 @@ test:rust` green (xbuild's `lib.rs` is workspace Rust and clippy sees it).
 transposition table, whose `exact` flag means a proven terminal.
 
 **Changes:**
-- [ ] `crates/chess-solver` (deps: `adversary-core`, `adversary-solver`,
+- [x] `crates/chess-solver` (deps: `adversary-core`, `adversary-solver`,
   `chess-core`, `rand`, `rand_chacha`): `eval.rs` — material + PST, integer
   centipawns, tapered by a 0..24 phase; mate scores as `MATE - ply` so a shorter
   mate is preferred; **every constant an `i32`**.
-- [ ] `search.rs` — negamax alpha-beta; **quiescence** (captures + promotions,
+- [x] `search.rs` — negamax alpha-beta; **quiescence** (captures + promotions,
   stand-pat, charged to the same `NodeBudget`); TT keyed on the Zobrist `Key`
   with depth and bound flags (exact / lower / upper — the sound version, not the
   D3-probe shortcut the checkers plan warned about); ordering TT-move → MVV-LVA →
@@ -1141,12 +1141,12 @@ transposition table, whose `exact` flag means a proven terminal.
   value came from a terminal reached in the search (`chess_core::result` returned
   `Some`), propagated up only when *every* child on the principal path was proven
   — checkers' `search.rs` shape.
-- [ ] Draw handling inside the search: a repetition or the 50-move clock inside
+- [x] Draw handling inside the search: a repetition or the 50-move clock inside
   the tree returns the draw score with `exact = true`; repetition detection uses
   the `history` the position carries plus the search path.
-- [ ] `move_scores(board, depth, budget)`, `move_values`, `best_move`; never a
+- [x] `move_scores(board, depth, budget)`, `move_values`, `best_move`; never a
   partial iteration, never a truncated TT store.
-- [ ] **In-phase measurement (the D3 deferral):** on D2's 50 positions, in wasm,
+- [x] **In-phase measurement (the D3 deferral):** on D2's 50 positions, in wasm,
   at each provisional level: median / p95 / worst ms and the fraction over 400 ms;
   then the same with `adversary_solver::deepen` — adopt it only if nodes fall,
   record the number either way beside the constants and in `docs/AI-PLAYERS.md`.
@@ -1158,26 +1158,26 @@ transposition table, whose `exact` flag means a proven terminal.
   construction, `spike/*/target/` already git-ignored, and Phase 13 times the phones
   with the **same** harness so its numbers are comparable to this table. Disposition
   `keep-as-fixture`, like D2's FEN set.
-- [ ] **What the search reports (Pass 3 — observability).** `move_scores` returns,
+- [x] **What the search reports (Pass 3 — observability).** `move_scores` returns,
   beside the values, the **depth actually reached** and the **nodes consumed** —
   `docs/AI-PLAYERS.md:319`'s rule for the day deepening is in ("a named level depth
   is a ceiling, not a promise"). Phase 7 carries both onto `tutor_json` and
   `oracle_move_values_json` as `depth` / `nodes`, so a Phase 13 "Expert felt slow" is
   read against a number the phone produced. No shelf solver reports this yet; chess
   is the first expected to adopt `deepen`, so it is the first that needs to.
-- [ ] Tests: mate-in-1 / mate-in-2 / mate-in-3 puzzles found at sufficient depth
+- [x] Tests: mate-in-1 / mate-in-2 / mate-in-3 puzzles found at sufficient depth
   with `exact = true`; a hanging-queen position where depth-3 *without* quiescence
   blunders and *with* it does not (the reason the feature exists, as a test);
   an **independent plain minimax** cross-check at depth 3 on 20 positions
   (Othello's discipline — the only thing that makes the alpha-beta a claim);
   `zero_budget_never_returns_partial`.
-- [ ] **RED first, the constants included (Pass 3).** The PSTs are data: each table
+- [x] **RED first, the constants included (Pass 3).** The PSTs are data: each table
   has 64 entries; the black table is the white table mirrored
   (`pst_b[sq] == pst_w[mirror(sq)]` for all 64); a centre knight outscores a rim
   knight; `MATE` exceeds the largest material sum so a proven mate always outranks
   material; `phase(start) == 24` and `phase(K v K) == 0`. Each is a test written
   before the table it pins.
-- [ ] **The edges (Pass 3 — mutation resistance; single-point assertions on
+- [x] **The edges (Pass 3 — mutation resistance; single-point assertions on
   branching code survive one-line mutations).** *`exact` propagation:* a node with one
   proven child and one heuristic child on the principal path is **not** exact (kills
   the `all`→`any` mutation), and a node whose every child is proven is. *Mate
@@ -1852,6 +1852,65 @@ PR open; `workspace-audit.sh` clean.
 ---
 
 ## Review Log
+
+### Phase 4 execution — 2026-08-30
+
+**Green:** chess-solver 17/17 release (3.2 s after the tuning below), 11 debug
+(0.35 s — the one debug run with overflow checks on, closing
+`TODO/README.md`'s window-sentinel thread for this crate: chess opens its
+window at `±(MATE + 512)`, well inside `i32`); chess-core 39/39 after the
+phase's one core change; the full gate (`npm run test:rust`) green.
+
+**The deepen verdict, measured (this M-series Mac, native, 50 positions,
+unlimited budget):** deepening COSTS at shallow depth and PAYS at search
+depth — nodes deepened/fixed: d2 1.465, d3 1.125, **d4 0.818, d5 0.628**.
+Adopted: `search_root` deepens 1..=max under the node budget (one table
+across iterations; its strict-depth rule keeps that sound, its best-move
+memory is what makes deepening pay). Chess is now the third datapoint beside
+Othello (−41%) and checkers (+14%), and the first where the verdict differs
+BY DEPTH. Recorded for `docs/AI-PLAYERS.md` at Phase 14.
+
+**The latency ladder (budgets from measurement, not the D2 estimate):**
+native (M-series) per level med/p95/worst ms: Easy d2 5/53/137 · Medium d3
+38/145/287 · Hard d4 199/525/708 · Expert d5+500k 653/797/875 — over the
+bar, so the budgets were cut and re-measured. **Chromium (playwright), the
+provisional ladder: Easy d2/10k = 6/15/16 · Medium d3/40k = 40/64/66 ·
+Hard d4/100k = 132/159/170 · Expert d5/150k = 204/242/258, 0/50 over
+400 ms, ~730k nps.** The Samsung half stays owed [device: android=samsung];
+if the phone's Expert p95 exceeds 400 ms the recorded lever is the cap
+(150k → 100k), a constant.
+
+**Three performance findings, each measured before believed:**
+1. **The mobility term was 2× the whole engine.** `heuristic` calling
+   `legal_moves` per side per leaf made the release suite 260 s; dropping it
+   (material + tables) halved everything. The eval doc records the lever if
+   Phase 5 finds play too flat: a cheaper proxy, never `legal_moves` at
+   leaves.
+2. **Three generations per node → one.** `result()`, ordering and the
+   repetition helper each regenerated; `chess_core::result_given(pos,
+   &legal)` (new, with `result()` delegating) lets the search generate once.
+   ~25% off Expert.
+3. **A guessed optimization made things worse.** Sampling later plies to
+   cheapen the minimax cross-check (123 s of the suite) took it to 218 s —
+   random play does not shed material. The fix that worked: the sweep at
+   depth 2 (same window/table/ordering code paths) plus one fixed
+   small-branching endgame at depth 3. Suite: 3.2 s.
+
+**One real bug found by a RED, fixed in the core:** the quiescence test's
+first fixture was an ILLEGAL position (the side not to move already in
+check), and generation happily offered a king capture — the child board was
+kingless and `king_square`'s invariant panicked. `from_fen` now rejects such
+positions (`FenError::OppositeCheck`, RULES §2 extended, malformed-case
+added). The invariant held; the input validation was the gap.
+
+**API additions beyond the spec, recorded:** `chess_solver` re-exports
+`NodeBudget` (its own public API takes one); `SearchReport` carries `depth`
+and `nodes` (the observability rule); repetition-derived values are never
+TT-stored (`path_dep`), with the leak test proving no entry escapes.
+
+**The keep-as-fixture harness:** `spike/chess-latency/` (positions.txt = the
+50 D2 FENs via the Phase 0 spike, native driver + `wasm-time.mjs`); Phase 13
+times the phones with it, comparable to the tables above.
 
 ### Phase 3 execution — 2026-08-30
 

@@ -1,0 +1,15 @@
+machine: native (record the host beside these numbers); positions: 50
+
+== the deepen verdict: nodes, deepening 1..=d vs fixed d (unlimited budget) ==
+depth  deepened-total  fixed-total  ratio
+2             493277       336817  1.465
+3            1802132      1601743  1.125
+4            7572555      9258679  0.818
+5           32385910     51572216  0.628
+
+== native ms per provisional level (deepening, Expert budget 500k) ==
+level   depth  cap      median  p95  worst
+Easy    2      0            5    53    137
+Medium  3      0           38   145    287
+Hard    4      0          199   525    708
+Expert  5      500000     653   797    875

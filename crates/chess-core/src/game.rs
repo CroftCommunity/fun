@@ -177,8 +177,18 @@ pub fn insufficient_material(board: &Board) -> bool {
 /// stalemate first, then the clock, insufficient material, threefold.
 #[must_use]
 pub fn result(pos: &Position) -> Option<MatchResult> {
+    result_given(pos, &legal_moves(&pos.board))
+}
+
+/// [`result`] with the caller's already-generated legal moves — the search
+/// calls this so a node runs ONE move generation, not three (measured
+/// 2026-08-30 as most of the engine's node cost). `legal` MUST be
+/// `legal_moves(&pos.board)` for this position; anything else is undefined
+/// judgement, which is why the plain [`result`] wrapper exists.
+#[must_use]
+pub fn result_given(pos: &Position, legal: &[Move]) -> Option<MatchResult> {
     let board = &pos.board;
-    if legal_moves(board).is_empty() {
+    if legal.is_empty() {
         let in_check = attacked(board, king_square(board, board.side), board.side.other());
         return Some(if in_check {
             match board.side {

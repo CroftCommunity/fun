@@ -31,7 +31,9 @@ the input, not a state); an en-passant square only on the correct rank (3 for
 white-just-moved is wrong — the square is *behind* the pawn: rank index 2 when
 Black is to move… stated concretely: the ep square is on rank index 2 (`a3..h3`)
 only when **Black** is to move, and on rank index 5 (`a6..h6`) only when
-**White** is to move); side to move `w`/`b`; clocks numeric. Anything else is
+**White** is to move); side to move `w`/`b`; clocks numeric; and the side **not** to
+move must not be in check — such a position cannot arise from play, and
+accepting one would let generation offer a king capture. Anything else is
 an `Err(FenError)`, never a panic. `Board::to_fen` prints the six-field form;
 `to_fen(from_fen(s)) == s` for any six-field input this crate accepts.
 

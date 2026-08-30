@@ -1,0 +1,17 @@
+[package]
+name = "chess-solver"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Chess engine: material + tapered piece-square alpha-beta with quiescence, a sound transposition table and node budgets, the classic opponent (with difficulty levels), and an honest oracle whose `exact` flag means a PROVEN terminal — a real win/draw/loss reached inside the search — rather than a full solve, which chess never affords. No network, no floats on any compared path (native==wasm move choice)."
+
+[dependencies]
+adversary-core = { path = "../adversary-core" }
+adversary-solver = { path = "../adversary-solver" }
+chess-core = { path = "../chess-core" }
+rand.workspace = true
+rand_chacha.workspace = true
+
+[lints]
+workspace = true
