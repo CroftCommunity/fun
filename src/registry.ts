@@ -13,7 +13,7 @@ import type { GameEntry } from "./contract.js";
 import { placeholderModule } from "./games/placeholder.js";
 import { solitaireModule, solitaireSetup } from "./games/solitaire.js";
 import { trioTumbleModule, trioTumbleSetup } from "./games/trio-tumble.js";
-import { bubbleModule } from "./games/bubble/bubble.js";
+import { bubbleModule, bubbleSetup } from "./games/bubble/bubble.js";
 import { wyrdleModule, wyrdleSetup } from "./games/wyrdle/wyrdle.js";
 import { twenty48Module } from "./games/2048/2048.js";
 import { drop4Module, drop4Setup } from "./games/drop4/drop4.js";
@@ -51,7 +51,16 @@ export const SHIPPED: readonly GameEntry[] = [
     setup: trioTumbleSetup,
     load: trioTumbleModule,
   },
-  { id: "bubble", title: "Bubble", emoji: "🫧", status: "playable", icon: true, load: bubbleModule },
+  {
+    id: "bubble",
+    title: "Bubble",
+    emoji: "🫧",
+    status: "playable",
+    icon: true,
+    pitch: "Aim, fire, match three. Levels push the stack down; Classic clears a fixed board within a budget.",
+    setup: bubbleSetup,
+    load: bubbleModule,
+  },
   {
     id: "wyrdle",
     title: "Wyrdle",

@@ -8,7 +8,7 @@ parameters does once every bare URL opens on a start screen) gates Phase 5** and
 thing between this plan and execution: Phases 0–4 may start now. D5 was resolved during
 planning (read-only, see Verified Assumptions) and is struck from Phase 0. Phases 1, 2, 3
 and 5 carry sub-phases (1a/1b, 2a/2b, 3a/3b, 5a/5b) — each with its own Done-when and
-wiring test — because each touched four or more files. Phases 0–15 COMPLETE (2026-08-30). Mocks
+wiring test — because each touched four or more files. Phases 0–16 COMPLETE (2026-08-30). Mocks
 landed on `main` (`mocks/d-game-frame.html`, PR #45, `6c4dd9c`); owner decisions D1–D5
 recorded.
 
@@ -1104,6 +1104,32 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
    it changes one test case either way.*
 
 ## Review Log
+
+### Phase 16 — executed 2026-08-30 (Bubble)
+- Red first: 11 of 25 against the unmigrated page (chromium). Three fixed stat meters
+  (`stage`, `score`, `clock`) whose labels swap with the variant — Level N / shots left,
+  score, and a clock slot that reads "—" until the practice timer is on (bubbles left in
+  Classic) — so the timer toggle changes nothing above the board (D4). Levels/Classic and
+  Daily/New board are setup (module-scope `chosenVariant`/`chosenBoard`, the Solitaire
+  pattern, because the poster renders the card before the module exists); aim guide,
+  timer and the four aim tunables (now `aimSettingRows()`, their demos intact) are
+  preferences; the `Aim & controls` disclosure is gone. The HUD keeps the launcher chip,
+  the progress bar and the drop countdown. `snapshot()` is variant + board source + seed
+  + every angle fired; `resume()` replays. The timer ticks by re-declaring once a second
+  instead of writing a span at 60 fps.
+- **What the stability test caught — the plan's "re-measure height" item, answered.** At
+  390×844 the page was 893px tall (canvas 502 + HUD 62 + aim bar 93): `body` used
+  `min-height: 100dvh`, so a tall game grew the page instead of scrolling the stage, and
+  tapping Fire scrolled the board 123px. Fixed in shared CSS: the body is `height:
+  100dvh`, the frame is `overflow: hidden`, and Bubble's canvas is a shrinkable flex item
+  (aspect kept from the flexed height — verified on both engines: 364×255 at 390×844,
+  502×352 on desktop, unchanged) with a 16rem floor (360×720 had shrunk it to 189px,
+  under the tap floor; it scrolls there instead). The same measurement found every game
+  page on desktop scrolling past the viewport by the rail's inline settings (240px on
+  Bubble, 28px on Dots); the clip closes that too.
+- Green: 100/100 with `--repeat-each=2` at 2 workers on both engines; shared CSS changed,
+  so the full `npm run e2e` ran locally (see the line below); typecheck, lint, touched
+  unit suites (99). Shots for Bubble only (2). How-to copy and changelog landed in-phase.
 
 ### Phase 15 — executed 2026-08-30 (Cribbage)
 - Red first: 10 of 21 against the unmigrated page (chromium). Seats carry the scores with

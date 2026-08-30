@@ -19,7 +19,7 @@ import {
   setAimSwipeGain,
   setFireOnRelease,
 } from "../../settings.js";
-import { renderSettingsSheet, type DemoHandle } from "../../settings-sheet.js";
+import type { DemoHandle, SettingRow } from "../../settings-sheet.js";
 import { snapAngle } from "./bubble-aim.js";
 import type { Geom } from "./bubble-wasm.js";
 
@@ -205,13 +205,11 @@ export interface AimSettingsHooks {
   onGainChange(gain: number): void;
 }
 
-/** The "Aim & controls" disclosure: a summary + the demo-driven settings sheet,
- *  wired to persist each setting and nudge the live aim bar where needed. */
-export function renderAimSettings(hooks: AimSettingsHooks): HTMLElement {
-  const sheet = renderSettingsSheet({
-    intro:
-      "Aiming feel depends on your device — there's no perfect default. Tune these and try each demo.",
-    rows: [
+/** The four aim tunables as settings rows — the frame shows them under Settings
+ *  with their live demos. Each persists itself and nudges the live aim bar where
+ *  needed. Aiming feel depends on the device, so there is no perfect default. */
+export function aimSettingRows(hooks: AimSettingsHooks): SettingRow[] {
+  return [
       {
         kind: "toggle",
         id: "fire-on-release",
@@ -266,10 +264,5 @@ export function renderAimSettings(hooks: AimSettingsHooks): HTMLElement {
         onChange: (v) => setAimSettleMs(v),
         demo: settleDemo,
       },
-    ],
-  });
-
-  const details = el("details", { class: "bub-aim-settings" });
-  details.append(el("summary", {}, "⚙ Aim & controls"), sheet);
-  return details;
+  ];
 }

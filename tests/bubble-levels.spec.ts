@@ -35,7 +35,9 @@ test("levels is the default and renders the level HUD", async ({ page }) => {
   await page.goto("/bubble/?seed=7");
   await ready(page);
   await expect(page.locator(".bub-canvas")).toHaveAttribute("aria-label", /level 1/i);
-  await expect(page.locator(".bub-level")).toContainText(/level 1/i);
+  // The level and the score are the frame's meters; progress and the drop countdown stay beside the board.
+  await expect(page.locator('.gf-stat[data-meter="stage"]')).toContainText(/level 1/i);
+  await expect(page.locator('.gf-stat[data-meter="score"]')).toContainText(/score/i);
   await expect(page.locator(".bub-progress")).toBeVisible();
   await expect(page.locator(".bub-drop")).toContainText(/stack drops in/i);
   // The board carries the levels geometry (even height for parity-flip inserts).
@@ -92,29 +94,41 @@ test("firing lands exactly where the core resolves it (no invented physics)", as
   expect(got).toBe(control);
 });
 
-test("the variant toggle swaps to classic and back to levels", async ({ page }) => {
+test("the New game card swaps to classic and back to levels", async ({ page }) => {
   await page.goto("/bubble/?seed=7");
   await ready(page);
-  await expect(page.locator(".bub-level")).toBeVisible();
+  const stage = page.locator('.gf-stat[data-meter="stage"]');
+  await expect(stage).toContainText(/level 1/i);
+  await expect(page.locator(".gf-mode")).toHaveText("Levels");
 
-  await page.locator(".bub-variant-classic").click();
-  await expect(page.locator(".bub-hud")).toContainText(/shots left/i);
-  await expect(page.locator(".bub-level")).toHaveCount(0);
+  const pick = async (variant: string): Promise<void> => {
+    await page.locator('.gf-verb[data-verb="new"]').click();
+    await page.locator(`.gf-sheet [data-setting="variant"] input[value="${variant}"]`).check();
+    await page.locator(".gf-sheet .gf-start").click();
+    await ready(page);
+  };
+  await pick("classic");
+  await expect(stage).toContainText(/shots left/i);
+  await expect(page.locator(".gf-mode")).toHaveText("Classic");
+  await expect(page.locator(".bub-progress")).toHaveCount(0);
 
-  await page.locator(".bub-variant-levels").click();
-  await expect(page.locator(".bub-level")).toContainText(/level 1/i);
+  await pick("levels");
+  await expect(stage).toContainText(/level 1/i);
+  await expect(page.locator(".gf-mode")).toHaveText("Levels");
 });
 
 test("the optional timer is presentational — it never changes the outcome", async ({ page }) => {
   await page.goto("/bubble/?seed=7");
   await ready(page);
-  await expect(page.locator(".bub-timer")).toHaveCount(0);
-
-  // Enable the practice clock in settings.
-  await page.locator(".sol-settings summary").click();
-  await page.locator(".bub-set-timer").check();
-  await expect(page.locator(".bub-timer")).toBeVisible();
-  await expect(page.locator(".bub-timer")).toHaveText(/^\d+:\d\d$/);
+  // The clock is a fixed meter slot: "—" until the practice clock is on, so
+  // enabling it changes nothing above the board.
+  const clock = page.locator('.gf-stat[data-meter="clock"] .gf-stat-value');
+  await expect(clock).toHaveText("—");
+  await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await page.locator('.gf-sheet [data-setting="timer"] .sheet-toggle-input').click({ force: true });
+  await page.keyboard.press("Escape");
+  await expect(clock).toHaveText(/^\d+:\d\d$/);
 
   // The verifiable state hash after N identical shots is independent of whether
   // the clock is shown — the timer touches no game state.

@@ -7,6 +7,7 @@
 
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { boardTopStable } from "./helpers/board-top.js";
 
 async function ready(page: Page): Promise<void> {
   await expect(page.locator(".bub-canvas")).toBeVisible();
@@ -23,8 +24,80 @@ test("the board renders a canvas, a launcher chip, an aim control and the HUD", 
   await expect(page.locator(".bub-loaded")).toBeVisible();
   await expect(page.locator(".bub-aim")).toBeVisible();
   await expect(page.locator(".bub-fire")).toBeVisible();
-  await expect(page.locator(".bub-hud")).toContainText(/score/i);
-  await expect(page.locator(".bub-hud")).toContainText(/shots left/i);
+  // Score and shots are the frame's meters; the game's own control bar and
+  // disclosures are gone. The launcher chip stays in the HUD beside the board.
+  await expect(page.locator('.gf-stat[data-meter="score"]')).toContainText(/score/i);
+  await expect(page.locator('.gf-stat[data-meter="stage"]')).toContainText(/shots left/i);
+  await expect(page.locator(".sol-controls, .bub-variants, .sol-settings, .bub-aim-settings")).toHaveCount(0);
+});
+
+test("levels: the level, score and clock are meters; the clock is a fixed slot that reads — until the timer is on", async ({ page }) => {
+  await page.goto("/bubble/?seed=7");
+  await ready(page);
+  const clock = page.locator('.gf-stat[data-meter="clock"]');
+  await expect(page.locator('.gf-stat[data-meter="stage"]')).toContainText(/level 1/i);
+  await expect(page.locator('.gf-stat[data-meter="score"]')).toContainText(/score/i);
+  await expect(clock).toContainText("—");
+  // Progress toward the next level and the drop countdown stay with the board.
+  await expect(page.locator(".bub-hud .bub-progress")).toBeVisible();
+  await expect(page.locator(".bub-hud .bub-drop")).toContainText(/drops in/i);
+  await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await page.locator('.gf-sheet [data-setting="timer"] .sheet-toggle-input').click({ force: true });
+  await page.keyboard.press("Escape");
+  await expect(clock).toContainText(/\d:\d\d/);
+});
+
+test("the New game card chooses the variant and the board source", async ({ page }) => {
+  await page.goto("/bubble/?variant=classic&seed=7");
+  await ready(page);
+  await expect(page.locator(".gf-mode")).toHaveText(/classic/i);
+  await page.locator('.gf-verb[data-verb="new"]').click();
+  const sheet = page.locator(".gf-sheet");
+  await expect(sheet.locator('[data-setting="variant"] .sheet-choice-opt')).toHaveText(["Levels", "Classic"]);
+  await expect(sheet.locator('[data-setting="board"] .sheet-choice-opt')).toHaveText(["Daily challenge", "New board"]);
+  await sheet.locator('[data-setting="variant"] input[value="levels"]').check();
+  await sheet.locator(".gf-start").click();
+  await ready(page);
+  await expect(page.locator(".gf-mode")).toHaveText(/levels/i);
+  await expect(page.locator('.gf-stat[data-meter="stage"]')).toContainText(/level 1/i);
+});
+
+test("firing does not move the board, and neither does toggling the timer", { tag: "@smoke" }, async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce" }); // instant flight: the claim is about layout, not the animation
+  await page.goto("/bubble/?seed=7");
+  await ready(page);
+  const before = await page.evaluate(() => window.__bubble!.game.levelBoard().shotsToInsert);
+  const v = await boardTopStable(page, ".bub-canvas", async () => {
+    await page.locator(".bub-fire").click();
+    await page.waitForFunction((b) => window.__bubble!.game.levelBoard().shotsToInsert !== b, before);
+    await page.locator('.gf-verb[data-verb="settings"]').click();
+    await page.locator('.gf-sheet [data-setting="timer"] .sheet-toggle-input').click({ force: true });
+    await page.keyboard.press("Escape");
+    await expect(page.locator('.gf-stat[data-meter="clock"]')).toContainText(/\d:\d\d/);
+  });
+  expect(v.frames).toBeGreaterThan(5);
+  expect(v, `board top moved ${v.delta}px over ${v.frames} frames`).toMatchObject({ stable: true });
+});
+
+test("leaving mid-game and returning to the bare URL resumes the same board", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/bubble/?variant=classic&seed=7");
+  await ready(page);
+  const before = await shotsLeft(page);
+  await page.evaluate(() => window.__bubble!.setAim(90));
+  await page.locator(".bub-fire").click();
+  await page.waitForFunction((b) => window.__bubble!.game.board().shotsLeft === b - 1, before);
+  const board = (): Promise<string> => page.evaluate(() => JSON.stringify(window.__bubble!.game.board()));
+  const after = await board();
+  await page.goto("/bubble/");
+  const card = page.locator(".gf-continue");
+  await expect(card).toBeVisible();
+  await expect(card.locator(".gf-start-line")).toContainText(/classic/i);
+  await card.locator(".gf-continue-btn").click();
+  await ready(page);
+  expect(await board()).toBe(after);
 });
 
 test("previews the next colour, and firing promotes it to the launcher", async ({ page }) => {
@@ -219,23 +292,24 @@ test("reduced-motion fires instantly (no flight animation)", async ({ page }) =>
 test("the aim guide is on by default and can be turned off (persists)", async ({ page }) => {
   await page.goto("/bubble/?variant=classic&seed=7");
   await ready(page);
-  await page.locator(".sol-settings summary").click();
-  const guide = page.locator(".bub-set-aimguide");
+  await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  const guide = page.locator('.gf-sheet [data-setting="aim-guide"] .sheet-toggle-input');
   await expect(guide).toBeChecked();
-  await guide.uncheck();
+  await guide.click({ force: true });
   await page.reload();
   await ready(page);
-  await page.locator(".sol-settings summary").click();
-  await expect(page.locator(".bub-set-aimguide")).not.toBeChecked();
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await expect(page.locator('.gf-sheet [data-setting="aim-guide"] .sheet-toggle-input')).not.toBeChecked();
 });
 
-test("the Aim & controls menu lists the four tunables, each with a live demo", async ({ page }) => {
+test("Settings lists the four aim tunables, each with a live demo", async ({ page }) => {
   await page.goto("/bubble/?variant=classic&seed=7");
   await ready(page);
-  await page.locator(".bub-aim-settings summary").click();
-  const sheet = page.locator(".bub-aim-settings .sheet");
+  await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  const sheet = page.locator(".gf-sheet");
   await expect(sheet).toBeVisible();
-  await expect(sheet.locator(".sheet-row")).toHaveCount(4);
   await expect(sheet.locator(".sheet-demo")).toHaveCount(4);
   for (const id of ["fire-on-release", "snap", "gain", "settle"]) {
     await expect(sheet.locator(`[data-setting="${id}"]`)).toBeVisible();
@@ -245,16 +319,17 @@ test("the Aim & controls menu lists the four tunables, each with a live demo", a
 test("toggling fire-on-release in the menu persists across a reload", async ({ page }) => {
   await page.goto("/bubble/?variant=classic&seed=7");
   await ready(page);
-  await page.locator(".bub-aim-settings summary").click();
-  const toggle = page.locator('[data-setting="fire-on-release"] input[type="checkbox"]');
+  await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  const toggle = page.locator('.gf-sheet [data-setting="fire-on-release"] input[type="checkbox"]');
   await expect(toggle).not.toBeChecked();
   // The checkbox is a visually-hidden switch; click its label to flip it.
-  await page.locator('[data-setting="fire-on-release"] .sheet-toggle').click();
+  await page.locator('.gf-sheet [data-setting="fire-on-release"] .sheet-toggle').click();
   await expect(toggle).toBeChecked();
   await page.reload();
   await ready(page);
-  await page.locator(".bub-aim-settings summary").click();
-  await expect(page.locator('[data-setting="fire-on-release"] input[type="checkbox"]')).toBeChecked();
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await expect(page.locator('.gf-sheet [data-setting="fire-on-release"] input[type="checkbox"]')).toBeChecked();
 });
 
 test("changing the snap step in the menu re-snaps the live aim immediately", async ({ page }) => {
@@ -262,26 +337,30 @@ test("changing the snap step in the menu re-snaps the live aim immediately", asy
   await ready(page);
   await page.evaluate(() => window.__bubble!.setAim(97)); // step 1 → stays 97
   expect(await page.evaluate(() => window.__bubble!.aim())).toBe(97);
-  await page.locator(".bub-aim-settings summary").click();
+  await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
+  await page.locator('.gf-verb[data-verb="settings"]').click();
   // Set the snap range to 5; the live aim re-snaps to 95 (a mult of 5 from 90).
-  await page.locator('[data-setting="snap"] .sheet-range').fill("5");
+  await page.locator('.gf-sheet [data-setting="snap"] .sheet-range').fill("5");
   expect(await page.evaluate(() => window.__bubble!.aim())).toBe(95);
 });
 
-test("the Aim & controls menu has no axe violations when open", async ({ page }) => {
+test("the settings sheet with the aim demos has no axe violations when open", async ({ page }) => {
   await page.goto("/bubble/?variant=classic&seed=7");
   await ready(page);
-  await page.locator(".bub-aim-settings summary").click();
-  await expect(page.locator(".bub-aim-settings .sheet")).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await expect(page.locator('.gf-sheet [data-setting="snap"] .sheet-demo')).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
 
 test("with hints off, 'I'm done' ends the round", async ({ page }) => {
   await page.goto("/bubble/?variant=classic&seed=7");
   await ready(page);
-  await page.locator(".sol-settings summary").click();
-  await page.locator(".sol-set-hints").uncheck();
-  await page.locator(".sol-stuck").click();
+  await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await page.locator('.gf-sheet [data-setting="hints"] .sheet-toggle-input').click({ force: true });
+  await page.keyboard.press("Escape");
+  await page.locator('.gf-verb[data-verb="done"]').click();
   await expect(page.locator(".sol-result")).toBeVisible();
 });
 
