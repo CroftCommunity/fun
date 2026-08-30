@@ -1,8 +1,10 @@
 # Chess vs the engine — the sixth adversarial game, and the first whose rules are the weight
 
-**Status:** PLANNED — Pass 1 (plan development) 2026-08-30; Pass 2 (gap analysis)
-2026-08-30. Pass 3 (quality gates) not yet run. No phase executed. Worktree `worktrees/chess/fun`,
-branch `claude/chess`.
+**Status:** READY TO EXECUTE — Pass 1 (plan development) 2026-08-30; Pass 2 (gap
+analysis) 2026-08-30; Pass 3 (quality gates) 2026-08-30. Every open question is
+owner-confirmed and none is BLOCKING-unresolved; the two PHASE-GATED items gate Phases 2
+and 9 and are already reflected in those phases. No phase executed — **Phase 0 next.**
+Worktree `worktrees/chess/fun`, branch `claude/chess`.
 **Standards anchor:** `docs/BUILDING-GAMES.md` §10 + both new-game checklists;
 `docs/AI-PLAYERS.md` (search cost, honesty gate); `docs/HARNESS.md` (adding a game).
 **Scoping note it supersedes:** `TODO/README.md` → "Next games" entry 1 (Chess), and the
@@ -445,6 +447,60 @@ ringed, the checked king marked, legal destinations glowing from the core's
   `[device: SPEC]` on the line that records it; fulfilled by editing the line to
   `[device done YYYY-MM-DD: …]`.
 
+**Pass 3 spot-checks — read firsthand 2026-08-30 (each one changed a phase):**
+
+- `tests/how-to.test.ts:10-46` iterates `Object.entries(GUIDES)` only — a playable
+  game with **no** guide entry is not red anywhere. So nothing forces Phase 9 to ship a
+  `chess-howto` stub, and the "No stubs" guardrail says it must not; the stub is gone
+  from Phase 9's write-set and the guide is wholly Phase 12's.
+- `tests/chrome.test.ts:192` asserts the drawer ids in **`SHIPPED` array order** — the
+  shipping order, not a per-group order (`"drop4", "othello", "checkers", "dots",
+  "furrow", …, "cribbage"`; `src/chrome.ts` reads no `group`). The last shipped entry is
+  cribbage at `src/registry.ts:195`, so chess's entry is appended after it and `"chess"`
+  is inserted between `"cribbage"` and `"placeholder"` — Pass 2's "after `"checkers"`,
+  the versus group's order" would have been a red board.
+- `build.mjs:165-167` copies `target/wasm32-unknown-unknown/release/<game>_wasm.wasm →
+  dist/<game>.wasm` when **`node build.mjs`** runs; `npm run build:wasm`
+  (`tools/build-wasm.sh:19`) only writes `target/…`. Phase 7's Done-when named the wrong
+  command for `dist/chess.wasm`; it now asserts both artefacts by the command that makes
+  each.
+- `.github/workflows/deploy.yml:31,82,141,223,294-296` — the jobs are `build`, `rust`,
+  `wasm`, `e2e` (a browser × shard matrix that `needs: [wasm]`) and `deploy`, which
+  `needs: [build, rust, e2e]`. "All three jobs" in Phase 14 is now the named set.
+- `src/harness/tournament.ts:45,95-100` — `Report.abortedGames`, `llmMoves` and
+  `fallbackMoves` exist and the rendered Report prints the fallback rate. The checkers
+  plan's Pass 3 flagged `HybridDecision.source` as computed-and-discarded; it is counted
+  now, so Phase 10's real-WebGPU run records the two counts instead of re-flagging it.
+- `crates/checkers-wasm/src/lib.rs` reports no depth-reached anywhere (`ORACLE_DEPTH`
+  at `:48` is a constant); `docs/AI-PLAYERS.md:319` — "a named level depth is a ceiling,
+  not a promise. Once deepening is in … report the depth actually reached." Chess is the
+  first shelf solver *expected* to adopt `deepen`, so Phases 4 and 7 carry `depth` and
+  `nodes` on the tutor/oracle JSON (additive fields the checkers shape lacks).
+- `#[cfg_attr(debug_assertions, ignore = "…")]` has two precedents to copy:
+  `crates/cribbage-core/src/score.rs:319` and `crates/cribbage-solver/src/crib_table.rs:126`.
+  `mutants.toml` lives at the **workspace root** (a copy in a crate is silently ignored —
+  its own header says so).
+- `crates/xbuild/check.mjs:8,12-19` — the usage comment, the destructured argument list
+  and the usage error string all enumerate the six vector directories by name; Phase 3's
+  seventh argument touches all three (Pass 2 named only the loop). The per-game loops
+  iterate `readdir(dir)` with **no empty-directory guard** (`:150` is the shape): a
+  vectors directory with zero `.json` files runs zero cases and reports green —
+  `CroftC/.claude/VERIFICATION.md` shape 3. Phase 3 adds the guard for its own directory.
+- `package.json:18` `smoke` = `playwright test --project=chromium --grep @smoke`;
+  `tools/harness-trial.mjs:11-12` documents `HARNESS_TRIAL_GAME=<id>`;
+  `tools/ai-trial.mjs:9` documents `AI_TRIAL_MODE=hybrid`. Phase 9–11's commands match.
+- `TODO/README.md:155-171` — the open thread that no shelf solver's window sentinel has
+  ever been compiled with overflow checks outside a mutation run; Phase 4's one debug
+  run is the closer for this crate and is now a named Verification command, not a Risk
+  aside.
+- `TODO/drop4.md:185` reads "then **chess** (heavier — vetted move-gen + Stockfish-WASM
+  oracle, gated on larger-binary hosting)" — false from Phase 1's first commit, not from
+  the landing. Moved to Phase 1 with `TODO/README.md:110-112`'s "Needs a vetted move
+  generator".
+- `plans/2026-08-29-plan-cribbage-vs-engine.md` carries **no Pass 3 entry** — its Review
+  Log is execution entries only (`:714-858`). The depth model for this pass is the
+  checkers plan's `### Pass 3: Quality Gates — 2026-08-04`.
+
 **External — fetched 2026-08-30:**
 
 - FIDE Laws of Chess, handbook E01 (2023): Art. 3.7.3 (en passant, promotion),
@@ -464,8 +520,11 @@ ringed, the checked king marked, legal destinations glowing from the core's
 **Not yet verified (Phase 0):** the node counts a quiescent alpha-beta needs per
 depth on chess middlegames (D2); how the two Androids render chess glyphs (D5);
 whether a threefold/50-move fixture as a move list from the start position is short
-enough to be a readable test (D4 — it may need a FEN start, which means the vectors
-need a `from_fen` constructor the record format does not use).
+enough to be a readable test (D4). *Pass 3 settled D4's `from_fen` half during
+planning:* five of the six perft positions Phase 1 asserts are FENs, so
+`Board::from_fen` exists whatever D4 finds — test-and-bridge only, never the record
+format. D4 decides only whether the draw fixtures start from a FEN or from the
+opening.
 
 ---
 
@@ -476,10 +535,14 @@ Every file this plan makes stale, scheduled in the phase that breaks it.
 - `TODO/README.md` → "Next games" entry **1. Chess** (`:110-127`) — moves to
   "Shipped — Tier-1"; its two sub-bullets (the hosting-note correction and the
   Stockfish objection) become history and the objection is carried into
-  `TODO/chess.md`. **Phase 14.**
+  `TODO/chess.md`. **Phase 14** for the move; **Phase 1** for the one sentence the
+  first build-fresh commit makes false ("Needs a vetted move generator", `:110-112`
+  → "build-fresh, verified by perft — plan …"). *(Pass 3 split.)*
 - `TODO/drop4.md:185` — "then **chess** (heavier — vetted move-gen + Stockfish-WASM
   oracle, gated on larger-binary hosting)" is stale on all three counts (build-fresh,
-  our Oracle, no hosting gate). Replaced with a pointer to this plan. **Phase 14.**
+  our Oracle, no hosting gate). Replaced with a pointer to this plan. **Phase 1**
+  *(Pass 3: moved from Phase 14 — the line is false from the first commit that
+  builds `chess-core`, and a claim made false in Phase 1 is fixed in Phase 1).*
 - `TODO/chess.md` — **new**, the running worklist (what shipped, follow-ups:
   Stockfish level, opening book, Chess960 via the seed, PGN, move list, Resign,
   persona roster). **Phase 14.**
@@ -487,16 +550,21 @@ Every file this plan makes stale, scheduled in the phase that breaks it.
   open question — historical; **one line added** pointing here, the vetted-lib
   recommendation left as the record of what was thought in July. **Phase 14.**
 - `docs/AI-PLAYERS.md` — the generality section (`:633-714`): chess becomes the
-  third unsolved-game precedent, and "a future game (chess is the obvious one)"
-  (`:711`) becomes past tense; the "one principle" already lists chess. **Phase 14.**
-  Search-cost section gains chess's measured `deepen` verdict and budget table.
-  **Phase 5.**
+  third unsolved-game precedent — **Phase 14** for the paragraph that records what
+  shipped; but "a future game (chess is the obvious one)" (`:711`) is false the day a
+  chess Oracle exists, so that one sentence is **Phase 5** *(Pass 3 split)*, in the
+  same edit as the search-cost section's chess `deepen` verdict and budget table
+  (**Phase 5**, unchanged); the "one principle" already lists chess.
 - `docs/BUILDING-GAMES.md` §10 — the roster paragraph (`:591-620`: "Furrow is the
   fifth") gains chess as the sixth; the honesty-gate line "(Othello, chess)"
   (`:877`) becomes a reference to a shipped game; the adversarial checklist's
   "Reference implementations" gains chess as the *quiescence + repetition-history*
   variant. A **"Variation — a move that changes the piece, and a state that carries
   history (chess)"** block, in the style of the Furrow/Dots variations. **Phase 14.**
+  The one sentence owed to `:414` (what a *new* game does to see its stability spec
+  red — the ADVISORY question below) is **Phase 9** *(Pass 3: moved from Phase 14 —
+  Phase 9 is where the RED-by-construction run happens and the delta is measured, so
+  the sentence is written from evidence, not from memory of it).*
 - `docs/HARNESS.md` — "All three games, side by side" table (`:297-307`) gains
   chess — **only from a real WebGPU run**, since that table records the hybrid vs
   `Engine(3)`, not a baseline; the row comes from Phase 10's `ai:trial` run, so
@@ -511,7 +579,10 @@ Every file this plan makes stale, scheduled in the phase that breaks it.
 - `crates/chess-core/RULES.md` — **new**, written in **Phase 1 before the vectors**.
 - **Registration points** (the stale-reference failure mode without being docs):
   `Cargo.toml` members (Phases 1, 4, 7), `crates/xbuild/{Cargo.toml,src/lib.rs,
-  check.mjs,run.sh}` (Phase 3), `tools/build-wasm.sh` + `build.mjs` (Phase 7),
+  check.mjs,run.sh}` (Phase 3 — in `check.mjs` the usage comment at `:8`, the
+  destructured argument list at `:12-14` and the usage error string at `:16` all
+  enumerate the directories by name and all gain the seventh; Pass 3),
+  `tools/build-wasm.sh` + `build.mjs` (Phase 7),
   `src/registry.ts` + `tests/chrome.test.ts:192` + `src/settings.ts` +
   `tests/settings.test.ts` + `tokens.css` + `tests/tokens.test.ts` +
   `src/games/chess/assets/icon.jpg` (`tests/art.test.ts`) + `src/music.ts`
@@ -572,6 +643,21 @@ claim `testbed--samsung` / `testbed--pixel` in `CroftC/.coordination/claims/`
 before touching a phone (Pass 1 named only Phase 13; Phase 4's own text already
 says "claim per TESTBED"). No phase is dispatched to a subagent, so no re-entry
 verification is required.
+
+**Pass 3 re-check (2026-08-30).** Write-sets re-read after this pass moved five doc
+edits between phases (Phase 1 gains `TODO/drop4.md` + `TODO/README.md`; Phase 5 gains
+`docs/AI-PLAYERS.md:711`; Phase 9 gains `docs/BUILDING-GAMES.md:414` and loses the
+`chess-howto` stub; Phase 4's latency harness moves from a scratch export inside the
+crate to `spike/chess-latency/`). No two phases became disjoint enough to unbunch and
+no new overlap appeared: `docs/AI-PLAYERS.md` is now written by Phases 5 and 14,
+`docs/BUILDING-GAMES.md` by 9 and 14, `TODO/README.md` by 1 and 14 — all already on
+the spine. The map stays **all sequential**; the contracts above are invariants
+(what each phase will and will not touch), not mechanisms; and with no subagent
+dispatch there is still no re-entry verification to write. **The checkpoint rule
+that makes a mid-plan failure locatable:** every phase ends in its own commit,
+subject `chess: phase N — …` (Phase 6 commits *before* each mutation round as well),
+so `git log --oneline` names the last green phase and `git diff HEAD` is exactly the
+phase in flight.
 
 **Missed-parallelism candidate surfaced by Pass 2 — {11 || 12}, the user
 decides.** Phase 11 (rig adapter) writes `src/games/chess/chess-oracle.ts`,
@@ -639,6 +725,9 @@ decision as evidence rather than opinion.
   move, so a spike on cozy-chess's ordering would measure the wrong engine. Phase
   4 measures it with the D2 position set and records the verdict in
   `docs/AI-PLAYERS.md` beside Othello's and checkers'.
+  - **Disposition:** `n/a` — D3 produces no code in Phase 0; the measurement is
+    Phase 4's, on Phase 4's crate, under Phase 4's TDD *(Pass 3: every task declares
+    one, including the deferred one)*.
 
 - [ ] **D4: Build the draw-rule fixtures.**
   - **Probe:** Four concrete fixtures, each as `(start FEN, move list in UCI)`:
@@ -649,9 +738,12 @@ decision as evidence rather than opinion.
     occurrence only, so it does not count (9.2.3.1); (c) 50-move — a sequence that
     reaches halfmove 99 live and 100 `Draw`, and a capture at 99 that resets it;
     (d) checkmate on the 100th halfmove is a win, not a draw. Confirm each fixture
-    is short enough to read (target ≤ 30 moves from a FEN); if a fixture needs a
-    FEN start, the core needs a `from_fen` constructor used **only by tests and the
-    text bridge**, never by the record format — decide and record.
+    is short enough to read (target ≤ 30 moves from a FEN). *(Pass 3 resolved the
+    `from_fen` half during planning rather than deferring it: Phase 1's perft suite
+    needs `Board::from_fen` for five of its six positions whatever D4 finds, so the
+    constructor exists either way — used **only by tests and the text bridge**, never
+    by the record format. D4 decides only whether these four fixtures start from a
+    FEN or from the opening, and records which.)*
   - **Success criteria:** The four move lists, each reaching its terminal at the
     exact ply and not before.
   - **Disposition:** `keep-as-fixture` — they become Phase 2 tests.
@@ -665,7 +757,10 @@ decision as evidence rather than opinion.
     evidence. If Unicode renders the white pieces as outlines or any piece as an
     emoji on either phone, SVG is chosen (the recommendation either way).
   - **Disposition:** `promote` if SVG — the paths become `src/games/chess/assets/`
-    in Phase 9; the HTML is deleted.
+    in **Phase 9**, where they get TDD like any promoted code (the `viewSquare`
+    orientation tests and the tokens contrast rows are the tests that reach them);
+    `throwaway` if Unicode — the page is deleted and Phase 9 renders glyphs. *(Pass 3:
+    both branches named, so the disposition is declared whichever way D5 goes.)*
   - [device: android x2]
 
 - [ ] **D6: Documentation-reference sweep.** *(Resolved in Pass 1 — see
@@ -709,8 +804,11 @@ be concrete values and images, not "it seems fine".
 - [ ] `RULES.md` — **written first**: the table from Reasoning, with FIDE article
   numbers, the move-code layout, the square numbering, the text-bridge grammar, and
   the seed's reserved meaning. Every test below cites a section.
-- [ ] `Board::from_fen` / `to_fen` — the test-and-bridge constructor (D4's decision);
-  `Board::start()` is `from_fen(START)`. Round-trips pinned on the six perft FENs.
+- [ ] `Board::from_fen` / `to_fen` — the test-and-bridge constructor (settled in Pass
+  3: the perft suite needs it); `Board::start()` is `from_fen(START)`. Round-trips
+  pinned on the six perft FENs — both directions: `to_fen(from_fen(s)) == s` for each
+  string, and `from_fen` of a malformed string (seven ranks; a rank summing to nine;
+  a castling right with no rook on its square) is an `Err`, never a panic.
 - [ ] `Move {from, to, promo}` with `code()` / `from_code()` (15 bits,
   `MAX_MOVE_CODE`), `Serialize`/`Deserialize` as one `u16`, reject-above-max
   (the checkers pattern).
@@ -737,6 +835,44 @@ be concrete values and images, not "it seems fine".
   shape (`{name, note, seed, moves, final_state_hash}`; `moves` are the `u16`
   codes), written in Phase 2, **directory created here** so Phase 3's `run.sh`
   argument has a home.
+- [ ] **RED first, item by item (Pass 3 — the order a reader writes this phase).**
+  `RULES.md` → the FEN round-trip tests → `from_fen`/`to_fen` → the move-code tests →
+  `Move` → the depth-1/2/3 perfts on all six positions → generation and `apply_move` →
+  the depth-4/5 perfts → whatever is still wrong. Every test is watched RED before its
+  code exists; the perfts are RED by construction (a generator that does not exist
+  counts nothing). **The constants are data and get tests before they are typed:**
+  `from_code(MAX_MOVE_CODE)` round-trips and `MAX_MOVE_CODE + 1` is rejected at
+  deserialize (the serde boundary pair, checkers' `game.rs:523-527`); `promo` 4 is
+  accepted and 5 rejected at `from_code`; square 63 round-trips and 64 does not
+  construct.
+- [ ] **The edges perft cannot name (Pass 3 — mutation resistance).** Perft is an
+  aggregate: a bar mutated away would still change the count, but only a `divide`
+  hunt would say *which* rule. So every rule with a branch also gets a direct test on
+  a hand-built FEN, **both sides of the branch**, each citing its `RULES.md` section:
+  castling — each of the four bars alone (the right lost; a piece on the path; the king
+  in check; the crossed square attacked; the landing square attacked) removes exactly
+  that castle from `legal_moves` while the other wing's castle stays; castling rights —
+  lost by a king move, by each rook's own move, and by each rook being captured on its
+  home square, and **not** lost by anything else (a rook that leaves and returns has
+  already lost it — the state, not the square, is the truth); en passant — legal on
+  the move immediately after the double push and gone one move later, and a double
+  push nobody can capture still records its ep square in FEN; promotion — a push to
+  the last rank yields exactly four moves and nothing else in `legal_moves` carries
+  `promo ≠ 0`; the halfmove clock — reset by a pawn move, reset by a capture,
+  incremented by a quiet piece move; a pinned piece may move along the pin line and
+  not off it; a king may not capture a defended piece; a move that gives check is
+  generated and a move that leaves the mover in check is not.
+- [ ] **When a perft disagrees, the log names the subtree (Pass 3 — diagnostics).**
+  The CI-depth assertions run through `divide`: on a mismatch the failure message
+  prints the per-move split beside the reference total, so the divergent first move
+  is in the log and not reconstructed by hand. The differential perft records in the
+  Review Log the first disagreeing FEN if there is one, and "200 positions, 0
+  disagreements" if there is not — a count either way, never "agreed".
+- [ ] **Docs this phase makes false (Pass 3 — moved from Phase 14):**
+  `TODO/drop4.md:185` ("vetted move-gen + Stockfish-WASM oracle, gated on
+  larger-binary hosting") → one line pointing at this plan; `TODO/README.md:110-112`
+  "Needs a vetted move generator …" → "build-fresh, verified by perft — see the plan".
+  The entry stays under "Next games" until Phase 14 moves it.
 
 **Call chain:** `Board::start → legal_moves → apply_move → …` (the perft driver is
 the first caller of everything).
@@ -745,10 +881,12 @@ the first caller of everything).
 `perft_kiwipete_depth_4_is_4_085_603` — RED with any generation bug, GREEN only when
 castling, ep, promotion and check-legality are all right at once.
 
-**Depends on:** Phase 0 (D4's `from_fen` decision).
+**Depends on:** Phase 0 (D2's spike is the differential oracle in Risks; nothing
+else — `from_fen` is settled).
 **Read-set:** `crates/checkers-core/src/{game,board,hash}.rs`,
 `crates/othello-core/src/game.rs`, `RULES.md`.
-**Write-set:** `crates/chess-core/**`, root `Cargo.toml` members, `Cargo.lock`.
+**Write-set:** `crates/chess-core/**`, root `Cargo.toml` members, `Cargo.lock`,
+`TODO/drop4.md`, `TODO/README.md` (one sentence each — Pass 3).
 **Shared-state contract:** `Cargo.toml` members — one line, additive.
 **Risks:** Perft agrees and a rule is still wrong in a way the six positions do
 not exercise (e.g. castling rights after the *opponent* captures your rook on h1).
@@ -760,10 +898,18 @@ deeper rows stay `#[ignore]`.
 **Done when:**
 1. **Behavioral:** All six positions match the table at CI depth; the differential
    perft reports zero disagreements.
-2. **Verification:** `bash tools/check.sh core cargo test -p chess-core --release`;
-   no `unwrap` outside tests (`grep -n 'unwrap()' crates/chess-core/src` → tests
-   only).
-**Validation:** Narrow — the perft suite *is* the validation.
+2. **Verification:** `bash tools/check.sh core cargo test -p chess-core --release`
+   **and** `bash tools/check.sh rust npm run test:rust` — the per-crate command runs
+   neither `fmt --check` nor `clippy -D warnings` on the pinned toolchain, and CI's
+   `rust` job runs both (Pass 3; every Rust phase names the gate, as the checkers plan
+   did). No `unwrap`/`expect` outside tests: `grep -n 'unwrap()\|expect(' \
+   crates/chess-core/src` read in full, every hit under `#[cfg(test)]` (a grep whose
+   output is read is a check; a `grep -c` is not). The release wall-clock of the suite
+   goes in the Review Log against the ≤ 10 s budget.
+**Validation:** Narrow — the perft suite *is* the validation, plus the one-shot
+differential perft in Risks (Pass 3: Narrow holds because nothing outside the crate
+is touched; the differential run is what makes "the six positions" a claim about
+positions the six do not exercise).
 
 ### Phase 2: `chess-core` — terminal rules, `Adversary`, `pond_outcome::Game`, hash, text bridge
 
@@ -806,6 +952,40 @@ deeper rows stay `#[ignore]`.
   different in `history` hashing differently. The full game and the D4(a)
   threefold game are **also** written to `crates/chess-core/vectors/01-full-game.json`
   and `02-threefold.json` (the xbuild shape) — the vectors Phase 3 replays in wasm.
+- [ ] **RED first, the data included (Pass 3).** The Zobrist table is 781 constants
+  and gets its test before the `const fn` is written: no key is zero, no two keys are
+  equal, and the **first and last keys equal the two literal values written in
+  `RULES.md`** beside the seed — so a reader can regenerate the table and a changed
+  seed is a deliberate red, not a silent re-hash of every vector. The insufficient-
+  material subset is data too: each of the four cases is a test, **and each named
+  non-case** (K+B v K+B on opposite colours; K+R v K; K+P v K; K+N+N v K — not in the
+  subset, live, and `RULES.md` says why; K+B+N v K) stays live.
+- [ ] **The boundaries, named (Pass 3 — mutation resistance).** Threefold: the second
+  occurrence is live and the **third** is `Draw` (D4a), the castling-right variant
+  does not count (D4a′), the ep-possibility variant does not count (D4b). The clock:
+  halfmove **99** live, **100** `Draw` (D4c), a capture at 99 resets to 0 and the game
+  runs on, a checkmate delivered on the 100th halfmove is a `Win` (D4d). Checkmate
+  before stalemate: a position that is both "no legal moves" and "in check" is mate,
+  the same with no check is stalemate. The history bound: an irreversible move clears
+  `len` to 0; 99 reversible plies leave `len = 99` and live; the 100th is the clock's
+  draw, so `len` never exceeds the array — pinned as a test of the *invariant*, not
+  guarded by an `unwrap` path. `state_hash`: two same-FEN positions with different
+  histories differ (already listed) **and** two positions with the same logical
+  history and any container state are equal.
+- [ ] **The gaps CLAUDE.md says the mutation audit finds first, closed now (Pass 3).**
+  *A trait impl that only delegates:* the terminal / replay / hash tests call
+  `<Position as Adversary>::…`, never the free functions — plus one explicit pair:
+  `Adversary::legal_moves` on the opening has 20 entries and on a mated position is
+  empty. *`render_text`:* the ASCII board for a hand-built FEN is asserted **exactly**
+  (the whole string, glyph for glyph), not `contains`. *`san_of`:* no disambiguation /
+  by file / by rank / by both; `+` vs `#`; `exd6` for ep; `exd8=Q#`; `O-O` / `O-O-O`.
+  *`parse_move`:* `e7e8q` and `E7E8Q` parse to the same move; `e7e8` (a promotion with
+  no piece) is `None`; a well-formed illegal move (`e2e5`) is `None`. *Replay:* a
+  tampered move, a truncated list, and a move appended after the terminal all fail
+  `verify`, each for its own reason — three tests, not one.
+- [ ] **A hash mismatch names its ply (Pass 3 — diagnostics).** The vector tests
+  assert the pinned hash *and*, on failure, print the FEN and the move index at which
+  the replay first diverged — the record a Phase 3 wasm disagreement is read against.
 
 **Call chain:** `Adversary::initial → legal_moves → apply → result → state_hash`;
 `pond_outcome::Game::replay` over a record.
@@ -829,7 +1009,9 @@ still measures; the number goes beside the constants.
 **Done when:**
 1. **Behavioral:** every vector green; the wiring test's tamper case fails
    verification.
-2. **Verification:** `bash tools/check.sh core cargo test -p chess-core --release`.
+2. **Verification:** `bash tools/check.sh core cargo test -p chess-core --release`
+   and `bash tools/check.sh rust npm run test:rust` (Pass 3 — fmt + clippy on the
+   pinned toolchain, the same as CI).
 **Validation:** Narrow.
 
 ### Phase 3: native == wasm cross-build
@@ -851,6 +1033,18 @@ still measures; the number goes beside the constants.
   written as `Uint16Array`); `run.sh` passes `crates/chess-core/vectors`.
 - [ ] `crates/chess-core` builds for `wasm32-unknown-unknown` with no `std` feature
   it cannot have (no `getrandom`, no floats, no time).
+- [ ] **RED first, and green must be seen to grade something (Pass 3).** The RED:
+  `run.sh` passes `crates/chess-core/vectors` and `check.mjs` reads the seventh
+  argument **before** `chess_replay_hash` exists in `src/lib.rs` — the run fails on the
+  missing export, which is the wiring test failing for the right reason. Then the
+  export, then green. `check.mjs`'s usage comment (`:8`), destructured argument list
+  (`:12-14`) and usage error string (`:16`) all gain the seventh directory — three
+  places, not one. **Shape-3 guard:** the chess loop fails the run if its directory
+  yields zero `.json` files (`VERIFICATION.md` shape 3 — the existing loops have no
+  such guard, so a vectors directory that is empty or misnamed is a green run that
+  graded nothing; additive, chess's loop only). Green is confirmed by reading the
+  whole `check-xbuild.log` for the two `chess …` case lines by name — a count is not
+  the check.
 
 **Wiring test:** the xbuild scenario itself, run through `npm run test:xbuild`.
 **Depends on:** Phase 2 (the vectors directory and the two files).
@@ -863,7 +1057,9 @@ only (a new export, a new loop, a new argument); every existing case still runs.
 `test:xbuild`), so no new reachability edit.
 **Risks:** none known beyond the buffer width; cribbage reported "nothing to
 report" at this phase.
-**Done when:** `bash tools/check.sh xbuild npm run test:xbuild` green.
+**Done when:** `bash tools/check.sh xbuild npm run test:xbuild` green, with the two
+chess cases present by name in the whole log; `bash tools/check.sh rust npm run
+test:rust` green (xbuild's `lib.rs` is workspace Rust and clippy sees it).
 **Validation:** Narrow.
 
 ---
@@ -898,13 +1094,47 @@ transposition table, whose `exact` flag means a proven terminal.
   then the same with `adversary_solver::deepen` — adopt it only if nodes fall,
   record the number either way beside the constants and in `docs/AI-PLAYERS.md`.
   **Re-plan trigger:** any level's p95 > 400 ms on the Samsung → drop that level's
-  depth/budget (a constant), log it.
+  depth/budget (a constant), log it. **The harness is `spike/chess-latency/`** (Pass
+  3): its own Cargo project depending on `chess-core` / `chess-solver` by path, built
+  to `wasm32-unknown-unknown`, driven by a Node script that prints the table — not a
+  scratch export inside the shipped crate. Nothing to revert, `git status` clean by
+  construction, `spike/*/target/` already git-ignored, and Phase 13 times the phones
+  with the **same** harness so its numbers are comparable to this table. Disposition
+  `keep-as-fixture`, like D2's FEN set.
+- [ ] **What the search reports (Pass 3 — observability).** `move_scores` returns,
+  beside the values, the **depth actually reached** and the **nodes consumed** —
+  `docs/AI-PLAYERS.md:319`'s rule for the day deepening is in ("a named level depth
+  is a ceiling, not a promise"). Phase 7 carries both onto `tutor_json` and
+  `oracle_move_values_json` as `depth` / `nodes`, so a Phase 13 "Expert felt slow" is
+  read against a number the phone produced. No shelf solver reports this yet; chess
+  is the first expected to adopt `deepen`, so it is the first that needs to.
 - [ ] Tests: mate-in-1 / mate-in-2 / mate-in-3 puzzles found at sufficient depth
   with `exact = true`; a hanging-queen position where depth-3 *without* quiescence
   blunders and *with* it does not (the reason the feature exists, as a test);
   an **independent plain minimax** cross-check at depth 3 on 20 positions
   (Othello's discipline — the only thing that makes the alpha-beta a claim);
   `zero_budget_never_returns_partial`.
+- [ ] **RED first, the constants included (Pass 3).** The PSTs are data: each table
+  has 64 entries; the black table is the white table mirrored
+  (`pst_b[sq] == pst_w[mirror(sq)]` for all 64); a centre knight outscores a rim
+  knight; `MATE` exceeds the largest material sum so a proven mate always outranks
+  material; `phase(start) == 24` and `phase(K v K) == 0`. Each is a test written
+  before the table it pins.
+- [ ] **The edges (Pass 3 — mutation resistance; single-point assertions on
+  branching code survive one-line mutations).** *`exact` propagation:* a node with one
+  proven child and one heuristic child on the principal path is **not** exact (kills
+  the `all`→`any` mutation), and a node whose every child is proven is. *Mate
+  preference:* a position with both a mate-in-1 and a mate-in-3 chooses the mate-in-1
+  (`MATE - ply`, both directions: the shorter loss is avoided too). *Budget:*
+  exhaustion mid-iteration returns the last complete iteration or nothing — never a
+  mix of depths across moves (`zero_budget…` is the zero point; this is the edge
+  above it); after exhaustion **no** TT store happens (a probe test that counts
+  stores, checkers' shape). *The clock bucket:* two identical placements at halfmove
+  10 and 98 do not share a draw-valued TT entry. *Quiescence:* a quiet position's
+  q-search returns exactly the static eval (stand-pat), and a position with one
+  capture returns the better of stand-pat and the capture. *Draws in the tree:* the
+  third occurrence counting `history` scores as a draw with `exact = true`; the
+  second does not.
 
 **Call chain:** `chess-wasm::live_move → chess_solver::live::choose →
 search::move_scores → eval` (Phase 7 completes the chain; here the test driver is
@@ -919,9 +1149,11 @@ Expert's depth.
 and its test),
 `crates/adversary-solver/src/lib.rs`.
 **Write-set:** `crates/chess-solver/**`, root `Cargo.toml` members, `Cargo.lock`.
-**Shared-state contract:** `Cargo.toml` members — additive. The wasm timing needs
-a scratch export (reverted before the phase ends — `git status` shows only the
-solver) and the Samsung (claim per TESTBED).
+**Shared-state contract:** `Cargo.toml` members — additive. The wasm timing runs
+from `spike/chess-latency/` (its own project, its own lock file; `git status
+--porcelain Cargo.lock` stays empty across the measurement) and the Samsung (claim
+per TESTBED). *(Pass 3: the scratch export inside the crate is replaced by the spike
+so there is nothing to revert.)*
 **Risks:** The window sentinels — `TODO/README.md`'s open thread: every shelf
 solver's `i32::MIN + 1` window has only ever been compiled with overflow checks by
 `cargo mutants`. Chess opens its window at `-MATE_BOUND..MATE_BOUND` (a value well
@@ -934,7 +1166,11 @@ yet a draw; the key includes the clock bucket where it matters (≥ 90).
 1. **Behavioral:** the puzzles are found and exact; the minimax cross-check agrees
    on all 20; the latency table is recorded with the `deepen` verdict.
 2. **Verification:** `bash tools/check.sh solver cargo test -p chess-solver
-   --release`, plus the one debug run.
+   --release`; `bash tools/check.sh solver-debug cargo test -p chess-solver` (the
+   one debug run — overflow checks on, closing `TODO/README.md:155-171`'s thread for
+   this crate; its wall-clock in the Review Log); `bash tools/check.sh rust npm run
+   test:rust`. The latency table and the `deepen` verdict are in the Review Log
+   **with the machine, browser and phone** each number came from.
 **Validation:** Moderate — tests plus the wasm measurement on a phone.
 
 ### Phase 5: `chess-solver` — the difficulty band and the tutor
@@ -960,6 +1196,24 @@ yet a draw; the key includes the clock bucket where it matters (≥ 90).
   `easy_beats_random_but_loses_to_expert` (self-play, small N — the order check,
   not a strength claim); `zero_sloppiness_does_not_consume_the_rng`; `coachFor`
   both branches.
+- [ ] **RED first, the level table included (Pass 3).** `depth()` and `budget()` are
+  non-decreasing Easy → Expert and Expert's depth is ≥ 4 unless D2's re-plan trigger
+  fired (then the recorded value); `TUTOR_DEPTH > Level::Expert.depth()` and
+  `COACH_DEPTH == Level::Hard.depth()` are compile-time assertions (checkers'
+  `tutor.rs:54,68`). Written before the table.
+- [ ] **The edges (Pass 3 — mutation resistance).** *`class_of` at three points:* a
+  proven mate for the mover → `+1`, a proven mate against → `−1`, and a heuristic
+  `+900` → `0` — the third is the edge, since magnitude is not class. *Sloppiness at
+  0 and 100* plus the no-floor case (the selector must sometimes pick below the best
+  at 100, or it is not sloppiness). *An immediate mate is taken at Easy* — the level
+  whose sloppiness would otherwise be allowed to skip it. *`coachFor` three
+  branches*, as checkers' test has them (`checkers-tutor.test.ts:41,49,55`): "threw
+  the game" only when both values are proven; "looks risky" for a clearly weak
+  horizon judgement; silent when there is nothing honest to flag.
+- [ ] **The qualitative claims get numbers (Pass 3).** Over 20 seeded games each,
+  Expert beats Easy ≥ 15 and Easy beats a seeded-random player ≥ 14; the counts go
+  in the Review Log, and a miss is a finding about the level table, not a flaky
+  test to loosen.
 
 **Call chain:** `chess-wasm::{live_move, coach_json, tutor_json} → live::choose /
 tutor::assess*`.
@@ -972,7 +1226,11 @@ tutor::assess*`.
 measurement for "fun"; record the sloppiness and depth chosen and leave tuning to
 `TODO/chess.md`, as cribbage did.
 **Done when:** all tests green; `bash tools/check.sh solver cargo test -p
-chess-solver --release`.
+chess-solver --release`; `bash tools/check.sh rust npm run test:rust`; the
+`docs/AI-PLAYERS.md` edit (`:711` past tense + the chess row in the search-cost
+section) is in this phase's commit *(Pass 3: the sentence is false once this Oracle
+exists)*.
+**Write-set (Pass 3 addendum):** `docs/AI-PLAYERS.md` joins the list above.
 **Validation:** Narrow.
 
 ### Phase 6: Mutation-test the core and the solver
@@ -991,7 +1249,24 @@ chess-solver --release`.
   Review Log with counts.
 - [ ] Restore with `git checkout HEAD -- <path>` **only after** `git status
   --porcelain <path>` is empty for the files being restored.
+- [ ] **Closing a survivor means watching the new test fail against it (Pass 3;
+  `CLAUDE.md` → mutation testing).** Re-apply the mutation by hand, run the new test,
+  see RED, restore, see GREEN — twice in one session a test written to kill a mutant
+  did not. A survivor is not closed until that has been seen.
+- [ ] **Read the whole log, not its tail (Pass 3 — `VERIFICATION.md` shape 1).**
+  `tools/check.sh` writes the full `cargo mutants` output to `check-<label>.log`; the
+  summary line (`N mutants tested: caught / missed / timeout / unviable`) and every
+  `MISSED` line are read from that file. The Review Log records the four counts per
+  crate and the per-survivor triage; "11 survivors looked like all of them" is the
+  incident this bullet exists for.
+- [ ] After every restore, the **full** `cargo test -p chess-core -p chess-solver
+  --release` — not the one test that was mutated — because a bad restore shows up in
+  the tests you were not looking at.
 
+**Wiring test:** none — an audit phase adds no call chain (Pass 3 accepts this as
+the checkers plan accepted Phase 6's, with the same conversion: this phase is not
+done until `bash tools/check.sh rust npm run test:rust` is green on the restored
+tree, which is the whole-workspace proof that the audit left nothing behind).
 **Depends on:** Phases 2, 5. **Write-set:** tests in both crates; the plan.
 **Risks:** run time — the perft tests are the slow ones, and `cargo mutants`
 builds **debug**. Phase 1 already marks the CI-depth perfts
@@ -1032,10 +1307,25 @@ survivors for exactly this reason.
   round-trip; `assess_json` and `tutor_json` agree on `exact` for the same move
   (checkers' agreement test); every export on a terminal game returns its "over"
   sentinel rather than panicking.
+- [ ] **The edges (Pass 3 — mutation resistance).** `play` returns each of its three
+  values from its own input: a legal code → 0; a well-formed illegal code → 1;
+  `MAX_MOVE_CODE + 1` → 2; any code after the terminal → 2. "Every export on a
+  terminal game" is enumerated, not sampled: `live_move` → `MOVE_OVER`, `play` → 2,
+  `coach_json` / `tutor_json` / `assess_json` → the empty buffer, `result_code` → the
+  terminal's code. `board_json`: `lastSan` absent before the first move and `"e4"`
+  after `e2e4`; `in_check` false then true across a checking move; `legal_moves_json`
+  unpacks a promotion square as four entries with one `from`/`to` and `promo` 1..4.
+  `tutor_json` and `oracle_move_values_json` carry Phase 4's `depth` and `nodes`, and
+  a test pins that `depth ≤ level.depth()`.
+- [ ] **Sizes in the Review Log (Pass 3 — observability):** the TT size constant, the
+  bytes of `target/wasm32-unknown-unknown/release/chess_wasm.wasm`, and the wasm
+  memory the module declares — the three numbers a "does not load on the Pixel"
+  would be read against.
 
 **Call chain:** `src/games/chess/chess-wasm.ts → dist/chess.wasm exports`.
 **Wiring test:** the exports test above, run natively (`cargo test -p chess-wasm`)
-— and `npm run build:wasm` producing `dist/chess.wasm`.
+— the exports are the binding's entry point; the same bytes are reached from
+TypeScript in Phase 8's shim test — and the two build artefacts below.
 **Depends on:** Phase 5.
 **Read-set:** `crates/checkers-wasm/src/lib.rs`, `tools/build-wasm.sh`, `build.mjs`.
 **Write-set:** `crates/chess-wasm/**`, `Cargo.toml` members, `Cargo.lock`,
@@ -1043,9 +1333,15 @@ survivors for exactly this reason.
 **Risks:** binary size — a TT sized for native is too big for wasm memory on a
 phone; size it by a constant measured here (checkers' `Table::new()` is the shape)
 and record `dist/chess.wasm`'s bytes in the Review Log.
-**Done when:** `npm run build:wasm` emits `dist/chess.wasm`; the C-ABI tests are
-green.
-**Validation:** Narrow.
+**Done when:** `bash tools/check.sh wasm cargo test -p chess-wasm --release` green;
+`bash tools/check.sh build-wasm npm run build:wasm` emits
+`target/wasm32-unknown-unknown/release/chess_wasm.wasm` and `node build.mjs` copies
+it to `dist/chess.wasm` (**two commands, two artefacts** — Pass 3 corrected "`npm run
+build:wasm` emits `dist/chess.wasm`", which no command does: `build-wasm.sh` writes
+`target/`, `build.mjs:165-167` copies to `dist/`); `bash tools/check.sh rust npm run
+test:rust` green.
+**Validation:** Narrow — with the three sizes recorded; a binding that loads
+natively and not on a phone is Phase 13's to find, and it will have the numbers.
 
 ### Phase 8: The typed `Chess` wrapper + the verifiable outcome
 
@@ -1065,6 +1361,13 @@ green.
   builds it, which is why Phase 7's `build-wasm.sh` entry is a precondition):
   play a game, replay it, tamper it.
 
+- [ ] **The edges (Pass 3 — mutation resistance).** `verifyRecord`: a recorded game
+  verifies; one move altered fails; the list truncated by one fails (a different
+  hash, not a crash); a move appended after the terminal fails; a code above
+  `MAX_MOVE_CODE` fails without throwing. The `Level` union maps to `0..3` at all four
+  values. `liveMove` on a terminal game returns `null` (the `MOVE_OVER` sentinel
+  mapped — `docs/HARNESS.md`'s "trap that cost a day" is a `null` read as a move).
+
 **Call chain:** `chess.ts (Phase 9) → Chess → wasm`.
 **Wiring test:** `tests/chess-unit.test.ts` — a recorded game verifies and a
 tampered one does not, through `verifyRecord`.
@@ -1073,7 +1376,10 @@ tampered one does not, through `verifyRecord`.
 `tests/checkers-unit.test.ts`.
 **Write-set:** `src/games/chess/{chess-wasm,chess-outcome}.ts`,
 `tests/chess-unit.test.ts`.
-**Done when:** `bash tools/check.sh unit npm run unit -- chess` green.
+**Done when:** `bash tools/check.sh unit npm run unit -- chess` green (`vitest run
+chess` — the filename filter picks up `chess-unit`; read the log for the file name
+so a filter that matched nothing is not a green); `npm run typecheck && npm run
+lint` clean.
 **Validation:** Narrow.
 
 ### Phase 9: Playable `/chess/` — the frame, the board, the taps
@@ -1102,7 +1408,10 @@ tampered one does not, through `verifyRecord`.
   stand on light squares too, which checkers' men never do). `styles.css` uses
   only `var()` (the no-raw-hex unit test).
 - [ ] `tests/chrome.test.ts:192` — insert `"chess"` in the drawer id list at the
-  position the registry gives it (after `"checkers"`, the versus group's order).
+  position the registry gives it: the list is **`SHIPPED`'s array order** (shipping
+  order; `chrome.ts` reads no `group`), chess's entry is appended after cribbage's
+  (`registry.ts:195`), so `"chess"` goes between `"cribbage"` and `"placeholder"`.
+  *(Pass 3 corrected Pass 2's "after `"checkers"`".)*
 - [ ] `src/music.ts` `BY_GAME` — name a track for chess from the shelf library
   (optional; unnamed falls back to `SHELF_TRACK`). See Open Questions.
 - [ ] The board: an 8×8 CSS grid in the stage, oriented to the human (D5's pieces
@@ -1136,6 +1445,28 @@ tampered one does not, through `verifyRecord`.
   and the delta is written in the Review Log; axe clean in both themes; 44px
   squares at 390px. `tests/a11y-matrix.spec.ts` picks chess up automatically
   from the registry — no edit, but one more game in a per-game budget.
+- [ ] **RED first, and the edges (Pass 3).** The pure functions get their tests
+  before they exist: `viewSquare(sq, flipped)` — unflipped is the identity at 0 and
+  63; flipped maps 0 ↔ 63 and 7 ↔ 56; flipping twice is the identity for all 64
+  squares. `resolveChessLevel` / `resolveChessSide` — a stored valid value, `null`,
+  and garbage (`settings.test.ts:69-85`'s three cases), and `"random"` is a storable
+  side that resolves to `"white"` or `"black"` at New game and is never written back
+  as the seat. The browser suite names its branches: the promotion picker plays each
+  of the four pieces (four codes, one `from`/`to`), and Escape / the scrim cancels
+  with the pawn still on its square and the turn unchanged; an illegal tap changes
+  nothing (the checklist's "illegal tap = no change" as an assertion on the hash);
+  Undo at move 0 is a no-op, after the engine's reply takes back two plies, and is
+  disabled while the engine's seat is `thinking`; the checked king is marked when
+  `in_check` and not otherwise.
+- [ ] **The debugging seams, declared (Pass 3).** `window.__chess` (`game`,
+  `refresh`, `seed`); `?seed=` to reproduce a game and `?fast=1` to collapse the
+  beats; the stability delta before/after in the Review Log. A Phase 13 report of
+  "it did X on the Pixel" reproduces from a seed and a move list, or it is not a
+  report.
+- [ ] `docs/BUILDING-GAMES.md:414` — the one sentence for a **new** game (the
+  stability spec is made red by mounting the turn text in flow first; the delta is
+  recorded; then it moves into the seat) — written in this phase from this phase's
+  measurement *(Pass 3: moved from Phase 14)*.
 
 **Call chain:** `main.ts → registry → chessModule.mount → frame.update(spec) →
 Chess (wasm)`.
@@ -1145,10 +1476,14 @@ share re-verifies" — through the real page, both engines.
 **Read-set:** `src/games/checkers/checkers.ts` (1,018 lines — the versus archetype
 with a multi-tap move), `src/games/othello/othello.ts` (the worked frame example),
 `docs/BUILDING-GAMES.md` §4c, `docs/RESPONSIVE-DESIGN.md`.
-**Write-set:** `src/games/chess/{chess,chess-howto(stub)}.ts`,
+**Write-set:** `src/games/chess/chess.ts` *(Pass 3 removed the `chess-howto` stub:
+`tests/how-to.test.ts` iterates `GUIDES` only, so a game without a guide is not red
+anywhere, and "No stubs, ever" — the guide is Phase 12's, whole)*,
 `src/games/chess/assets/**`, `src/registry.ts`, `src/settings.ts`, `src/music.ts`,
 `tokens.css`, `styles.css` (a chess block), `tests/chess.spec.ts`,
-`tests/chrome.test.ts`, `tests/settings.test.ts`, `tests/tokens.test.ts`.
+`tests/chrome.test.ts`, `tests/settings.test.ts`, `tests/tokens.test.ts`,
+`tests/chess-view.test.ts` (the `viewSquare` unit test), `docs/BUILDING-GAMES.md`
+(one sentence at `:414`).
 **Shared-state contract:** `src/registry.ts`, `src/settings.ts`, `src/music.ts`,
 `tokens.css`, `styles.css` and the three shared tests — every edit additive (a
 new entry, a new block, a new row); no existing game's line changes. The
@@ -1165,7 +1500,11 @@ the picker at 44px, the glyphs (fulfilled in Phase 13).
    whose share re-verifies; castling, en passant and promotion are all playable by
    tap.
 2. **Verification:** `bash tools/check.sh e2e npx playwright test tests/chess.spec.ts`
-   both engines; `npm run typecheck && npm run lint`.
+   both engines; `bash tools/check.sh a11y npx playwright test tests/a11y-matrix.spec.ts`
+   (the auto-enrolment is only proven by running it — read the log for the `chess`
+   rows); `bash tools/check.sh unit npm run unit` in full (chrome, settings, tokens,
+   art and the `viewSquare` test are all shared-suite edits); `npm run typecheck &&
+   npm run lint`. `npm run smoke` is the human's quick check, not the gate.
 **Validation:** Moderate — the spec plus playing it in a browser by hand.
 
 ### Phase 10: The tutor panel + the experimental hybrid opponent
@@ -1186,6 +1525,24 @@ the picker at 44px, the glyphs (fulfilled in Phase 13).
 - [ ] `tests/chess-tutor.test.ts` — `coachFor` both branches;
   `tests/chess-hybrid.test.ts` — `MockRuntime` proves the plug-in on CI (an
   out-of-band pick falls back; a malformed reply falls back).
+- [ ] **The edges (Pass 3 — mutation resistance).** `coachFor` three branches
+  (threw / hedge / silent — the third is what checkers tests and Pass 1 omitted).
+  `ideaFor` one case per idea: a capture names the piece taken; a check says so; a
+  promotion; a castle; "mate in N" **only** when `exact`, and a quiet move's plain
+  fallback. The hybrid: an in-band reply → `source: "llm"`; out-of-band → fallback; a
+  malformed reply → fallback; **a reply naming a legal move that is not in the band →
+  fallback** (legal is not offered — the edge a "just check legality" mutation
+  survives); the toggle is absent when the WebGPU probe reports a fallback adapter.
+  The reading state is painted **synchronously** before `tutor()` resolves (a test
+  that reads the DOM before awaiting). The canned banter lines all survive
+  `banter.ts`'s filter — asserted in a unit test, every line, since a filtered line
+  is silent in production.
+- [ ] **What the real run records (Pass 3 — observability).** The Report already
+  counts `llmMoves` / `fallbackMoves` and prints the fallback rate
+  (`tournament.ts:95-100`), so the `AI_TRIAL_MODE=hybrid npm run ai:trial` run goes
+  in the Review Log with those two numbers, the model id, and the adapter string —
+  the checkers plan's "source is computed and discarded" flag is closed by the rig,
+  and the numbers are what close it for chess.
 
 **Call chain:** `chess.ts → Chess.tutor() → buildBand → HybridPlayer.pick →
 AIRuntime`.
@@ -1200,8 +1557,11 @@ band" through `chessModule` with `MockRuntime`.
 **Risks:** `banter.ts` rejects any digit or board noun — chess banter that says
 "e4" or "the queen" is filtered; the canned lines must avoid both. Recorded, not
 worked around.
-**Done when:** both tests green; a real WebGPU run (`AI_TRIAL_MODE=hybrid npm run
-ai:trial`) recorded in the Review Log as validated-not-gated.
+**Done when:** `bash tools/check.sh tutor npm run unit -- chess-tutor chess-hybrid`
+green with both file names in the log *(Pass 3: the phase had no verification
+command)*; `npm run typecheck && npm run lint`; a real WebGPU run
+(`AI_TRIAL_MODE=hybrid npm run ai:trial`) recorded in the Review Log as
+validated-not-gated, with its `llmMoves` / `fallbackMoves`.
 **Validation:** Moderate.
 
 ### Phase 11: Chess meets the harness
@@ -1236,8 +1596,16 @@ empty is asserted in the Review Log).
 checkers'. If the 2-game CI tournament grades nothing, raise the tutor budget for
 `assess_json` (the checkers fix) before lowering the bar; a 0 here is a finding,
 not a pass.
-**Done when:** `HARNESS_TRIAL_GAME=chess npm run harness:trial` prints a Report;
-`npm run unit` grades chess; `npm run baselines` reproduces the anchor.
+**Done when:** `bash tools/check.sh harness npm run unit -- chess-harness` green
+with all three assertions present in the file (a test with `blunders === 0` alone
+grades a vacuous run green — `checkers-harness.test.ts:92-96` is the shape);
+`bash tools/check.sh baselines npm run baselines` reproduces `ANCHORS.chess`
+number for number; `HARNESS_TRIAL_GAME=chess npm run harness:trial` prints a Report
+(validated, not gated — it needs a GPU); `git diff --stat origin/main --
+src/harness/match-runner.ts src/harness/scorer.ts src/harness/tournament.ts` prints
+**nothing** (the Problem Statement's constraint, read as output rather than
+asserted from memory). *(Pass 3: every command through `check.sh`, and `scoredMoves`
+read from the Report — a 0 is the finding the Risk names.)*
 **Validation:** Moderate.
 
 ### Phase 12: "How to play" + guide shots
@@ -1252,17 +1620,25 @@ not a pass.
   50 moves, insufficient material) in one honest paragraph; the levels and the
   tutor; the verifiable record.
 - [ ] `src/how-to-registry.ts`; `tools/guide-shots.mjs` `SHOTS` (`chess-board`,
-  `chess-promotion`, `chess-result`); the sync tests.
+  `chess-promotion`, `chess-result`); the sync tests — **`tests/how-to.test.ts`**
+  ("every screenshot it references exists on disk", `:37-45`) is the one that goes
+  RED by construction the moment the guide names three shots that do not exist yet,
+  and `tests/how-to.spec.ts` is the page that renders them *(Pass 3 named the
+  files)*.
 
-**Wiring test:** the guide sync test + `npm run guide:shots` producing the three
-images and the how-to page rendering them.
+**Wiring test:** `tests/how-to.test.ts` RED on registration → `npm run guide:shots`
+→ GREEN, and `tests/how-to.spec.ts` rendering the chess guide through `/how-to/`.
 **Depends on:** Phase 9.
 **Write-set:** `src/games/chess/chess-howto.ts`, `src/how-to-registry.ts`,
 `tools/guide-shots.mjs`, `assets/guide/chess-*.jpg`.
 **Risks:** re-encoding other games' JPEGs — `git checkout --` the rest after
 `guide:shots` (CLAUDE.md), after checking `git status --porcelain` shows only
 JPEGs.
-**Done when:** the how-to page for chess renders with three shots; sync tests green.
+**Done when:** `bash tools/check.sh shots npm run guide:shots` green; `git status
+--porcelain assets/guide` read in full and only `chess-*.jpg` kept (the rest `git
+checkout --` per CLAUDE.md — *after* the porcelain read, never before); `bash
+tools/check.sh howto npm run unit -- how-to` green; `bash tools/check.sh howto-e2e
+npx playwright test tests/how-to.spec.ts` green.
 **Validation:** Narrow.
 
 ### Phase 13: The device pass
@@ -1276,8 +1652,11 @@ JPEGs.
   this worktree, not in `fun/`) and take chess's items plus any older owed check
   the phones fulfil.
 - [ ] On both phones: a full game by tap; the promotion picker at 44px; the
-  glyphs/SVG in both themes; Expert's move latency felt and timed against Phase 4's
-  table; the share link opened cold.
+  glyphs/SVG in both themes; Expert's move latency felt **and timed with
+  `spike/chess-latency/`** against Phase 4's table (the same harness, so the two
+  columns are comparable — Pass 3); the share link opened cold. Each finding is
+  recorded with the phone, the seed and the move list — the `__chess` /`?seed=`
+  seams are what make a phone report reproducible on a laptop.
 - [ ] Edit each `[device: …]` line in this plan to `[device done 2026-MM-DD: …]`.
 
 **Depends on:** Phases 9–12.
@@ -1290,11 +1669,18 @@ JPEGs.
 **Goal:** Record what landed, and land it.
 
 **Changes:**
-- [ ] Everything in Documentation Impact scheduled here: `TODO/README.md`,
-  `TODO/drop4.md:185`, `TODO/chess.md` (new), the one-line pointer in
-  `plans/2026-07-31-drop4-ai-harness.md`, `docs/AI-PLAYERS.md`,
-  `docs/BUILDING-GAMES.md` §10 (roster, the honesty line, the new Variation
-  block), `CLAUDE.md`, `README.md`, `CHANGELOG.md` (contexts + entry).
+- [ ] Everything in Documentation Impact still scheduled here after Pass 3's moves:
+  `TODO/README.md` (the entry's move to Shipped — its stale sentence went in Phase
+  1), `TODO/chess.md` (new), the one-line pointer in
+  `plans/2026-07-31-drop4-ai-harness.md`, `docs/AI-PLAYERS.md` (the generality
+  paragraph — `:711` went in Phase 5), `docs/BUILDING-GAMES.md` §10 (roster, the
+  honesty line, the new Variation block — `:414` went in Phase 9), `CLAUDE.md`,
+  `README.md`, `CHANGELOG.md` (contexts + the entry under `[Unreleased]`, per
+  `CroftC/.claude/CHANGELOGS.md`). *(Pass 3: what remains is record-what-landed —
+  the roster, the inventory, the shipped status — which cannot be written before it
+  lands; every claim this plan makes **false** earlier is fixed in the phase that
+  breaks it, the checkers plan's Phase 17 reading of the "trailing docs phase"
+  rule. `TODO/drop4.md` is no longer here.)*
 - [ ] Review Log entries for every phase, newest first, with the numbers.
 - [ ] `bash tools/check.sh gate npm run gate` (Rust + xbuild + binding + typecheck
   + lint + unit + build + e2e — `package.json` `test`); `bash
@@ -1307,10 +1693,18 @@ JPEGs.
   before merging**, per COORDINATION; landing claims `landing-on-main` for the
   registry edit.
 
-**Wiring test:** the closing grep sweep (Documentation Impact) returns only lines
-this plan wrote.
+**Wiring test:** the closing grep sweep (Documentation Impact) —
+`grep -rn -i chess TODO CLAUDE.md README.md plans/*.md docs/*.md` — **read in full,
+every hit classified** (this plan's own lines; historical done-records that stay
+true; a stale claim, which is a miss to fix), never counted. Plus the shared-code
+constraint from the Problem Statement as output: `git diff --stat origin/main --
+crates/adversary-core crates/adversary-solver src/harness/match-runner.ts
+src/harness/scorer.ts src/harness/tournament.ts src/game-frame.ts` prints nothing.
 **Depends on:** Phase 13.
-**Done when:** gate green on CI (all three jobs), PR open, audit clean.
+**Done when:** `bash tools/check.sh gate npm run gate` green locally; on CI the jobs
+`deploy` needs — **`build`, `rust`, `e2e`** (the `e2e` matrix `needs: [wasm]`;
+`deploy.yml:294-296` — Pass 3 named them in place of "all three") — green on the PR;
+PR open; `workspace-audit.sh` clean.
 **Validation:** Broad.
 
 ---
@@ -1401,6 +1795,191 @@ this plan wrote.
 ---
 
 ## Review Log
+
+### Pass 3: Quality Gates — 2026-08-30
+
+**TDD ordering:**
+- **Every implementation phase now says which test is written before which code,
+  data and constants included.** Phase 1 gets a stated RED order (`RULES.md` → FEN
+  round-trip → move code → depth-1..3 perfts → generation → depth-4/5 perfts) and
+  boundary pairs for its constants (`MAX_MOVE_CODE` / `+1` at deserialize, `promo` 4 /
+  5, square 63 / 64). Phase 2's 781 Zobrist constants get a test before the `const fn`
+  (distinct, non-zero, first and last keys as literals in `RULES.md`). Phase 4's PSTs
+  (mirror symmetry, centre > rim, `MATE` > material, `phase` at 24 and 0) and Phase 5's
+  level table (monotonic, the compile-time depth orderings) are tests before tables.
+- **Mutation resistance — eight phases specified single-point assertions on branching
+  code; each now names its edges.** Phase 1: each castling bar alone; each cause of a
+  lost castling right and the non-causes; ep on the next move and gone after; the
+  halfmove clock's three inputs; pins; a defended piece. Phase 2: threefold at the 2nd
+  (live) / 3rd (draw); the clock at 99 / 100 and a capture at 99; mate on the 100th;
+  the named insufficient-material **non-cases** (K+N+N v K, K+R v K, K+P v K, K+B+N v
+  K); the history bound as an invariant; `san_of` and `parse_move` case by case; three
+  ways a replay fails. Phase 4: `exact` propagation with one heuristic child (the
+  `all`→`any` mutation); mate-in-1 over mate-in-3 in both directions; exhaustion
+  returns a whole iteration or nothing and stores nothing after; the clock bucket in
+  the TT key; stand-pat. Phase 5: `class_of` at `+1` / `−1` / `+900 → 0`; sloppiness
+  0 / 100 / no-floor; an immediate mate at Easy; `coachFor`'s **third** (silent)
+  branch. Phase 7: `play`'s three values from three inputs; every terminal sentinel
+  enumerated; `lastSan` before / after; the promotion unpack. Phase 8: five ways
+  `verifyRecord` fails; `liveMove` → `null` on a terminal. Phase 9: `viewSquare` at
+  the corners and as an involution; the resolvers' three cases plus `"random"`; the
+  picker's four pieces and its cancel; Undo at 0 / after a reply / while thinking.
+  Phase 10: `coachFor` × 3, `ideaFor` per idea, the **legal-but-not-offered** reply,
+  the synchronous reading state, every canned line through the banter filter.
+- **The three gaps `CLAUDE.md` says the mutation audit finds first are closed in Phase
+  2, not found in Phase 6:** the trait-delegation gap (tests call
+  `<Position as Adversary>::…`), `render_text` asserted exactly, and no convenience
+  API without a test caller (`san_of`, `parse_move`, `from_fen` each have one).
+- **Two qualitative claims got numbers:** Phase 5's "Easy beats random but loses to
+  Expert" → ≥ 14 / 20 and ≥ 15 / 20 seeded games, recorded, a miss being a finding.
+- **Wiring tests:** every phase has one that reaches its entry point except Phase 6
+  (an audit adds no chain) — converted as the checkers plan converted its Phase 6:
+  not done until the whole-workspace `npm run test:rust` is green on the restored
+  tree. Phase 3's wiring test is now RED-first (the seventh argument before the
+  export exists). Phase 7's wiring statement no longer claims a command that does not
+  exist (see Validation calibration).
+- **One stub removed.** Phase 9's write-set carried `chess-howto(stub)`; the spot-check
+  of `tests/how-to.test.ts` shows nothing forces it (the suite iterates `GUIDES`
+  only), and "No stubs, ever" forbids it. The guide is Phase 12's, whole.
+
+**Observability:**
+- **Depth reached and nodes consumed** are returned by Phase 4's `move_scores` and
+  carried by Phase 7's `tutor_json` / `oracle_move_values_json` as `depth` / `nodes`
+  (additive; no shelf binding reports them today). `docs/AI-PLAYERS.md:319` asks for
+  exactly this once deepening is in, and chess is the first solver expected to adopt
+  it. A Phase 13 "Expert felt slow" is read against a number the phone produced.
+- **Failures name their location:** Phase 1's CI-depth perfts run through `divide` so
+  a mismatch prints the per-move split; Phase 2's vector tests print the FEN and ply
+  of first divergence on a hash mismatch (the record a Phase 3 wasm disagreement is
+  read against); Phase 1's differential perft records the first disagreeing FEN or
+  the literal "200 positions, 0 disagreements".
+- **Sizes recorded in Phase 7:** the TT constant, the wasm bytes, the declared
+  memory — the three numbers a phone load failure would be read against.
+- **The hybrid's telemetry exists now.** `Report.llmMoves` / `fallbackMoves` and the
+  printed fallback rate (`tournament.ts:95-100`) close the checkers plan's Pass 3
+  flag; Phase 10's real run records both counts, the model id and the adapter
+  string.
+- **Recording discipline extended:** Phase 4's latency table and `deepen` verdict
+  carry the machine / browser / phone per number; Phase 6 records the four
+  `cargo mutants` counts per crate plus the per-survivor triage, read from the whole
+  log file.
+
+**Debugging readiness:**
+- **Checkpoint rule made explicit in the Concurrency Map:** one commit per phase,
+  subject `chess: phase N — …`, Phase 6 committing before every round — so
+  `git log --oneline` names the last green phase and `git diff HEAD` is the phase in
+  flight.
+- **The latency harness moved out of the shipped crate.** Phase 4's "scratch export,
+  reverted before the phase ends" became `spike/chess-latency/` (own project, own
+  lock, `spike/*/target/` already ignored): nothing to revert, `git status` clean by
+  construction, and Phase 13 times the phones with the **same** harness so the
+  columns compare.
+- **Phase 9 declares its seams** (`window.__chess`, `?seed=`, `?fast=1`) and Phase 13
+  requires every phone finding to carry phone + seed + move list — a report that
+  cannot be replayed on a laptop is not a report.
+- **Phase 4's debug run is a named command** (`check.sh solver-debug cargo test -p
+  chess-solver`), not a Risk aside — it is the closer for `TODO/README.md:155-171`'s
+  overflow thread on this crate.
+- **Phase 6 adds the three rules that make a mutation audit trustworthy:** a survivor
+  is closed only when the new test has been seen to fail against the re-applied
+  mutation; the log is read from the file, not the tail; the full suite runs after
+  every restore.
+
+**Validation calibration:**
+- Reviewed all 15 phases against scope (Phase 0 under the Discovery Exemption; the
+  other 14 declare a strategy). No tier changed; three phases had **no verification
+  command** and now do (Phase 10 `check.sh tutor npm run unit -- chess-tutor
+  chess-hybrid`; Phase 12 `guide:shots` + `how-to` unit + `how-to.spec.ts`; Phase 6
+  the whole-workspace Rust gate after restore). Final: **Narrow** 1, 2, 3, 5, 7, 8,
+  12 · **Moderate** 4, 9, 10, 11 · **Broad** 13, 14 · audit 6.
+- **Every Rust phase names the gate.** `cargo test -p <crate>` runs neither `fmt
+  --check` nor `clippy -D warnings`; CI's `rust` job runs both on the pinned
+  toolchain. Phases 1–5 and 7 now run `bash tools/check.sh rust npm run test:rust`
+  as well (the checkers plan's Pass 3 finding, applied).
+- **Verification shapes fixed (`CroftC/.claude/VERIFICATION.md`):** every command in a
+  Done-when now runs through `tools/check.sh` (shape 1 — Phases 7, 10, 11, 12 had
+  bare commands); Phase 3's xbuild loop gains an empty-directory guard for its own
+  vectors (shape 3 — the existing loops run zero cases and report green on an empty
+  or misnamed directory, `check.mjs:150`); the grep sweeps (Phase 1's `unwrap`,
+  Phase 14's chess sweep) are "read in full, every hit classified", never `-c`;
+  Phase 8/10/12's `vitest run <filter>` are read for the file name so a filter that
+  matched nothing is not a green.
+- **Three factual corrections in Done-when / Changes.** Phase 7: "`npm run build:wasm`
+  emits `dist/chess.wasm`" — no command does that; `build-wasm.sh` writes `target/`,
+  `build.mjs:165-167` copies to `dist/` at `node build.mjs` (two commands, two
+  artefacts). Phase 9: `"chess"` goes between `"cribbage"` and `"placeholder"` in
+  `tests/chrome.test.ts:192` (the list is `SHIPPED` array order, `registry.ts:195`;
+  Pass 2's "after `"checkers"`" would have been a red board). Phase 14: "all three
+  jobs" → the set `deploy` needs is `build`, `rust`, `e2e` (`deploy.yml:294-296`),
+  with `e2e` itself needing `wasm`.
+- Phase 11 and 14 now assert the Problem Statement's "nothing shared changes" as
+  **output** (`git diff --stat origin/main -- <the six paths>` prints nothing) rather
+  than as a Review Log claim.
+
+**Concurrency honesty:**
+- Map re-checked after this pass moved five doc edits between phases and one harness
+  out of a crate; still **all sequential**, no new overlap and no new disjoint pair
+  worth unbunching (`docs/AI-PLAYERS.md` 5+14, `docs/BUILDING-GAMES.md` 9+14,
+  `TODO/README.md` 1+14 — all on the spine). Contracts already read as invariants;
+  Phase 4's was tightened from "a scratch export, reverted" (a mechanism with a revert
+  step) to "the spike's own lock file; `git status --porcelain Cargo.lock` empty
+  across the measurement" (checkable). No subagent dispatch, so no re-entry
+  verification is owed — stated, not silent. The {11 || 12} candidate stands as Pass
+  2 left it (owner: sequential).
+
+**Discovery:**
+- All six tasks now declare a disposition: D1 `keep-as-fixture` (met), D2 `throwaway`
+  + the FEN set `keep-as-fixture`, **D3 `n/a`** (added — no probe code; the
+  measurement is Phase 4's), D4 `keep-as-fixture`, **D5 both branches** (added —
+  `promote` into Phase 9 under Phase 9's TDD if SVG, `throwaway` if Unicode), D6
+  `throwaway` (closed). One `promote`, with its named follow-up phase.
+- **D4's `from_fen` sub-question resolved during planning, not deferred:** five of the
+  six perft positions Phase 1 asserts are FENs, so the constructor exists whatever D4
+  finds (test-and-bridge only, never the record format). D4 keeps only the fixture-
+  length question. Phase 1's "Depends on: D4's `from_fen` decision" corrected.
+- D2's recording discipline (measurement + machine, not just the value) now also
+  governs Phase 4's re-measurement and Phase 13's phone timing, all through the one
+  harness.
+
+**Coherence:**
+- Re-read end to end: the plan still solves the stated problem (a build-fresh core
+  verified by perft, an honest Oracle, the full §10 standard, nothing shared
+  changed), in the same order, for the same reasons. Scope held — every Pass 3
+  addition is a test, a number to record, a named command, or a moved doc edit; no
+  new production surface except the two additive JSON fields (`depth`, `nodes`) that
+  `AI-PLAYERS.md` already asks for.
+- All thirteen open questions carry owner-confirmed severities ("accept all",
+  2026-08-30); none re-opened. The two PHASE-GATED items (Phase 2's history array,
+  Phase 9's orientation) are already reflected in those phases' bullets, so nothing
+  blocks the start.
+- One reference corrected: the cribbage plan has **no** Pass 3 entry (its Review Log
+  is execution entries, `:714-858`); the checkers plan's is the depth model and is
+  cited as such.
+
+**Documentation impact:**
+- **Three claims made false before Phase 14 were scheduled in Phase 14.** Moved to
+  the phase that breaks each: `TODO/drop4.md:185` and `TODO/README.md:110-112`'s
+  "vetted move generator" → **Phase 1** (false at the first build-fresh commit);
+  `docs/AI-PLAYERS.md:711` "a future game (chess is the obvious one)" → **Phase 5**
+  (false once a chess Oracle exists; joins the search-cost edit already there);
+  `docs/BUILDING-GAMES.md:414`'s new-game sentence → **Phase 9** (written from the
+  measured delta, not from memory of it). Write-sets updated.
+- **One registration point was under-counted:** `crates/xbuild/check.mjs` enumerates
+  the vector directories in three places (`:8`, `:12-14`, `:16`), not one; Phase 3
+  and the registration list now say so.
+- Phase 14 survives the trailing-docs-phase check on the checkers plan's reading:
+  what remains is record-what-landed (roster, inventory, shipped status, the
+  `[Unreleased]` changelog entry) that cannot be written before it lands.
+- Every remaining Documentation Impact line re-checked against its phase's Changes
+  and write-set: all seventeen registration points present (Phase 1: `Cargo.toml`;
+  3: xbuild ×4; 7: `build-wasm.sh`, `build.mjs`, `Cargo.toml`; 9: registry,
+  chrome test, settings + test, tokens + test, icon + art test, music; 11: trial
+  entry ×2, baselines; 12: how-to registry, guide shots); the Phase 14 closing sweep
+  is now a read-every-hit gate.
+
+**Confirmed ready:** yes. No unreviewed open questions; no BLOCKING item
+unresolved; the two PHASE-GATED items are folded into their phases. Phase 0 next,
+under the Discovery Exemption (`execute.md` § Discovery Exemption before starting).
 
 ### Pass 2: Gap Analysis — 2026-08-30
 
