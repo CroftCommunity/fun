@@ -12,6 +12,9 @@ earlier is in `git log`.
 
 ## 2026-08
 
+- 2026-08-30 **shelf:** three more pieces in the library — *Porcelain Afternoon*, *The
+  Last Cab Home*, *Tuesday Night Rainfall* (each about three minutes, so they play out
+  rather than loop). No game names them by default yet; they are in the track list.
 - 2026-08-29 **shelf:** a music transport in the header — previous, play/pause, the
   track's name, next. The name drops down the whole list, headed by *Couple tracks to
   games*: on (the default), opening a game starts its own track; off, the shelf plays

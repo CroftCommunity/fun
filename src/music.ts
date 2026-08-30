@@ -56,11 +56,14 @@ export const TRACKS: readonly Track[] = [
   { id: "last-life-remaining", title: "Last Life Remaining", kind: "piece" },
   { id: "morning-grid", title: "Morning Grid", kind: "piece" },
   { id: "morning-inside-the-basin", title: "Morning Inside the Basin", kind: "piece" },
+  { id: "porcelain-afternoon", title: "Porcelain Afternoon", kind: "piece" },
   { id: "save-point-morning", title: "Save Point Morning", kind: "piece" },
   { id: "six-sides-of-logic", title: "Six Sides of Logic", kind: "piece" },
   { id: "sunday-drive-south", title: "Sunday Drive South", kind: "piece" },
   { id: "sunset-at-the-harbor", title: "Sunset at the Harbor", kind: "piece" },
+  { id: "the-last-cab-home", title: "The Last Cab Home", kind: "piece" },
   { id: "the-unfolding-hour", title: "The Unfolding Hour", kind: "piece" },
+  { id: "tuesday-night-rainfall", title: "Tuesday Night Rainfall", kind: "piece" },
 ];
 
 /** The shelf's own ambient bed. A loop, because the home page is a place you linger. */
