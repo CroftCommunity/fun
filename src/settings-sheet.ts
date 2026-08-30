@@ -67,7 +67,7 @@ export interface ChoiceRow {
   label: string;
   hint?: string;
   value: string;
-  options: ReadonlyArray<{ readonly value: string; readonly label: string; readonly hint?: string }>;
+  options: ReadonlyArray<{ readonly value: string; readonly label: string; readonly hint?: string; readonly disabled?: boolean }>;
   onChange(value: string): void;
 }
 
@@ -164,6 +164,7 @@ function renderChoiceRow(row: ChoiceRow): HTMLElement {
       class: "sheet-choice-input",
     }) as HTMLInputElement;
     input.checked = opt.value === row.value;
+    if (opt.disabled) input.disabled = true;
     input.addEventListener("change", () => {
       if (input.checked) row.onChange(opt.value);
     });

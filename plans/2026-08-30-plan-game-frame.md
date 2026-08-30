@@ -8,7 +8,7 @@ parameters does once every bare URL opens on a start screen) gates Phase 5** and
 thing between this plan and execution: Phases 0–4 may start now. D5 was resolved during
 planning (read-only, see Verified Assumptions) and is struck from Phase 0. Phases 1, 2, 3
 and 5 carry sub-phases (1a/1b, 2a/2b, 3a/3b, 5a/5b) — each with its own Done-when and
-wiring test — because each touched four or more files. Phases 0–7 COMPLETE (2026-08-30). Mocks
+wiring test — because each touched four or more files. Phases 0–8 COMPLETE (2026-08-30). Mocks
 landed on `main` (`mocks/d-game-frame.html`, PR #45, `6c4dd9c`); owner decisions D1–D5
 recorded.
 
@@ -1104,6 +1104,22 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
    it changes one test case either way.*
 
 ## Review Log
+
+### Phase 8 — executed 2026-08-30 (Trio Tumble, the campaign archetype — the worst case)
+- Red first: the rewritten `tests/trio-tumble.spec.ts` against the unmigrated page, 32 of
+  90 failing. Thirteen pills in four rows became one chip, **three fixed meter slots**
+  whose ids/labels change per objective but never their count, and Hint / Restart
+  (campaign only) / New board. Board, objective and level are one setup card (module-level
+  `chosen*` the poster's factory and the sheet both write; a locked level is a `disabled`
+  choice option — `settings-sheet.ts` gained that, additively). The Orders tally stays in
+  the stage above the board — fixed for the board's life, so it never changes height.
+  Every swap is logged now (the campaign's own deep-link autosave stays campaign-only);
+  `snapshot()` carries seed, objective, level and the swaps; `resume()` replays a level
+  through `startLevel(id, moves)` and any other board through `startGame` + `play()`.
+- Green on the first migrated run: `tests/trio-tumble.spec.ts` 90/90 both engines (the
+  board stable across a swap, a hint and the sheet); `npm run e2e` 665/665; typecheck,
+  lint (three dead variables from the old HUD removed); shots regenerated for Trio Tumble
+  only (3). How-to copy, §4c campaign worked example, changelog landed in-phase.
 
 ### Phase 7 — executed 2026-08-30 (Solitaire, the solo archetype)
 - Red first: the rewritten `tests/solitaire.spec.ts` against the unmigrated page, 16 of 29

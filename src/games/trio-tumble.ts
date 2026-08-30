@@ -4,7 +4,11 @@
 //! the move budget runs out the score is graded into stars and a verifiable
 //! `pond-outcome` record is shown, shareable via `?r=`.
 
-import type { GameModule } from "../contract.js";
+import type { GameModule, GameServices } from "../contract.js";
+import type { GameFrame, GameFrameSpec, Verb } from "../game-frame.js";
+import type { Progress } from "../progress.js";
+import type { SettingRow } from "../settings-sheet.js";
+import { today } from "../shelf.js";
 import { TrioTumble, type BoardView, type Frame, type Mode, type Swap } from "./trio-tumble-wasm.js";
 import {
   decodeRecord,
@@ -31,14 +35,8 @@ import {
   tutorialSeen,
   unlockedLevel,
   type Campaign,
-  type Level,
 } from "./trio-tumble-campaign.js";
-import {
-  declareAssistanceEnabled,
-  hintsEnabled,
-  setDeclareAssistance,
-  setHintsEnabled,
-} from "../settings.js";
+import { declareAssistanceEnabled, hintsEnabled } from "../settings.js";
 
 declare global {
   interface Window {
@@ -241,6 +239,76 @@ export function renderResultScreen(
 
 // ---------- the game module ----------
 
+/** What the next board is — the poster's card and the New board sheet both write these. */
+let chosenBoard: "campaign" | "daily" | "free" = "campaign";
+let chosenObjective: Mode = "target-score";
+let chosenLevel: number | null = null;
+/** The campaign pack, once a module has loaded it, so the sheet can list levels. */
+let campaignForSetup: Campaign | null = null;
+
+const OBJECTIVE_LABEL: Readonly<Record<Mode, string>> = {
+  "target-score": "Target score",
+  blockers: "Clear blockers",
+  jelly: "Clear jelly",
+  ingredients: "Ingredients",
+  checklist: "Orders",
+  obstacles: "Obstacles",
+};
+const OBJECTIVES: readonly Mode[] = ["target-score", "blockers", "jelly", "ingredients", "checklist", "obstacles"];
+
+/** The New board card: which board, which objective, and — in the campaign — which level. */
+export function trioTumbleSetupRows(): SettingRow[] {
+  const rows: SettingRow[] = [
+    {
+      kind: "choice",
+      id: "board",
+      label: "Board",
+      value: chosenBoard,
+      options: [
+        { value: "campaign", label: "Campaign", hint: "curated levels, stars remembered" },
+        { value: "daily", label: "Today’s board", hint: "the same board everyone gets today" },
+        { value: "free", label: "New board", hint: "a fresh random board" },
+      ],
+      onChange: (v) => {
+        chosenBoard = v === "daily" ? "daily" : v === "free" ? "free" : "campaign";
+      },
+    },
+    {
+      kind: "choice",
+      id: "objective",
+      label: "Objective",
+      hint: "For today’s and new boards; the campaign plays target score.",
+      value: chosenObjective,
+      options: OBJECTIVES.map((m) => ({ value: m, label: OBJECTIVE_LABEL[m] })),
+      onChange: (v) => {
+        chosenObjective = OBJECTIVES.includes(v as Mode) ? (v as Mode) : "target-score";
+      },
+    },
+  ];
+  if (campaignForSetup) {
+    const unlocked = unlockedLevel(campaignForSetup);
+    rows.push({
+      kind: "choice",
+      id: "level",
+      label: "Level",
+      hint: "Clear a level for one star to unlock the next.",
+      value: String(chosenLevel ?? unlocked),
+      options: campaignForSetup.levels.map((l) => ({
+        value: String(l.id),
+        label: `Level ${l.id}`,
+        ...(l.id > unlocked ? { disabled: true, hint: "locked" } : {}),
+      })),
+      onChange: (v) => {
+        chosenLevel = Number(v);
+      },
+    });
+  }
+  return rows;
+}
+
+/** The poster's setup card — the registry's `setup` factory. */
+export const trioTumbleSetup = (): SettingRow[] => trioTumbleSetupRows();
+
 /** Construct a fresh Trio Tumble module (the registry `load`). */
 export function trioTumbleModule(): GameModule {
   let game: TrioTumble | null = null;
@@ -254,6 +322,8 @@ export function trioTumbleModule(): GameModule {
   // The campaign ladder (curated levels over verifiable seeds). `level` is the
   // current campaign level id, or null when playing daily / free / an objective.
   let campaign: Campaign | null = null;
+  let frame: GameFrame | null = null;
+  let pendingResume: Progress | null = null;
   let level: number | null = null;
   // The current campaign board's committed move list — autosaved after each move
   // (the moves, never the board) and replayed into a fresh core to resume.
@@ -265,8 +335,6 @@ export function trioTumbleModule(): GameModule {
   // assistance hint), the glowed cells get a brighter, pulsing treatment.
   let tutorialNudge = false;
   let cascadeEl: HTMLElement | null = null;
-  let lastScore = 0;
-  let scoreBumped = false;
   let animating = false;
   // A completed swipe sets this so the trailing synthetic `click` doesn't also
   // tap-select. Reset at the start of every pointer gesture so it can never eat a
@@ -405,9 +473,10 @@ export function trioTumbleModule(): GameModule {
     hint = null;
     tutorialNudge = false;
     setStatus("");
-    // Autosave the in-progress campaign board as its move list (replayed to resume).
+    // Every applied swap is logged: the frame's store replays it (any board), and
+    // the campaign's own autosave keeps its deep-link resume (campaign only).
+    if (frames.length > 0) moveLog.push(s);
     if (level !== null && frames.length > 0) {
-      moveLog.push(s);
       saveResume({ objective, seed: seed.toString(), level, moves: moveLog });
     }
     const cascade = analyzeCascade(frames);
@@ -498,196 +567,98 @@ export function trioTumbleModule(): GameModule {
     return b;
   };
 
-  const renderControls = (board: BoardView): HTMLElement => {
-    const bar = el("div", { class: "sol-controls" });
-
-    const modes = el("div", { class: "sol-modes", role: "group", "aria-label": "Board" });
-    const daily = el(
-      "button",
-      { type: "button", class: "sol-mode-daily", "aria-pressed": String(mode === "daily") },
-      "Today’s board",
-    );
-    const fresh = el(
-      "button",
-      { type: "button", class: "sol-new", "aria-pressed": String(mode === "free") },
-      "New board",
-    );
-    const campBtn = el(
-      "button",
-      { type: "button", class: "m3-mode-campaign", "aria-pressed": String(level !== null) },
-      "Campaign",
-    );
-    campBtn.addEventListener("click", () => void startLevel(campaign ? unlockedLevel(campaign) : 1));
-    daily.addEventListener("click", () => void startGame("daily"));
-    fresh.addEventListener("click", () => void startGame("free"));
-    modes.append(campBtn, daily, fresh);
-
-    // Objective toggle: score-in-moves vs the clear objectives. Switching
-    // restarts the current board mode under the chosen objective.
-    const objectives = el("div", { class: "m3-objectives", role: "group", "aria-label": "Objective" });
-    const switchObjective = (next: Mode): void => {
-      if (objective === next) return;
-      objective = next;
-      void startGame(mode);
-    };
-    const objBtn = (label: string, cls: string, target: Mode): HTMLElement => {
-      const b = el("button", { type: "button", class: cls, "aria-pressed": String(objective === target) }, label);
-      b.addEventListener("click", () => switchObjective(target));
-      return b;
-    };
-    objectives.append(
-      objBtn("Target score", "m3-obj-score", "target-score"),
-      objBtn("Clear blockers", "m3-obj-blockers", "blockers"),
-      objBtn("Clear jelly", "m3-obj-jelly", "jelly"),
-      objBtn("Ingredients", "m3-obj-ingredients", "ingredients"),
-      objBtn("Orders", "m3-obj-checklist", "checklist"),
-      objBtn("Obstacles", "m3-obj-obstacles", "obstacles"),
-    );
-
-    const hints = hintsEnabled();
-    const actionBtn = el(
-      "button",
-      { type: "button", class: hints ? "sol-hint" : "sol-stuck" },
-      hints ? "Hint" : "I’m done",
-    );
-    actionBtn.addEventListener("click", hints ? showHint : endNow);
-
-    const setting = (
-      checked: boolean,
-      label: string,
-      cls: string,
-      onChange: (on: boolean) => void,
-    ): HTMLElement => {
-      const wrap = el("label", { class: "sol-setting" });
-      const input = el("input", { type: "checkbox", class: cls });
-      (input as HTMLInputElement).checked = checked;
-      input.addEventListener("change", () => onChange((input as HTMLInputElement).checked));
-      wrap.append(input, document.createTextNode(` ${label}`));
-      return wrap;
-    };
-    const settings = el("details", { class: "sol-settings" });
-    settings.append(
-      el("summary", {}, "Settings"),
-      setting(hints, "Enable hints", "sol-set-hints", (on) => {
-        setHintsEnabled(on);
-        render();
-      }),
-      setting(declareAssistanceEnabled(), "Declare assistance used", "sol-set-assist", (on) => {
-        setDeclareAssistance(on);
-      }),
-    );
-
-    // A "clear" objective (blockers / jelly) shows "N of M left" + swaps; target-
-    // score shows score / swaps / stars / targets.
-    const clearHud = (noun: string, remaining: number, total: number): HTMLElement =>
-      el(
-        "div",
-        { class: "m3-hud" },
-        el(
-          "span",
-          { class: "m3-goal-left", "aria-label": `${remaining} of ${total} ${noun} left` },
-          `${noun[0]!.toUpperCase()}${noun.slice(1)} left ${remaining} of ${total}`,
-        ),
-        el("span", { class: "m3-moves" }, `Swaps left ${board.movesLeft}`),
-      );
-    // The checklist (Orders) HUD: a tally of the three goals — clear N of a
-    // colour, make N striped, make N wrapped — each ticked when reached. The
-    // colour goal uses the gem's shape glyph + name (not colour-only) for a11y.
-    const goalSpan = (label: string, made: number, target: number, aria: string): HTMLElement => {
-      const done = made >= target;
-      return el(
-        "span",
-        {
-          class: `m3-goal${done ? " done" : ""}`,
-          "aria-label": `${aria}: ${Math.min(made, target)} of ${target}${done ? ", done" : ""}`,
-        },
-        `${label} ${Math.min(made, target)}/${target}${done ? " ✓" : ""}`,
-      );
-    };
-    const checklistHud = (b: BoardView): HTMLElement =>
-      el(
-        "div",
-        { class: "m3-hud m3-checklist-hud" },
-        goalSpan(
-          `${GEM_GLYPH[b.checklistColor] ?? "?"} clear`,
-          b.checklistColorCleared,
-          b.checklistColorTarget,
-          `clear ${GEM_NAME[b.checklistColor] ?? "gem"} gems`,
-        ),
-        goalSpan("striped", b.checklistStripedMade, b.checklistStripedTarget, "make striped candies"),
-        goalSpan("wrapped", b.checklistWrappedMade, b.checklistWrappedTarget, "make wrapped candies"),
-        el("span", { class: "m3-moves" }, `Swaps left ${b.movesLeft}`),
-      );
-    // In the campaign, the HUD leads with the level and grades the running score
-    // against the level's own star thresholds (a front-end reading of the same
-    // verifiable score — the core targets are hidden).
-    const activeLevel = campaign && level !== null ? levelById(campaign, level) : undefined;
-    const campaignHud = (lvl: Level): HTMLElement => {
-      const cStars = campaignStars(board.score, lvl.stars);
-      return el(
-        "div",
-        { class: "m3-hud m3-campaign-hud" },
-        el("span", { class: "m3-level" }, `Level ${lvl.id}`),
-        el("span", { class: `m3-score${scoreBumped ? " bump" : ""}` }, `Score ${board.score}`),
-        el("span", { class: "m3-moves" }, `Swaps left ${board.movesLeft}`),
-        el("span", { class: "m3-stars", "aria-label": `${cStars} of 3 stars` }, starString(cStars)),
-        el("span", { class: "m3-target" }, `Stars at ${lvl.stars.join(" / ")}`),
-      );
-    };
-    const hud = activeLevel
-      ? campaignHud(activeLevel)
-      : board.mode === "blockers"
-        ? clearHud("blockers", board.blockersRemaining, board.blockersTotal)
-        : board.mode === "jelly"
-          ? clearHud("jelly", board.jellyRemaining, board.jellyTotal)
-          : board.mode === "ingredients"
-            ? clearHud("ingredients", board.ingredientsRemaining, board.ingredientsTotal)
-            : board.mode === "obstacles"
-              ? clearHud("obstacles", board.blockersRemaining, board.blockersTotal)
-              : board.mode === "checklist"
-                ? checklistHud(board)
-                : el(
-              "div",
-              { class: "m3-hud" },
-              el("span", { class: `m3-score${scoreBumped ? " bump" : ""}` }, `Score ${board.score}`),
-              el("span", { class: "m3-moves" }, `Swaps left ${board.movesLeft}`),
-              el("span", { class: "m3-stars", "aria-label": `${board.stars} of 3 stars` }, starString(board.stars)),
-              el("span", { class: "m3-target" }, `Targets ${board.targets.join(" / ")}`),
-            );
-
-    // Campaign level nav: step among UNLOCKED levels (can't skip ahead of the
-    // furthest cleared+1). Shown only while playing a campaign level.
-    const campaignNav = (): HTMLElement | null => {
-      if (!campaign || level === null) return null;
-      const ids = campaign.levels.map((l) => l.id);
-      const unlocked = unlockedLevel(campaign);
-      const i = ids.indexOf(level);
-      const prevId = i > 0 ? ids[i - 1]! : null;
-      const nextId = i >= 0 && i + 1 < ids.length ? ids[i + 1]! : null;
-      const navBtn = (label: string, id: number | null, enabled: boolean): HTMLElement => {
-        const b = el("button", { type: "button", class: "m3-level-nav" }, label);
-        if (enabled && id !== null) b.addEventListener("click", () => void startLevel(id));
-        else b.setAttribute("disabled", "");
-        return b;
-      };
-      const restart = el("button", { type: "button", class: "m3-level-nav m3-level-restart" }, "↺ Restart");
-      restart.addEventListener("click", () => void startLevel(level!));
-      const nav = el("div", { class: "m3-campaign-nav", role: "group", "aria-label": "Level" });
-      nav.append(
-        navBtn("◀ Prev", prevId, prevId !== null),
-        el("span", { class: "m3-level-of" }, `Level ${level} of ${ids.length}`),
-        navBtn("Next ▶", nextId, nextId !== null && nextId <= unlocked),
-        restart,
-      );
-      return nav;
-    };
-
-    bar.append(modes, objectives, actionBtn, settings);
-    const wrap = el("div");
-    const nav = campaignNav();
-    wrap.append(bar, ...(nav ? [nav] : []), hud);
-    return wrap;
+  // --- what the frame shows: one chip, three fixed meters, the verbs, the New board card ---
+  const chip = (): string => {
+    if (campaign && level !== null) return `Campaign · ${level} of ${campaign.levels.length}`;
+    return `${OBJECTIVE_LABEL[objective]} · ${mode === "daily" ? "Today’s" : "New"}`;
   };
+  const meters = (board: BoardView | undefined): GameFrameSpec["meters"] => {
+    const swaps = { kind: "stat" as const, id: "swaps", value: board?.movesLeft ?? 0, label: "swaps left" };
+    const score = { kind: "stat" as const, id: "score", value: board?.score ?? 0, label: "score" };
+    const activeLevel = campaign && level !== null ? levelById(campaign, level) : undefined;
+    if (!board) return [score, swaps, { kind: "stat", id: "stars", value: starString(0), label: "stars" }];
+    if (activeLevel) {
+      return [score, swaps, { kind: "stat", id: "stars", value: starString(campaignStars(board.score, activeLevel.stars)), label: `stars at ${activeLevel.stars.join(" / ")}` }];
+    }
+    const clear = (noun: string, remaining: number, total: number): GameFrameSpec["meters"] => [
+      { kind: "stat", id: "left", value: `${remaining} of ${total}`, label: `${noun} left` },
+      swaps,
+      score,
+    ];
+    switch (board.mode) {
+      case "blockers":
+        return clear("blockers", board.blockersRemaining, board.blockersTotal);
+      case "jelly":
+        return clear("jelly", board.jellyRemaining, board.jellyTotal);
+      case "ingredients":
+        return clear("ingredients", board.ingredientsRemaining, board.ingredientsTotal);
+      case "obstacles":
+        return clear("obstacles", board.blockersRemaining, board.blockersTotal);
+      case "checklist": {
+        const done =
+          Number(board.checklistColorCleared >= board.checklistColorTarget) +
+          Number(board.checklistStripedMade >= board.checklistStripedTarget) +
+          Number(board.checklistWrappedMade >= board.checklistWrappedTarget);
+        return [{ kind: "stat", id: "orders", value: `${done} of 3`, label: "orders done" }, swaps, score];
+      }
+      default:
+        return [score, swaps, { kind: "stat", id: "stars", value: starString(board.stars), label: `targets ${board.targets.join(" / ")}` }];
+    }
+  };
+  const spec = (): GameFrameSpec => {
+    const board = game?.board();
+    const hints = hintsEnabled();
+    const verbs: Verb[] = [
+      hints
+        ? { id: "hint", label: "Hint", icon: "✦", primary: true, onPress: showHint }
+        : { id: "done", label: "I’m done", icon: "⇥", onPress: endNow },
+    ];
+    if (level !== null) verbs.push({ id: "restart", label: "Restart", icon: "↺", onPress: () => void startLevel(level!) });
+    verbs.push({ id: "new", label: "New board", icon: "⟳", onPress: (btn) => frame?.openSheet("setup", btn) });
+    return {
+      title: "Trio Tumble",
+      mode: chip(),
+      meters: meters(board),
+      verbs,
+      setup: trioTumbleSetupRows(),
+      onStart: () => {
+        if (chosenBoard === "campaign") void startLevel(chosenLevel ?? (campaign ? unlockedLevel(campaign) : 1));
+        else {
+          objective = chosenObjective;
+          void startGame(chosenBoard);
+        }
+      },
+    };
+  };
+  const declare = (): void => frame?.update(spec());
+
+  // The Orders tally: three goals, ticked as reached. It lives in the stage above the
+  // board because it is FIXED for the board's life — the same three lines from the
+  // first swap to the last — so it never changes height (frame rule 1).
+  const goalSpan = (label: string, made: number, target: number, aria: string): HTMLElement => {
+    const done = made >= target;
+    return el(
+      "span",
+      {
+        class: `m3-goal${done ? " done" : ""}`,
+        "aria-label": `${aria}: ${Math.min(made, target)} of ${target}${done ? ", done" : ""}`,
+      },
+      `${label} ${Math.min(made, target)}/${target}${done ? " ✓" : ""}`,
+    );
+  };
+  const checklistHud = (b: BoardView): HTMLElement =>
+    el(
+      "div",
+      { class: "m3-hud m3-checklist-hud" },
+      goalSpan(
+        `${GEM_GLYPH[b.checklistColor] ?? "?"} clear`,
+        b.checklistColorCleared,
+        b.checklistColorTarget,
+        `clear ${GEM_NAME[b.checklistColor] ?? "gem"} gems`,
+      ),
+      goalSpan("striped", b.checklistStripedMade, b.checklistStripedTarget, "make striped candies"),
+      goalSpan("wrapped", b.checklistWrappedMade, b.checklistWrappedTarget, "make wrapped candies"),
+    );
 
   const renderBoard = (board: BoardView): HTMLElement => {
     const boardEl = el("div", { class: "m3-board", tabindex: "-1" });
@@ -927,6 +898,7 @@ export function trioTumbleModule(): GameModule {
         campaign: campaignOpts,
       });
     container.replaceChildren(build());
+    declare();
   };
 
   function render(force = false): void {
@@ -936,8 +908,6 @@ export function trioTumbleModule(): GameModule {
       return;
     }
     const board = game.board();
-    scoreBumped = board.score > lastScore;
-    lastScore = board.score;
     // A single centred play column (RESPONSIVE-DESIGN Principle 1): controls, board,
     // and status share one vertical axis, centred in the play area (never left-hugging).
     // The board sits in a positioned wrap next to a decorative burst layer; the
@@ -948,9 +918,16 @@ export function trioTumbleModule(): GameModule {
       renderBoard(board),
       el("div", { class: "m3-fx", "aria-hidden": "true" }),
     );
-    const gameEl = el("div", { class: "m3-game" }, renderControls(board), boardWrap, statusEl);
+    const gameEl = el(
+      "div",
+      { class: "m3-game" },
+      ...(board.mode === "checklist" ? [checklistHud(board)] : []),
+      boardWrap,
+      statusEl,
+    );
     container.replaceChildren(gameEl);
     applyGlow();
+    declare();
   }
 
   // Pick the seed for a clear objective — always from its winnable pack (daily =
@@ -1018,15 +995,37 @@ export function trioTumbleModule(): GameModule {
       game.newGame(seed);
     }
     level = null; // daily / free / an objective is not a campaign level
+    moveLog = [];
+    chosenBoard = nextMode;
+    chosenObjective = objective;
     selected = null;
     hint = null;
-    lastScore = 0;
-    scoreBumped = false;
     story?.resetForNewBoard();
     setStatus("");
     exposeHook();
     render();
   }
+
+  /** Replay a stored board from the frame's store — a campaign level, or any objective board. */
+  const applyResume = async (p: Progress): Promise<void> => {
+    if (!game || disposed) return;
+    const rec = p.record as { seed?: unknown; objective?: unknown; level?: unknown; moves?: unknown };
+    const moves = Array.isArray(rec.moves) ? (rec.moves as Swap[]) : [];
+    if (typeof rec.level === "number") {
+      await startLevel(rec.level, moves);
+      return;
+    }
+    objective = OBJECTIVES.includes(rec.objective as Mode) ? (rec.objective as Mode) : "target-score";
+    const nextMode = p.setup.mode.startsWith("daily:") ? "daily" : "free";
+    await startGame(nextMode, typeof rec.seed === "string" ? BigInt(rec.seed) : undefined);
+    if (!game || disposed) return;
+    for (const m of moves) {
+      if (game.play(m) === "applied") moveLog.push(m);
+      else break;
+    }
+    setStatus(moves.length ? "Resumed." : "");
+    render();
+  };
 
   const ensureCampaign = async (): Promise<Campaign | null> => {
     if (campaign) return campaign;
@@ -1035,6 +1034,7 @@ export function trioTumbleModule(): GameModule {
     } catch {
       return null;
     }
+    campaignForSetup = campaign;
     return campaign;
   };
 
@@ -1053,6 +1053,8 @@ export function trioTumbleModule(): GameModule {
     objective = "target-score";
     mode = "free";
     level = lvl.id;
+    chosenBoard = "campaign";
+    chosenLevel = lvl.id;
     seed = BigInt(lvl.seed);
     game.newGame(seed);
     moveLog = [];
@@ -1065,8 +1067,6 @@ export function trioTumbleModule(): GameModule {
       clearResume();
     }
     selected = null;
-    lastScore = 0;
-    scoreBumped = false;
     // First-move nudge: on the very first visit to Level 1, glow the curated
     // opening swap so a new player sees an obvious, mechanic-demoing move. It's
     // onboarding, not a hint — it does NOT mark assistance. Shown once ever, and
@@ -1128,9 +1128,12 @@ export function trioTumbleModule(): GameModule {
   };
 
   return {
-    mount(c: HTMLElement): void {
+    mount(c: HTMLElement, services?: GameServices): void {
       container = c;
+      frame = services?.frame ?? null;
       disposed = false;
+      frame?.onSettingsChange(() => render()); // Hints flips the verb
+      declare();
       container.replaceChildren(el("div", { class: "sol-loading" }, "Loading Trio Tumble…"));
       void (async () => {
         try {
@@ -1168,6 +1171,12 @@ export function trioTumbleModule(): GameModule {
           modeParam === "obstacles";
         if (isObjectiveMode) {
           objective = modeParam;
+        }
+        if (pendingResume) {
+          const p = pendingResume;
+          pendingResume = null;
+          await applyResume(p);
+          return;
         }
         // Precedence: ?r= (shared) > ?seed= > ?mode= > ?level=N > campaign(unlocked).
         const seedParam = url.searchParams.get("seed");
@@ -1212,9 +1221,39 @@ export function trioTumbleModule(): GameModule {
       cascadeEl = null;
       container?.replaceChildren();
       container = null;
+      frame = null;
       game = null;
       verifier = null;
       selected = null;
+    },
+    // --- the progress store: the board's seed, objective, level and every swap ---
+    snapshot(): Progress {
+      const b = game?.board();
+      const now = new Date().toISOString();
+      const done = gameOver();
+      const swaps = b?.movesLeft ?? 0;
+      return {
+        v: 1,
+        status: done ? "finished" : "in-progress",
+        startedAt: now,
+        updatedAt: now,
+        setup: {
+          mode: level === null && mode === "daily" ? `daily:${today(new Date())}` : "free",
+          objective,
+          ...(level !== null ? { level } : {}),
+          seed: seed.toString(),
+        },
+        record: { seed: seed.toString(), objective, ...(level !== null ? { level } : {}), moves: [...moveLog] },
+        summary: {
+          line: done
+            ? `Finished · score ${b?.score ?? 0}`
+            : `${level !== null ? `Level ${level} · ` : ""}score ${b?.score ?? 0} · ${swaps} swap${swaps === 1 ? "" : "s"} left`,
+        },
+      };
+    },
+    resume(p: Progress): void {
+      if (game) void applyResume(p);
+      else pendingResume = p;
     },
   };
 }

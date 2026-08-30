@@ -5,7 +5,7 @@
 import type { GameEntry } from "./contract.js";
 import { placeholderModule } from "./games/placeholder.js";
 import { solitaireModule, solitaireSetup } from "./games/solitaire.js";
-import { trioTumbleModule } from "./games/trio-tumble.js";
+import { trioTumbleModule, trioTumbleSetup } from "./games/trio-tumble.js";
 import { bubbleModule } from "./games/bubble/bubble.js";
 import { wyrdleModule } from "./games/wyrdle/wyrdle.js";
 import { twenty48Module } from "./games/2048/2048.js";
@@ -41,7 +41,17 @@ export const REGISTRY: readonly GameEntry[] = [
     setup: solitaireSetup,
     load: solitaireModule,
   },
-  { id: "trio-tumble", title: "Trio Tumble", subtitle: "Jewel Drop", emoji: "💎", status: "playable", icon: true, load: trioTumbleModule },
+  {
+    id: "trio-tumble",
+    title: "Trio Tumble",
+    subtitle: "Jewel Drop",
+    emoji: "💎",
+    status: "playable",
+    icon: true,
+    pitch: "Swipe a gem toward its neighbour to line up three. A campaign of curated levels, or six objectives on today’s board.",
+    setup: trioTumbleSetup,
+    load: trioTumbleModule,
+  },
   { id: "bubble", title: "Bubble", emoji: "🫧", status: "playable", icon: true, load: bubbleModule },
   { id: "wyrdle", title: "Wyrdle", emoji: "🐉", status: "playable", icon: true, load: wyrdleModule },
   { id: "2048", title: "2048", emoji: "🔢", status: "playable", icon: true, load: twenty48Module },

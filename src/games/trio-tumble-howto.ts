@@ -17,7 +17,7 @@ export const TRIO_TUMBLE_GUIDE: Guide = {
       blocks: [
         {
           kind: "prose",
-          text: "Trio Tumble gives you a board of coloured, shaped gems and a fixed number of swaps. Line gems up to clear them and drive toward your objective. The classic one is Target score: bank as many points as you can within your swap budget for one, two, or three stars. Five other objectives — clear blockers, clear jelly, drop ingredients, complete an order checklist, and clear obstacles — share the same board and controls; the buttons above the board pick which you play.",
+          text: "Trio Tumble gives you a board of coloured, shaped gems and a fixed number of swaps. Line gems up to clear them and drive toward your objective. The classic one is Target score: bank as many points as you can within your swap budget for one, two, or three stars. Five other objectives — clear blockers, clear jelly, drop ingredients, complete an order checklist, and clear obstacles — share the same board and controls; the New board button under the board opens a card where you pick which you play, and the start screen offers the same card.",
         },
         {
           kind: "shot",
@@ -34,7 +34,7 @@ export const TRIO_TUMBLE_GUIDE: Guide = {
       blocks: [
         {
           kind: "prose",
-          text: "You start in the campaign at Level 1. Each level is a fresh board with its own star targets; reach one star to clear it and unlock the next. The first couple of levels are deliberately gentle — Level 1 even glows an obvious opening swap to get you going — so you can learn the feel before the targets climb. Your best stars per level are remembered, and an in-progress board is saved as you play: come back later and it resumes right where you left off. The buttons above the board also let you jump to Today’s board, a New board, or any of the six objectives.",
+          text: "You start in the campaign at Level 1. Each level is a fresh board with its own star targets; reach one star to clear it and unlock the next. The first couple of levels are deliberately gentle — Level 1 even glows an obvious opening swap to get you going — so you can learn the feel before the targets climb. Your best stars per level are remembered, and an in-progress board is saved as you play: come back later and it resumes right where you left off. New board, under the board, opens a card where you jump to Today’s board, a New board, another level, or any of the six objectives.",
         },
       ],
     },
@@ -127,7 +127,7 @@ export const TRIO_TUMBLE_GUIDE: Guide = {
       blocks: [
         {
           kind: "prose",
-          text: "The buttons above the board pick what you are playing for. Target score is graded on points and stars; the other five are graded on how few swaps it takes, and you win the moment the objective is met.",
+          text: "The New board card picks what you are playing for. Target score is graded on points and stars; the other five are graded on how few swaps it takes, and you win the moment the objective is met.",
         },
         {
           kind: "steps",

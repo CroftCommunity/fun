@@ -1151,34 +1151,6 @@ body:has(> .play-area > .gf) {
 /* Campaign: a numbered level ladder over verifiable seeds. The level nav sits
    between the controls and the board; the "Next level" result button is accented
    like a primary action. */
-.m3-campaign-hud .m3-level {
-  color: var(--ink);
-  font-weight: 700;
-}
-.m3-campaign-nav {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  margin: 0.1rem 0 0.2rem;
-}
-.m3-campaign-nav .m3-level-of {
-  font-weight: 700;
-  color: var(--ink);
-}
-.m3-level-nav {
-  font: inherit;
-  cursor: pointer;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--ink);
-  border-radius: var(--radius);
-  padding: 0.25rem 0.6rem;
-}
-.m3-level-nav[disabled] {
-  opacity: 0.45;
-  cursor: default;
-}
 .sol-result-controls .m3-next-level {
   border-color: var(--accent);
   background: var(--accent);
@@ -1197,10 +1169,6 @@ body:has(> .play-area > .gf) {
   max-width: 32rem;
   margin: 0 auto;
   padding-inline: 0.75rem;
-}
-.m3-game .sol-controls {
-  justify-content: center;
-  margin-bottom: 0;
 }
 .m3-board {
   --m3-gem: 2.85rem;
@@ -1331,11 +1299,6 @@ body:has(> .play-area > .gf) {
 }
 /* Objective toggle (target-score vs clear-the-blockers), sharing the control
    button styling; the pressed one uses the accent like the board-mode buttons. */
-.m3-objectives {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-}
 /* A fixed blocker tile: same footprint as a gem, visibly locked and non-clickable. */
 .m3-blocker {
   width: var(--m3-gem);
