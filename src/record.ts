@@ -9,9 +9,11 @@
 //! tests. A substrate never reaches for storage on its own (forage
 //! `js/substrates/`); `readRecord`/`writeRecord` take one explicitly.
 //!
-//! The NSID `ing.croft.fun.progress` is TENTATIVE — LEXICONS.md act 1
-//! (investigate the official and `community.lexicon.*` namespaces) precedes
-//! any publishing. Nothing here sends a record anywhere. `did` is bound on
+//! The NSID `ing.croft.fun.progress` is registered in `docs/LEXICON-REGISTER.md`
+//! (LEXICONS.md act 1 done 2026-08-30: nothing in the official, community or
+//! `ing.croft.*` namespaces models a player's stats or a resumable deal) and is
+//! UNPUBLISHED by design — a stage, not a destination; rules 2–3 are owed in
+//! `TODO/color-sort.md`. Nothing here sends a record anywhere. `did` is bound on
 //! sign-in (phase D) and stays null while anonymous.
 //!
 //! `stats.played` — solves of any kind — is what the Daily gate reads (D4:

@@ -355,3 +355,30 @@ describe("renderGameFrame — a game hears the common rows change", () => {
     expect(heard).toEqual([1, 2]);
   });
 });
+
+describe("renderGameFrame — an open settings sheet follows the spec's rows", () => {
+  const pref = (id: string) => ({ kind: "toggle" as const, id, label: id, value: false, onChange: () => {} });
+
+  it("re-renders the open sheet when a preference row appears or disappears", () => {
+    // Dots' local-AI row appears only after an async WebGPU probe; a sheet opened
+    // before the probe resolved used to keep showing the rows it opened with, so
+    // the row was missing exactly when a tap was quickest (flaked on CI 2026-08-30).
+    const frame = renderGameFrame(host, spec({ preferences: [pref("tutor")] }));
+    frame.openSheet("settings");
+    expect(host.querySelectorAll('.gf-sheet [data-setting="tutor"]')).toHaveLength(1);
+    expect(host.querySelectorAll('.gf-sheet [data-setting="local-ai"]')).toHaveLength(0);
+    frame.update(spec({ preferences: [pref("tutor"), pref("local-ai")] }));
+    expect(host.querySelectorAll('.gf-sheet [data-setting="local-ai"]')).toHaveLength(1);
+    frame.update(spec({ preferences: [pref("tutor")] }));
+    expect(host.querySelectorAll('.gf-sheet [data-setting="local-ai"]')).toHaveLength(0);
+    expect(host.querySelectorAll(".gf-sheet")).toHaveLength(1);
+  });
+
+  it("leaves the open sheet alone when only values change (a toggle mid-tap keeps its node)", () => {
+    const frame = renderGameFrame(host, spec({ preferences: [pref("strict")] }));
+    frame.openSheet("settings");
+    const before = host.querySelector('.gf-sheet [data-setting="strict"]');
+    frame.update(spec({ preferences: [{ ...pref("strict"), value: true }] }));
+    expect(host.querySelector('.gf-sheet [data-setting="strict"]')).toBe(before);
+  });
+});

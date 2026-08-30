@@ -48,7 +48,7 @@ files are the running, checkbox-level worklist.
   `Adversary` / band / `GameOracle` stack — a per-seat `View`, an expectation
   engine, and a Rust rig with a peek check instead. Open: the LLM-as-player
   trial, match play, P2P.
-- blockdoku, looseends, color-sort — shipped; no open backlog file yet.
+- blockdoku, looseends — shipped; no open backlog file yet. color-sort: `color-sort.md`.
 
 ## Shipped — Tier-2 wrapped (playable)
 

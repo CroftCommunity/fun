@@ -354,16 +354,24 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
       return { ...row, onChange: (v: string) => { row.onChange(v); notify(); } };
     });
 
+  /** The identity of a spec's rows — which settings and setup rows exist, in order. */
+  const rowIds = (s: GameFrameSpec | undefined): string =>
+    s ? [...(s.setup ?? []).map((r) => `s:${r.id}`), ...(s.preferences ?? []).map((r) => `p:${r.id}`)].join("|") : "";
+
   // --- sheets: a dialog over the frame (phone), replaced never stacked -------
   let sheet: HTMLElement | null = null;
   let scrim: HTMLElement | null = null;
   let opener: HTMLElement | null = null;
+  let sheetKind: SheetKind | null = null;
+  let sheetBody: HTMLElement | null = null;
   const closeSheet = (): void => {
     if (!sheet) return;
     sheet.remove();
     scrim?.remove();
     sheet = null;
     scrim = null;
+    sheetKind = null;
+    sheetBody = null;
     opener?.focus();
     opener = null;
   };
@@ -395,12 +403,14 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
     opener = from ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
     scrim = el("div", { class: "gf-scrim" });
     scrim.addEventListener("click", closeSheet);
+    sheetKind = kind;
+    sheetBody = sectionsFor(kind, current);
     sheet = el(
       "div",
       { class: "gf-sheet", role: "dialog", "aria-modal": "true", "aria-label": kind === "setup" ? "New game" : "Settings" },
       el("div", { class: "gf-sheet-grip", "aria-hidden": "true" }),
       el("h2", { class: "gf-sheet-title" }, kind === "setup" ? "New game" : "Settings"),
-      sectionsFor(kind, current),
+      sheetBody,
     );
     root.append(scrim, sheet);
     console.debug(`[frame] sheet=${kind} open`);
@@ -578,9 +588,20 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
         const slots = [...meters.children] as HTMLElement[];
         next.meters.forEach((m, i) => patchMeter(slots[i]!, m));
       }
+      const rowsChanged = rowIds(current) !== rowIds(next);
       current = next;
       renderDock(next.verbs);
       renderExtra(next);
+      // An open sheet shows the rows it opened with. When a row APPEARS or GOES
+      // (Dots' local-AI toggle lands after an async WebGPU probe), re-render it in
+      // place; a value change alone leaves the nodes alone, so a toggle being
+      // tapped is not replaced under the finger. Measured: the missing row flaked
+      // a WebKit shard on 2026-08-30, exactly when the tap beat the probe.
+      if (sheet && sheetKind && sheetBody && rowsChanged) {
+        const fresh = sectionsFor(sheetKind, next);
+        sheetBody.replaceWith(fresh);
+        sheetBody = fresh;
+      }
       opts.onUpdate?.();
     },
     openSheet,
