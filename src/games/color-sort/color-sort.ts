@@ -369,20 +369,27 @@ export function colorSortModule(): GameModule {
   const spec = (): GameFrameSpec => {
     const b = game?.board();
     const hints = hintsEnabled();
+    // The dock, left to right, as mock E draws it: Undo · Hint · New game · Restart
+    // (the frame appends Settings). Strict takes Undo away rather than greying it.
     const verbs: GameFrameSpec["verbs"] = [
       ...(strict() ? [] : [{ id: "undo", label: "Undo", icon: "↶", onPress: doUndo }]),
-      { id: "restart", label: "Restart", icon: "↺", onPress: doRestart },
       hints
         ? { id: "hint", label: "Hint", icon: "✦", primary: true, onPress: showHint }
         : { id: "stuck", label: "I’m stuck", icon: "⇥", onPress: declareStuck },
-      { id: "new", label: "New game", icon: "⟳", onPress: (btn: HTMLButtonElement) => frame?.openSheet("setup", btn) },
+      { id: "new", label: "New game", icon: "＋", onPress: (btn: HTMLButtonElement) => frame?.openSheet("setup", btn) },
+      { id: "restart", label: "Restart", icon: "↺", onPress: doRestart },
     ];
     return {
       title: "Color Sort",
       mode: mode === "daily" ? "Daily" : `Level ${level}`,
+      // Three stats for the life of the frame (mock E2.1): moves · the mark to beat
+      // (par on a daily, the level in endless) · the best level reached.
       meters: [
         { kind: "stat", id: "moves", value: b?.moveCount ?? 0, label: "moves" },
-        { kind: "stat", id: "par", value: b?.par ? b.par : "—", label: "par" },
+        mode === "daily"
+          ? { kind: "stat", id: "mark", value: b?.par ? b.par : "—", label: "par" }
+          : { kind: "stat", id: "mark", value: level, label: "level" },
+        { kind: "stat", id: "best", value: bestLevel(), label: "best" },
       ],
       verbs,
       setup: colorSortSetupRows(),

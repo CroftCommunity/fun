@@ -16,6 +16,7 @@
 //! What it cannot do is judge whether a spec is a GOOD proof — that is review;
 //! this is the guard that the proof was written and is wired.
 
+import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -123,6 +124,30 @@ describe("every mock with a claims file", () => {
             expect(mockHtml.includes(ms), `${c.id} says ${ms}; the mock page does not`).toBe(true);
           }
         }
+      });
+
+      it("mock E9.1: the mock carries a Shipped capture from the current baseline", () => {
+        // Claim E9.1 (phase A): after each phase the shipped surface is re-captured
+        // with tools/mock-snaps.mjs and stands in the mock as Shipped. Checked as:
+        // the manifest's baseline sha resolves in this repo, the mock's
+        // <meta mock-baseline> names the same sha, and every captured file the
+        // manifest lists is referenced from the mock page.
+        const manifestPath = join("mocks", "snaps", "manifest.json");
+        const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as {
+          baseline: string;
+          files: { file: string; game: string }[];
+        };
+        const sha = manifest.baseline.replace(/^fun@/, "");
+        expect(() => execFileSync("git", ["cat-file", "-e", `${sha}^{commit}`])).not.toThrow();
+        const metaBaseline = mockHtml.match(/<meta name="mock-baseline" content="([^"]+)"/)?.[1];
+        expect(metaBaseline, "the mock's mock-baseline must be the manifest's baseline").toBe(manifest.baseline);
+        const game = doc.mock.replace(/^mocks\/[a-z]-/, "").replace(/\.html$/, "");
+        const mine = manifest.files.filter((f) => f.game === game);
+        expect(mine.length, `no captures for ${game} in ${manifestPath}`).toBeGreaterThan(0);
+        for (const f of mine) {
+          expect(mockHtml.includes(`snaps/${f.file}`), `${f.file} is captured but not shown in the mock`).toBe(true);
+        }
+        expect(/<figcaption>[^<]*<b>Shipped/.test(mockHtml), "the mock has no Shipped figure").toBe(true);
       });
 
       it("has a wired spec for every claim of a phase the plan calls COMPLETE", () => {

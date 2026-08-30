@@ -3312,11 +3312,13 @@ body:has(> .play-area > .gf) {
 }
 /* Mobile portrait: keep tubes big and touch-friendly, capped at 6 per row so a
    daily lands on two tidy rows instead of a cramped single line. */
+/* 3rem = 48px: the tube is the tap target, and MOBILE-FIRST's floor is 44px
+   (mock E2.3 — the earlier 2.7rem rendered at 43px, one pixel under). */
 @media (max-width: 560px) {
-  .cs-board { --cs-cols: 6; --cs-tw: 2.7rem; --cs-uh: 1.6rem; gap: 0.9rem 0.7rem; }
+  .cs-board { --cs-cols: 6; --cs-tw: 3rem; --cs-uh: 1.6rem; gap: 0.9rem 0.6rem; }
 }
 @media (max-width: 380px) {
-  .cs-board { --cs-cols: 5; --cs-tw: 2.5rem; --cs-uh: 1.5rem; }
+  .cs-board { --cs-cols: 5; --cs-tw: 3rem; --cs-uh: 1.5rem; }
 }
 
 /* ==========================================================================

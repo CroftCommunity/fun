@@ -20,7 +20,8 @@ test("daily board renders 12 tubes (10 colours + 2 empty)", { tag: "@smoke" }, a
   // Moves and par are the frame's meters, the chip says Daily, and the game's own
   // bar, HUD line and settings disclosure are gone. Undo, Restart and Hint are dock verbs.
   await expect(page.locator('.gf-stat[data-meter="moves"]')).toContainText(/moves/i);
-  await expect(page.locator('.gf-stat[data-meter="par"]')).toContainText(/par/i);
+  await expect(page.locator('.gf-stat[data-meter="mark"]')).toContainText(/par/i);
+  await expect(page.locator('.gf-stat[data-meter="best"]')).toContainText(/best/i);
   await expect(page.locator(".gf-mode")).toHaveText(/daily/i);
   await expect(page.locator(".sol-controls, .cs-hud, .sol-settings, .cs-banner")).toHaveCount(0);
   for (const verb of ["undo", "restart", "hint", "new"]) {
