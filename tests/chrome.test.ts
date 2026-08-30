@@ -19,6 +19,36 @@ describe("games drawer chrome", () => {
     expect(placeholderMountCount()).toBe(before + 1);
   });
 
+  it("mounts the game into the frame's stage, not the bare play area", () => {
+    document.body.dataset.game = "placeholder";
+    boot();
+    const stage = document.querySelector(".play-area > .gf > .gf-stage");
+    expect(stage).not.toBeNull();
+    expect(stage!.querySelector(".placeholder-game")).not.toBeNull();
+    expect(document.querySelector(".play-area > .placeholder-game")).toBeNull();
+    expect(document.querySelectorAll(".gf")).toHaveLength(1); // one frame, not one per layer
+    expect(document.querySelector(".gf-title")?.textContent).toBe("Placeholder");
+  });
+
+  it("on a game page the header has no how-to or new-tab links; the ⋯ menu holds them", () => {
+    document.body.dataset.game = "othello";
+    boot();
+    expect(document.querySelector(".chrome-header .how-to-link")).toBeNull();
+    expect(document.querySelector(".chrome-header .newtab")).toBeNull();
+    const menu = document.querySelector(".gf-menu")!;
+    expect(menu.querySelector('a[href="/how-to/?game=othello"]')).not.toBeNull();
+    const tab = menu.querySelector('a[href="/othello/"]')!;
+    expect(tab.getAttribute("target")).toBe("_blank");
+    expect(tab.getAttribute("rel")).toBe("noopener");
+    expect(document.querySelector(".gf-title")?.textContent).toBe("Othello");
+  });
+
+  it("the home page has no game bar and no frame", () => {
+    boot();
+    expect(document.querySelector(".gf")).toBeNull();
+    expect(document.querySelector(".gf-game-bar")).toBeNull();
+  });
+
   it("full-screen preserves the same mounted instance (no remount)", () => {
     document.body.dataset.game = "placeholder";
     const before = placeholderMountCount();

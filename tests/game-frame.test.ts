@@ -151,6 +151,17 @@ describe("renderGameFrame — meters are fixed slots", () => {
     );
   });
 
+  it("a frame mounted without a spec accepts its first update() as the declaration, then fixes the slots", () => {
+    const frame = renderGameFrame(host, undefined, { title: "Othello" });
+    expect(frame.root.querySelector(".gf-meters")).toBeNull();
+    frame.update(spec());
+    expect(frame.root.querySelectorAll(".gf-seat")).toHaveLength(2);
+    expect(frame.root.querySelectorAll(".gf-verb")).toHaveLength(4);
+    const order = [...frame.root.children].map((c) => c.className.split(" ")[0]);
+    expect(order).toEqual(["gf-game-bar", "gf-meters", "gf-stage", "gf-dock"]);
+    expect(() => frame.update(spec({ meters: [] }))).toThrow(/meters/);
+  });
+
   it("update() re-renders the title, mode and verbs", () => {
     const frame = renderGameFrame(host, spec());
     frame.update(spec({ title: "Othello", mode: "Hard", verbs: [verb("one")] }));

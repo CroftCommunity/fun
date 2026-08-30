@@ -7,6 +7,8 @@
 
 import { expect, test, type Page } from "@playwright/test";
 
+import { REGISTRY } from "../src/registry.js";
+
 async function ready(page: Page): Promise<void> {
   await expect(page.locator(".gf-stage .placeholder-game")).toBeVisible();
 }
@@ -45,4 +47,49 @@ test("pressing a verb that changes a meter moves the stage by zero pixels", asyn
   await expect(page.locator(".gf-stat-value")).toHaveText("1");
   expect(await top(page, ".gf-stage")).toBe(before);
   expect(await top(page, ".placeholder-game")).toBe(gameBefore);
+});
+
+// --- Phase 2a: the chrome mounts the frame for every game; the header is one row ---
+
+const PLAYABLE = REGISTRY.filter((g) => g.status === "playable").map((g) => g.id);
+
+test("the shelf header is one row on every game page at 390px", { tag: "@smoke" }, async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const tall: string[] = [];
+  for (const id of PLAYABLE) {
+    await page.goto(`/${id}/`);
+    await expect(page.locator(".gf-game-bar")).toBeVisible();
+    const h = (await page.locator(".chrome-header").boundingBox())!.height;
+    // One row is 64px plus a hairline (64.19 measured); two rows were 110 on every
+    // game page before the frame (plan Phase 0). 66 separates them with margin.
+    if (h > 66) tall.push(`${id}:${h}`);
+  }
+  // The whole list is in the failure so a regression names the page.
+  expect(tall).toEqual([]);
+});
+
+test("the game bar's ⋯ menu holds How to play and open-in-new-tab, and behaves like a menu", async ({ page }) => {
+  await page.goto("/othello/");
+  const more = page.locator(".gf-more");
+  const menu = page.locator(".gf-menu");
+  await expect(more).toHaveAttribute("aria-expanded", "false");
+  await expect(menu).toBeHidden();
+  await expect(page.locator(".chrome-header .how-to-link")).toHaveCount(0);
+
+  await more.click();
+  await expect(more).toHaveAttribute("aria-expanded", "true");
+  await expect(menu.locator('a[href="/how-to/?game=othello"]')).toBeVisible();
+  const newTab = menu.locator('a[href="/othello/"]');
+  await expect(newTab).toHaveAttribute("target", "_blank");
+  await expect(newTab).toHaveAttribute("rel", "noopener");
+
+  await page.keyboard.press("Escape");
+  await expect(menu).toBeHidden();
+  await expect(more).toHaveAttribute("aria-expanded", "false");
+
+  await more.focus();
+  await page.keyboard.press("Enter");
+  await expect(menu).toBeVisible();
+  await page.locator(".gf-stage").click({ position: { x: 5, y: 5 } });
+  await expect(menu).toBeHidden();
 });

@@ -44,7 +44,10 @@ export function placeholderModule(): GameModule {
   return {
     mount(container: HTMLElement, services: GameServices): void {
       totalMounts += 1;
-      frame = renderGameFrame(container, spec());
+      // Inside the chrome the frame is the chrome's; declare into it. Mounted bare
+      // (a unit test), the placeholder brings its own.
+      frame = services.frame ?? renderGameFrame(container);
+      frame.update(spec());
       el = document.createElement("div");
       el.className = "placeholder-game";
       el.dataset.mode = services.mode;
@@ -53,7 +56,7 @@ export function placeholderModule(): GameModule {
       frame.stage.appendChild(el);
     },
     unmount(): void {
-      frame?.destroy();
+      el?.remove();
       frame = null;
       el = null;
     },
