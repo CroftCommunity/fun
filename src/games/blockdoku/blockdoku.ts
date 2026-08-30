@@ -7,7 +7,11 @@
 //! Endless score-attack; a verifiable `pond-outcome` record (final score) is
 //! shown, shareable via `?r=`.
 
-import type { GameModule } from "../../contract.js";
+import type { GameModule, GameServices } from "../../contract.js";
+import type { GameFrame, GameFrameSpec } from "../../game-frame.js";
+import type { Progress } from "../../progress.js";
+import type { SettingRow } from "../../settings-sheet.js";
+import { today } from "../../shelf.js";
 import {
   Blockdoku,
   DEFAULT_CONFIG,
@@ -28,8 +32,6 @@ import { dayIndexUTC } from "../share.js";
 import {
   declareAssistanceEnabled,
   hintsEnabled,
-  setDeclareAssistance,
-  setHintsEnabled,
 } from "../../settings.js";
 
 /** Best-score-per-difficulty persistence (session-degrading, like settings). */
@@ -60,6 +62,8 @@ declare global {
       refresh: () => void;
       seed: bigint;
       select: (slot: number) => void;
+      /** Put the held piece down without placing it (the stability spec's trigger). */
+      deselect: () => void;
       place: (slot: number, row: number, col: number) => void;
       tapAt: (row: number, col: number) => void;
       hint: () => void;
@@ -184,12 +188,52 @@ export function renderResultScreen(
 
 // ---------- the game module ----------
 
+/** The next board, as the poster's card and the New board sheet both write it. */
+let chosenMode: "daily" | "free" = "daily";
+let chosenDifficulty: Difficulty = DEFAULT_CONFIG.difficulty;
+
+/** The New board card: today's or a fresh board, and the difficulty (it restarts, so it is setup). */
+export function blockdokuSetupRows(): SettingRow[] {
+  return [
+    {
+      kind: "choice",
+      id: "board",
+      label: "Board",
+      value: chosenMode,
+      options: [
+        { value: "daily", label: "Today’s board", hint: "the same deal everyone gets today" },
+        { value: "free", label: "New board", hint: "a fresh random deal" },
+      ],
+      onChange: (v) => {
+        chosenMode = v === "free" ? "free" : "daily";
+      },
+    },
+    {
+      kind: "choice",
+      id: "difficulty",
+      label: "Difficulty",
+      hint: "Which pieces you are dealt, and the score multiplier.",
+      value: chosenDifficulty,
+      options: DIFFICULTIES.map((d) => ({ value: d, label: d[0]!.toUpperCase() + d.slice(1) })),
+      onChange: (v) => {
+        chosenDifficulty = DIFFICULTIES.includes(v as Difficulty) ? (v as Difficulty) : DEFAULT_CONFIG.difficulty;
+      },
+    },
+  ];
+}
+
+/** The poster's setup card — the registry's `setup` factory. */
+export const blockdokuSetup = (): SettingRow[] => blockdokuSetupRows();
+
 /** Construct a fresh Blockdoku module (the registry `load`). */
 export function blockdokuModule(): GameModule {
   let game: Blockdoku | null = null;
   let verifier: Blockdoku | null = null;
   let container: HTMLElement | null = null;
+  let frame: GameFrame | null = null;
+  let pendingResume: Progress | null = null;
   let disposed = false;
+  let hinted = false;
 
   let mode: "daily" | "free" = "daily";
   let seed = 0n;
@@ -417,81 +461,35 @@ export function blockdokuModule(): GameModule {
 
   // ---- rendering ----
 
-  const renderHud = (b: BoardView): HTMLElement =>
-    el(
-      "div",
-      { class: "bdk-hud" },
-      el("span", { class: "bdk-score" }, `Score ${b.score}`),
-      el("span", { class: "bdk-best" }, `Best ${Math.max(bestScore(config.difficulty), b.score)}`),
-      el("span", { class: "bdk-streak" }, `Streak ${b.streak}`),
-      el("span", { class: "bdk-diff" }, config.difficulty),
-    );
-
-  const renderControls = (): HTMLElement => {
-    const bar = el("div", { class: "sol-controls" });
-    const modes = el("div", { class: "sol-modes", role: "group", "aria-label": "Board" });
-    const daily = el(
-      "button",
-      { type: "button", class: "sol-mode-daily", "aria-pressed": String(mode === "daily") },
-      "Today’s board",
-    );
-    const fresh = el(
-      "button",
-      { type: "button", class: "sol-new", "aria-pressed": String(mode === "free") },
-      "New board",
-    );
-    daily.addEventListener("click", () => void startGame("daily"));
-    fresh.addEventListener("click", () => void startGame("free"));
-    modes.append(daily, fresh);
-
-    // Hints on → "Hint"; hints off → "I'm stuck" (ends + reports honestly).
+  // --- what the frame shows: the chip, three meters, the verbs, the New board card ---
+  const spec = (): GameFrameSpec => {
+    const b = game?.board();
     const hints = hintsEnabled();
-    const actionBtn = el(
-      "button",
-      { type: "button", class: hints ? "sol-hint" : "sol-stuck" },
-      hints ? "Hint" : "I’m stuck",
-    );
-    actionBtn.addEventListener("click", hints ? showHint : imStuck);
-
-    const undoBtn = el("button", { type: "button", class: "bdk-undo" }, "Undo");
-    undoBtn.addEventListener("click", undo);
-
-    const settings = el("details", { class: "sol-settings" });
-    const diffSel = el("select", { class: "bdk-diff-select", "aria-label": "Difficulty" });
-    for (const d of DIFFICULTIES) {
-      const o = el("option", { value: d }, d);
-      if (d === config.difficulty) o.setAttribute("selected", "selected");
-      diffSel.append(o);
-    }
-    diffSel.addEventListener("change", () => {
-      config = { ...config, difficulty: (diffSel as HTMLSelectElement).value as Difficulty };
-      void startGame(mode);
-    });
-    const assist = el("label", { class: "sol-setting" });
-    const assistBox = el("input", { type: "checkbox", class: "sol-set-assist" });
-    (assistBox as HTMLInputElement).checked = declareAssistanceEnabled();
-    assistBox.addEventListener("change", () =>
-      setDeclareAssistance((assistBox as HTMLInputElement).checked),
-    );
-    assist.append(assistBox, document.createTextNode(" Declare assistance used"));
-    const hintsToggle = el("label", { class: "sol-setting" });
-    const hintsBox = el("input", { type: "checkbox", class: "sol-set-hints" });
-    (hintsBox as HTMLInputElement).checked = hints;
-    hintsBox.addEventListener("change", () => {
-      setHintsEnabled((hintsBox as HTMLInputElement).checked);
-      render();
-    });
-    hintsToggle.append(hintsBox, document.createTextNode(" Enable hints"));
-
-    settings.append(
-      el("summary", {}, "Settings"),
-      el("label", { class: "sol-setting" }, "Difficulty ", diffSel),
-      hintsToggle,
-      assist,
-    );
-    bar.append(modes, actionBtn, undoBtn, settings);
-    return bar;
+    const diff = config.difficulty;
+    return {
+      title: "Blockdoku",
+      mode: `${diff[0]!.toUpperCase()}${diff.slice(1)} · ${mode === "daily" ? "Today’s" : "New"}`,
+      meters: [
+        { kind: "stat", id: "score", value: b?.score ?? 0, label: "score" },
+        { kind: "stat", id: "best", value: Math.max(bestScore(diff), b?.score ?? 0), label: "best" },
+        { kind: "stat", id: "streak", value: b?.streak ?? 0, label: "streak" },
+      ],
+      verbs: [
+        { id: "undo", label: "Undo", icon: "↶", onPress: undo },
+        hints
+          ? { id: "hint", label: "Hint", icon: "✦", primary: true, onPress: showHint }
+          : { id: "stuck", label: "I’m stuck", icon: "⇥", onPress: imStuck },
+        { id: "new", label: "New board", icon: "⟳", onPress: (btn) => frame?.openSheet("setup", btn) },
+      ],
+      setup: blockdokuSetupRows(),
+      onStart: () => {
+        config = { ...config, difficulty: chosenDifficulty };
+        void startGame(chosenMode);
+      },
+    };
   };
+  const declare = (): void => frame?.update(spec());
+
 
   // Repaint the transient placement preview via targeted class toggles, so a
   // drag/keyboard move doesn't re-render all 81 cells. When NOTHING is selected
@@ -620,25 +618,23 @@ export function blockdokuModule(): GameModule {
       return;
     }
     const b = game.board();
-    const banner = el(
-      "p",
-      { class: "bdk-banner" },
-      selected === null
-        ? "Drag a piece onto the board — or tap a piece, then tap where it goes. Fill a row, column, or 3×3 box to clear it."
-        : "Drop it where the piece lights up (it turns red where it won’t fit). Tap the board or press Enter to place; arrow keys nudge it.",
-    );
+    // The two instruction sentences used to be a banner in flow above the board
+    // that swapped on every selection — and moved the board with it. They are
+    // toasts now, each shown once per board.
+    if (!hinted && frame) {
+      hinted = true;
+      frame.toast("Drag a piece onto the board — or tap a piece, then tap where it goes. Fill a row, column, or 3×3 box to clear it.", 6000);
+    }
     container.replaceChildren(
       el(
         "div",
         { class: "bdk-game" },
-        renderControls(),
-        renderHud(b),
-        banner,
         renderBoard(b),
         renderTray(),
         statusEl,
       ),
     );
+    declare();
     paintGhost(); // preview the selected piece at the current anchor (nothing if unselected)
   }
 
@@ -693,17 +689,43 @@ export function blockdokuModule(): GameModule {
   async function startGame(nextMode: "daily" | "free", seedOverride?: bigint): Promise<void> {
     if (!game || disposed) return;
     mode = nextMode;
+    chosenMode = nextMode;
+    chosenDifficulty = config.difficulty;
     const base =
       seedOverride ??
       (nextMode === "daily" ? BigInt(game.dailySeed(dayIndexUTC(new Date()))) : randomSeed());
     seed = base;
     selected = null;
     cursor = { r: 4, c: 4 };
+    hinted = false;
     setStatus("");
     game.newGame(base, config);
     exposeHook();
     render();
   }
+
+  /** Replay a stored board: the config-packed seed and every placement. */
+  const applyResume = (p: Progress): void => {
+    if (!game || disposed) return;
+    const rec = p.record as { packed?: unknown; moves?: unknown; assistance?: unknown };
+    const setup = p.setup as { difficulty?: unknown };
+    if (DIFFICULTIES.includes(setup.difficulty as Difficulty)) config = { ...config, difficulty: setup.difficulty as Difficulty };
+    mode = p.setup.mode.startsWith("daily:") ? "daily" : "free";
+    chosenMode = mode;
+    chosenDifficulty = config.difficulty;
+    if (typeof rec.packed !== "string") return;
+    game.newGamePacked(BigInt(rec.packed));
+    for (const m of Array.isArray(rec.moves) ? (rec.moves as MoveView[]) : []) {
+      if (game.playPlace(m.slot, m.row, m.col) !== "applied") break;
+    }
+    if (rec.assistance === true) game.markAssistance();
+    selected = null;
+    cursor = { r: 4, c: 4 };
+    hinted = true;
+    setStatus("");
+    exposeHook();
+    render();
+  };
 
   const randomSeed = (): bigint => {
     const buf = new Uint32Array(2);
@@ -739,6 +761,10 @@ export function blockdokuModule(): GameModule {
       refresh: () => render(),
       seed,
       select: (slot: number) => selectSlot(slot),
+      deselect: () => {
+        selected = null;
+        render();
+      },
       place: (slot: number, row: number, col: number) => placeAt(slot, row, col),
       tapAt: (row: number, col: number) => tapPlace(row, col),
       hint: () => showHint(),
@@ -747,9 +773,12 @@ export function blockdokuModule(): GameModule {
   };
 
   return {
-    mount(c: HTMLElement): void {
+    mount(c: HTMLElement, services?: GameServices): void {
       container = c;
+      frame = services?.frame ?? null;
       disposed = false;
+      frame?.onSettingsChange(() => render()); // Hints flips the verb
+      declare();
       container.replaceChildren(el("div", { class: "sol-loading" }, "Loading Blockdoku…"));
       document.addEventListener("keydown", onKeydown);
       void (async () => {
@@ -769,12 +798,19 @@ export function blockdokuModule(): GameModule {
           await showShared(shared);
           return;
         }
+        if (pendingResume) {
+          const p = pendingResume;
+          pendingResume = null;
+          applyResume(p);
+          return;
+        }
         const seedParam = url.searchParams.get("seed");
         if (seedParam !== null) {
           await startGame("free", BigInt(seedParam));
           return;
         }
-        await startGame("daily");
+        config = { ...config, difficulty: chosenDifficulty };
+        await startGame(chosenMode);
       })();
     },
     unmount(): void {
@@ -784,8 +820,30 @@ export function blockdokuModule(): GameModule {
       delete window.__blockdoku;
       container?.replaceChildren();
       container = null;
+      frame = null;
       game = null;
       verifier = null;
+    },
+    // --- the progress store: the config-packed seed and the placements the core replays ---
+    snapshot(): Progress {
+      const env = game ? (game.outcome(declareAssistanceEnabled()) as BlockdokuEnvelope) : null;
+      const b = game?.board();
+      const done = game?.isOver() ?? false;
+      const now = new Date().toISOString();
+      const n = env?.payload.moves.length ?? 0;
+      return {
+        v: 1,
+        status: done ? "finished" : "in-progress",
+        startedAt: now,
+        updatedAt: now,
+        setup: { mode: mode === "daily" ? `daily:${today(new Date())}` : "free", difficulty: config.difficulty, seed: seed.toString() },
+        record: { packed: env ? String(env.payload.seed) : seed.toString(), moves: env?.payload.moves ?? [], assistance: env?.payload.assistance === true },
+        summary: { line: `${done ? "Ended · " : ""}score ${b?.score ?? 0} · ${n} piece${n === 1 ? "" : "s"} placed` },
+      };
+    },
+    resume(p: Progress): void {
+      if (game) applyResume(p);
+      else pendingResume = p;
     },
   };
 }

@@ -15,7 +15,7 @@ import { checkersModule } from "./games/checkers/checkers.js";
 import { dotsModule } from "./games/dots/dots.js";
 import { furrowModule } from "./games/furrow/furrow.js";
 import { alignModule } from "./games/align/align.js";
-import { blockdokuModule } from "./games/blockdoku/blockdoku.js";
+import { blockdokuModule, blockdokuSetup } from "./games/blockdoku/blockdoku.js";
 import { looseendsModule } from "./games/looseends/looseends.js";
 import { colorSortModule } from "./games/color-sort/color-sort.js";
 import { orchardDropModule } from "./games/orchard-drop/orchard-drop.js";
@@ -80,7 +80,16 @@ export const REGISTRY: readonly GameEntry[] = [
   { id: "dots", title: "Dots and Boxes", emoji: "▦", status: "playable", icon: true, group: "versus", load: dotsModule },
   { id: "furrow", title: "Furrow", emoji: "🌾", status: "playable", icon: true, group: "versus", load: furrowModule },
   { id: "align", title: "Align", emoji: "🟪", status: "playable", icon: true, load: alignModule },
-  { id: "blockdoku", title: "Blockdoku", emoji: "🟦", status: "playable", icon: true, load: blockdokuModule },
+  {
+    id: "blockdoku",
+    title: "Blockdoku",
+    emoji: "🟦",
+    status: "playable",
+    icon: true,
+    pitch: "Place the three pieces; fill a row, column or 3×3 box to clear it. It ends when nothing fits.",
+    setup: blockdokuSetup,
+    load: blockdokuModule,
+  },
   { id: "looseends", title: "Loose Ends", emoji: "🎯", status: "playable", icon: true, load: looseendsModule },
   { id: "color-sort", title: "Color Sort", emoji: "🧪", status: "playable", icon: true, load: colorSortModule },
   {

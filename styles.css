@@ -3311,17 +3311,8 @@ body:has(> .play-area > .gf) {
   margin: 0 auto;
   padding-inline: 0.75rem;
 }
-.bdk-game .sol-controls { justify-content: center; margin-bottom: 0; }
-.bdk-hud {
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-  color: var(--ink);
-  font-family: var(--font-display);
-}
 .bdk-best { color: var(--ink); font-weight: 700; }
 .bdk-diff { text-transform: capitalize; color: var(--ink-muted); }
-.bdk-banner { color: var(--ink-muted); text-align: center; max-width: 30rem; margin: 0; }
 
 .bdk-board {
   --bdk-cell: 2.3rem;

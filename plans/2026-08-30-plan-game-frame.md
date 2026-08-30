@@ -8,7 +8,7 @@ parameters does once every bare URL opens on a start screen) gates Phase 5** and
 thing between this plan and execution: Phases 0–4 may start now. D5 was resolved during
 planning (read-only, see Verified Assumptions) and is struck from Phase 0. Phases 1, 2, 3
 and 5 carry sub-phases (1a/1b, 2a/2b, 3a/3b, 5a/5b) — each with its own Done-when and
-wiring test — because each touched four or more files. Phases 0–9 COMPLETE (2026-08-30). Mocks
+wiring test — because each touched four or more files. Phases 0–10 COMPLETE (2026-08-30). Mocks
 landed on `main` (`mocks/d-game-frame.html`, PR #45, `6c4dd9c`); owner decisions D1–D5
 recorded.
 
@@ -1104,6 +1104,29 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
    it changes one test case either way.*
 
 ## Review Log
+
+### Phase 10 — executed 2026-08-30 (Blockdoku)
+- Red first: 12 of 24 against the unmigrated page. Score · best · streak are the meters;
+  Undo · Hint/I'm stuck · New board the verbs; today's/new board and the difficulty (it
+  restarts, so it is setup, not a preference) the New board card. The two instruction
+  sentences that swapped in flow above the board on every selection are a one-time toast.
+  `snapshot()` is the config-packed seed and the placements the core's record replays;
+  `resume()` uses `newGamePacked` + `playPlace`. The test hook gained `deselect()` — the
+  stability spec's put-it-down trigger (and the Phase 9 gate had failed on that uncommitted
+  `select(null)` in the spec: the gate covers `tests/` for typecheck, so a red there is a
+  real red even before the phase's source exists).
+- A block cut that removed the HUD and controls also removed `paintGhost`, `renderBoard`,
+  `renderTray` and `renderMini` (they sat between the two) — typecheck caught it at once;
+  restored from `HEAD`. Green: 48/48 with `--repeat-each=2` both engines (the board stable
+  across pick-up, put-down, a hint and the sheet), typecheck, lint, unit; shots for
+  Blockdoku only (3).
+- The full suite's first run showed 7 WebKit timeouts in unrelated specs (how-to, Loose
+  Ends, Orchard, skin, three Solitaire cases at 1.0m each) during a 2.1m run — re-run of
+  those five specs on both engines: 75/75 in 8.3s. Two more full runs failed 7 and 5
+  different WebKit `goto` timeouts each; the machine's load average was 26 → 64 (macOS
+  `mds` re-indexing, WindowServer, Shortcuts — not the runs), and every failing spec
+  passed in isolation (64/64 at 2 workers). Recorded as load, not a regression; CI's full
+  suite on the PR is the authoritative run for this phase.
 
 ### Phase 9 — executed 2026-08-30 (Wyrdle)
 - Red first: 10 of 18 against the unmigrated page. `.wy-toast` — the in-flow bar that grew

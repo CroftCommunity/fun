@@ -8,6 +8,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
+import { boardTopStable } from "./helpers/board-top.js";
+
 async function ready(page: Page): Promise<void> {
   await expect(page.locator(".bdk-board")).toBeVisible();
   await page.waitForFunction(() => Boolean(window.__blockdoku));
@@ -20,8 +22,12 @@ test("the board, tray, and HUD render with visible 3×3 boxes", { tag: "@smoke" 
   // 9x9 = 81 cells.
   await expect(page.locator(".bdk-cell")).toHaveCount(81);
   await expect(page.locator(".bdk-tray .bdk-piece")).toHaveCount(3);
-  await expect(page.locator(".bdk-hud")).toContainText(/score/i);
-  await expect(page.locator(".bdk-banner")).toContainText(/piece/i);
+  await expect(page.locator(".gf-meters")).toContainText(/score/i);
+  await expect(page.locator(".gf-meters")).toContainText(/streak/i);
+  // The instruction is a toast over the stage, not a banner that re-wrote itself
+  // in flow above the board on every selection.
+  await expect(page.locator(".gf-toast")).toContainText(/piece/i);
+  await expect(page.locator(".bdk-banner, .bdk-hud, .sol-controls")).toHaveCount(0);
   // The nine 3×3 boxes are drawn via heavy dividers on every third row/column
   // start (cols/rows 0,3,6): 3 columns × 9 = 27 each. Their presence is what
   // makes the sub-squares legible.
@@ -128,14 +134,14 @@ test("undo reverts the last placement", async ({ page }) => {
   });
   const after = await page.evaluate(() => window.__blockdoku!.game.currentHash());
   expect(after).not.toBe(before);
-  await page.locator(".bdk-undo").click();
+  await page.locator('.gf-verb[data-verb="undo"]').click();
   expect(await page.evaluate(() => window.__blockdoku!.game.currentHash())).toBe(before);
 });
 
 test("a hint selects a placeable piece and marks assistance", async ({ page }) => {
   await page.goto("/blockdoku/?seed=7");
   await ready(page);
-  await page.locator(".sol-hint").click(); // hints default on
+  await page.locator('.gf-verb[data-verb="hint"]').click(); // hints default on
   await expect(page.locator(".sol-status")).toContainText(/hint/i);
   // The hint marked assistance; drive to the end and the outcome declares it.
   const assisted = await page.evaluate(() => {
@@ -168,4 +174,57 @@ test("axe: the board is accessible in both themes", async ({ page }) => {
     const results = await new AxeBuilder({ page }).include(".bdk-game").analyze();
     expect(results.violations, `axe violations in ${theme}`).toEqual([]);
   }
+});
+
+// --- the frame (plan Phase 10): verbs, the chip, setup, and a board that does not move ---
+
+test("the verbs, the chip, and the New board sheet's difficulty", { tag: "@smoke" }, async ({ page }) => {
+  await page.goto("/blockdoku/?seed=7");
+  await ready(page);
+  const verbs = await page.locator(".gf-dock .gf-verb").evaluateAll((els) => els.map((e) => e.getAttribute("data-verb")));
+  expect(verbs).toEqual(["undo", "hint", "new", "settings"]);
+  await expect(page.locator(".gf-mode")).toContainText(/normal · new/i);
+  await page.locator('.gf-verb[data-verb="new"]').click();
+  const sheet = page.locator(".gf-sheet");
+  await expect(sheet.locator('[data-setting="difficulty"] .sheet-choice-opt')).toHaveCount(4);
+  await sheet.locator('[data-setting="difficulty"] input[value="hard"]').check();
+  await sheet.locator(".gf-start").click();
+  await expect(sheet).toBeHidden();
+  await expect(page.locator(".gf-mode")).toContainText(/hard/i);
+});
+
+test("the board does not move when a piece is picked up, put down, hinted, or the sheet opens", { tag: "@smoke" }, async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/blockdoku/?seed=7");
+  await ready(page);
+  const v = await boardTopStable(page, ".bdk-board", async () => {
+    await page.evaluate(() => window.__blockdoku!.select(0));
+    await expect(page.locator(".bdk-cell.bdk-ghost, .bdk-cell.bdk-ghost-bad").first()).toBeVisible();
+    await page.evaluate(() => window.__blockdoku!.deselect());
+    await page.locator('.gf-verb[data-verb="hint"]').click();
+    await page.locator('.gf-verb[data-verb="settings"]').click();
+    await expect(page.locator(".gf-sheet")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".gf-sheet")).toBeHidden();
+  });
+  expect(v.frames).toBeGreaterThan(5);
+  expect(v, `board top moved ${v.delta}px over ${v.frames} frames`).toMatchObject({ stable: true });
+});
+
+test("leaving mid-board and returning to the bare URL resumes the placements", async ({ page }) => {
+  await page.goto("/blockdoku/?seed=7");
+  await ready(page);
+  await page.evaluate(() => {
+    window.__blockdoku!.select(0);
+    const m = window.__blockdoku!.game.legalMoves().find((x) => x.slot === 0)!;
+    window.__blockdoku!.tapAt(m.row, m.col);
+  });
+  const hash = await page.evaluate(() => window.__blockdoku!.game.currentHash());
+  await page.goto("/blockdoku/");
+  const card = page.locator(".gf-continue");
+  await expect(card).toBeVisible();
+  await expect(card.locator(".gf-start-line")).toContainText(/score/i);
+  await card.locator(".gf-continue-btn").click();
+  await ready(page);
+  expect(await page.evaluate(() => window.__blockdoku!.game.currentHash())).toBe(hash);
 });
