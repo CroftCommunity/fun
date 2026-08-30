@@ -100,8 +100,8 @@ The six rules (the full argument is on the mock page):
    inside the already-painted frame so Continue is a fade, not a navigation. A `?r=` link
    shows the record card instead of either.
 6. **One panel, two shapes.** Dock (phone) and rail (desktop) render the same spec; one
-   breakpoint reflows it. Full screen (⤢) is approach C: seats into the game bar, verbs
-   behind ⋯, board only.
+   breakpoint reflows it. A common preference mirrors it (D4). Full screen (⤢) is the
+   Fullscreen API with the frame intact and the shelf bar gone (D5).
 
 ### The progress store — `src/progress.ts`
 
@@ -167,6 +167,13 @@ not a redesign — not built in this pass.
   a game in progress.
 - **D3 (2026-08-30)** — phone and desktop are first-class together; mocks side by side;
   build them as one component.
+- **D4 (2026-08-30)** — a common preference, **Controls on the left** ("reverse control
+  sides"): the rail swaps to the left of the board on desktop; the dock's verbs run in
+  reverse on a phone. One flag on the frame; games never know. Mock row 10.
+- **D5 (2026-08-30)** — **full screen means full screen**: ⤢ requests the Fullscreen API
+  (the tab on desktop, the display on a phone), the frame stays intact, only the shelf bar
+  goes. Approach C (board-only, verbs behind ⋯) is rejected. iOS Safari grants no page
+  fullscreen; there ⤢ explains and points at the PWA install rather than silently doing less.
 
 ## Phases
 
@@ -196,7 +203,7 @@ control row is not done.
   table), Bubble (aim bar stays below the board; its sheet becomes the game section), 2048,
   Align, Wyrdle, Blockdoku, Color Sort, Orchard Drop, Loose Ends (already splash-driven —
   adopt the frame's start screen, keep its overlay HUD as a stage overlay).
-- **Phase 5 — full screen = approach C**, and delete the dead per-game control CSS.
+- **Phase 5 — full screen = the Fullscreen API (D5), the mirror preference (D4)**, and delete the dead per-game control CSS.
 - **Phase 6 — the documentation pass, and the guide for the next game.** Runs alongside
   Phases 1–5 (each lands its own docs) and closes with a `docs-guardian` sweep:
   - **`docs/BUILDING-GAMES.md` gains a new normative section, "§4c The game frame —
@@ -237,5 +244,6 @@ control row is not done.
 
 ## Review Log
 
+- 2026-08-30 — D4 (controls on the left) and D5 (real full screen; C rejected) recorded from the owner's second reply; mock rows 9–10 updated.
 - 2026-08-30 — Pass 1 drafted from the survey and the mocks; D1–D3 recorded from the owner's
   reply; assumptions verified as listed. Not yet reviewed.
