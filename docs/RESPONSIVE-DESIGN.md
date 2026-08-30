@@ -46,6 +46,17 @@ margin: 0 auto;        /* centres the column in the play area */
 padding-inline: 0.75rem;
 ```
 
+### 1b. Reserved heights — nothing above the board changes height while you play
+
+Since the game frame (2026-08-30, `docs/BUILDING-GAMES.md` §4c) the column in Principle 1
+lives **inside the frame's stage**, and everything above it is a fixed-height band: game
+bar 48px, meter row 56px, dock 72px. Text swaps inside slots that already have the room
+(a seat's sub-label is a 12px line whether or not it has text); the meter count is fixed
+for the life of the frame; anything transient — a toast, the AI's banter — is
+`position: absolute` over the stage. The board's top edge is the same pixel from the first
+move to the last, and each game's browser spec asserts it. A status line that must sit
+below the board keeps a `min-height`, or it is a jump waiting to happen.
+
 ### 2. On-screen control keys must sit on the board's centreline
 
 A directional d-pad or an on-screen keyboard only reads as belonging to the
@@ -125,6 +136,19 @@ vitest. Assert them with Playwright `boundingBox()` across **both** projects
   a moved control can introduce a contrast or landmark regression.
 
 ## Lessons log
+
+### 2026-08-30 — the header wrapped, and the board jumped, on every phone
+
+- **Symptom:** at 390px the shelf header was 110px on every game page (64px on home);
+  Othello's board moved 24.8px on WebKit every time the engine took its turn; Wyrdle's
+  rejected-word toast, Blockdoku's selection banner, Color Sort's deadlock card, Trio
+  Tumble's campaign row and Drop 4's "thinking" span all pushed the board around mid-game.
+- **Cause:** "How to play" + "↗" wrapped the header to a second row; every game stacked
+  its own controls, HUD, banner and `<details>` in flow above the board, and each of them
+  could change height. Nothing reserved space (Align's `.al-callout { min-height }` was the
+  one exception).
+- **Rule:** Principle 1b. The frame owns the bands and their heights; a game declares
+  meters and verbs and renders only into the stage.
 
 Append dated entries as we learn. Keep each to the symptom, the cause, and the
 rule it produced.

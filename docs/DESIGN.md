@@ -107,6 +107,15 @@ Since M2 the columns are **skins**, not themes: light and dark are registry
 entries (`src/skins.ts`), and `tests/tokens.test.ts` iterates the registry, so a
 new skin is graded the moment it is added.
 
+## The game frame's roles
+
+The frame (`src/game-frame.ts`, `docs/BUILDING-GAMES.md` §4c) is chrome, so it takes
+chrome roles only and a skin restyles it freely: bands sit on `--surface` with `--border`
+hairlines; the title uses `--font-display`; a seat's active ring and the thinking pulse
+are `--accent`; sub-labels and stat labels are `--ink-muted`; the primary verb is
+`--accent` on transparent; focus is `--focus`. It touches no board token (ADR-0002 records
+why the frame sits above the skin and below the board).
+
 ## Theme mechanics
 
 - **Two states only** (light/dark), no "auto" — a one-tap toggle that silently

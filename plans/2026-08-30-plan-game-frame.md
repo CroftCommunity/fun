@@ -8,7 +8,7 @@ parameters does once every bare URL opens on a start screen) gates Phase 5** and
 thing between this plan and execution: Phases 0–4 may start now. D5 was resolved during
 planning (read-only, see Verified Assumptions) and is struck from Phase 0. Phases 1, 2, 3
 and 5 carry sub-phases (1a/1b, 2a/2b, 3a/3b, 5a/5b) — each with its own Done-when and
-wiring test — because each touched four or more files. Phase 0 COMPLETE (2026-08-30). Mocks
+wiring test — because each touched four or more files. Phases 0–1 COMPLETE (2026-08-30). Mocks
 landed on `main` (`mocks/d-game-frame.html`, PR #45, `6c4dd9c`); owner decisions D1–D5
 recorded.
 
@@ -1104,6 +1104,22 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
    it changes one test case either way.*
 
 ## Review Log
+
+### Phase 1 — executed 2026-08-30 (1a `99dba07`, 1b this landing)
+- 1a: `src/game-frame.ts` + `.gf-*` block + `tests/game-frame.test.ts` (17 cases, RED
+  first: module absent → suite fails; then green). Lint, typecheck, hex scan green.
+- 1b: `/placeholder/` mounts through the frame; `tests/game-frame.spec.ts` RED first (6
+  failures, no frame on the page) then green on both engines: game bar **48**, meters
+  **56**, dock **72** to the pixel at 390×844; pressing the one verb moves the stage by
+  **0px**. `npm run smoke` found the one thing the unit tests could not: the primary verb
+  used `--accent` as TEXT (2.44:1 on white, the exact trap `docs/DESIGN.md` records) —
+  changed to `--active`, the graded pair; the a11y matrix is green again.
+- Measured on the landed page at 390 (WebKit): header 0/110 (Phase 2 fixes it), game bar
+  134/48, meters 182/56, stage 238/118, dock 356/72 — the stage is short because
+  `.play-area` is not yet full-height; Phase 2 makes the frame fill the viewport.
+- Docs landed in-phase: BUILDING-GAMES §4 rewritten + §4c added; DESIGN "The game frame's
+  roles"; RESPONSIVE-DESIGN Principle 1b + a lessons-log entry; ADR-0002; CLAUDE.md
+  pointer; CHANGELOG `shelf:` entry.
 
 ### Phase 0 — executed 2026-08-30
 - D1–D4 run (findings under Phase 0). No assumption was invalidated; two were sharpened:

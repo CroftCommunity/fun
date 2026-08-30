@@ -440,8 +440,10 @@ body.fullscreen .play-area {
   font-size: 1.35rem;
   line-height: 1;
 }
+/* --accent is a FILL role (DESIGN.md: 2.13:1 as text in light); --active is the
+   graded text pair on surface (6.34 / 8.57). Axe caught the accent version. */
 .gf-verb.primary {
-  color: var(--accent);
+  color: var(--active);
 }
 .gf-verb:disabled {
   opacity: 0.38;

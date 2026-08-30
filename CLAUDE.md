@@ -208,7 +208,9 @@ at them and add what's specific to this repo. Git identity: chasemp
 
 ## The shelf model — three tiers (COHESION §62 in discovery)
 
-`docs/BUILDING-GAMES.md` is the full standards doc. In short:
+`docs/BUILDING-GAMES.md` is the full standards doc. In short (and **§4c is where a game
+declares its controls to the game frame and learns how it will be shown** — read it before
+rendering a control row):
 
 - **Tier 1 — Croft-native (build-fresh).** Determinism-first Rust core → wasm,
   **verifiable outcome** (move-list replay → `state_hash`, re-verifying `?r=`
