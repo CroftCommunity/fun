@@ -235,3 +235,22 @@ field:
 - **Self-host the LLM model weights + `model_lib` WASM** — for true offline + to
   close the CDN-served-code vector; ~1 GB, needs a binary host (`drop4.md`,
   `harness.md`).
+
+## Device queue — a note for the next session in this repo (2026-08-30)
+
+The device-testing needs in this file are **registered in the workspace device queue**
+(`CroftC/.claude/TESTBED.md` § The device queue; `CroftC/.claude/DEVICE-QUEUE.md` is
+generated from the `[device: …]` tags). Nothing here was removed or reworded: a tag was
+appended to the line that records each need, or a pointer bullet was added below where the
+need sits inside a longer item. Going forward:
+
+- a new item that needs a phone carries a tag — `[device: android]`, `[device: android x2, ios]`,
+  `[device: android=samsung]` when the check is about that unit (tokens: TESTBED's table);
+- a run that fulfils one turns its tag into `[device done YYYY-MM-DD: …]` in the same commit as
+  the evidence;
+- when you next touch an item registered by a pointer bullet, fold the tag into the item and
+  drop the pointer — the pointer is scaffolding for the migration, not the shape.
+
+`bash CroftC/.claude/bin/device-queue.sh --have samsung` shows what a phone in hand can seat.
+
+Tagged in this directory: `color-sort.md` (Mock E Q1, pour timings on a real phone). The game-frame plan carries its four owed device checks in its own review log (`plans/2026-08-30-plan-game-frame.md`).
