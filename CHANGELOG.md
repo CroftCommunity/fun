@@ -5,13 +5,18 @@ landing *is* releasing: sections are months, each entry dated by its landing. Pe
 `CroftC/.claude/CHANGELOGS.md`, the branch that changes something a player runs adds its
 entry here before it lands. Contexts are the shelf's chrome and the individual games.
 
-Contexts: shelf · trio-tumble · othello · cribbage · furrow · dots · drop4 · blockdoku · orchard · sinker · solitaire
+Contexts: shelf · wyrdle · trio-tumble · othello · cribbage · furrow · dots · drop4 · blockdoku · orchard · sinker · solitaire
 
 Started 2026-08-29; the August entries below are the landings of that month, and everything
 earlier is in `git log`.
 
 ## 2026-08
 
+- 2026-08-30 **wyrdle:** inside the frame. Guesses left is the meter, Hint (or I’m done)
+  and New word are the buttons under the keyboard, today’s word versus a new one is the
+  start screen’s card — and "Not in word list" is a toast over the grid, not a bar that
+  shoved it down for a second and a half. Leave mid-word and the continue card brings
+  your guesses back. (`plans/2026-08-30-plan-game-frame.md` Phase 9)
 - 2026-08-30 **trio-tumble:** inside the frame — thirteen pills in four rows above the board
   are now one chip ("Campaign · 3 of 6", "Clear jelly · Today’s"), three meters, and
   Hint, Restart (in the campaign) and New board under the board. Board, objective and

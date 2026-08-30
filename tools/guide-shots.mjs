@@ -704,7 +704,8 @@ const SHOTS = [
     name: "wyrdle-win",
     clip: ".sol-result",
     async run(page) {
-      await page.goto(`${origin}/wyrdle/`, { waitUntil: "networkidle" });
+      // A bare URL is the start screen now (plan Q7); ?play=1 is a deep link to the board.
+      await page.goto(`${origin}/wyrdle/?play=1`, { waitUntil: "networkidle" });
       await page.waitForSelector(".wy-grid");
       const fixture = await (await fetch(`${origin}/wyrdle-daily-pack.json`)).json();
       await page.goto(`${origin}/wyrdle/?seed=${fixture.payload.fixture.seed}`, {

@@ -7,7 +7,7 @@ import { placeholderModule } from "./games/placeholder.js";
 import { solitaireModule, solitaireSetup } from "./games/solitaire.js";
 import { trioTumbleModule, trioTumbleSetup } from "./games/trio-tumble.js";
 import { bubbleModule } from "./games/bubble/bubble.js";
-import { wyrdleModule } from "./games/wyrdle/wyrdle.js";
+import { wyrdleModule, wyrdleSetup } from "./games/wyrdle/wyrdle.js";
 import { twenty48Module } from "./games/2048/2048.js";
 import { drop4Module } from "./games/drop4/drop4.js";
 import { othelloModule, othelloSetup } from "./games/othello/othello.js";
@@ -53,7 +53,16 @@ export const REGISTRY: readonly GameEntry[] = [
     load: trioTumbleModule,
   },
   { id: "bubble", title: "Bubble", emoji: "🫧", status: "playable", icon: true, load: bubbleModule },
-  { id: "wyrdle", title: "Wyrdle", emoji: "🐉", status: "playable", icon: true, load: wyrdleModule },
+  {
+    id: "wyrdle",
+    title: "Wyrdle",
+    emoji: "🐉",
+    status: "playable",
+    icon: true,
+    pitch: "Find the hidden five-letter word in six guesses. Today’s word is the same for everyone.",
+    setup: wyrdleSetup,
+    load: wyrdleModule,
+  },
   { id: "2048", title: "2048", emoji: "🔢", status: "playable", icon: true, load: twenty48Module },
   { id: "drop4", title: "Drop 4", emoji: "🔴", status: "playable", icon: true, group: "versus", load: drop4Module },
   {

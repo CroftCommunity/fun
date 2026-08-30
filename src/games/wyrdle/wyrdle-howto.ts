@@ -69,7 +69,7 @@ export const WYRDLE_GUIDE: Guide = {
       blocks: [
         {
           kind: "prose",
-          text: "Hints are on by default; a hint reveals one correct letter and counts as assistance, which is noted honestly on your result. Turn hints off and the button becomes \"I'm done\", which ends the round.",
+          text: "Hints are on by default; a hint reveals one correct letter and counts as assistance, which is noted honestly on your result. Turn hints off (Settings, the Every game section) and the button becomes \"I'm done\", which ends the round. Today's word versus a new one is chosen on the start screen or the New word button under the keyboard.",
         },
         {
           kind: "prose",
