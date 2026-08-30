@@ -5,13 +5,33 @@ landing *is* releasing: sections are months, each entry dated by its landing. Pe
 `CroftC/.claude/CHANGELOGS.md`, the branch that changes something a player runs adds its
 entry here before it lands. Contexts are the shelf's chrome and the individual games.
 
-Contexts: shelf · checkers · wyrdle · trio-tumble · othello · cribbage · furrow · dots · drop4 · blockdoku · orchard · sinker · solitaire
+Contexts: shelf · bubble · checkers · wyrdle · trio-tumble · othello · cribbage · furrow · dots · drop4 · blockdoku · orchard · sinker · solitaire
 
 Started 2026-08-29; the August entries below are the landings of that month, and everything
 earlier is in `git log`.
 
 ## 2026-08
 
+- 2026-08-30 **bubble:** inside the frame. Three fixed meters — the level (or shots left),
+  the score, and a clock slot that reads "—" until the practice timer is on (bubbles left,
+  in Classic) — so toggling the timer moves nothing; Levels/Classic and Daily/New board
+  are the New game card; the aim guide, the timer and the four aim tunables with their
+  live demos are in Settings; the launcher chip, the progress bar and the drop countdown
+  stay beside the board. Leave mid-game and the continue card replays every shot.
+  (`plans/2026-08-30-plan-game-frame.md` Phase 16)
+- 2026-08-30 **frame:** a game page is exactly one viewport tall, and the frame clips its
+  own overflow. Measured at 390×844, Bubble's page was 893px — tapping Fire scrolled the
+  page and the board jumped 123px; and at 1280×800 the rail's inline settings ran every
+  game page past the viewport (240px on Bubble, 28px on Dots). Bubble's canvas now
+  shrinks to the stage (floor 16rem) so the aim bar and Fire stay on screen.
+  (`plans/2026-08-30-plan-game-frame.md` Phase 16)
+- 2026-08-30 **cribbage:** inside the frame. Seats carry the scores and whose crib it is;
+  Difficulty and which way the table faces are the New game card; the tutor, counting your
+  own hands (muggins) and the peg-board mode are in Settings; the rules sentence is a
+  toast; the status line under the table keeps its height. The phase verbs — throw, go,
+  the count — stay on the table, where the cards are. Leave mid-game and the continue
+  card replays every code both seats played.
+  (`plans/2026-08-30-plan-game-frame.md` Phase 15)
 - 2026-08-30 **shelf:** every game's start screen is the poster again — the splash art,
   the title, the pitch and Play over the whole frame. It had been rendering as a 46px
   bordered strip with the art cropped away in both palettes: the setup sheet's Start

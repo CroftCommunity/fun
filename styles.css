@@ -211,6 +211,10 @@ body.fullscreen .play-area {
   flex: 1;
   min-height: 0;
   position: relative; /* the sheet and scrim are absolute inside the frame */
+  /* the frame's bands scroll themselves (stage, rail extra); nothing inside it
+     may grow the page — the rail's inline settings did, running the page past
+     the viewport by 240px on Bubble and 28px on Dots at 1280×800 (measured) */
+  overflow: hidden;
 }
 /* A game page is the header and the frame, nothing else: the play area drops
    its padding and lets the frame take the rest of the viewport, so the dock
@@ -218,7 +222,10 @@ body.fullscreen .play-area {
 body:has(> .play-area > .gf) {
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
+  /* height, not min-height: a game taller than the stage scrolls INSIDE the
+     stage. With min-height the page grew instead (Bubble at 390×844 was 893px
+     tall — measured), so tapping Fire scrolled the page and the board jumped. */
+  height: 100dvh;
 }
 .play-area:has(> .gf) {
   flex: 1;
@@ -1798,11 +1805,27 @@ body:has(> .play-area > .gf) {
    visualises it). Bubbles carry a shape glyph as well as an AA-verified --gem-N
    hue (colour-blind safe). Aim by pointer/drag on the canvas, the ←/→ keys, or
    the slider; Fire (button / Space) launches the shot. */
+/* The board is a flex column so the canvas can give up height on a short
+   viewport: it shrinks (never grows) and keeps its aspect from the flexed height,
+   so the aim bar and Fire stay on screen under it instead of below the fold. */
+.bub-game {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
 .bub-canvas {
   display: block;
-  width: 100%;
+  flex: 0 1 auto;
+  min-height: 0;
+  align-self: center;
+  width: auto;
   max-width: min(100%, 22rem);
   height: auto;
+  max-height: 100%;
+  /* the floor of the shrink: below this the stage scrolls instead, because a
+     smaller board puts its bubbles under the tap floor (360×720 gave 189px) */
+  min-height: 16rem;
   margin: 0.4rem auto;
   background: var(--felt);
   border-radius: var(--radius);
@@ -1914,19 +1937,6 @@ body:has(> .play-area > .gf) {
 }
 
 /* The "Aim & controls" disclosure wrapping the reusable settings sheet. */
-.bub-aim-settings {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 0.2rem 0.6rem;
-  background: var(--surface);
-}
-.bub-aim-settings > summary {
-  cursor: pointer;
-  padding: 0.35rem 0;
-  font-weight: 600;
-  color: var(--ink);
-}
-
 /* ---- reusable settings sheet (portal-wide) ---- */
 .sheet {
   display: flex;
@@ -2198,16 +2208,8 @@ body:has(> .play-area > .gf) {
   gap: 0.35rem;
 }
 
-/* Levels HUD: variant toggle, level readout, score→target progress, pressure
-   countdown, and the optional (presentational) practice clock. */
-.bub-variants {
-  display: inline-flex;
-  gap: 0.25rem;
-}
-.bub-level {
-  font-family: var(--font-display);
-  font-weight: 700;
-}
+/* Levels HUD: score→target progress and the pressure countdown (the level, the
+   score and the practice clock are the frame's meters). */
 .bub-target,
 .bub-drop {
   font-size: 0.85rem;
@@ -2230,13 +2232,6 @@ body:has(> .play-area > .gf) {
 }
 @media (prefers-reduced-motion: reduce) {
   .bub-progress-fill { transition: none; }
-}
-.bub-timer {
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  padding: 0.05rem 0.4rem;
-  border-radius: 0.4rem;
-  background: color-mix(in srgb, var(--focus) 18%, transparent);
 }
 .bub-stars {
   font-size: 1.5rem;
@@ -4743,15 +4738,6 @@ body.fullscreen .le-stage {
 }
 .crib-seat.you.active { border-color: var(--crib-peg-a); }
 .crib-seat.them.active { border-color: var(--crib-peg-b); }
-.crib-controls {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-.crib-field { display: inline-flex; align-items: center; gap: 0.35rem; }
-.crib-toggle { display: block; margin-block: 0.25rem; }
 
 /* The peg board — a real one, as SVG: three streets of forty holes in fives,
    down and back and down, the engine's lane above yours, two pegs a side. The
@@ -4956,6 +4942,8 @@ body.fullscreen .le-stage {
   margin: 0;
   text-align: center;
   max-width: 32rem;
+  /* Reserved height: an empty status must not collapse the row and shift the table (frame rule, plan D4). */
+  min-height: 1.55em;
 }
 .crib-flash {
   margin: 0;

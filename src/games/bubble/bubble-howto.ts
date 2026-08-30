@@ -20,8 +20,8 @@ export const BUBBLE_GUIDE: Guide = {
         {
           kind: "shot",
           name: "bubble-board",
-          alt: "A staggered honeycomb of coloured, shaped bubbles on a green felt table, with a launcher at the bottom holding the loaded colour and a smaller on-deck colour beside it, a dotted aim line and landing ring, and a HUD showing the level, the score, a progress bar toward the next level, and how many shots until the stack drops.",
-          caption: "The board and launcher, the dotted aim guide, and the levels HUD: your level, score, progress to the next level, and shots until the next row drops in.",
+          alt: "A staggered honeycomb of coloured, shaped bubbles on a green felt table, with a launcher at the bottom holding the loaded colour and a smaller on-deck colour beside it, a dotted aim line and landing ring, the frame's meters above showing the level, the score and the clock slot, and a HUD beside the board with a progress bar toward the next level and how many shots until the stack drops.",
+          caption: "The board and launcher, the dotted aim guide, the level and score on the frame's meters, and the HUD: progress to the next level and shots until the next row drops in.",
         },
       ],
     },
@@ -85,11 +85,11 @@ export const BUBBLE_GUIDE: Guide = {
         },
         {
           kind: "prose",
-          text: "Prefer racing a clock? Turn on \"Show level timer\" in Settings for a per-level countdown. It's a practice aid only — it is never part of your verified result and running it down never ends the run; only the stack crossing the bottom line does.",
+          text: "Prefer racing a clock? Turn on \"Show level timer\" in Settings and the clock meter counts down each level. It's a practice aid only — it is never part of your verified result and running it down never ends the run; only the stack crossing the bottom line does.",
         },
         {
           kind: "prose",
-          text: "Want the original instead? Switch to Classic with the mode toggle for the clear-the-board game: empty a fixed daily board within a shot budget, with its own verifiable result.",
+          text: "Want the original instead? Pick Classic on the New game card for the clear-the-board game: empty a fixed daily board within a shot budget, with its own verifiable result.",
         },
       ],
     },

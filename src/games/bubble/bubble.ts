@@ -8,7 +8,11 @@
 //! a clear (or when shots run out) a `pond-outcome` record is shown, shareable
 //! via `?r=`.
 
-import type { GameModule } from "../../contract.js";
+import type { GameModule, GameServices } from "../../contract.js";
+import type { GameFrame, GameFrameSpec } from "../../game-frame.js";
+import type { Progress } from "../../progress.js";
+import type { SettingRow } from "../../settings-sheet.js";
+import { today } from "../../shelf.js";
 import { Bubble, type BoardView, type Geom, type LevelBoardView } from "./bubble-wasm.js";
 import {
   aimBand,
@@ -27,7 +31,7 @@ import {
   type BubbleEnvelope,
   type VerifyResult,
 } from "./bubble-outcome.js";
-import { renderAimSettings } from "./bubble-aim-settings.js";
+import { aimSettingRows } from "./bubble-aim-settings.js";
 import { dayIndexUTC } from "../share.js";
 import {
   aimGuideEnabled,
@@ -38,8 +42,6 @@ import {
   fireOnReleaseEnabled,
   hintsEnabled,
   setAimGuide,
-  setDeclareAssistance,
-  setHintsEnabled,
 } from "../../settings.js";
 
 declare global {
@@ -257,6 +259,52 @@ function palette(): Palette {
 
 // ---------- the game module ----------
 
+type Variant = "levels" | "classic";
+type BoardSource = "daily" | "free";
+const VARIANT_LABEL: Record<Variant, string> = { levels: "Levels", classic: "Classic" };
+
+// The New game card's choices live at module scope: the poster renders the card
+// before the module exists, and the module reads them when a game starts.
+let chosenVariant: Variant = "levels";
+let chosenBoard: BoardSource = "daily";
+
+/** The New game card: which game (levels or classic) and which board (today's or a fresh one). */
+export function bubbleSetupRows(): SettingRow[] {
+  return [
+    {
+      kind: "choice",
+      id: "variant",
+      label: "Game",
+      hint: "Levels: the stack descends, the target rises. Classic: clear a fixed board within a shot budget.",
+      value: chosenVariant,
+      options: [
+        { value: "levels", label: "Levels" },
+        { value: "classic", label: "Classic" },
+      ],
+      onChange: (v) => {
+        chosenVariant = v === "classic" ? "classic" : "levels";
+      },
+    },
+    {
+      kind: "choice",
+      id: "board",
+      label: "Board",
+      hint: "The daily challenge is the same board for everyone today; a new board is a fresh seed.",
+      value: chosenBoard,
+      options: [
+        { value: "daily", label: "Daily challenge" },
+        { value: "free", label: "New board" },
+      ],
+      onChange: (v) => {
+        chosenBoard = v === "free" ? "free" : "daily";
+      },
+    },
+  ];
+}
+
+/** The poster's setup card — the registry's `setup` factory. */
+export const bubbleSetup = (): SettingRow[] => bubbleSetupRows();
+
 /** Construct a fresh bubble-shooter module (the registry `load`). */
 export function bubbleModule(): GameModule {
   let game: Bubble | null = null;
@@ -267,9 +315,13 @@ export function bubbleModule(): GameModule {
   // `variant` picks the game: levels (escalating, point-gated, descending rows —
   // the default experience) or classic (clear the daily board within a budget).
   // `mode` is the board source within either variant (daily vs free-play).
-  let variant: "levels" | "classic" = "levels";
-  let mode: "daily" | "free" = "daily";
+  let variant: Variant = "levels";
+  let mode: BoardSource = "daily";
   let seed = 0n;
+  let frame: GameFrame | null = null;
+  let pendingResume: Progress | null = null;
+  /** Every angle fired this game, in order — the progress record; the outcome carries the same list. */
+  let moves: number[] = [];
   let geom: Geom = { diam: 256, radius: 128, rowH: 222, fanLo: 10, fanHi: 170 };
   let aim = 90;
   let animating = false;
@@ -284,7 +336,7 @@ export function bubbleModule(): GameModule {
   // Presentational per-level countdown (levels only; never a verified loss).
   let timerEnabled = false;
   let timerEnd = 0;
-  let timerRaf = 0;
+  let timerTick = 0;
   let lastLevel = 0;
 
   const isLevels = (): boolean => variant === "levels";
@@ -606,6 +658,7 @@ export function bubbleModule(): GameModule {
     }
     if (isLevels()) {
       game.levelShoot(angle);
+      moves.push(angle);
       const ls = game.levelLastShot();
       if (!prefersReducedMotion()) {
         // On an insert shot the stack-slide is the dominant motion (the pop/drop
@@ -616,6 +669,7 @@ export function bubbleModule(): GameModule {
       }
     } else {
       game.shoot(angle);
+      moves.push(angle);
       const ls = game.lastShot();
       if (!prefersReducedMotion() && (ls.popped.length > 0 || ls.dropped.length > 0)) {
         await animateResolve(ls);
@@ -716,89 +770,7 @@ export function bubbleModule(): GameModule {
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   };
 
-  const renderControls = (u: Uni): HTMLElement => {
-    const bar = el("div", { class: "sol-controls" });
-
-    // Variant toggle: the escalating levels game vs the classic clear-board game.
-    const variants = el("div", { class: "bub-variants", role: "group", "aria-label": "Game mode" });
-    const levelsBtn = el(
-      "button",
-      { type: "button", class: "bub-variant-levels", "aria-pressed": String(variant === "levels") },
-      "Levels",
-    );
-    const classicBtn = el(
-      "button",
-      {
-        type: "button",
-        class: "bub-variant-classic",
-        "aria-pressed": String(variant === "classic"),
-      },
-      "Classic",
-    );
-    levelsBtn.addEventListener("click", () => void startVariant("levels"));
-    classicBtn.addEventListener("click", () => void startVariant("classic"));
-    variants.append(levelsBtn, classicBtn);
-
-    const modes = el("div", { class: "sol-modes", role: "group", "aria-label": "Board" });
-    const daily = el(
-      "button",
-      { type: "button", class: "sol-mode-daily", "aria-pressed": String(mode === "daily") },
-      isLevels() ? "Daily challenge" : "Today’s board",
-    );
-    const fresh = el(
-      "button",
-      { type: "button", class: "sol-new", "aria-pressed": String(mode === "free") },
-      "New board",
-    );
-    daily.addEventListener("click", () => void startGame("daily"));
-    fresh.addEventListener("click", () => void startGame("free"));
-    modes.append(daily, fresh);
-
-    const hints = hintsEnabled();
-    const actionBtn = el(
-      "button",
-      { type: "button", class: hints ? "sol-hint" : "sol-stuck" },
-      hints ? "Hint" : "I’m done",
-    );
-    actionBtn.addEventListener("click", hints ? showHint : endNow);
-
-    const setting = (
-      checked: boolean,
-      label: string,
-      cls: string,
-      onChange: (on: boolean) => void,
-    ): HTMLElement => {
-      const wrap = el("label", { class: "sol-setting" });
-      const input = el("input", { type: "checkbox", class: cls });
-      (input as HTMLInputElement).checked = checked;
-      input.addEventListener("change", () => onChange((input as HTMLInputElement).checked));
-      wrap.append(input, document.createTextNode(` ${label}`));
-      return wrap;
-    };
-    const settings = el("details", { class: "sol-settings" });
-    settings.append(
-      el("summary", {}, "Settings"),
-      setting(hints, "Enable hints", "sol-set-hints", (on) => {
-        setHintsEnabled(on);
-        render();
-      }),
-      setting(declareAssistanceEnabled(), "Declare assistance used", "sol-set-assist", (on) => {
-        setDeclareAssistance(on);
-      }),
-      setting(aimGuideEnabled(), "Show aim guide (trajectory preview)", "bub-set-aimguide", (on) => {
-        setAimGuide(on);
-        drawScene();
-      }),
-    );
-    if (isLevels()) {
-      settings.append(
-        setting(timerEnabled, "Show level timer (practice clock)", "bub-set-timer", (on) => {
-          timerEnabled = on;
-          render();
-        }),
-      );
-    }
-
+  const renderHud = (u: Uni): HTMLElement => {
     const color = u.currentColor;
     const nextColor = u.nextColor;
     const launcher = el(
@@ -841,34 +813,79 @@ export function bubbleModule(): GameModule {
         el("span", { class: "bub-progress-fill", style: `width:${pct}%` }),
       );
       hud.append(
-        el("span", { class: "bub-level" }, `Level ${lv.level}`),
-        el("span", { class: "bub-score" }, `Score ${lv.totalScore}`),
         progress,
         el("span", { class: "bub-target" }, `${lv.levelScore} / ${lv.targetScore} to next`),
         el("span", { class: "bub-drop" }, `Stack drops in ${lv.shotsToInsert}`),
       );
-      if (timerEnabled) {
-        hud.append(
-          el(
-            "span",
-            { class: "bub-timer", role: "timer", "aria-label": "Level practice clock" },
-            fmtClock(timerEnd - Date.now()),
-          ),
-        );
-      }
-    } else if (game) {
-      const b = game.board();
-      hud.append(
-        el("span", { class: "bub-score" }, `Score ${b.score}`),
-        el("span", { class: "bub-shots" }, `Shots left ${b.shotsLeft}`),
-      );
     }
-
-    bar.append(variants, modes, actionBtn, settings);
-    const wrap = el("div");
-    wrap.append(bar, hud);
-    return wrap;
+    return hud;
   };
+
+  // --- what the frame shows: three fixed stats, the variant chip, verbs, setup, preferences ---
+  const spec = (): GameFrameSpec => {
+    const lv = levelView();
+    const b = !lv && game ? game.board() : null;
+    const hints = hintsEnabled();
+    const clock: GameFrameSpec["meters"][number] = lv
+      ? { kind: "stat", id: "clock", value: timerEnabled ? fmtClock(timerEnd - Date.now()) : "—", label: "clock" }
+      : { kind: "stat", id: "clock", value: b ? b.cells.flat().filter((c) => c >= 0).length : 0, label: "bubbles left" };
+    return {
+      title: "Bubble",
+      mode: VARIANT_LABEL[variant],
+      meters: [
+        lv
+          ? { kind: "stat", id: "stage", value: `Level ${lv.level}`, label: `${lv.levelScore} / ${lv.targetScore}` }
+          : { kind: "stat", id: "stage", value: b?.shotsLeft ?? 0, label: "shots left" },
+        { kind: "stat", id: "score", value: lv ? lv.totalScore : (b?.score ?? 0), label: "score" },
+        clock,
+      ],
+      verbs: [
+        hints
+          ? { id: "hint", label: "Hint", icon: "✦", primary: true, onPress: showHint }
+          : { id: "done", label: "I’m done", icon: "⇥", onPress: endNow },
+        { id: "new", label: "New game", icon: "⟳", onPress: (btn) => frame?.openSheet("setup", btn) },
+      ],
+      setup: bubbleSetupRows(),
+      preferences: [
+        {
+          kind: "toggle",
+          id: "aim-guide",
+          label: "Show aim guide",
+          hint: "The dotted trajectory preview. A display choice only — the shot lands wherever the angle sends it.",
+          value: aimGuideEnabled(),
+          onChange: (on) => {
+            setAimGuide(on);
+            drawScene();
+          },
+        },
+        {
+          kind: "toggle",
+          id: "timer",
+          label: "Show level timer (practice clock)",
+          hint: "Levels only. A per-level countdown on the clock meter; never part of your verified result, and running it down never ends the run.",
+          value: timerEnabled,
+          onChange: (on) => {
+            timerEnabled = on;
+            runTimer();
+            declare();
+          },
+        },
+        ...aimSettingRows({
+          geom,
+          // A coarser/finer snap re-snaps the current aim immediately.
+          onSnapChange: () => setAim(aim),
+          // A changed gain re-centres the slider band on the current aim.
+          onGainChange: () => applyBand(),
+        }),
+      ],
+      onStart: () => {
+        variant = chosenVariant;
+        lastLevel = 0;
+        void startGame(chosenBoard);
+      },
+    };
+  };
+  const declare = (): void => frame?.update(spec());
 
   const renderAimBar = (): HTMLElement => {
     const bar = el("div", { class: "bub-aimbar" });
@@ -911,15 +928,7 @@ export function bubbleModule(): GameModule {
     const fireBtn = el("button", { type: "button", class: "bub-fire" }, "Fire");
     fireBtn.addEventListener("click", () => void fire());
 
-    const settings = renderAimSettings({
-      geom,
-      // A coarser/finer snap re-snaps the current aim immediately.
-      onSnapChange: () => setAim(aim),
-      // A changed gain re-centres the slider band on the current aim.
-      onGainChange: () => applyBand(),
-    });
-
-    bar.append(row, fireBtn, settings);
+    bar.append(row, fireBtn);
     return bar;
   };
 
@@ -1005,6 +1014,7 @@ export function bubbleModule(): GameModule {
           onPlayAgain: () => void startGame(mode),
         });
       container.replaceChildren(build());
+      declare();
       return;
     }
     const env = game.outcome(declareAssistanceEnabled()) as BubbleEnvelope;
@@ -1019,6 +1029,7 @@ export function bubbleModule(): GameModule {
         onPlayAgain: () => void startGame(mode),
       });
     container.replaceChildren(build());
+    declare();
   };
 
   function render(force = false): void {
@@ -1044,7 +1055,7 @@ export function bubbleModule(): GameModule {
     const root = el(
       "div",
       { class: "bub-game" },
-      renderControls(u),
+      renderHud(u),
       renderCanvas(u),
       renderAimBar(),
       statusEl,
@@ -1054,34 +1065,29 @@ export function bubbleModule(): GameModule {
     drawScene();
     runTimer();
     exposeHook();
+    declare();
   }
 
   // Tick the presentational clock (levels + timer setting on). Never touches game
   // state — a spent clock is a nudge, not a loss.
   const runTimer = (): void => {
-    if (timerRaf) cancelAnimationFrame(timerRaf);
+    window.clearInterval(timerTick);
+    timerTick = 0;
     if (!isLevels() || !timerEnabled || gameOver()) return;
-    const tick = (): void => {
-      if (disposed || !timerEnabled || !isLevels() || gameOver()) return;
-      const span = container?.querySelector<HTMLElement>(".bub-timer");
-      if (span) span.textContent = fmtClock(timerEnd - Date.now());
-      timerRaf = requestAnimationFrame(tick);
-    };
-    timerRaf = requestAnimationFrame(tick);
+    timerTick = window.setInterval(() => {
+      if (disposed || !timerEnabled || !isLevels() || gameOver()) {
+        window.clearInterval(timerTick);
+        timerTick = 0;
+        return;
+      }
+      declare(); // the clock is a meter; a second is its resolution
+    }, 1000);
   };
 
-  // Switch between the levels and classic variants (restarts on the current
-  // board source).
-  async function startVariant(next: "levels" | "classic"): Promise<void> {
-    if (variant === next) return;
-    variant = next;
-    lastLevel = 0;
-    await startGame(mode);
-  }
-
-  async function startGame(nextMode: "daily" | "free", seedOverride?: bigint): Promise<void> {
+  async function startGame(nextMode: BoardSource, seedOverride?: bigint): Promise<void> {
     if (!game || disposed) return;
     mode = nextMode;
+    moves = [];
     // Levels reuse the clear-board daily seed as a fixed "daily challenge" start.
     seed =
       seedOverride ??
@@ -1095,6 +1101,30 @@ export function bubbleModule(): GameModule {
     setStatus("");
     render();
   }
+
+  /** Resume is replay: the variant, the board source, the seed, then every angle fired. */
+  const applyResume = (p: Progress): void => {
+    if (!game || disposed) return;
+    const rec = p.record as { seed?: unknown; moves?: unknown; variant?: unknown };
+    variant = chosenVariant = rec.variant === "classic" ? "classic" : "levels";
+    mode = chosenBoard = typeof p.setup.mode === "string" && p.setup.mode.startsWith("daily:") ? "daily" : "free";
+    seed = typeof rec.seed === "string" ? BigInt(rec.seed) : randomSeed();
+    if (isLevels()) game.newLevelGame(seed);
+    else game.newGame(seed);
+    moves = [];
+    for (const angle of Array.isArray(rec.moves) ? (rec.moves as unknown[]) : []) {
+      if (typeof angle !== "number") break;
+      if (isLevels()) game.levelShoot(angle);
+      else game.shoot(angle);
+      moves.push(angle);
+    }
+    geom = game.geom();
+    aim = clampAngle(90, geom);
+    animating = false;
+    lastLevel = 0;
+    setStatus("");
+    render();
+  };
 
   const showShared = async (payload: string): Promise<void> => {
     if (!container) return;
@@ -1146,9 +1176,12 @@ export function bubbleModule(): GameModule {
   };
 
   return {
-    mount(c: HTMLElement): void {
+    mount(c: HTMLElement, services?: GameServices): void {
       container = c;
+      frame = services?.frame ?? null;
       disposed = false;
+      frame?.onSettingsChange(() => render()); // Hints flips the verb
+      declare();
       container.replaceChildren(el("div", { class: "sol-loading" }, "Loading bubble shooter…"));
       void (async () => {
         try {
@@ -1167,24 +1200,32 @@ export function bubbleModule(): GameModule {
           await showShared(shared);
           return;
         }
+        if (pendingResume) {
+          const p = pendingResume;
+          pendingResume = null;
+          applyResume(p);
+          return;
+        }
         // Levels is the default experience; `?variant=classic` opens the classic
         // clear-the-board game instead.
-        if (url.searchParams.get("variant") === "classic") variant = "classic";
+        if (url.searchParams.get("variant") === "classic") chosenVariant = "classic";
+        variant = chosenVariant;
         const seedParam = url.searchParams.get("seed");
         if (seedParam !== null) {
           await startGame("free", BigInt(seedParam));
           return;
         }
-        await startGame("daily");
+        await startGame(chosenBoard);
       })();
     },
     unmount(): void {
       disposed = true;
       if (raf) cancelAnimationFrame(raf);
-      if (timerRaf) cancelAnimationFrame(timerRaf);
+      window.clearInterval(timerTick);
       cancelReleaseFire();
       raf = 0;
-      timerRaf = 0;
+      timerTick = 0;
+      frame = null;
       delete window.__bubble;
       cascadeEl?.remove();
       cascadeEl = null;
@@ -1195,6 +1236,29 @@ export function bubbleModule(): GameModule {
       aimReadout = null;
       game = null;
       verifier = null;
+    },
+    // --- the progress store: variant, board source, seed and every angle fired; resume is replay ---
+    snapshot(): Progress {
+      const lv = levelView();
+      const b = !lv && game ? game.board() : null;
+      const now = new Date().toISOString();
+      const done = gameOver();
+      const line = lv
+        ? `Levels · level ${lv.level} · score ${lv.totalScore}`
+        : `Classic · score ${b?.score ?? 0} · ${b?.shotsLeft ?? 0} shots left`;
+      return {
+        v: 1,
+        status: done ? "finished" : "in-progress",
+        startedAt: now,
+        updatedAt: now,
+        setup: { mode: mode === "daily" ? `daily:${today(new Date())}` : "free", variant, seed: seed.toString() },
+        record: { seed: seed.toString(), variant, moves: [...moves] },
+        summary: { line: done ? `${line} · over` : line },
+      };
+    },
+    resume(p: Progress): void {
+      if (game) applyResume(p);
+      else pendingResume = p;
     },
   };
 }

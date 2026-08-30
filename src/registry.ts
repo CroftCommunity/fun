@@ -13,7 +13,7 @@ import type { GameEntry } from "./contract.js";
 import { placeholderModule } from "./games/placeholder.js";
 import { solitaireModule, solitaireSetup } from "./games/solitaire.js";
 import { trioTumbleModule, trioTumbleSetup } from "./games/trio-tumble.js";
-import { bubbleModule } from "./games/bubble/bubble.js";
+import { bubbleModule, bubbleSetup } from "./games/bubble/bubble.js";
 import { wyrdleModule, wyrdleSetup } from "./games/wyrdle/wyrdle.js";
 import { twenty48Module } from "./games/2048/2048.js";
 import { drop4Module, drop4Setup } from "./games/drop4/drop4.js";
@@ -26,7 +26,7 @@ import { blockdokuModule, blockdokuSetup } from "./games/blockdoku/blockdoku.js"
 import { looseendsModule } from "./games/looseends/looseends.js";
 import { colorSortModule } from "./games/color-sort/color-sort.js";
 import { orchardDropModule } from "./games/orchard-drop/orchard-drop.js";
-import { cribbageModule } from "./games/cribbage/cribbage.js";
+import { cribbageModule, cribbageSetup } from "./games/cribbage/cribbage.js";
 
 /** What fun.croft.ing ships, in drawer order. */
 export const SHIPPED: readonly GameEntry[] = [
@@ -51,7 +51,16 @@ export const SHIPPED: readonly GameEntry[] = [
     setup: trioTumbleSetup,
     load: trioTumbleModule,
   },
-  { id: "bubble", title: "Bubble", emoji: "🫧", status: "playable", icon: true, load: bubbleModule },
+  {
+    id: "bubble",
+    title: "Bubble",
+    emoji: "🫧",
+    status: "playable",
+    icon: true,
+    pitch: "Aim, fire, match three. Levels push the stack down; Classic clears a fixed board within a budget.",
+    setup: bubbleSetup,
+    load: bubbleModule,
+  },
   {
     id: "wyrdle",
     title: "Wyrdle",
@@ -143,7 +152,17 @@ export const SHIPPED: readonly GameEntry[] = [
     // The Suika-lineage credit lives in the how-to guide instead.
     load: orchardDropModule,
   },
-  { id: "cribbage", title: "Cribbage", emoji: "🎴", status: "playable", icon: true, group: "versus", load: cribbageModule },
+  {
+    id: "cribbage",
+    title: "Cribbage",
+    emoji: "🎴",
+    status: "playable",
+    icon: true,
+    group: "versus",
+    pitch: "Throw two to the crib, play to 31, count your hand. The engine never sees your cards — a rig proves it.",
+    setup: cribbageSetup,
+    load: cribbageModule,
+  },
 ];
 
 /** Dev fixtures: mounted by the test runs, never on the site. */

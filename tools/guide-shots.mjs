@@ -15,7 +15,8 @@ import { chromium } from "@playwright/test";
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const dist = join(root, "dist");
 const outDir = join(root, "assets", "guide");
-const PORT = 4180;
+// E2E_PORT, as tools/serve.mjs: two sessions on one machine need two ports.
+const PORT = Number(process.env.E2E_PORT ?? 4180);
 const origin = `http://localhost:${PORT}`;
 
 if (!existsSync(join(dist, "index.html"))) {
@@ -122,12 +123,12 @@ const SHOTS = [
     name: "bubble-board",
     clip: ".bub-game",
     async run(page) {
-      // Levels is the default: the level HUD (level, score->target progress, and
-      // the "stack drops in" pressure readout) plus the aim guide.
+      // Levels is the default: the level and score on the frame's meters, the HUD
+      // (score->target progress and the "stack drops in" readout) plus the aim guide.
       await page.goto(`${origin}/bubble/?seed=7`, { waitUntil: "networkidle" });
       await page.waitForSelector(".bub-canvas");
       await page.waitForFunction(() => Boolean(window.__bubble));
-      await page.waitForSelector(".bub-level");
+      await page.waitForSelector(".bub-progress");
       // Aim an angled shot so the dotted trajectory guide + landing ring show.
       await page.evaluate(() => window.__bubble.setAim(115));
       await page.waitForTimeout(120);
