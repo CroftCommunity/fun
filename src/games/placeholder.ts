@@ -9,6 +9,7 @@
 
 import type { GameModule, GameServices } from "../contract.js";
 import { renderGameFrame, type GameFrame, type GameFrameSpec } from "../game-frame.js";
+import type { Progress } from "../progress.js";
 
 let totalMounts = 0;
 
@@ -22,6 +23,7 @@ export function placeholderModule(): GameModule {
   let el: HTMLElement | null = null;
   let frame: GameFrame | null = null;
   let pokes = 0;
+  let startedAt = new Date().toISOString();
 
   const spec = (): GameFrameSpec => ({
     title: "Placeholder",
@@ -59,6 +61,24 @@ export function placeholderModule(): GameModule {
       el?.remove();
       frame = null;
       el = null;
+    },
+    // The store's smallest possible client: the counter IS the record.
+    snapshot(): Progress {
+      return {
+        v: 1,
+        status: "in-progress",
+        startedAt,
+        updatedAt: new Date().toISOString(),
+        setup: { mode: "free" },
+        record: { pokes },
+        summary: { line: `${pokes} poke${pokes === 1 ? "" : "s"}` },
+      };
+    },
+    resume(p: Progress): void {
+      const rec = p.record as { pokes?: unknown };
+      pokes = typeof rec?.pokes === "number" ? rec.pokes : 0;
+      startedAt = p.startedAt;
+      frame?.update(spec());
     },
   };
 }

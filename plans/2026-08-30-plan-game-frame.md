@@ -8,7 +8,7 @@ parameters does once every bare URL opens on a start screen) gates Phase 5** and
 thing between this plan and execution: Phases 0–4 may start now. D5 was resolved during
 planning (read-only, see Verified Assumptions) and is struck from Phase 0. Phases 1, 2, 3
 and 5 carry sub-phases (1a/1b, 2a/2b, 3a/3b, 5a/5b) — each with its own Done-when and
-wiring test — because each touched four or more files. Phases 0–3 COMPLETE (2026-08-30). Mocks
+wiring test — because each touched four or more files. Phases 0–4 COMPLETE (2026-08-30). Mocks
 landed on `main` (`mocks/d-game-frame.html`, PR #45, `6c4dd9c`); owner decisions D1–D5
 recorded.
 
@@ -1104,6 +1104,18 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
    it changes one test case either way.*
 
 ## Review Log
+
+### Phase 4 — executed 2026-08-30
+- RED first (module absent), then green: `resolveProgress` returns a tagged result whose
+  `reason` is the tested value (`version 2`, `status: paused`, `not JSON`, `nothing
+  stored`, `not a record`, `no summary line`, `daily expired`); the rollover is tested at
+  23:59:59.999 / 00:00:00.000 local; free never expires; finished is kept until rollover
+  (Q6); a rejected record is cleared on read with its reason at debug (Q8); storage
+  throwing → null / no-throw with one debug line each. `GameModule` gains optional
+  `snapshot()` / `resume()`; the placeholder implements both (its counter is its record)
+  and `tests/contract.test.ts` round-trips it through the resolver and back into a fresh
+  mount. §4c gains the store section.
+- Green: unit 56 across progress + contract + frame + chrome; typecheck; lint.
 
 ### Phase 3b — executed 2026-08-30
 - RED first: 4 unit cases (the setting's off/on/off, garbage, storage-throws; the frame's

@@ -61,3 +61,26 @@ describe("the registry's use of subtitle", () => {
     for (const g of REGISTRY) expect(g.title.length).toBeLessThanOrEqual(14);
   });
 });
+
+describe("the progress members of the contract", () => {
+  it("the placeholder's snapshot() round-trips through the store's resolver, and resume() restores it", async () => {
+    const { placeholderModule } = await import("../src/games/placeholder.js");
+    const { resolveProgress } = await import("../src/progress.js");
+    const host = document.createElement("div");
+    const game = placeholderModule();
+    game.mount(host, { mode: "standalone" });
+    host.querySelector<HTMLButtonElement>('.gf-verb[data-verb="poke"]')!.click();
+    host.querySelector<HTMLButtonElement>('.gf-verb[data-verb="poke"]')!.click();
+    const snap = game.snapshot!();
+    expect(snap.summary.line).toBe("2 pokes");
+    const r = resolveProgress(JSON.stringify(snap), new Date());
+    expect(r.ok).toBe(true);
+
+    const again = placeholderModule();
+    const host2 = document.createElement("div");
+    again.mount(host2, { mode: "standalone" });
+    again.resume!(snap);
+    expect(host2.querySelector(".gf-stat-value")?.textContent).toBe("2");
+    expect(again.snapshot!().summary.line).toBe("2 pokes");
+  });
+});
