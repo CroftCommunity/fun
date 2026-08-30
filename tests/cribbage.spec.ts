@@ -174,7 +174,7 @@ test("the difficulty picker persists the chosen level", async ({ page }) => {
   await ready(page);
   await page.locator('.gf-verb[data-verb="new"]').click();
   await page.locator('.gf-sheet [data-setting="level"] input[value="Hard"]').check();
-  await page.locator(".gf-sheet .gf-start").click();
+  await page.locator(".gf-sheet .gf-sheet-start").click();
   expect(await page.evaluate(() => localStorage.getItem("fun-cribbage-level"))).toBe("Hard");
   await expect(page.locator(".gf-mode")).toHaveText("Hard");
 });
@@ -329,7 +329,7 @@ test("the table reads engine, board, middle, your hand — and the seats can be 
   // Which way the table faces is a New game decision, not a mid-deal one.
   await page.locator('.gf-verb[data-verb="new"]').click();
   await page.locator('.gf-sheet [data-setting="seats"] .sheet-toggle-input').click({ force: true });
-  await page.locator(".gf-sheet .gf-start").click();
+  await page.locator(".gf-sheet .gf-sheet-start").click();
   await ready(page);
   const flipped = await order();
   expect(flipped.indexOf("crib-hand")).toBeLessThan(flipped.indexOf("crib-board"));

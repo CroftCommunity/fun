@@ -104,7 +104,7 @@ test("the New game card swaps to classic and back to levels", async ({ page }) =
   const pick = async (variant: string): Promise<void> => {
     await page.locator('.gf-verb[data-verb="new"]').click();
     await page.locator(`.gf-sheet [data-setting="variant"] input[value="${variant}"]`).check();
-    await page.locator(".gf-sheet .gf-start").click();
+    await page.locator(".gf-sheet .gf-sheet-start").click();
     await ready(page);
   };
   await pick("classic");

@@ -57,7 +57,7 @@ test("the New game card chooses the variant and the board source", async ({ page
   await expect(sheet.locator('[data-setting="variant"] .sheet-choice-opt')).toHaveText(["Levels", "Classic"]);
   await expect(sheet.locator('[data-setting="board"] .sheet-choice-opt')).toHaveText(["Daily challenge", "New board"]);
   await sheet.locator('[data-setting="variant"] input[value="levels"]').check();
-  await sheet.locator(".gf-start").click();
+  await sheet.locator(".gf-sheet-start").click();
   await ready(page);
   await expect(page.locator(".gf-mode")).toHaveText(/levels/i);
   await expect(page.locator('.gf-stat[data-meter="stage"]')).toContainText(/level 1/i);
