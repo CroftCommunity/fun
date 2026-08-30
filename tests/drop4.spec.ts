@@ -95,7 +95,7 @@ test("the difficulty picker persists the chosen level", async ({ page }) => {
   await ready(page);
   await page.locator('.gf-verb[data-verb="new"]').click();
   await page.locator('.gf-sheet [data-setting="level"] input[value="Hard"]').check();
-  await page.locator(".gf-sheet .gf-start").click();
+  await page.locator(".gf-sheet .gf-sheet-start").click();
   await expect(page.locator(".gf-mode")).toHaveText("Hard");
   const stored = await page.evaluate(() => localStorage.getItem("fun-drop4-level"));
   expect(stored).toBe("Hard");
@@ -282,7 +282,7 @@ test("the mark is setup: choosing ○ on the New game sheet makes the player's d
   await ready(page);
   await page.locator('.gf-verb[data-verb="new"]').click();
   await page.locator('.gf-sheet [data-setting="mark"] input[value="o"]').check();
-  await page.locator(".gf-sheet .gf-start").click();
+  await page.locator(".gf-sheet .gf-sheet-start").click();
   await expect(page.locator('.gf-seat[data-meter="you"] .gf-seat-glyph')).toHaveText("○");
   expect(await page.evaluate(() => localStorage.getItem("fun-drop4-mark"))).toBe("o");
 });

@@ -204,7 +204,13 @@ test("a bare game URL opens on the poster; Play mounts the board without moving 
   await expect(page.locator(".placeholder-game")).toHaveCount(0);
   // The poster covers the whole frame (the bands under it are declared at mount),
   // so the transition is poster → laid-out board; from first paint on, the stage
-  // does not move.
+  // does not move. "Covers" is measured: it once rendered as a 46px strip with
+  // the art cropped to nothing, because `.gf-start` was also the setup sheet's
+  // Start button and that rule's height won.
+  const posterBox = await poster.boundingBox();
+  const artBox = await poster.locator(".gf-start-art").boundingBox();
+  expect(posterBox?.height ?? 0).toBeGreaterThan(400);
+  expect(artBox?.height).toBe(posterBox?.height);
   await poster.locator(".gf-play").click();
   await expect(poster).toBeHidden();
   await ready(page);

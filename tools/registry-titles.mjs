@@ -11,9 +11,11 @@
 // parallel lists of ids and titles zipped by index — `gameAliases()` once did
 // that and mis-paired them (TODO/README.md, 2026-08-28).
 
-/** The registry's array body, from `export const REGISTRY` to its closing `];`. */
-function registryBlock(source) {
-  const start = source.indexOf("export const REGISTRY");
+/** One catalog array's body, from `<anchor>` to its closing `];`. The anchors are
+ *  `export const SHIPPED` (the site) and `const DEV_ONLY` (fixtures a dev build
+ *  serves so the e2e run can drive them) — never `REGISTRY`, which is computed. */
+function registryBlock(source, anchor) {
+  const start = source.indexOf(anchor);
   if (start < 0) return "";
   const open = source.indexOf("[", start);
   const close = source.indexOf("];", open);
@@ -50,9 +52,11 @@ function field(entry, name) {
 
 /** Every registry entry as `{ id, name }`, in registry ORDER — an array, because a
  *  plain object would hoist "2048" to the front (integer-like keys sort first). */
-export function readRegistryEntries(source) {
+export function readRegistryEntries(source, { devGames = false } = {}) {
+  const blocks = [registryBlock(source, "export const SHIPPED")];
+  if (devGames) blocks.push(registryBlock(source, "const DEV_ONLY"));
   const entries = [];
-  for (const entry of entryTexts(registryBlock(source))) {
+  for (const entry of blocks.flatMap(entryTexts)) {
     const id = field(entry, "id");
     const title = field(entry, "title");
     if (!id || !title) continue;
@@ -66,11 +70,11 @@ export function readRegistryEntries(source) {
 }
 
 /** `{ id: displayName }` for every registry entry. Throws on zero. */
-export function readRegistryTitles(source) {
-  return Object.fromEntries(readRegistryEntries(source).map((e) => [e.id, e.name]));
+export function readRegistryTitles(source, { devGames = false } = {}) {
+  return Object.fromEntries(readRegistryEntries(source, { devGames }).map((e) => [e.id, e.name]));
 }
 
-/** The registry's ids, in registry order — the pages build.mjs emits. */
-export function GAME_PAGES(source) {
-  return readRegistryEntries(source).map((e) => e.id);
+/** The catalog's ids, in order — the pages build.mjs emits. Dev fixtures only when asked. */
+export function GAME_PAGES(source, { devGames = false } = {}) {
+  return readRegistryEntries(source, { devGames }).map((e) => e.id);
 }

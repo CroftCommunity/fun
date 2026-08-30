@@ -122,7 +122,7 @@ describe("games drawer chrome", () => {
     const ids = [...document.querySelectorAll(".drawer-item")].map((a) =>
       a.getAttribute("data-game-id"),
     );
-    expect(ids).toEqual(["placeholder", "solitaire", "trio-tumble", "bubble", "wyrdle", "2048", "drop4", "othello", "checkers", "dots", "furrow", "align", "blockdoku", "looseends", "color-sort", "orchard-drop", "cribbage"]);
+    expect(ids).toEqual(["solitaire", "trio-tumble", "bubble", "wyrdle", "2048", "drop4", "othello", "checkers", "dots", "furrow", "align", "blockdoku", "looseends", "color-sort", "orchard-drop", "cribbage", "placeholder"]);
     expect(
       document.querySelector('[data-game-id="solitaire"]')?.getAttribute("href"),
     ).toBe("/solitaire/");

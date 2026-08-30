@@ -128,7 +128,7 @@ test("the difficulty picker persists the chosen level", async ({ page }) => {
   await ready(page);
   await page.locator('.gf-verb[data-verb="new"]').click();
   await page.locator('.gf-sheet [data-setting="level"] input[value="Hard"]').check();
-  await page.locator(".gf-sheet .gf-start").click();
+  await page.locator(".gf-sheet .gf-sheet-start").click();
   await expect(page.locator(".gf-mode")).toHaveText("Hard");
   expect(await page.evaluate(() => localStorage.getItem("fun-checkers-level"))).toBe("Hard");
 });
@@ -138,7 +138,7 @@ test("the side picker restarts the game with the engine opening", async ({ page 
   await ready(page);
   await page.locator('.gf-verb[data-verb="new"]').click();
   await page.locator('.gf-sheet [data-setting="side"] input[value="white"]').check();
-  await page.locator(".gf-sheet .gf-start").click();
+  await page.locator(".gf-sheet .gf-sheet-start").click();
   expect(await page.evaluate(() => localStorage.getItem("fun-checkers-side"))).toBe("white");
   // Playing White means the engine (Black) opens, so it moves without a tap.
   await page.waitForFunction(() => window.__checkers!.game.board().toMove === 2);

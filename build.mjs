@@ -18,9 +18,13 @@ const dist = join(root, "dist");
 // name are READ FROM src/registry.ts (tools/registry-titles.mjs), so a game
 // registered without a page — or a page without a game — cannot happen, and the
 // tab reads the game's name rather than its slug.
+// Dev fixtures (the placeholder game) get a page and ride into the bundle only when
+// the caller sets FUN_DEV_GAMES=1 — the unit and e2e runs do; the deploy build does
+// not. Substituted into the bundle as a literal so the browser never touches `process`.
+const DEV_GAMES = process.env.FUN_DEV_GAMES === "1";
 const REGISTRY_SOURCE = await readFile(join(root, "src/registry.ts"), "utf8");
-const TITLES = readRegistryTitles(REGISTRY_SOURCE);
-const GAME_PAGES = ["", ...registryPages(REGISTRY_SOURCE)];
+const TITLES = readRegistryTitles(REGISTRY_SOURCE, { devGames: DEV_GAMES });
+const GAME_PAGES = ["", ...registryPages(REGISTRY_SOURCE, { devGames: DEV_GAMES })];
 
 // Tier-2 wrapped games: their vendored bundle ships under src/games/<id>/vendor/
 // and is served at /<id>/vendor/ for the sandboxed iframe to load same-origin.
@@ -64,6 +68,7 @@ await build({
   sourcemap: true,
   outdir: dist,
   entryNames: "[name]",
+  define: { "process.env.FUN_DEV_GAMES": JSON.stringify(DEV_GAMES ? "1" : "") },
 });
 // esbuild names outputs after their entry file; rename to the referenced names.
 async function rename(from, to) {

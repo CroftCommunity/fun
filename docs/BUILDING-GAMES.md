@@ -345,7 +345,9 @@ free record never expires. Undo state is part of your record. `?r=` never touche
 store. Storage denied → no card, never an error. A stored record is validated on the way
 in and a rejected one is cleared with its reason at `debug` — a store written by a previous
 version is untrusted data. The placeholder (`src/games/placeholder.ts`) is the smallest
-possible client: its counter is its record.
+possible client: its counter is its record. It is a dev fixture — in the catalog only
+under `FUN_DEV_GAMES=1`, which the unit and e2e runs set and the deploy build never does
+(`src/registry.ts`).
 
 #### A worked example — the versus archetype (Othello, `src/games/othello/othello.ts`)
 

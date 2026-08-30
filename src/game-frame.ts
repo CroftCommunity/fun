@@ -368,7 +368,7 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
   const sectionsFor = (kind: SheetKind, s: GameFrameSpec): HTMLElement => {
     if (kind === "setup") {
       const body = renderSettingsSheet({ rows: [...(s.setup ?? [])] });
-      const start = el("button", { class: "gf-start", type: "button" }, "▸ Start");
+      const start = el("button", { class: "gf-sheet-start", type: "button" }, "▸ Start");
       start.addEventListener("click", () => {
         closeSheet();
         s.onStart?.();

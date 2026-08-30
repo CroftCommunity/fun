@@ -22,7 +22,7 @@ async function chooseObjective(page: Page, objective: string): Promise<void> {
   await expect(sheet).toBeVisible();
   await sheet.locator('[data-setting="board"] input[value="free"]').check();
   await sheet.locator(`[data-setting="objective"] input[value="${objective}"]`).check();
-  await sheet.locator(".gf-start").click();
+  await sheet.locator(".gf-sheet-start").click();
   await expect(sheet).toBeHidden();
 }
 

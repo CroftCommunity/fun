@@ -153,7 +153,7 @@ test("the difficulty picker persists the chosen level", async ({ page }) => {
   await ready(page);
   await page.locator('.gf-verb[data-verb="new"]').click();
   await page.locator('.gf-sheet [data-setting="level"] input[value="Hard"]').check();
-  await page.locator(".gf-sheet .gf-start").click();
+  await page.locator(".gf-sheet .gf-sheet-start").click();
   await expect(page.locator(".gf-mode")).toHaveText("Hard");
   expect(await page.evaluate(() => localStorage.getItem("fun-furrow-level"))).toBe("Hard");
 });

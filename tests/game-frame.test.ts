@@ -251,13 +251,13 @@ describe("renderGameFrame — the sheets", () => {
     frame.openSheet("setup");
     let ids = [...frame.root.querySelectorAll(".gf-sheet .sheet-row")].map((r) => r.getAttribute("data-setting"));
     expect(ids).toEqual(["level"]);
-    frame.root.querySelector<HTMLButtonElement>(".gf-sheet .gf-start")!.click();
+    frame.root.querySelector<HTMLButtonElement>(".gf-sheet .gf-sheet-start")!.click();
     expect(onStart).toHaveBeenCalledTimes(1);
     expect(frame.root.querySelector(".gf-sheet")).toBeNull(); // Start closes the sheet
     frame.openSheet("settings");
     ids = [...frame.root.querySelectorAll(".gf-sheet .sheet-row")].map((r) => r.getAttribute("data-setting"));
     expect(ids).toEqual(["hints", "assist", "tutor"]);
-    expect(frame.root.querySelector(".gf-sheet .gf-start")).toBeNull();
+    expect(frame.root.querySelector(".gf-sheet .gf-sheet-start")).toBeNull();
   });
 
   it("a second openSheet replaces the first — one sheet in the DOM, never two", () => {
@@ -266,7 +266,7 @@ describe("renderGameFrame — the sheets", () => {
     frame.openSheet("setup");
     expect(frame.root.querySelectorAll(".gf-sheet")).toHaveLength(1);
     expect(frame.root.querySelectorAll(".gf-scrim")).toHaveLength(1);
-    expect(frame.root.querySelector(".gf-sheet .gf-start")).not.toBeNull();
+    expect(frame.root.querySelector(".gf-sheet .gf-sheet-start")).not.toBeNull();
   });
 
   it("Escape and the scrim close the sheet and return focus to the verb that opened it", () => {

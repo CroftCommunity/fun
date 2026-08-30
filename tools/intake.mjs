@@ -54,7 +54,9 @@ const dims = (f) => {
  */
 export function gameAliases() {
   const src = sh("cat", [join(root, "src", "registry.ts")]).toString();
-  const body = src.slice(src.indexOf("export const REGISTRY"));
+  // The SHIPPED half only: art is dropped for games the site ships, and the dev
+  // fixtures after it (the placeholder) are not a drop target.
+  const body = src.slice(src.indexOf("export const SHIPPED"));
   // Read each entry AS A UNIT rather than collecting ids and titles into two
   // lists and zipping them by index. The zip was silently order-dependent, and
   // the first `subtitle:` in the registry broke it: `title:` matches inside the
