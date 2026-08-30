@@ -284,10 +284,13 @@ mod tests {
         assert_eq!(take.san, "exd5");
 
         let castle = assess_for_move(&pos_of("4k3/8/8/8/8/8/8/4K2R w K - 0 1"));
-        assert!(
-            castle.moves.iter().any(|m| m.castles),
-            "O-O is offered and flagged"
+        let flagged: Vec<&TutorMove> = castle.moves.iter().filter(|m| m.castles).collect();
+        assert_eq!(
+            flagged.len(),
+            1,
+            "exactly the castle is flagged — no king step, no rook move"
         );
+        assert_eq!(flagged[0].san, "O-O");
 
         let promo = assess_for_move(&pos_of("7k/4P3/8/8/8/8/8/4K3 w - - 0 1"));
         assert_eq!(
