@@ -477,7 +477,7 @@ mod tests {
     #[test]
     fn malformed_fens_are_errors_never_panics() {
         // RULES §2, each named malformation from the plan.
-        let cases: [(&str, FenError); 8] = [
+        let cases: [(&str, FenError); 10] = [
             // seven ranks
             (
                 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP w KQkq - 0 1",
@@ -519,6 +519,16 @@ mod tests {
                 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - x 1",
                 FenError::Clock,
             ),
+            // a rank summing to SEVEN — the end-of-rank site, distinct from
+            // the mid-rank overflow above, naming the same rank number
+            (
+                "rnbqkbnr/ppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+                FenError::RankSum(7),
+            ),
+            // the side that just moved is still in check (White to move while
+            // the h8 king sits on the white queen's file) — an unreachable
+            // position whose acceptance would offer a king capture
+            ("5r1k/5p2/8/7Q/8/8/8/7K w - - 0 1", FenError::OppositeCheck),
         ];
         for (fen, want) in cases {
             assert_eq!(Board::from_fen(fen), Err(want), "for {fen}");

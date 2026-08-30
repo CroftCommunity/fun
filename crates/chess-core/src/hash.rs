@@ -154,4 +154,32 @@ mod tests {
         );
         assert_ne!(position_key(&with_ep, true), base, "capturable ep is keyed");
     }
+
+    #[test]
+    fn the_fold_follows_the_documented_table_order_exactly() {
+        // RULES §15's contract as xor relations, so the fold operation itself
+        // (xor, never or/and) and every index are pinned to the table order.
+        use crate::board::START_FEN;
+        let start = Board::from_fen(START_FEN).expect("start parses");
+        let base = position_key(&start, false);
+        for bit in 0..4u8 {
+            let mut b = start;
+            b.castling &= !(1 << bit);
+            assert_eq!(
+                position_key(&b, false),
+                base ^ KEYS[PIECE_KEYS + 1 + usize::from(bit)],
+                "castling bit {bit} moves the key by exactly its entry"
+            );
+        }
+        for file in [0u8, 7] {
+            let mut b = start;
+            b.ep = Some(40 + file); // rank index 5: the White-to-move ep rank
+            assert_eq!(
+                position_key(&b, true),
+                base ^ KEYS[PIECE_KEYS + 5 + usize::from(file)],
+                "ep file {file} moves the key by exactly its entry"
+            );
+            assert_eq!(position_key(&b, false), base, "and only when capturable");
+        }
+    }
 }

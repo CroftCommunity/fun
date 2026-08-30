@@ -918,6 +918,167 @@ To move: White. Moves are long algebraic like e2e4; promote with a letter, e7e8q
         assert_eq!(result(&pos), Some(MatchResult::Draw));
     }
 
+    #[test]
+    fn position_equality_reads_board_and_logical_history() {
+        let a = pos_of("k7/8/8/8/8/8/8/K6R w - - 4 3");
+        let (b, _) = walk(
+            pos_of("k7/8/8/8/8/8/8/K6R w - - 0 1"),
+            "h1h2 a8a7 h2h1 a7a8",
+        );
+        assert_eq!(a.board.to_fen(), b.board.to_fen(), "identical FEN");
+        assert_ne!(a, b, "different logical histories are different positions");
+        let c = a;
+        assert_eq!(a, c);
+    }
+
+    #[test]
+    fn the_history_never_outgrows_its_array_and_the_clock_ends_the_game_first() {
+        // RULES §11's boundary: 100 reversible plies from a fresh position
+        // fill the history exactly; ply 100 is the clock's draw and the
+        // final push is the skipped one (a `<=` in push_key panics here).
+        // The rook snakes distinct squares (files c..h, ranks 1..7, so it
+        // never checks a8/b8) while the black king toggles — no position
+        // occurs three times before the clock ends the game.
+        let mut pos = pos_of("k7/8/8/8/8/8/8/1KR5 w - - 0 1");
+        let mut rook = crate::board::square_from_text("c1").expect("sq");
+        let mut snake: Vec<u8> = Vec::new();
+        for rank in 1..8u8 {
+            let files: Vec<u8> = if rank % 2 == 1 {
+                (2..8).collect()
+            } else {
+                (2..8).rev().collect()
+            };
+            for file in files {
+                snake.push((rank - 1) * 8 + file);
+            }
+        }
+        snake.retain(|&sq| sq != rook);
+        // 41 distinct squares feed the first pass; the walk needs 50 white
+        // moves, so the tail retraces — a revisit is only ever a SECOND
+        // occurrence, never a third.
+        let back: Vec<u8> = snake.iter().rev().skip(1).take(20).copied().collect();
+        snake.extend(back);
+        let mut black_on_a8 = true;
+        for ply in 1..=100u32 {
+            assert!(result(&pos).is_none(), "live before ply {ply}");
+            let mv = if ply % 2 == 1 {
+                let to = snake.remove(0);
+                let mv = Move {
+                    from: rook,
+                    to,
+                    promo: 0,
+                };
+                rook = to;
+                mv
+            } else {
+                let (from, to) = if black_on_a8 {
+                    ("a8", "b8")
+                } else {
+                    ("b8", "a8")
+                };
+                black_on_a8 = !black_on_a8;
+                Move {
+                    from: crate::board::square_from_text(from).expect("sq"),
+                    to: crate::board::square_from_text(to).expect("sq"),
+                    promo: 0,
+                }
+            };
+            assert!(
+                legal_moves(&pos.board).contains(&mv),
+                "ply {ply}: the scripted move must be legal"
+            );
+            pos = pos.play(mv);
+        }
+        assert_eq!(pos.board.halfmove, 100);
+        assert_eq!(
+            result(&pos),
+            Some(MatchResult::Draw),
+            "the clock's draw, in bounds"
+        );
+    }
+
+    #[test]
+    fn move_to_text_round_trips_through_parse() {
+        // RULES §12: the UCI form, every promotion letter included — the
+        // audit found move_to_text had no caller in any test.
+        let pos = pos_of("7k/4P3/8/8/8/8/8/4K3 w - - 0 1");
+        for (promo, text) in [(1u8, "e7e8n"), (2, "e7e8b"), (3, "e7e8r"), (4, "e7e8q")] {
+            let mv = Move {
+                from: 52,
+                to: 60,
+                promo,
+            };
+            assert_eq!(<Chess as Adversary>::move_to_text(mv), text);
+            assert_eq!(<Chess as Adversary>::parse_move(&pos, text), Some(mv));
+        }
+        assert_eq!(
+            <Chess as Adversary>::move_to_text(Move {
+                from: 12,
+                to: 28,
+                promo: 0
+            }),
+            "e2e4"
+        );
+    }
+
+    #[test]
+    fn san_covers_pushes_quiet_letters_and_every_promotion_piece() {
+        assert_eq!(san(START_FEN, "e2e4"), "e4", "a pawn push is its square");
+        // Each quiet fixture carries an inert h7 pawn: a bare K v K (or
+        // K+B v K) is an insufficient-material TERMINAL, whose legal_moves
+        // are empty through the trait — the first draft learned that live.
+        assert_eq!(san("4k3/7p/8/8/8/8/3K4/8 w - - 0 1", "d2d3"), "Kd3");
+        assert_eq!(san("4k3/7p/8/8/2B5/8/8/4K3 w - - 0 1", "c4d5"), "Bd5");
+        let p = pos_of("7k/4P3/8/8/8/8/8/4K3 w - - 0 1");
+        for (uci, want) in [("e7e8n", "e8=N"), ("e7e8b", "e8=B"), ("e7e8r", "e8=R+")] {
+            let mv = <Chess as Adversary>::parse_move(&p, uci).expect("legal");
+            assert_eq!(san_of(&p, mv), want);
+        }
+    }
+
+    #[test]
+    fn the_fullmove_number_increments_after_black_only() {
+        let start = Position::start();
+        let e4 = <Chess as Adversary>::parse_move(&start, "e2e4").expect("legal");
+        let after_white = <Chess as Adversary>::apply(&start, e4);
+        assert_eq!(after_white.board.fullmove, 1, "still move 1 after White");
+        let e5 = <Chess as Adversary>::parse_move(&after_white, "e7e5").expect("legal");
+        assert_eq!(
+            <Chess as Adversary>::apply(&after_white, e5).board.fullmove,
+            2
+        );
+    }
+
+    #[test]
+    fn an_uncapturable_ep_square_does_not_distinguish_positions() {
+        // FIDE 9.2.3.1's other direction (the audit found only the capturable
+        // half tested): no white pawn can take the pushed pawn, so the push
+        // position and its ep-less recurrences are the SAME position — the
+        // third occurrence lands at ply 9.
+        let start = pos_of("k7/3p4/8/8/8/8/8/K7 b - - 0 1");
+        let (_, r) = walk(start, "d7d5 a1b1 a8b8 b1a1 b8a8 a1b1 a8b8 b1a1 b8a8");
+        assert_eq!(r[7], None, "live at ply 8");
+        assert_eq!(
+            r[8],
+            Some(MatchResult::Draw),
+            "draw at ply 9 — the uncapturable ep never counted"
+        );
+    }
+
+    #[test]
+    fn a_white_capturable_ep_counts_via_the_white_capturer_arm() {
+        // The mirror of D4(b) with WHITE as the capturer — the arm D4(b)
+        // never exercises. The b-file/c5 geometry is chosen so a mutated
+        // file computation cannot find the capturer by accident.
+        let start = pos_of("k7/1p6/8/2P5/8/8/8/K7 b - - 0 1");
+        let (_, r) = walk(start, "b7b5 a1b1 a8b8 b1a1 b8a8 a1b1 a8b8 b1a1 b8a8 a1b1");
+        assert_eq!(
+            r[8], None,
+            "live at ply 9 — the capturable push position is distinct"
+        );
+        assert_eq!(r[9], Some(MatchResult::Draw), "draw at ply 10");
+    }
+
     /// One-shot generator for the committed vectors — run manually:
     /// `cargo test -p chess-core --release regenerate_vectors -- --ignored`.
     #[test]

@@ -1008,6 +1008,76 @@ mod tests {
     }
 
     #[test]
+    fn kings_may_never_stand_adjacent() {
+        // RULES §8: the enemy king guards its ring — a horizontally adjacent
+        // square is as barred as a diagonal one.
+        let (_, m) = moves_of("8/8/8/8/4K1k1/8/8/8 w - - 0 1");
+        for to in ["f3", "f4", "f5"] {
+            assert!(!has(&m, "e4", to), "{to} touches the black king");
+        }
+        for to in ["d3", "d4", "d5", "e3", "e5"] {
+            assert!(has(&m, "e4", to), "{to} is an ordinary king step");
+        }
+    }
+
+    #[test]
+    fn queenside_rights_are_lost_by_their_own_causes_too() {
+        // RULES §5, mirroring the kingside test: the a1 rook's move clears
+        // only Q; a capture ON a8 clears only q.
+        let open = Board::from_fen("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1").expect("fen");
+        let after = apply_move(
+            &open,
+            Move {
+                from: 0,
+                to: 8,
+                promo: 0,
+            },
+        );
+        assert_eq!(
+            after.castling,
+            CASTLE_WK | CASTLE_BK | CASTLE_BQ,
+            "a1 rook move clears Q"
+        );
+
+        let b = Board::from_fen("r3k2r/8/8/8/8/8/6B1/R3K2R w KQkq - 0 1").expect("fen");
+        let g2 = crate::board::square_from_text("g2").expect("sq");
+        let a8 = crate::board::square_from_text("a8").expect("sq");
+        let after = apply_move(
+            &b,
+            Move {
+                from: g2,
+                to: a8,
+                promo: 0,
+            },
+        );
+        assert_eq!(
+            after.castling,
+            CASTLE_WK | CASTLE_WQ | CASTLE_BK,
+            "a capture on a8 clears q"
+        );
+    }
+
+    #[test]
+    fn perft_zero_is_one_and_divide_matches_the_totals() {
+        // The depth-0 arm and the divergence locator, exercised on the green
+        // path (they otherwise only run inside a failing perft's message).
+        let start = Board::start();
+        assert_eq!(perft(&start, 0), 1, "one empty move sequence");
+        let d1 = divide(&start, 1);
+        assert_eq!(d1.len(), 20);
+        assert!(
+            d1.iter().all(|&(_, n)| n == 1),
+            "depth-1 subtrees are single moves"
+        );
+        let d2 = divide(&start, 2);
+        assert_eq!(
+            d2.iter().map(|&(_, n)| n).sum::<u64>(),
+            400,
+            "the split sums to perft(2)"
+        );
+    }
+
+    #[test]
     fn legal_moves_are_in_ascending_from_to_promo_order() {
         // RULES §13: the order is part of the contract.
         let m = legal_moves(&Board::start());
