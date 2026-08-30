@@ -1,0 +1,17 @@
+[package]
+name = "mahjong-wasm"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Browser binding over mahjong-core + mahjong-solver for the shelf: raw C-ABI + serde-JSON (no wasm-bindgen). Holds one game, integer-arg level/daily/seed/packed starts, pair/shuffle/undo moves, board/hint/hash/outcome JSON via an output buffer. The core decides FREE and matching; the binding never panics."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+mahjong-core = { workspace = true }
+mahjong-solver = { workspace = true }
+pond-outcome = { workspace = true }
+serde = { workspace = true }
+serde_json.workspace = true
