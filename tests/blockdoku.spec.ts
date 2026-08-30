@@ -188,7 +188,7 @@ test("the verbs, the chip, and the New board sheet's difficulty", { tag: "@smoke
   const sheet = page.locator(".gf-sheet");
   await expect(sheet.locator('[data-setting="difficulty"] .sheet-choice-opt')).toHaveCount(4);
   await sheet.locator('[data-setting="difficulty"] input[value="hard"]').check();
-  await sheet.locator(".gf-start").click();
+  await sheet.locator(".gf-sheet-start").click();
   await expect(sheet).toBeHidden();
   await expect(page.locator(".gf-mode")).toContainText(/hard/i);
 });

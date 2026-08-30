@@ -1,6 +1,13 @@
 //! The game catalog the drawer lists. Every entry with a `load` is playable;
-//! `soon` entries have no module yet. The placeholder is playable to exercise
-//! the chrome.
+//! `soon` entries have no module yet.
+//!
+//! Two halves. `SHIPPED` is the site: `build.mjs` reads THAT array as text
+//! (`tools/registry-titles.mjs`) for the page list and each page's title, so the
+//! parser's anchor is its name. `DEV_ONLY` holds the placeholder — the frame's own
+//! exercise, which the unit and e2e suites mount through the real chrome — and it
+//! rides along only when `FUN_DEV_GAMES=1` (vitest.config.ts, playwright.config.ts).
+//! The deploy build never sets it, so `/placeholder/` is not a page and not a
+//! drawer item on fun.croft.ing.
 
 import type { GameEntry } from "./contract.js";
 import { placeholderModule } from "./games/placeholder.js";
@@ -21,16 +28,8 @@ import { colorSortModule } from "./games/color-sort/color-sort.js";
 import { orchardDropModule } from "./games/orchard-drop/orchard-drop.js";
 import { cribbageModule } from "./games/cribbage/cribbage.js";
 
-export const REGISTRY: readonly GameEntry[] = [
-  {
-    id: "placeholder",
-    title: "Placeholder",
-    emoji: "🎲",
-    status: "playable",
-    icon: true,
-    pitch: "Nothing to play; everything to prove.",
-    load: placeholderModule,
-  },
+/** What fun.croft.ing ships, in drawer order. */
+export const SHIPPED: readonly GameEntry[] = [
   {
     id: "solitaire",
     title: "Solitaire",
@@ -146,6 +145,30 @@ export const REGISTRY: readonly GameEntry[] = [
   },
   { id: "cribbage", title: "Cribbage", emoji: "🎴", status: "playable", icon: true, group: "versus", load: cribbageModule },
 ];
+
+/** Dev fixtures: mounted by the test runs, never on the site. */
+const DEV_ONLY: readonly GameEntry[] = [
+  {
+    id: "placeholder",
+    title: "Placeholder",
+    emoji: "🎲",
+    status: "playable",
+    icon: true,
+    pitch: "Nothing to play; everything to prove.",
+    load: placeholderModule,
+  },
+];
+
+/** The catalog for a build: the shipped games, plus the dev fixtures after them when asked. */
+export function catalog({ devGames }: { devGames: boolean }): readonly GameEntry[] {
+  return devGames ? [...SHIPPED, ...DEV_ONLY] : SHIPPED;
+}
+
+// `process.env.FUN_DEV_GAMES` is substituted at bundle time (build.mjs `define`), so
+// the browser never evaluates `process`; under vitest and playwright it is the real
+// env. Written as a literal ternary so a production bundle folds the dev branch away
+// and tree-shakes the placeholder module with it (tests/registry.test.ts pins this).
+export const REGISTRY: readonly GameEntry[] = process.env.FUN_DEV_GAMES === "1" ? catalog({ devGames: true }) : SHIPPED;
 
 /** Look up a catalog entry by id. */
 export function findGame(id: string): GameEntry | undefined {

@@ -149,7 +149,7 @@ test("New deal deals a different game (the up-turned cards change)", async ({ pa
   // Daily or free is setup: the New deal sheet chooses, Start deals.
   await page.locator('.gf-verb[data-verb="new"]').click();
   await page.locator('.gf-sheet [data-setting="deal"] input[value="free"]').check();
-  await page.locator(".gf-sheet .gf-start").click();
+  await page.locator(".gf-sheet .gf-sheet-start").click();
   await page.waitForFunction((h) => window.__solitaire!.game.currentHash() !== h, before);
   const after = await page.evaluate(() => window.__solitaire!.game.currentHash());
   expect(after).not.toBe(before);

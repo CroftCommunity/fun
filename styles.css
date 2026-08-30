@@ -521,7 +521,9 @@ body:has(> .play-area > .gf) {
   justify-content: flex-end;
   padding-top: 0.5rem;
 }
-.gf-start {
+/* Its own class, not `.gf-start`: that is the start SCREEN below, and when the two
+   shared a name this button's 46px height cropped every game's poster to a strip. */
+.gf-sheet-start {
   font: inherit;
   font-weight: 600;
   height: 46px;
@@ -532,7 +534,7 @@ body:has(> .play-area > .gf) {
   color: var(--accent-ink);
   cursor: pointer;
 }
-.gf-start:focus-visible {
+.gf-sheet-start:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }

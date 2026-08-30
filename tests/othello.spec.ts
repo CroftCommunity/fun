@@ -71,7 +71,7 @@ test("the New game sheet offers four levels, topped by Expert, and its choice pe
   expect(labels).toEqual(["Easy", "Medium", "Hard", "Expert"]);
   await level.locator('input[value="Hard"]').check();
   expect(await page.evaluate(() => localStorage.getItem("fun-othello-level"))).toBe("Hard");
-  await sheet.locator(".gf-start").click();
+  await sheet.locator(".gf-sheet-start").click();
   await expect(sheet).toBeHidden();
   await expect(page.locator(".gf-mode")).toHaveText("Hard");
 });

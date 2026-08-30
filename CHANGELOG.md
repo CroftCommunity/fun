@@ -12,6 +12,14 @@ earlier is in `git log`.
 
 ## 2026-08
 
+- 2026-08-30 **shelf:** every game's start screen is the poster again — the splash art,
+  the title, the pitch and Play over the whole frame. It had been rendering as a 46px
+  bordered strip with the art cropped away in both palettes: the setup sheet's Start
+  button and the start screen shared one CSS class, and the button's height won. The
+  e2e now measures the poster's height rather than asserting it is visible.
+- 2026-08-30 **shelf:** the Placeholder "game" is off the site — no `/placeholder/`
+  page, not in the drawer, not in the bundle. It is the frame's test fixture and stays
+  one: the unit and e2e runs build it in under `FUN_DEV_GAMES=1`.
 - 2026-08-30 **furrow:** inside the frame. Seats carry the stores and say "go again" when a
   seed lands in a store; Difficulty is the New game card; the tutor and Millet, the local-AI
   opponent, are in Settings with the measured disclosure on the row; the rules sentence
