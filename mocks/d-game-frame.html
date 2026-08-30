@@ -223,6 +223,33 @@
 .desk-splash .body { padding: 40px 36px; display: flex; flex-direction: column; justify-content: center; }
 .desk-splash h2 { font-size: 3rem; margin: 0; line-height: 1; }
 
+
+/* --- side-by-side rows, the smaller desktop, the continue card ------------ */
+.dir-d .h-wrap { max-width: 1480px; }
+.h-pair-title { font-size: 1.05rem; margin: 2.6rem 0 .2rem; }
+.h-pair { display: flex; gap: 24px; align-items: flex-start; overflow-x: auto; padding: 1rem 0 1.5rem; }
+.screen.desktop-s { width: 1000px; height: 680px; border-radius: 10px; }
+.desk-s .rail { flex: 0 0 280px; padding: 14px 16px; gap: 12px; }
+.desk-s .rail .verbs .btn { padding: 0 6px; font-size: .88rem; white-space: nowrap; }
+.desk-s .othello, .desk-s .m3 { max-width: 520px; }
+.desk-s .felt { max-width: 640px; aspect-ratio: 640 / 470; }
+.desk-s .desk-splash { grid-template-columns: 1fr 360px; }
+.desk-s .desk-splash .body { padding: 30px 28px; }
+.desk-s .desk-splash h2 { font-size: 2.6rem; }
+.stage-cont { place-items: center; }
+.cont { display: flex; gap: 16px; align-items: center; background: var(--raise); border: 1px solid var(--line); border-radius: 18px; padding: 16px; max-width: 366px; width: 100%; }
+.cont img { width: 96px; height: 96px; border-radius: 18px; object-fit: cover; flex: 0 0 auto; }
+.cont .ct { min-width: 0; }
+.cont .eyebrow { font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+.cont h2 { margin: 2px 0 0; font-size: 1.5rem; line-height: 1.1; }
+.cont p { margin: 4px 0 10px; color: var(--dim); font-size: .85rem; }
+.cont .cbtns { display: flex; gap: 8px; flex-wrap: wrap; }
+.cont .cbtns .btn { height: 40px; padding: 0 14px; }
+.desk-s .cont { max-width: 520px; padding: 22px; gap: 22px; }
+.desk-s .cont img { width: 128px; height: 128px; }
+.modal { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 440px; background: var(--raise); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; box-shadow: 0 20px 60px rgb(0 0 0 / .5); }
+.modal h3 { margin: 0 0 4px; font-size: 1.15rem; }
+
 /* --- annotations on the harness page ------------------------------------ */
 .rules { counter-reset: r; list-style: none; padding: 0; margin: 1rem 0 0; display: grid; gap: .8rem; }
 .rules li { counter-increment: r; padding-left: 2.4rem; position: relative; max-width: 78ch; }
@@ -287,359 +314,21 @@ pre.diag { background: var(--h-panel); border: 1px solid var(--h-rule); border-r
     <li><b>Thinking is a state, not a line.</b> The opponent's seat pulses and its sub-label reads "thinking…"; the dock's verbs disable. No text is appended anywhere.</li>
     <li><b>Three kinds of control, three homes.</b> <b>Verbs</b> act on the game in progress → the dock (3–5, never more). <b>Setup</b> decides the game before it starts → the start screen and the "New game" sheet, read-only in the rail while playing. <b>Preferences</b> outlive a game → the settings sheet, common section first, game section second. A "Difficulty" select beside the board is setup wearing a verb's clothes; it moves.</li>
     <li><b>The instruction sentence is not a band.</b> "Tap a highlighted square to place your disc…" belongs on the start screen, in How to play, and as a one-time toast over the stage. It costs 60px of every game's height today.</li>
-    <li><b>Every URL opens on a start screen</b>, desktop included: the art, the name, one line, the setup card, Play. Loose Ends already does this; the frame makes it the rule. "Continue" is shown only when a game is actually in progress — which needs a progress store the shelf does not have yet (see open questions).</li>
+    <li><b>Every URL opens on a start screen</b>, desktop included: the art, the name, one line, the setup card, Play. Loose Ends already does this; the frame makes it the rule. On a return visit with a game in progress the poster becomes a <b>continue card</b> — icon, name, a summary line from the progress store, Continue / New game — drawn inside the frame so Continue is a fade, not a navigation (row 2).</li>
     <li><b>One panel, two shapes.</b> The dock (phone) and the rail (desktop) are the same component reading the same spec from the game; the breakpoint reflows it. A game declares <code>{ meters, verbs, setup, preferences }</code> once and never touches the chrome.</li>
   </ol>
 
-  <h2>Mobile — 390 × 844</h2>
-  <div class="h-rail">
-
-    <!-- SPLASH -->
-    <figure class="h-frame">
-      <figcaption><b>Start screen</b> — every URL opens here; the setup card is the "New game" sheet, pre-filled</figcaption>
-      <div class="screen" data-theme="dark">
-        <div class="app">
-          <div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">♪</button><button class="ib">☾</button><button class="ib">⚙</button></div>
-          <div class="splash">
-            <div class="art" style="background-image:url(brand/icon/othello.jpg);background-size:130%;background-position:center 20%"></div>
-            <div class="veil"></div>
-            <div class="body">
-              <h2 class="dsp">Othello</h2>
-              <p class="pitch">Flank a line of discs to flip it. Most discs when neither side can move wins.</p>
-              <div class="setup">
-                <div class="srow"><div class="l">Opponent<small>The Engine 🤖 · tells you when it knows it has won</small></div><span class="seg"><span>Easy</span><span class="on">Medium</span><span>Hard</span><span>Expert</span></span></div>
-                <div class="srow"><div class="l">You play</div><span class="seg"><span class="on">● Black, opens</span><span>○ White</span></span></div>
-              </div>
-              <button class="btn primary block">▸ Play</button>
-              <div class="links"><span>How to play</span><span>Open in new tab ↗</span></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </figure>
-
-    <!-- A: OTHELLO, YOUR MOVE -->
-    <figure class="h-frame">
-      <figcaption><b>A · Dock</b> — Othello, your move. Seats in the meter row, verbs in the dock, the banner is a toast</figcaption>
-      <div class="screen" data-theme="dark">
-        <div class="app">
-          <div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">♪</button><button class="ib">☾</button><button class="ib">⚙</button></div>
-          <div class="gamebar"><button class="ib">‹</button><span class="title dsp">Othello</span><span class="mode">Medium</span><span class="sp"></span><button class="ib">⋯</button></div>
-          <div class="meter">
-            <div class="seat active"><span class="disc b"></span><span class="who">You<span class="sub">your move</span></span><span class="n">2</span></div>
-            <span class="vs">vs</span>
-            <div class="seat"><span class="disc w"></span><span class="who">The Engine<span class="sub">&nbsp;</span></span><span class="n">2</span></div>
-          </div>
-          <div class="stage">
-            <div class="othello" data-board="o1"></div>
-            <div class="toast">Tap a glowing square to place your disc</div>
-          </div>
-          <div class="dock">
-            <button class="verb" disabled><i>↶</i>Undo</button>
-            <button class="verb primary"><i>✦</i>Hint</button>
-            <button class="verb"><i>⟳</i>New game</button>
-            <button class="verb"><i>☰</i>Settings</button>
-          </div>
-        </div>
-      </div>
-    </figure>
-
-    <!-- A: OTHELLO, ENGINE THINKING -->
-    <figure class="h-frame">
-      <figcaption><b>A · Dock</b> — same frame, the engine's move. Nothing moved: the seat pulses, the verbs grey out</figcaption>
-      <div class="screen" data-theme="dark">
-        <div class="app">
-          <div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">♪</button><button class="ib">☾</button><button class="ib">⚙</button></div>
-          <div class="gamebar"><button class="ib">‹</button><span class="title dsp">Othello</span><span class="mode">Medium</span><span class="sp"></span><button class="ib">⋯</button></div>
-          <div class="meter">
-            <div class="seat"><span class="disc b"></span><span class="who">You<span class="sub">&nbsp;</span></span><span class="n">4</span></div>
-            <span class="vs">vs</span>
-            <div class="seat thinking"><span class="disc w"></span><span class="who">The Engine<span class="sub">thinking…</span></span><span class="n">1</span></div>
-          </div>
-          <div class="stage">
-            <div class="othello dim" data-board="o2"></div>
-          </div>
-          <div class="dock">
-            <button class="verb" disabled><i>↶</i>Undo</button>
-            <button class="verb primary" disabled><i>✦</i>Hint</button>
-            <button class="verb" disabled><i>⟳</i>New game</button>
-            <button class="verb"><i>☰</i>Settings</button>
-          </div>
-        </div>
-      </div>
-    </figure>
-
-    <!-- A: SOLITAIRE -->
-    <figure class="h-frame">
-      <figcaption><b>A · Dock</b> — Solitaire. Daily/free is setup (game bar chip); Moves is a meter; Undo · Hint · Auto · New are verbs</figcaption>
-      <div class="screen" data-theme="dark">
-        <div class="app">
-          <div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">♪</button><button class="ib">☾</button><button class="ib">⚙</button></div>
-          <div class="gamebar"><button class="ib">‹</button><span class="title dsp">Solitaire</span><span class="mode">Today's deal</span><span class="sp"></span><button class="ib">⋯</button></div>
-          <div class="meter">
-            <div class="stat"><b>12</b><span>moves</span></div>
-            <div class="stat"><b>18</b><span>in stock</span></div>
-            <div class="stat"><b>0 / 52</b><span>home</span></div>
-          </div>
-          <div class="stage">
-            <div class="felt">
-              <div class="row"><div class="cardz"></div><div class="slot"></div><div></div><div class="slot"></div><div class="slot"></div><div class="slot"></div><div class="slot"></div></div>
-              <div class="tab">
-                <div><div class="cardf r">10♦</div></div>
-                <div><div class="cardz"></div><div class="cardf r">K♥</div></div>
-                <div><div class="cardz"></div><div class="cardz"></div><div class="cardf">4♠</div></div>
-                <div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardf r">2♥</div></div>
-                <div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardf">2♣</div></div>
-                <div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardf">10♣</div></div>
-                <div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardf r">J♦</div></div>
-              </div>
-            </div>
-          </div>
-          <div class="dock">
-            <button class="verb"><i>↶</i>Undo</button>
-            <button class="verb primary"><i>✦</i>Hint</button>
-            <button class="verb"><i>⇈</i>Auto</button>
-            <button class="verb"><i>⟳</i>New deal</button>
-            <button class="verb"><i>☰</i>Settings</button>
-          </div>
-        </div>
-      </div>
-    </figure>
-
-    <!-- A: TRIO TUMBLE -->
-    <figure class="h-frame">
-      <figcaption><b>A · Dock</b> — Trio Tumble, the worst case. 13 pills in four rows become one meter row and four verbs; objectives + campaign nav move to the New board sheet</figcaption>
-      <div class="screen" data-theme="dark">
-        <div class="app">
-          <div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">♪</button><button class="ib">☾</button><button class="ib">⚙</button></div>
-          <div class="gamebar"><button class="ib">‹</button><span class="title dsp">Trio Tumble</span><span class="mode">Campaign · 3 of 6</span><span class="sp"></span><button class="ib">⋯</button></div>
-          <div class="meter">
-            <div class="stat"><b>420</b><span>score</span></div>
-            <div class="stat"><b>14</b><span>swaps left</span></div>
-            <div class="stat"><b class="stars">★★☆</b><span>900 next</span></div>
-          </div>
-          <div class="stage">
-            <div class="m3" data-board="m3"></div>
-          </div>
-          <div class="dock">
-            <button class="verb primary"><i>✦</i>Hint</button>
-            <button class="verb"><i>↺</i>Restart</button>
-            <button class="verb"><i>▦</i>Levels</button>
-            <button class="verb"><i>⟳</i>New board</button>
-            <button class="verb"><i>☰</i>Settings</button>
-          </div>
-        </div>
-      </div>
-    </figure>
-
-    <!-- SETTINGS SHEET -->
-    <figure class="h-frame">
-      <figcaption><b>Settings sheet</b> — the shared <code>settings-sheet.ts</code>, finally used: common rows first, the game's own rows second</figcaption>
-      <div class="screen" data-theme="dark">
-        <div class="app">
-          <div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">♪</button><button class="ib">☾</button><button class="ib">⚙</button></div>
-          <div class="gamebar"><button class="ib">‹</button><span class="title dsp">Othello</span><span class="mode">Medium</span><span class="sp"></span><button class="ib">⋯</button></div>
-          <div class="meter">
-            <div class="seat active"><span class="disc b"></span><span class="who">You<span class="sub">your move</span></span><span class="n">2</span></div>
-            <span class="vs">vs</span>
-            <div class="seat"><span class="disc w"></span><span class="who">The Engine<span class="sub">&nbsp;</span></span><span class="n">2</span></div>
-          </div>
-          <div class="stage"><div class="othello" data-board="o1"></div></div>
-          <div class="dock">
-            <button class="verb" disabled><i>↶</i>Undo</button><button class="verb primary"><i>✦</i>Hint</button><button class="verb"><i>⟳</i>New game</button><button class="verb"><i>☰</i>Settings</button>
-          </div>
-          <div class="scrim"></div>
-          <div class="sheet">
-            <div class="grip"></div>
-            <h3>Settings</h3>
-            <h4>Every game</h4>
-            <div class="srow"><div class="l">Hints<small>Off turns Hint into "I'm stuck", which ends the game honestly</small></div><span class="tog on"></span></div>
-            <div class="srow"><div class="l">Declare assistance used<small>Undo and hints mark the record</small></div><span class="tog on"></span></div>
-            <div class="srow"><div class="l">Sound</div><span class="tog on"></span></div>
-            <div class="srow"><div class="l">Vibration</div><span class="tog"></span></div>
-            <h4>Othello</h4>
-            <div class="srow"><div class="l">Tutor<small>Explains your options after each move</small></div><span class="tog"></span></div>
-            <div class="srow"><div class="l">Local AI opponent<small>Experimental · downloads 1.2 GB once</small></div><span class="tog"></span></div>
-          </div>
-        </div>
-      </div>
-    </figure>
-
-    <!-- NEW GAME SHEET -->
-    <figure class="h-frame">
-      <figcaption><b>New game sheet</b> — setup, separated from verbs. Same card as the start screen; changing it restarts</figcaption>
-      <div class="screen" data-theme="dark">
-        <div class="app">
-          <div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">♪</button><button class="ib">☾</button><button class="ib">⚙</button></div>
-          <div class="gamebar"><button class="ib">‹</button><span class="title dsp">Othello</span><span class="mode">Medium</span><span class="sp"></span><button class="ib">⋯</button></div>
-          <div class="meter">
-            <div class="seat"><span class="disc b"></span><span class="who">You<span class="sub">&nbsp;</span></span><span class="n">4</span></div>
-            <span class="vs">vs</span>
-            <div class="seat"><span class="disc w"></span><span class="who">The Engine<span class="sub">&nbsp;</span></span><span class="n">1</span></div>
-          </div>
-          <div class="stage"><div class="othello dim" data-board="o2"></div></div>
-          <div class="dock">
-            <button class="verb" disabled><i>↶</i>Undo</button><button class="verb primary"><i>✦</i>Hint</button><button class="verb"><i>⟳</i>New game</button><button class="verb"><i>☰</i>Settings</button>
-          </div>
-          <div class="scrim"></div>
-          <div class="sheet">
-            <div class="grip"></div>
-            <h3>New game</h3>
-            <p class="h-note" style="margin:0 0 6px;color:var(--dim)">The game in progress is abandoned — it is not recorded.</p>
-            <div class="srow"><div class="l">Opponent<small>The Engine 🤖</small></div><span class="seg"><span>Easy</span><span class="on">Medium</span><span>Hard</span><span>Expert</span></span></div>
-            <div class="srow"><div class="l">You play</div><span class="seg"><span class="on">● Black, opens</span><span>○ White</span></span></div>
-            <div style="display:flex;gap:10px;margin-top:14px"><button class="btn" style="flex:1">Keep playing</button><button class="btn primary" style="flex:1">▸ Start</button></div>
-          </div>
-        </div>
-      </div>
-    </figure>
-
-    <!-- C: BOARD-ONLY -->
-    <figure class="h-frame">
-      <figcaption><b>C · Board-only</b> — no dock; seats live in the game bar; every verb behind ⋯. Biggest board, but Undo is two taps away</figcaption>
-      <div class="screen" data-theme="dark">
-        <div class="app">
-          <div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">♪</button><button class="ib">☾</button><button class="ib">⚙</button></div>
-          <div class="gamebar" style="flex-basis:56px">
-            <button class="ib">‹</button>
-            <div class="seat active" style="min-width:0;height:36px"><span class="disc b"></span>You<span class="n">2</span></div>
-            <div class="seat" style="min-width:0;height:36px"><span class="disc w"></span>Engine<span class="n">2</span></div>
-            <span class="sp"></span><button class="ib">⋯</button>
-          </div>
-          <div class="stage" style="align-items:start;padding-top:24px"><div class="othello" data-board="o1"></div></div>
-          <div class="menu">
-            <div>↶ Undo</div><div>✦ Hint</div><div>⟳ New game…</div>
-            <div class="sep">☰ Settings</div><div>How to play</div><div>Open in new tab ↗</div>
-          </div>
-        </div>
-      </div>
-    </figure>
-
-  </div>
-
-  <h2>Desktop — 1180 × 740</h2>
-  <div class="h-rail">
-
-    <!-- DESKTOP SPLASH -->
-    <figure class="h-frame">
-      <figcaption><b>Start screen, desktop</b> — the art gets the width it was commissioned at</figcaption>
-      <div class="screen desktop" data-theme="dark">
-        <div class="app desk">
-          <div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">⏮</button><button class="ib">▶</button><span style="font-weight:600">The Unfolding Hour</span><button class="ib">⏭</button><span class="sp"></span><button class="ib">☾</button><button class="ib">⚙</button></div>
-          <div class="desk-splash">
-            <div class="art" style="background-image:url(brand/wide/othello.jpg)"><div class="veil"></div></div>
-            <div class="body">
-              <h2 class="dsp">Othello</h2>
-              <p class="pitch" style="color:var(--dim);margin:8px 0 18px">Flank a line of discs to flip it. Most discs when neither side can move wins. Against an engine that tells you, honestly, when it already knows it has won.</p>
-              <div class="setup">
-                <div class="srow"><div class="l">Opponent<small>The Engine 🤖</small></div><span class="seg"><span>Easy</span><span class="on">Medium</span><span>Hard</span><span>Expert</span></span></div>
-                <div class="srow"><div class="l">You play</div><span class="seg"><span class="on">● Black, opens</span><span>○ White</span></span></div>
-              </div>
-              <button class="btn primary block">▸ Play</button>
-              <div class="links" style="display:flex;gap:18px;margin-top:14px;color:var(--dim);font-size:.85rem"><span>How to play</span><span>Open in new tab ↗</span></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </figure>
-
-    <!-- B: RAIL, OTHELLO -->
-    <figure class="h-frame">
-      <figcaption><b>B · Rail</b> <span class="pill rec">recommended on desktop</span> — the dock stands up beside the board; setup is visible, read-only; settings are inline</figcaption>
-      <div class="screen desktop" data-theme="dark">
-        <div class="app desk">
-          <div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">⏮</button><button class="ib">▶</button><span style="font-weight:600">The Unfolding Hour</span><button class="ib">⏭</button><span class="sp"></span><button class="ib">☾</button><button class="ib">⚙</button></div>
-          <div class="below">
-            <div class="stage"><div class="othello" data-board="o2"></div></div>
-            <aside class="rail">
-              <div class="title"><button class="ib">‹</button><span class="dsp">Othello</span></div>
-              <div class="seats">
-                <div class="seat"><span class="disc b"></span><span class="who">You<span class="sub">&nbsp;</span></span><span class="n">4</span></div>
-                <div class="seat thinking"><span class="disc w"></span><span class="who">The Engine<span class="sub">thinking…</span></span><span class="n">1</span></div>
-              </div>
-              <div class="verbs">
-                <button class="btn" disabled style="opacity:.4">↶ Undo</button><button class="btn" disabled style="opacity:.4">✦ Hint</button>
-                <button class="btn">⟳ New game…</button><button class="btn">⇥ Resign</button>
-              </div>
-              <h4>This game</h4>
-              <div class="srow"><div class="l">Opponent</div><span style="color:var(--dim)">The Engine · Medium</span></div>
-              <div class="srow"><div class="l">You play</div><span style="color:var(--dim)">● Black, opened</span></div>
-              <h4>Settings</h4>
-              <div class="srow"><div class="l">Hints</div><span class="tog on"></span></div>
-              <div class="srow"><div class="l">Declare assistance</div><span class="tog on"></span></div>
-              <div class="srow"><div class="l">Tutor</div><span class="tog"></span></div>
-              <div class="foot"><span>How to play</span><span>Open in new tab ↗</span></div>
-            </aside>
-          </div>
-        </div>
-      </div>
-    </figure>
-
-    <!-- A DESKTOP -->
-    <figure class="h-frame">
-      <figcaption><b>A · Dock, desktop</b> — the phone frame widened. Honest about the width: it is still a phone, stretched</figcaption>
-      <div class="screen desktop" data-theme="dark">
-        <div class="app desk">
-          <div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">⏮</button><button class="ib">▶</button><span style="font-weight:600">The Unfolding Hour</span><button class="ib">⏭</button><span class="sp"></span><button class="ib">☾</button><button class="ib">⚙</button></div>
-          <div class="gamebar" style="justify-content:center"><button class="ib">‹</button><span class="title dsp">Othello</span><span class="mode">Medium</span><button class="ib">⋯</button></div>
-          <div class="meter">
-            <div class="seat active"><span class="disc b"></span><span class="who">You<span class="sub">your move</span></span><span class="n">2</span></div>
-            <span class="vs">vs</span>
-            <div class="seat"><span class="disc w"></span><span class="who">The Engine<span class="sub">&nbsp;</span></span><span class="n">2</span></div>
-          </div>
-          <div class="stage" style="padding:6px"><div class="othello" data-board="o1" style="max-width:440px"></div></div>
-          <div class="dock">
-            <button class="verb" disabled><i>↶</i>Undo</button><button class="verb primary"><i>✦</i>Hint</button><button class="verb"><i>⟳</i>New game</button><button class="verb"><i>☰</i>Settings</button>
-          </div>
-        </div>
-      </div>
-    </figure>
-
-    <!-- B: RAIL, SOLITAIRE -->
-    <figure class="h-frame">
-      <figcaption><b>B · Rail</b> — Solitaire. The wide felt finally has the room it needs; meters stack in the rail</figcaption>
-      <div class="screen desktop" data-theme="dark">
-        <div class="app desk">
-          <div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">⏮</button><button class="ib">▶</button><span style="font-weight:600">Sunset at the Harbor</span><button class="ib">⏭</button><span class="sp"></span><button class="ib">☾</button><button class="ib">⚙</button></div>
-          <div class="below">
-            <div class="stage">
-              <div class="felt" style="grid-template-rows:70px 1fr">
-                <div class="row"><div class="cardz"></div><div class="slot"></div><div></div><div class="slot"></div><div class="slot"></div><div class="slot"></div><div class="slot"></div></div>
-                <div class="tab">
-                  <div><div class="cardf r">10♦</div></div>
-                  <div><div class="cardz"></div><div class="cardf r">K♥</div></div>
-                  <div><div class="cardz"></div><div class="cardz"></div><div class="cardf">4♠</div></div>
-                  <div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardf r">2♥</div></div>
-                  <div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardf">2♣</div></div>
-                  <div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardf">10♣</div></div>
-                  <div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardf r">J♦</div></div>
-                </div>
-              </div>
-            </div>
-            <aside class="rail">
-              <div class="title"><button class="ib">‹</button><span class="dsp">Solitaire</span><span class="mode">Today's deal</span></div>
-              <div class="meter" style="flex:0 0 auto;justify-content:space-between;padding:0">
-                <div class="stat"><b>12</b><span>moves</span></div><div class="stat"><b>18</b><span>in stock</span></div><div class="stat"><b>0 / 52</b><span>home</span></div>
-              </div>
-              <div class="verbs">
-                <button class="btn">↶ Undo</button><button class="btn">✦ Hint</button>
-                <button class="btn">⇈ Auto-home</button><button class="btn">⟳ New deal…</button>
-              </div>
-              <h4>This game</h4>
-              <div class="srow"><div class="l">Deal</div><span style="color:var(--dim)">Today · 30 Aug · winnable</span></div>
-              <h4>Settings</h4>
-              <div class="srow"><div class="l">Hints</div><span class="tog on"></span></div>
-              <div class="srow"><div class="l">Declare assistance</div><span class="tog on"></span></div>
-              <div class="srow"><div class="l">Auto-play safe cards</div><span class="tog on"></span></div>
-              <div class="foot"><span>How to play</span><span>Open in new tab ↗</span></div>
-            </aside>
-          </div>
-        </div>
-      </div>
-    </figure>
-
-  </div>
-
+  <h2>The states, phone and desktop side by side</h2>
+  <p class="h-note">Phone frames are 390 × 844; desktop frames are 1000 × 680 (a laptop, not a monitor — the rail must earn its place at the small end). Both palettes via the switch above. Each row is one state of the same frame.</p>
+<h3 class="h-pair-title">1 · First land — the start screen</h3><p class="h-note">Every URL opens here when no game is in progress: the art, the name, one line, the setup card, Play. The setup card is the same one the "New game" sheet shows.</p><div class="h-pair"><figure class="h-frame"><figcaption><b>Phone</b> — the game's portrait splash as shipped, veil, setup card, Play</figcaption><div class="screen" data-theme="dark"><div class="app"><div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">♪</button><button class="ib">☾</button><button class="ib">⚙</button></div><div class="splash"><div class="art" style="background-image:url(../src/games/othello/assets/splash.jpg);background-position:center top"></div><div class="veil"></div><div class="body"><h2 class="dsp">Othello</h2><p class="pitch">Flank a line of discs to flip it. Most discs when neither side can move wins.</p><div class="setup"><div class="srow"><div class="l">Opponent<small>The Engine 🤖 · tells you when it knows it has won</small></div><span class="seg"><span>Easy</span><span class="on">Medium</span><span>Hard</span><span>Expert</span></span></div><div class="srow"><div class="l">You play</div><span class="seg"><span class="on">● Black, opens</span><span>○ White</span></span></div></div><button class="btn primary block">▸ Play</button><div class="links"><span>How to play</span><span>Open in new tab ↗</span></div></div></div></div></div></figure><figure class="h-frame"><figcaption><b>Desktop</b> — the portrait splash as a left panel; the card beside it</figcaption><div class="screen desktop-s" data-theme="dark"><div class="app desk desk-s"><div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">⏮</button><button class="ib">▶</button><span style="font-weight:600">The Unfolding Hour</span><button class="ib">⏭</button><span class="sp"></span><button class="ib">☾</button><button class="ib">⚙</button></div><div class="desk-splash"><div class="art" style="background-image:url(../src/games/othello/assets/splash.jpg)"><div class="veil"></div></div><div class="body"><h2 class="dsp">Othello</h2><p class="pitch" style="color:var(--dim);margin:8px 0 18px">Flank a line of discs to flip it. Most discs when neither side can move wins.</p><div class="setup"><div class="srow"><div class="l">Opponent<small>The Engine 🤖 · tells you when it knows it has won</small></div><span class="seg"><span>Easy</span><span class="on">Medium</span><span>Hard</span><span>Expert</span></span></div><div class="srow"><div class="l">You play</div><span class="seg"><span class="on">● Black, opens</span><span>○ White</span></span></div></div><button class="btn primary block">▸ Play</button><div class="links" style="display:flex;gap:18px;margin-top:14px;color:var(--dim);font-size:.85rem"><span>How to play</span><span>Open in new tab ↗</span></div></div></div></div></div></figure></div>
+<h3 class="h-pair-title">2 · Return visit — the continue card</h3><p class="h-note">When the progress store holds a game in progress, the start screen is a card, not a poster: the icon stays, the art steps back, and the summary line comes from the store without loading the engine. The frame is already in place behind it, so Continue is a fade, not a navigation.</p><div class="h-pair"><figure class="h-frame"><figcaption><b>Phone</b> — the frame is drawn, the stage holds the card</figcaption><div class="screen" data-theme="dark"><div class="app"><div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">♪</button><button class="ib">☾</button><button class="ib">⚙</button></div><div class="gamebar"><button class="ib">‹</button><span class="title dsp">Othello</span><span class="mode">Medium</span><span class="sp"></span><button class="ib">⋯</button></div><div class="meter"><div class="seat "><span class="disc b"></span><span class="who">You<span class="sub">&nbsp;</span></span><span class="n">9</span></div><span class="vs">vs</span><div class="seat "><span class="disc w"></span><span class="who">The Engine<span class="sub">&nbsp;</span></span><span class="n">4</span></div></div><div class="stage stage-cont"><div class="cont"><img src="../src/games/othello/assets/icon.jpg" alt="" /><div class="ct"><div class="eyebrow">In progress · 2 hours ago</div><h2 class="dsp">Othello</h2><p>Move 14 · you lead 9–4 · The Engine, Medium</p><div class="cbtns"><button class="btn primary">▸ Continue</button><button class="btn">New game…</button></div></div></div></div><div class="dock"><button class="verb " disabled><i>↶</i>Undo</button><button class="verb primary" disabled><i>✦</i>Hint</button><button class="verb "><i>⟳</i>New game</button><button class="verb "><i>☰</i>Settings</button></div></div></div></figure><figure class="h-frame"><figcaption><b>Desktop</b> — same card in the stage; the rail already reads the summary</figcaption><div class="screen desktop-s" data-theme="dark"><div class="app desk desk-s"><div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">⏮</button><button class="ib">▶</button><span style="font-weight:600">The Unfolding Hour</span><button class="ib">⏭</button><span class="sp"></span><button class="ib">☾</button><button class="ib">⚙</button></div><div class="below"><div class="stage stage-cont"><div class="cont"><img src="../src/games/othello/assets/icon.jpg" alt="" /><div class="ct"><div class="eyebrow">In progress · 2 hours ago</div><h2 class="dsp">Othello</h2><p>Move 14 · you lead 9–4 · The Engine, Medium</p><div class="cbtns"><button class="btn primary">▸ Continue</button><button class="btn">New game…</button></div></div></div></div><aside class="rail"><div class="title"><button class="ib">‹</button><span class="dsp">Othello</span></div><div class="seats"><div class="seat "><span class="disc b"></span><span class="who">You<span class="sub">&nbsp;</span></span><span class="n">9</span></div><div class="seat "><span class="disc w"></span><span class="who">The Engine<span class="sub">&nbsp;</span></span><span class="n">4</span></div></div><div class="verbs"><button class="btn " disabled style=opacity:.4>↶ Undo</button><button class="btn " disabled style=opacity:.4>✦ Hint</button><button class="btn ">⟳ New game…</button><button class="btn " disabled style=opacity:.4>⇥ Resign</button></div><h4>This game</h4><div class="srow"><div class="l">Opponent</div><span style="color:var(--dim)">The Engine · Medium</span></div><div class="srow"><div class="l">You play</div><span style="color:var(--dim)">● Black, opened</span></div><h4>Settings</h4><div class="srow"><div class="l">Hints</div><span class="tog on"></span></div><div class="srow"><div class="l">Declare assistance</div><span class="tog on"></span></div><div class="srow"><div class="l">Tutor</div><span class="tog"></span></div><div class="foot"><span>How to play</span><span>Open in new tab ↗</span></div></aside></div></div></div></figure></div>
+<h3 class="h-pair-title">3 · In play — your move</h3><p class="h-note">Seats in the meter row, verbs in the dock, the instruction as a one-time toast over the stage. On desktop the dock stands up as the rail and the board takes the height.</p><div class="h-pair"><figure class="h-frame"><figcaption><b>Phone · A Dock</b></figcaption><div class="screen" data-theme="dark"><div class="app"><div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">♪</button><button class="ib">☾</button><button class="ib">⚙</button></div><div class="gamebar"><button class="ib">‹</button><span class="title dsp">Othello</span><span class="mode">Medium</span><span class="sp"></span><button class="ib">⋯</button></div><div class="meter"><div class="seat active"><span class="disc b"></span><span class="who">You<span class="sub">your move</span></span><span class="n">2</span></div><span class="vs">vs</span><div class="seat "><span class="disc w"></span><span class="who">The Engine<span class="sub">&nbsp;</span></span><span class="n">2</span></div></div><div class="stage"><div class="othello" data-board="o1"></div><div class="toast">Tap a glowing square to place your disc</div></div><div class="dock"><button class="verb " disabled><i>↶</i>Undo</button><button class="verb primary"><i>✦</i>Hint</button><button class="verb "><i>⟳</i>New game</button><button class="verb "><i>☰</i>Settings</button></div></div></div></figure><figure class="h-frame"><figcaption><b>Desktop · B Rail</b></figcaption><div class="screen desktop-s" data-theme="dark"><div class="app desk desk-s"><div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">⏮</button><button class="ib">▶</button><span style="font-weight:600">The Unfolding Hour</span><button class="ib">⏭</button><span class="sp"></span><button class="ib">☾</button><button class="ib">⚙</button></div><div class="below"><div class="stage"><div class="othello" data-board="o1"></div></div><aside class="rail"><div class="title"><button class="ib">‹</button><span class="dsp">Othello</span></div><div class="seats"><div class="seat active"><span class="disc b"></span><span class="who">You<span class="sub">your move</span></span><span class="n">2</span></div><div class="seat "><span class="disc w"></span><span class="who">The Engine<span class="sub">&nbsp;</span></span><span class="n">2</span></div></div><div class="verbs"><button class="btn " disabled style=opacity:.4>↶ Undo</button><button class="btn ">✦ Hint</button><button class="btn ">⟳ New game…</button><button class="btn ">⇥ Resign</button></div><h4>This game</h4><div class="srow"><div class="l">Opponent</div><span style="color:var(--dim)">The Engine · Medium</span></div><div class="srow"><div class="l">You play</div><span style="color:var(--dim)">● Black, opened</span></div><h4>Settings</h4><div class="srow"><div class="l">Hints</div><span class="tog on"></span></div><div class="srow"><div class="l">Declare assistance</div><span class="tog on"></span></div><div class="srow"><div class="l">Tutor</div><span class="tog"></span></div><div class="foot"><span>How to play</span><span>Open in new tab ↗</span></div></aside></div></div></div></figure></div>
+<h3 class="h-pair-title">4 · In play — the engine's move</h3><p class="h-note">Pixel-identical geometry to row 3. The Engine's seat pulses and its sub-label swaps to "thinking…" inside a slot that was already 12px tall; the verbs grey out. Nothing is inserted anywhere.</p><div class="h-pair"><figure class="h-frame"><figcaption><b>Phone</b> — nothing moved</figcaption><div class="screen" data-theme="dark"><div class="app"><div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">♪</button><button class="ib">☾</button><button class="ib">⚙</button></div><div class="gamebar"><button class="ib">‹</button><span class="title dsp">Othello</span><span class="mode">Medium</span><span class="sp"></span><button class="ib">⋯</button></div><div class="meter"><div class="seat "><span class="disc b"></span><span class="who">You<span class="sub">&nbsp;</span></span><span class="n">4</span></div><span class="vs">vs</span><div class="seat thinking"><span class="disc w"></span><span class="who">The Engine<span class="sub">thinking…</span></span><span class="n">1</span></div></div><div class="stage"><div class="othello dim" data-board="o2"></div></div><div class="dock"><button class="verb " disabled><i>↶</i>Undo</button><button class="verb primary" disabled><i>✦</i>Hint</button><button class="verb " disabled><i>⟳</i>New game</button><button class="verb "><i>☰</i>Settings</button></div></div></div></figure><figure class="h-frame"><figcaption><b>Desktop</b> — nothing moved</figcaption><div class="screen desktop-s" data-theme="dark"><div class="app desk desk-s"><div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">⏮</button><button class="ib">▶</button><span style="font-weight:600">The Unfolding Hour</span><button class="ib">⏭</button><span class="sp"></span><button class="ib">☾</button><button class="ib">⚙</button></div><div class="below"><div class="stage"><div class="othello dim" data-board="o2"></div></div><aside class="rail"><div class="title"><button class="ib">‹</button><span class="dsp">Othello</span></div><div class="seats"><div class="seat "><span class="disc b"></span><span class="who">You<span class="sub">&nbsp;</span></span><span class="n">4</span></div><div class="seat thinking"><span class="disc w"></span><span class="who">The Engine<span class="sub">thinking…</span></span><span class="n">1</span></div></div><div class="verbs"><button class="btn " disabled style=opacity:.4>↶ Undo</button><button class="btn " disabled style=opacity:.4>✦ Hint</button><button class="btn " disabled style=opacity:.4>⟳ New game…</button><button class="btn " disabled style=opacity:.4>⇥ Resign</button></div><h4>This game</h4><div class="srow"><div class="l">Opponent</div><span style="color:var(--dim)">The Engine · Medium</span></div><div class="srow"><div class="l">You play</div><span style="color:var(--dim)">● Black, opened</span></div><h4>Settings</h4><div class="srow"><div class="l">Hints</div><span class="tog on"></span></div><div class="srow"><div class="l">Declare assistance</div><span class="tog on"></span></div><div class="srow"><div class="l">Tutor</div><span class="tog"></span></div><div class="foot"><span>How to play</span><span>Open in new tab ↗</span></div></aside></div></div></div></figure></div>
+<h3 class="h-pair-title">5 · A solo game — Solitaire</h3><p class="h-note">Daily/free is setup, so it is a chip in the game bar. Moves, stock and home are meters. Undo · Hint · Auto · New deal are the verbs. The wide felt finally has room on desktop.</p><div class="h-pair"><figure class="h-frame"><figcaption><b>Phone</b></figcaption><div class="screen" data-theme="dark"><div class="app"><div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">♪</button><button class="ib">☾</button><button class="ib">⚙</button></div><div class="gamebar"><button class="ib">‹</button><span class="title dsp">Solitaire</span><span class="mode">Today's deal</span><span class="sp"></span><button class="ib">⋯</button></div><div class="meter"><div class="stat"><b>12</b><span>moves</span></div><div class="stat"><b>18</b><span>in stock</span></div><div class="stat"><b>0 / 52</b><span>home</span></div></div><div class="stage"><div class="felt"><div class="row"><div class="cardz"></div><div class="slot"></div><div></div><div class="slot"></div><div class="slot"></div><div class="slot"></div><div class="slot"></div></div><div class="tab"><div><div class="cardf r">10♦</div></div><div><div class="cardz"></div><div class="cardf r">K♥</div></div><div><div class="cardz"></div><div class="cardz"></div><div class="cardf">4♠</div></div><div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardf r">2♥</div></div><div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardf">2♣</div></div><div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardf">10♣</div></div><div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardf r">J♦</div></div></div></div></div><div class="dock"><button class="verb "><i>↶</i>Undo</button><button class="verb primary"><i>✦</i>Hint</button><button class="verb "><i>⇈</i>Auto</button><button class="verb "><i>⟳</i>New deal</button><button class="verb "><i>☰</i>Settings</button></div></div></div></figure><figure class="h-frame"><figcaption><b>Desktop</b></figcaption><div class="screen desktop-s" data-theme="dark"><div class="app desk desk-s"><div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">⏮</button><button class="ib">▶</button><span style="font-weight:600">Sunset at the Harbor</span><button class="ib">⏭</button><span class="sp"></span><button class="ib">☾</button><button class="ib">⚙</button></div><div class="below"><div class="stage"><div class="felt"><div class="row"><div class="cardz"></div><div class="slot"></div><div></div><div class="slot"></div><div class="slot"></div><div class="slot"></div><div class="slot"></div></div><div class="tab"><div><div class="cardf r">10♦</div></div><div><div class="cardz"></div><div class="cardf r">K♥</div></div><div><div class="cardz"></div><div class="cardz"></div><div class="cardf">4♠</div></div><div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardf r">2♥</div></div><div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardf">2♣</div></div><div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardf">10♣</div></div><div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardz"></div><div class="cardf r">J♦</div></div></div></div></div><aside class="rail"><div class="title"><button class="ib">‹</button><span class="dsp">Solitaire</span><span class="mode">Today's deal</span></div><div class="meter" style="flex:0 0 auto;justify-content:space-between;padding:0"><div class="stat"><b>12</b><span>moves</span></div><div class="stat"><b>18</b><span>in stock</span></div><div class="stat"><b>0 / 52</b><span>home</span></div></div><div class="verbs"><button class="btn ">↶ Undo</button><button class="btn ">✦ Hint</button><button class="btn ">⇈ Auto-home</button><button class="btn ">⟳ New deal…</button></div><h4>This game</h4><div class="srow"><div class="l">Deal</div><span style="color:var(--dim)">Today · 30 Aug · winnable</span></div><h4>Settings</h4><div class="srow"><div class="l">Hints</div><span class="tog on"></span></div><div class="srow"><div class="l">Declare assistance</div><span class="tog on"></span></div><div class="srow"><div class="l">Auto-play safe cards</div><span class="tog on"></span></div><div class="foot"><span>How to play</span><span>Open in new tab ↗</span></div></aside></div></div></div></figure></div>
+<h3 class="h-pair-title">6 · The worst case — Trio Tumble</h3><p class="h-note">Today: 3 mode pills + 6 objective pills + Hint · Settings + a 4-item campaign row + a HUD + a stars line, in four rows. Under the frame: one chip (Campaign · 3 of 6), one meter row, five verbs. Objectives and the campaign level are setup; they live on the start screen and in the Levels sheet.</p><div class="h-pair"><figure class="h-frame"><figcaption><b>Phone</b></figcaption><div class="screen" data-theme="dark"><div class="app"><div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">♪</button><button class="ib">☾</button><button class="ib">⚙</button></div><div class="gamebar"><button class="ib">‹</button><span class="title dsp">Trio Tumble</span><span class="mode">Campaign · 3 of 6</span><span class="sp"></span><button class="ib">⋯</button></div><div class="meter"><div class="stat"><b>420</b><span>score</span></div><div class="stat"><b>14</b><span>swaps left</span></div><div class="stat"><b class="stars">★★☆</b><span>900 next</span></div></div><div class="stage"><div class="m3" data-board="m3"></div></div><div class="dock"><button class="verb primary"><i>✦</i>Hint</button><button class="verb "><i>↺</i>Restart</button><button class="verb "><i>▦</i>Levels</button><button class="verb "><i>⟳</i>New board</button><button class="verb "><i>☰</i>Settings</button></div></div></div></figure><figure class="h-frame"><figcaption><b>Desktop</b></figcaption><div class="screen desktop-s" data-theme="dark"><div class="app desk desk-s"><div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">⏮</button><button class="ib">▶</button><span style="font-weight:600">Gateway to the Spire</span><button class="ib">⏭</button><span class="sp"></span><button class="ib">☾</button><button class="ib">⚙</button></div><div class="below"><div class="stage"><div class="m3" data-board="m3"></div></div><aside class="rail"><div class="title"><button class="ib">‹</button><span class="dsp">Trio Tumble</span><span class="mode">Campaign · 3 of 6</span></div><div class="meter" style="flex:0 0 auto;justify-content:space-between;padding:0"><div class="stat"><b>420</b><span>score</span></div><div class="stat"><b>14</b><span>swaps left</span></div><div class="stat"><b class="stars">★★☆</b><span>900 next</span></div></div><div class="verbs"><button class="btn ">✦ Hint</button><button class="btn ">↺ Restart</button><button class="btn ">▦ Levels…</button><button class="btn ">⟳ New board…</button></div><h4>This game</h4><div class="srow"><div class="l">Objective</div><span style="color:var(--dim)">Target score · 1,600 for ★★★</span></div><div class="srow"><div class="l">Level</div><span style="color:var(--dim)">3 of 6 · Gateway</span></div><h4>Settings</h4><div class="srow"><div class="l">Hints</div><span class="tog on"></span></div><div class="srow"><div class="l">Declare assistance</div><span class="tog on"></span></div><div class="foot"><span>How to play</span><span>Open in new tab ↗</span></div></aside></div></div></div></figure></div>
+<h3 class="h-pair-title">7 · Preferences — the settings sheet</h3><p class="h-note">The shared <code>settings-sheet.ts</code>, finally used by every game: common rows first, the game's own rows second. A bottom sheet on the phone; on desktop there is no sheet — the same rows are inline in the rail (rows 3–6), so a preference is never more than one click away.</p><div class="h-pair"><figure class="h-frame"><figcaption><b>Phone</b> — bottom sheet over the frame</figcaption><div class="screen" data-theme="dark"><div class="app"><div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">♪</button><button class="ib">☾</button><button class="ib">⚙</button></div><div class="gamebar"><button class="ib">‹</button><span class="title dsp">Othello</span><span class="mode">Medium</span><span class="sp"></span><button class="ib">⋯</button></div><div class="meter"><div class="seat active"><span class="disc b"></span><span class="who">You<span class="sub">your move</span></span><span class="n">2</span></div><span class="vs">vs</span><div class="seat "><span class="disc w"></span><span class="who">The Engine<span class="sub">&nbsp;</span></span><span class="n">2</span></div></div><div class="stage"><div class="othello" data-board="o1"></div></div><div class="dock"><button class="verb " disabled><i>↶</i>Undo</button><button class="verb primary"><i>✦</i>Hint</button><button class="verb "><i>⟳</i>New game</button><button class="verb "><i>☰</i>Settings</button></div><div class="scrim"></div><div class="sheet"><div class="grip"></div><h3>Settings</h3><h4>Every game</h4><div class="srow"><div class="l">Hints<small>Off turns Hint into "I'm stuck", which ends the game honestly</small></div><span class="tog on"></span></div><div class="srow"><div class="l">Declare assistance used<small>Undo and hints mark the record</small></div><span class="tog on"></span></div><div class="srow"><div class="l">Sound</div><span class="tog on"></span></div><div class="srow"><div class="l">Vibration</div><span class="tog"></span></div><h4>Othello</h4><div class="srow"><div class="l">Tutor<small>Explains your options after each move</small></div><span class="tog"></span></div><div class="srow"><div class="l">Local AI opponent<small>Experimental · downloads 1.2 GB once</small></div><span class="tog"></span></div></div></div></div></figure><figure class="h-frame"><figcaption><b>Desktop</b> — inline in the rail; the full list scrolls within the rail</figcaption><div class="screen desktop-s" data-theme="dark"><div class="app desk desk-s"><div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">⏮</button><button class="ib">▶</button><span style="font-weight:600">The Unfolding Hour</span><button class="ib">⏭</button><span class="sp"></span><button class="ib">☾</button><button class="ib">⚙</button></div><div class="below"><div class="stage"><div class="othello" data-board="o1"></div></div><aside class="rail"><div class="title"><button class="ib">‹</button><span class="dsp">Othello</span></div><div class="seats"><div class="seat active"><span class="disc b"></span><span class="who">You<span class="sub">your move</span></span><span class="n">2</span></div><div class="seat "><span class="disc w"></span><span class="who">The Engine<span class="sub">&nbsp;</span></span><span class="n">2</span></div></div><div class="verbs"><button class="btn " disabled style=opacity:.4>↶ Undo</button><button class="btn ">✦ Hint</button><button class="btn ">⟳ New game…</button><button class="btn ">⇥ Resign</button></div><h4>This game</h4><div class="srow"><div class="l">Opponent</div><span style="color:var(--dim)">The Engine · Medium</span></div><div class="srow"><div class="l">You play</div><span style="color:var(--dim)">● Black, opened</span></div><h4>Settings</h4><div class="srow"><div class="l">Hints<small>Off turns Hint into "I'm stuck"</small></div><span class="tog on"></span></div><div class="srow"><div class="l">Declare assistance</div><span class="tog on"></span></div><div class="srow"><div class="l">Sound</div><span class="tog on"></span></div><div class="srow"><div class="l">Tutor</div><span class="tog"></span></div><div class="srow"><div class="l">Local AI opponent<small>Experimental · 1.2 GB once</small></div><span class="tog"></span></div><div class="foot"><span>How to play</span><span>Open in new tab ↗</span></div></aside></div></div></div></figure></div>
+<h3 class="h-pair-title">8 · Setup — the New game sheet</h3><p class="h-note">Setup, separated from verbs. The same card as the start screen; changing it abandons the game in progress and says so. A sheet on the phone, a dialog on desktop.</p><div class="h-pair"><figure class="h-frame"><figcaption><b>Phone</b></figcaption><div class="screen" data-theme="dark"><div class="app"><div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">♪</button><button class="ib">☾</button><button class="ib">⚙</button></div><div class="gamebar"><button class="ib">‹</button><span class="title dsp">Othello</span><span class="mode">Medium</span><span class="sp"></span><button class="ib">⋯</button></div><div class="meter"><div class="seat "><span class="disc b"></span><span class="who">You<span class="sub">&nbsp;</span></span><span class="n">4</span></div><span class="vs">vs</span><div class="seat "><span class="disc w"></span><span class="who">The Engine<span class="sub">&nbsp;</span></span><span class="n">1</span></div></div><div class="stage"><div class="othello dim" data-board="o2"></div></div><div class="dock"><button class="verb " disabled><i>↶</i>Undo</button><button class="verb primary"><i>✦</i>Hint</button><button class="verb "><i>⟳</i>New game</button><button class="verb "><i>☰</i>Settings</button></div><div class="scrim"></div><div class="sheet"><div class="grip"></div><h3>New game</h3><p class="h-note" style="margin:0 0 6px;color:var(--dim)">The game in progress is abandoned — it is not recorded.</p><div class="srow"><div class="l">Opponent<small>The Engine 🤖</small></div><span class="seg"><span>Easy</span><span class="on">Medium</span><span>Hard</span><span>Expert</span></span></div><div class="srow"><div class="l">You play</div><span class="seg"><span class="on">● Black, opens</span><span>○ White</span></span></div><div style="display:flex;gap:10px;margin-top:14px"><button class="btn" style="flex:1">Keep playing</button><button class="btn primary" style="flex:1">▸ Start</button></div></div></div></div></figure><figure class="h-frame"><figcaption><b>Desktop</b></figcaption><div class="screen desktop-s" data-theme="dark"><div class="app desk desk-s"><div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">⏮</button><button class="ib">▶</button><span style="font-weight:600">The Unfolding Hour</span><button class="ib">⏭</button><span class="sp"></span><button class="ib">☾</button><button class="ib">⚙</button></div><div class="below"><div class="stage"><div class="othello dim" data-board="o2"></div></div><aside class="rail"><div class="title"><button class="ib">‹</button><span class="dsp">Othello</span></div><div class="seats"><div class="seat "><span class="disc b"></span><span class="who">You<span class="sub">&nbsp;</span></span><span class="n">4</span></div><div class="seat "><span class="disc w"></span><span class="who">The Engine<span class="sub">&nbsp;</span></span><span class="n">1</span></div></div><div class="verbs"><button class="btn " disabled style=opacity:.4>↶ Undo</button><button class="btn ">✦ Hint</button><button class="btn ">⟳ New game…</button><button class="btn ">⇥ Resign</button></div><h4>This game</h4><div class="srow"><div class="l">Opponent</div><span style="color:var(--dim)">The Engine · Medium</span></div><div class="srow"><div class="l">You play</div><span style="color:var(--dim)">● Black, opened</span></div><h4>Settings</h4><div class="srow"><div class="l">Hints</div><span class="tog on"></span></div><div class="srow"><div class="l">Declare assistance</div><span class="tog on"></span></div><div class="srow"><div class="l">Tutor</div><span class="tog"></span></div><div class="foot"><span>How to play</span><span>Open in new tab ↗</span></div></aside></div><div class="scrim"></div><div class="modal"><h3>New game</h3><p class="h-note" style="margin:0 0 6px;color:var(--dim)">The game in progress is abandoned — it is not recorded.</p><div class="srow"><div class="l">Opponent<small>The Engine 🤖</small></div><span class="seg"><span>Easy</span><span class="on">Medium</span><span>Hard</span><span>Expert</span></span></div><div class="srow"><div class="l">You play</div><span class="seg"><span class="on">● Black, opens</span><span>○ White</span></span></div><div style="display:flex;gap:10px;margin-top:14px"><button class="btn" style="flex:1">Keep playing</button><button class="btn primary" style="flex:1">▸ Start</button></div></div></div></div></figure></div>
+<h3 class="h-pair-title">9 · Full screen (⤢) — approach C, kept for this</h3><p class="h-note">Hiding chrome is the point here: the shelf bar goes, the seats collapse into the game bar, every verb sits behind ⋯. Not the default — Undo and Hint two taps away is the wrong trade for normal play — but exactly right when the player asked for the board and nothing else.</p><div class="h-pair"><figure class="h-frame"><figcaption><b>Phone</b></figcaption><div class="screen" data-theme="dark"><div class="app"><div class="gamebar" style="flex-basis:56px"><button class="ib">⤡</button><div class="seat active" style="min-width:0;height:36px"><span class="disc b"></span>You<span class="n">2</span></div><div class="seat" style="min-width:0;height:36px"><span class="disc w"></span>Engine<span class="n">2</span></div><span class="sp"></span><button class="ib">⋯</button></div><div class="stage" style="align-items:start;padding-top:24px"><div class="othello" data-board="o1"></div></div><div class="menu" style="top:60px"><div>↶ Undo</div><div>✦ Hint</div><div>⟳ New game…</div><div class="sep">☰ Settings</div><div>How to play</div><div>Exit full screen</div></div></div></div></figure><figure class="h-frame"><figcaption><b>Desktop</b></figcaption><div class="screen desktop-s" data-theme="dark"><div class="app desk desk-s"><div class="gamebar" style="flex-basis:56px"><button class="ib">⤡</button><span class="title dsp">Othello</span><div class="seat active" style="min-width:0;height:36px"><span class="disc b"></span>You<span class="n">2</span></div><div class="seat" style="min-width:0;height:36px"><span class="disc w"></span>Engine<span class="n">2</span></div><span class="sp"></span><button class="ib">⋯</button></div><div class="stage"><div class="othello" data-board="o1"></div></div></div></div></figure></div>
   <h2>The control vocabulary — where every existing control lands</h2>
   <p class="h-note">Every control the sixteen games render today, sorted into the three homes. A game declares its rows once; the frame renders them in the dock or the rail.</p>
   <table class="h-table">
@@ -649,6 +338,27 @@ pre.diag { background: var(--h-panel); border: 1px solid var(--h-rule); border-r
     <tr><td><b>Preferences</b> → settings sheet<br><span class="pill">common first, game second</span></td><td>Hints · Declare assistance · Sound (the music bar's switch, mirrored) · Vibration</td><td>Tutor (5 versus games) · Local AI opponent + disclosure · Bubble aim guide, timer, and the whole aim sheet · Align move speed · Color Sort skin, fruit icons, strict · Cribbage muggins, peg-board style · Drop 4 mark</td></tr>
     <tr><td><b>Meters</b> → meter row / rail</td><td>Seats + scores + whose move (versus) · Score / moves / lives / best (solo) · Stars</td><td>Trio Tumble swaps left, next star · Bubble shots left, "stack drops in N" · Wyrdle guesses left · Blockdoku streak · Align combo callout (already reserved-height)</td></tr>
     <tr><td><b>Not a band</b> → toast over the stage, or gone</td><td>The instruction banner (→ start screen + How to play + a first-move toast) · "X is thinking…" status text (→ seat state) · the AI's banter line (→ a speech-bubble toast anchored to its seat)</td><td>Wyrdle's rejected-word toast · Blockdoku's select/deselect sentence · Color Sort's deadlock card (→ a toast with Undo / Restart in it) · Checkers "keep jumping" · Dots "goes again" (→ seat sub-label)</td></tr>
+  </table>
+
+
+  <h2>The progress store — what Continue reads</h2>
+  <p class="h-note">Row 2 needs one thing the shelf does not have: a record of a game in progress. <code>src/shelf.ts</code> is explicit that today the shelf knows only which games you opened. The store is small because every Tier-1 game already <i>is</i> a seed plus a move list — resume is replay.</p>
+<pre class="diag">
+localStorage  fun-progress-&lt;gameId&gt;              one key per game; the newest game wins, there is no history
+{
+  v: 1,
+  status: "in-progress" | "finished",           finished entries are kept only so the card can say "Won yesterday · play again"
+  startedAt, updatedAt: ISO,                    "2 hours ago" on the card; daily entries expire at local rollover
+  setup: { mode: "daily:2026-08-30" | "free", seed, ...gameSetup },   the New game card, as chosen — opponent, level, side, objective
+  record: &lt;the game's own serialised state&gt;,   for Tier-1: the move list the outcome record already carries; replayed through the core on resume
+  summary: { line: "Move 14 · you lead 9–4", meters: { you: 9, engine: 4 } }   what the card and the rail show WITHOUT loading the engine
+}
+</pre>
+  <table class="h-table">
+    <tr><td>What a game adds</td><td>Two optional members on <code>GameModule</code>: <code>snapshot(): Progress</code> (called by the frame after every move — the frame owns <i>when</i>, the game owns <i>what</i>) and <code>resume(p: Progress)</code>. A game without them gets the start screen but never a continue card. Tier-1 games implement <code>snapshot</code> in a few lines because their outcome record is already the move list.</td></tr>
+    <tr><td>What the frame owns</td><td>Reading and writing the key, the expiry rule, the summary on the card and in the rail, clearing on New game, and marking <code>finished</code> when the result screen shows. The shelf's home page gets a real "Continue" for free — the same summary line, today from the same store rather than from the "last opened" timestamp.</td></tr>
+    <tr><td>Rules worth writing down</td><td>Undo state is part of the record (a resumed game must know it used assistance). A <code>?r=</code> share never touches the store. Storage denied → no card, never an error (the shelf's existing rule). The record is validated on the way in, like every stored shape here: a store written by a previous version is untrusted data.</td></tr>
+    <tr><td>Later, not now</td><td>Same envelope shape as <code>pond-docformat</code>, so a synced or exported progress file is a format change, not a redesign. Not built in the first pass.</td></tr>
   </table>
 
   <h2>Three approaches, one frame</h2>
@@ -671,11 +381,11 @@ pre.diag { background: var(--h-panel); border: 1px solid var(--h-rule); border-r
 
   <h2>Open questions these mocks do not answer</h2>
   <table class="h-table">
-    <tr><td>Continue</td><td>"Continue last game" on the start screen needs a per-game progress store. <code>shelf.ts</code> is explicit that none exists — the shelf only knows which games you opened. Ship the start screen without Continue first, or build the store first? The start screen is useful either way; Continue is what makes it feel like an app.</td></tr>
-    <tr><td>Splash every time?</td><td>Every URL open, or once per session? A `?play=1` (or the drawer's tap) could skip it; a shared `?r=` link should never skip it, because the record card IS the start screen there.</td></tr>
+    <tr><td>Continue</td><td><b>Decided 2026-08-30:</b> build the progress store, reusable across games (section above). First land shows the poster; a return with a game in progress shows the continue card inside the frame, icon kept.</td></tr>
+    <tr><td>Splash every time?</td><td><b>Decided 2026-08-30:</b> the poster on first land (no progress), the continue card when there is progress. A <code>?r=</code> link shows the record card instead of either.</td></tr>
     <tr><td>Fullscreen</td><td>⤢ today only hides the shelf header. Under the frame it could also collapse the dock into ⋯ (approach C) — is that what "full screen" should mean?</td></tr>
     <tr><td>Verbs cap</td><td>Five is the ceiling in the dock at 390px with labels. Cribbage and Bubble keep their phase verbs on the board; is there any game that genuinely needs six?</td></tr>
-    <tr><td>Art coverage</td><td>Six splashes and three wide sources exist; the start screen falls back to the icon on a gradient for the other games. Checkers, Drop 4, Dots, Furrow, Blockdoku have no art at all.</td></tr>
+    <tr><td>Art</td><td>Every game ships <code>src/games/&lt;id&gt;/assets/icon.jpg</code> (512²) and <code>splash.jpg</code> (portrait, 1200 tall); Trio Tumble and Cribbage also have <code>splash-landscape.jpg</code>. The portrait splash is the phone start screen as-is. On desktop the portrait works as a left panel (row 1), but a landscape source reads better where one exists — worth commissioning landscape for the rest, or accepting the portrait-left layout as the desktop rule. (An earlier draft of this row said five games had no art; that was read from <code>mocks/README.md</code>, dated the day before the art landed.)</td></tr>
   </table>
 </div>
 
