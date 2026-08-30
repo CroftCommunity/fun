@@ -1,0 +1,22 @@
+[package]
+name = "mahjong-core"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Deterministic, headless engine for Mahjong solitaire (tile matching). 144-tile set with flower/season wild classes, layouts on a half-tile grid, the FREE predicate (nothing on top, a long side open), reverse-construction deals that are winnable by construction, a recorded shuffle that re-deals the remainder the same way, state hash + move-list replay so an outcome is verifiable. Integer-exact so native == wasm. No network."
+
+[lints]
+workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json.workspace = true
+sha2.workspace = true
+hex.workspace = true
+thiserror.workspace = true
+pond-outcome.workspace = true
+pond-docformat.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

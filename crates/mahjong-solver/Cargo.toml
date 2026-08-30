@@ -1,0 +1,13 @@
+[package]
+name = "mahjong-solver"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Budgeted win-finder for Mahjong solitaire positions — the hint oracle. Depth-first over mahjong-core with present-tile-bitset memoisation and four-free-of-a-kind pruning; returns a winning line when found within the node budget, else None (winnable vs unknown — it never claims a position is lost). Every DEAL is winnable by construction in the core; this crate answers the harder question of a position mid-game."
+
+[lints]
+workspace = true
+
+[dependencies]
+mahjong-core = { workspace = true }

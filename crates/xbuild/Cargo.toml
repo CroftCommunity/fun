@@ -13,5 +13,6 @@ crate-type = ["cdylib", "rlib"]
 cribbage-core = { path = "../cribbage-core" }
 dots-core = { path = "../dots-core" }
 furrow-core = { path = "../furrow-core" }
+mahjong-core = { workspace = true }
 orchard-core = { path = "../orchard-core" }
 solitaire-core = { workspace = true }

@@ -1,0 +1,29 @@
+{
+  "index": 2,
+  "name": "03-turtle-midgame",
+  "note": "The 2026-08-30 daily Turtle after twenty lowest-legal pairs.",
+  "seed": 20778760659,
+  "moves": [
+    87,
+    268,
+    2951,
+    2683,
+    2414,
+    3348,
+    4908,
+    5418,
+    557,
+    7548,
+    7266,
+    7737,
+    11898,
+    17034,
+    12169,
+    16761,
+    7032,
+    17288,
+    19061,
+    2121
+  ],
+  "final_state_hash": "d89e9a76f3b9d3ff3f51b45d5f7768aadba57791868bbc62b3097e242189496f"
+}

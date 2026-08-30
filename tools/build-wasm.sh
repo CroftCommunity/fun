@@ -16,5 +16,5 @@ rustc_bin="$(cd "$fun" && rustup which rustc)"
 cargo_bin="$(cd "$fun" && rustup which cargo)"
 
 RUSTC="$rustc_bin" "$cargo_bin" build \
-  --manifest-path "$fun/Cargo.toml" -p solitaire-wasm -p trio-tumble-wasm -p bubble-wasm -p wyrdle-wasm -p twenty48-wasm -p dots-wasm -p furrow-wasm -p cribbage-wasm -p drop4-wasm -p othello-wasm -p checkers-wasm -p align-wasm -p blockdoku-wasm -p looseends-wasm -p color-sort-wasm -p orchard-wasm --release \
+  --manifest-path "$fun/Cargo.toml" -p solitaire-wasm -p trio-tumble-wasm -p bubble-wasm -p wyrdle-wasm -p twenty48-wasm -p dots-wasm -p furrow-wasm -p cribbage-wasm -p drop4-wasm -p othello-wasm -p checkers-wasm -p align-wasm -p blockdoku-wasm -p looseends-wasm -p mahjong-wasm -p color-sort-wasm -p orchard-wasm --release \
   --target wasm32-unknown-unknown

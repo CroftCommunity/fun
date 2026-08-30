@@ -5,12 +5,22 @@ landing *is* releasing: sections are months, each entry dated by its landing. Pe
 `CroftC/.claude/CHANGELOGS.md`, the branch that changes something a player runs adds its
 entry here before it lands. Contexts are the shelf's chrome and the individual games.
 
-Contexts: shelf · looseends · color-sort · align · 2048 · bubble · checkers · wyrdle · trio-tumble · othello · cribbage · furrow · dots · drop4 · blockdoku · orchard · sinker · solitaire
+Contexts: shelf · mahjong · looseends · color-sort · align · 2048 · bubble · checkers · wyrdle · trio-tumble · othello · cribbage · furrow · dots · drop4 · blockdoku · orchard · sinker · solitaire
 
 Started 2026-08-29; the August entries below are the landings of that month, and everything
 earlier is in `git log`.
 
 ## 2026-08
+
+- 2026-08-30 **mahjong:** a new game — Mahjong solitaire, tile matching. Tap a free tile
+  (nothing on it, a long side open), then its match; flowers match any flower and seasons
+  any season. Five boards on a ladder — Pond 36, Bridge 60, Fortress 88, Steps 112 and the
+  144-tile Turtle — then the five in a cycle, endless; a daily Turtle everyone shares.
+  Every deal is winnable by construction (the layout is peeled backwards and the peel
+  becomes the dealt pairs), so is every shuffle, which re-deals what is left and goes in the
+  record. Undo, a hint that says whether its pair is a proven line or a best guess, Classic
+  or Large-print faces (no CJK font needed for the latter), a verification-forward win and
+  a `?r=` share that re-verifies. (`plans/2026-08-30-plan-mahjong.md`)
 
 - 2026-08-30 **color-sort:** the pour is a pour. The tube lifts, travels and tilts over
   its target, a stream bridges them while each unit leaves and arrives, and it returns —

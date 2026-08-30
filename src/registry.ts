@@ -24,6 +24,7 @@ import { furrowModule, furrowSetup } from "./games/furrow/furrow.js";
 import { alignModule, alignSetup } from "./games/align/align.js";
 import { blockdokuModule, blockdokuSetup } from "./games/blockdoku/blockdoku.js";
 import { looseendsModule, looseendsSetup } from "./games/looseends/looseends.js";
+import { mahjongModule, mahjongSetup } from "./games/mahjong/mahjong.js";
 import { colorSortChip, colorSortModule, colorSortSetup } from "./games/color-sort/color-sort.js";
 import { orchardDropModule, orchardSetup } from "./games/orchard-drop/orchard-drop.js";
 import { cribbageModule, cribbageSetup } from "./games/cribbage/cribbage.js";
@@ -165,6 +166,16 @@ export const SHIPPED: readonly GameEntry[] = [
     pitch: "Untangle the arrows: tap a free one to slip it off the board. A hundred levels in bands, and a daily with a streak.",
     setup: looseendsSetup,
     load: looseendsModule,
+  },
+  {
+    id: "mahjong",
+    title: "Mahjong",
+    emoji: "🀄",
+    status: "playable",
+    icon: true,
+    pitch: "Tap a free tile, then its match, to lift the pair. Every deal can be cleared; levels climb from a 36-tile pond to the 144-tile turtle, and the daily turtle is the same for everyone.",
+    setup: mahjongSetup,
+    load: mahjongModule,
   },
   {
     id: "color-sort",

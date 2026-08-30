@@ -1,0 +1,25 @@
+{
+  "index": 3,
+  "name": "04-shuffle",
+  "note": "Level 20 (Steps): ten pairs, a shuffle (the RNG stream continues), five more.",
+  "seed": 14181088151,
+  "moves": [
+    2852,
+    3179,
+    5912,
+    6448,
+    9020,
+    8775,
+    70,
+    9567,
+    12081,
+    15208,
+    65536,
+    367,
+    3415,
+    5711,
+    5445,
+    8536
+  ],
+  "final_state_hash": "6805a26e364e9f308db2383a171da6bd15c8a378e93b48b496f4bf9034ed01cc"
+}
