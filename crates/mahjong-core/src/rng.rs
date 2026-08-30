@@ -39,12 +39,6 @@ impl Rng {
     pub fn below(&mut self, n: u32) -> u32 {
         ((u64::from(self.next_u32()) * u64::from(n)) >> 32) as u32
     }
-
-    /// The raw state (hashed into nothing; exposed for tests and diagnostics).
-    #[must_use]
-    pub fn state(&self) -> u32 {
-        self.a
-    }
 }
 
 /// Fisher–Yates over a slice, drawing from `rng`.

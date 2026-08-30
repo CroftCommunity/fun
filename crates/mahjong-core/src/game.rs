@@ -220,20 +220,20 @@ impl Game {
         true
     }
 
-    /// The legal pair that frees the most tiles (the greedy hint), or `None`
-    /// when the position is stuck or cleared.
+    /// The legal pair after which the most tiles are free (the greedy hint;
+    /// ties go to the lowest pair), or `None` when the position is stuck or
+    /// cleared.
     #[must_use]
     pub fn hint_greedy(&self) -> Option<Move> {
-        let before = self.board.free_slots().len();
         let mut best: Option<(usize, (usize, usize))> = None;
         for (a, b) in self.board.legal_moves() {
             let mut next = self.board.clone();
             if next.remove_pair(a, b).is_err() {
                 continue;
             }
-            let freed = next.free_slots().len() + 2 - before.min(next.free_slots().len() + 2);
-            if best.is_none_or(|(f, _)| freed > f) {
-                best = Some((freed, (a, b)));
+            let free_after = next.free_slots().len();
+            if best.is_none_or(|(f, _)| free_after > f) {
+                best = Some((free_after, (a, b)));
             }
         }
         best.map(|(_, (a, b))| Move::pair(a, b))

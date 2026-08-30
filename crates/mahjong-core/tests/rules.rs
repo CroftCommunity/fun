@@ -35,6 +35,9 @@ fn faces_decode_to_kind_and_rank() {
     assert_eq!(Face(0).rank(), 1);
     assert_eq!(Face(8).rank(), 9);
     assert_eq!(Face(9).kind(), Kind::Bamboo);
+    assert_eq!(Face(9).rank(), 1);
+    assert_eq!(Face(13).rank(), 5);
+    assert_eq!(Face(17).rank(), 9);
     assert_eq!(Face(18).kind(), Kind::Characters);
     assert_eq!(Face(26).rank(), 9);
     assert_eq!(Face(27).kind(), Kind::Wind);
@@ -136,6 +139,17 @@ fn the_turtle_has_the_standard_five_layers() {
 }
 
 #[test]
+fn layouts_have_distinct_names_and_are_never_empty() {
+    let names: Vec<&str> = LayoutId::ALL.iter().map(|id| id.name()).collect();
+    assert_eq!(names, ["Pond", "Bridge", "Fortress", "Steps", "Turtle"]);
+    for id in LayoutId::ALL {
+        let l = layout(id);
+        assert!(!l.is_empty());
+        assert_eq!(l.len(), l.slots.len());
+    }
+}
+
+#[test]
 fn layout_ids_round_trip_through_u8() {
     for id in [
         LayoutId::Pond,
@@ -213,6 +227,60 @@ fn removing_a_tile_frees_its_neighbours_and_covering_counts_partially() {
         b.is_free(crown),
         "the crown corner is free once the head is gone"
     );
+}
+
+#[test]
+fn matches_for_lists_exactly_the_free_tiles_that_match() {
+    let mut b = full_turtle();
+    let end = slot_id(&b, 2, 0, 0);
+    // Every face is 0, so the matches of a free end tile are every OTHER free tile.
+    let mut want = b.free_slots();
+    want.retain(|&j| j != end);
+    assert_eq!(b.matches_for(end), want);
+    assert!(
+        !b.matches_for(end).contains(&end),
+        "a tile never matches itself"
+    );
+    // A blocked tile still answers (the UI asks before it knows), a gone tile does not.
+    let mid = slot_id(&b, 12, 0, 0);
+    assert!(!b.is_free(mid));
+    assert_eq!(b.matches_for(mid), b.free_slots());
+    b.remove(end).unwrap();
+    assert!(b.matches_for(end).is_empty());
+    assert_eq!(
+        b.matches_for(999).len(),
+        0,
+        "an unknown slot has no matches"
+    );
+    assert_eq!(b.faces().len(), b.layout().len());
+    assert_eq!(b.present().len(), b.layout().len());
+    assert_eq!(b.present().iter().filter(|&&p| p).count(), b.remaining());
+}
+
+#[test]
+fn stuck_means_tiles_remain_and_no_pair_is_legal() {
+    // Thirty-four distinct faces plus one flower and one season: nothing matches.
+    let l = layout(LayoutId::Pond);
+    let mut faces: Vec<Face> = (0..34u8).map(Face).collect();
+    faces.push(Face(34));
+    faces.push(Face(38));
+    let mut b = Board::new(l, faces);
+    assert!(b.legal_moves().is_empty());
+    assert!(b.is_stuck());
+    // A cleared board is not stuck; a board with a legal pair is not stuck.
+    let free = b.free_slots();
+    for &s in &free {
+        b.remove(s).unwrap();
+    }
+    assert!(!b.is_cleared() || !b.is_stuck());
+    let mut c = full_turtle();
+    assert!(!c.is_stuck(), "a full all-alike turtle has legal pairs");
+    while let Some(&(x, y)) = c.legal_moves().first() {
+        c.remove_pair(x, y).unwrap();
+    }
+    assert!(c.is_cleared() && !c.is_stuck(), "cleared is not stuck");
+    assert_eq!(c.remove(0), Err(mahjong_core::MoveError::Gone));
+    assert_eq!(c.remove(999), Err(mahjong_core::MoveError::NoSuchSlot));
 }
 
 #[test]

@@ -4938,3 +4938,79 @@ dialog.signin-sheet::backdrop { background: rgba(0, 0, 0, 0.45); }
 .cs-signin-offer p { margin: 0 0 0.6rem; color: var(--ink-muted); font-size: 0.86rem; }
 .cs-signin-btn { min-height: 40px; padding: 0 0.8rem; border-radius: 10px; border: 1px solid var(--border); background: transparent; color: var(--ink); font: inherit; font-size: 0.86rem; font-weight: 600; cursor: pointer; }
 .cs-signin-btn:hover { border-color: var(--accent); }
+
+/* ---------- Mahjong (mj-*) — ivory tiles on the felt, stacked in layers ---------- */
+/* The board is a fixed-size box (`--mj-u` px per half tile, set by the module's
+   ResizeObserver so the whole layout fits the stage); every tile is an
+   absolutely positioned button on it. Higher layers shift up-left by
+   0.35u per layer, and each tile draws its right and bottom side, so the stack
+   reads as depth. DOM order is slot order (layer, row, column) = paint order. */
+.mj-game { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; width: 100%; min-height: 0; flex: 1; }
+.mj-scroll { max-width: 100%; max-height: 100%; overflow: auto; display: flex; justify-content: center; }
+.mj-board {
+  position: relative;
+  flex: none;
+  --mj-u: 14px;
+  --mj-top: 0;
+  --mj-shift: 0.35;
+  --mj-side: 0.35;
+}
+.mj-tile {
+  position: absolute;
+  left: calc(var(--mj-u) * (var(--mj-x) + var(--mj-shift) * (var(--mj-top) - var(--mj-z))));
+  top: calc(var(--mj-u) * (var(--mj-y) + var(--mj-shift) * (var(--mj-top) - var(--mj-z))));
+  width: calc(var(--mj-u) * 2);
+  height: calc(var(--mj-u) * 2);
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  color: var(--mj-ink);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+/* The face: inset a hair so neighbours show a seam; the side is a pseudo-element
+   that hangs off the right and bottom by 0.35u. */
+.mj-face {
+  position: absolute;
+  inset: 0;
+  display: block;
+  background: var(--mj-face);
+  border: 1px solid var(--mj-face-edge);
+  border-radius: calc(var(--mj-u) * 0.22);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.mj-face svg { display: block; width: 100%; height: 100%; }
+.mj-tile::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--mj-u) * 0.12);
+  top: calc(var(--mj-u) * 0.12);
+  width: 100%;
+  height: 100%;
+  background: var(--mj-face-side);
+  border-radius: calc(var(--mj-u) * 0.22);
+  transform: translate(calc(var(--mj-u) * var(--mj-side) - var(--mj-u) * 0.12), calc(var(--mj-u) * var(--mj-side) - var(--mj-u) * 0.12));
+}
+.mj-tile.blocked { cursor: default; }
+.mj-dim .mj-tile.blocked .mj-face { filter: brightness(0.82) saturate(0.7); }
+.mj-tile:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; z-index: 50 !important; }
+.mj-tile.selected .mj-face { box-shadow: 0 0 0 3px var(--mj-select), 0 0 0 5px var(--felt); }
+.mj-tile.selected { transform: translate(calc(var(--mj-u) * -0.15), calc(var(--mj-u) * -0.15)); }
+.mj-tile.match .mj-face { box-shadow: 0 0 0 3px var(--mj-match), 0 0 0 5px var(--felt); }
+.mj-tile.hint .mj-face { box-shadow: 0 0 0 3px var(--mj-select), 0 0 0 5px var(--felt); animation: mj-pulse 0.9s ease-in-out infinite alternate; }
+@keyframes mj-pulse { from { filter: brightness(1); } to { filter: brightness(1.18); } }
+.mj-tile.mj-shake { animation: mj-shake 0.3s linear; }
+@keyframes mj-shake {
+  25% { transform: translateX(calc(var(--mj-u) * -0.12)); }
+  75% { transform: translateX(calc(var(--mj-u) * 0.12)); }
+}
+.mj-status { min-height: 1.4em; margin: 0; }
+.mj-share-line { font-family: ui-monospace, monospace; font-size: 0.9rem; }
+.mj-shared { width: 100%; }
+@media (prefers-reduced-motion: reduce) {
+  .mj-tile.hint .mj-face, .mj-tile.mj-shake { animation: none; }
+}

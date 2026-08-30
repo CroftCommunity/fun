@@ -815,6 +815,24 @@ const SHOTS = [
     },
   },
   {
+    name: "mahjong-home",
+    clip: ".gf-poster",
+    async run(page) {
+      await page.goto(`${origin}/mahjong/`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".gf-poster");
+    },
+  },
+  {
+    name: "mahjong-board",
+    clip: ".mj-scroll",
+    async run(page) {
+      await page.goto(`${origin}/mahjong/?level=1`, { waitUntil: "networkidle" });
+      await page.waitForFunction(() => Boolean(window.__mahjong));
+      await page.waitForSelector(".mj-board");
+      await page.waitForTimeout(300);
+    },
+  },
+  {
     name: "color-sort-board",
     clip: ".cs-board",
     async run(page) {

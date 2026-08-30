@@ -79,8 +79,6 @@ pub struct Layout {
     pub slots: Vec<Slot>,
     /// Per slot: the slots one layer up whose footprint overlaps it.
     pub above: Vec<Vec<usize>>,
-    /// Per slot: the slots one layer down whose footprint overlaps it.
-    pub below: Vec<Vec<usize>>,
     /// Per slot: same-layer slots touching its left side.
     pub left: Vec<Vec<usize>>,
     /// Per slot: same-layer slots touching its right side.
@@ -103,7 +101,6 @@ impl Layout {
         slots.sort_by_key(|s| (s.z, s.y, s.x));
         let n = slots.len();
         let mut above = vec![Vec::new(); n];
-        let mut below = vec![Vec::new(); n];
         let mut left = vec![Vec::new(); n];
         let mut right = vec![Vec::new(); n];
         for i in 0..n {
@@ -114,9 +111,6 @@ impl Layout {
                 let (a, b) = (slots[i], slots[j]);
                 if b.z == a.z + 1 && overlaps(a, b) {
                     above[i].push(j);
-                }
-                if a.z == b.z + 1 && overlaps(a, b) {
-                    below[i].push(j);
                 }
                 if a.z == b.z && rows_touch(a, b) {
                     if b.x + 2 == a.x {
@@ -134,7 +128,6 @@ impl Layout {
             height,
             slots,
             above,
-            below,
             left,
             right,
         }

@@ -178,6 +178,10 @@ const lewasm = join(root, "target/wasm32-unknown-unknown/release/looseends_wasm.
 if (await exists(lewasm)) await cp(lewasm, join(dist, "looseends.wasm"));
 else missingArtifact("note: looseends.wasm not built yet — run `npm run build:wasm` (loose ends needs it)");
 
+const mjwasm = join(root, "target/wasm32-unknown-unknown/release/mahjong_wasm.wasm");
+if (await exists(mjwasm)) await cp(mjwasm, join(dist, "mahjong.wasm"));
+else missingArtifact("note: mahjong.wasm not built yet — run `npm run build:wasm` (mahjong needs it)");
+
 const cswasm = join(root, "target/wasm32-unknown-unknown/release/color_sort_wasm.wasm");
 if (await exists(cswasm)) await cp(cswasm, join(dist, "color-sort.wasm"));
 else missingArtifact("note: color-sort.wasm not built yet — run `npm run build:wasm` (color-sort needs it)");

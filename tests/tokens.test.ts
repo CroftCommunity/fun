@@ -139,6 +139,12 @@ const PAIRS: ReadonlyArray<readonly [string, string, number]> = [
   ["fur-b", "fur-board", 3],
   ["fur-landing", "fur-well", 3],
   ["fur-legal", "fur-well", 3],
+  // Mahjong: glyphs on the ivory face. Numerals and characters take the text
+  // floor; the coloured dots/sticks are large marks and take the UI floor.
+  ["mj-ink", "mj-face", 4.5],
+  ["mj-red", "mj-face", 4.5],
+  ["mj-green", "mj-face", 3],
+  ["mj-blue", "mj-face", 3],
 ];
 
 describe.each(Object.keys(SKINS))("tokens: skin %s clears WCAG AA", (name) => {

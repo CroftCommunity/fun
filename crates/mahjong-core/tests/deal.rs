@@ -14,6 +14,12 @@ use pond_outcome::{attest, verify, Game as _, Outcome};
 fn rng_is_the_integer_exact_fnv_mulberry_pair() {
     assert_eq!(hash_str(""), 2_166_136_261);
     assert_eq!(hash_str("a"), 0xE40C_292C);
+    // The JS reference stream (`mulberry32(1)`), so the port is pinned to it.
+    let mut r = Rng::new(1);
+    assert_eq!(
+        [r.next_u32(), r.next_u32(), r.next_u32()],
+        [2_693_262_067, 11_749_833, 2_265_367_787]
+    );
     let mut a = Rng::new(7);
     let mut b = Rng::new(7);
     let xs: Vec<u32> = (0..8).map(|_| a.next_u32()).collect();
@@ -243,11 +249,38 @@ fn shuffle_redeals_the_remaining_tiles_into_a_winnable_board_and_is_recorded() {
 }
 
 #[test]
-fn a_greedy_hint_is_a_legal_pair_or_none_when_stuck() {
-    let g = Game::new(level_origin(1)).unwrap();
-    let h = g.hint_greedy().expect("a fresh deal has a move");
-    let (a, b) = h.pair_slots().unwrap();
-    assert!(g.board().legal_moves().contains(&(a, b)));
+fn a_greedy_hint_is_the_first_pair_leaving_the_most_free_tiles() {
+    let mut ties_seen = false;
+    for n in 1..=12u32 {
+        let g = Game::new(level_origin(n)).unwrap();
+        let h = g.hint_greedy().expect("a fresh deal has a move");
+        let (a, b) = h.pair_slots().unwrap();
+        assert!(g.board().legal_moves().contains(&(a, b)));
+        // Brute force: the most free tiles after the pair, first such pair wins.
+        let scored: Vec<(usize, (usize, usize))> = g
+            .board()
+            .legal_moves()
+            .into_iter()
+            .map(|(x, y)| {
+                let mut next = g.board().clone();
+                next.remove_pair(x, y).unwrap();
+                (next.free_slots().len(), (x, y))
+            })
+            .collect();
+        let top = scored.iter().map(|s| s.0).max().unwrap();
+        let first = scored.iter().find(|s| s.0 == top).unwrap().1;
+        assert_eq!((a, b), first, "level {n}");
+        ties_seen |= scored.iter().filter(|s| s.0 == top).count() > 1;
+    }
+    assert!(
+        ties_seen,
+        "at least one deal has a tie, so the tie-break is exercised"
+    );
+    let mut g = Game::new(level_origin(1)).unwrap();
+    for &(a, b) in &g.last_line().to_vec() {
+        g.play(Move::pair(a, b)).unwrap();
+    }
+    assert_eq!(g.hint_greedy(), None, "no hint on a cleared board");
 }
 
 #[test]

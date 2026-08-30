@@ -213,6 +213,20 @@
   --cs-plate: #6f6857;        /* bolt base plate                       */
   --cs-cap: #37503f;          /* the locked-tube cap                   */
 
+  /* Mahjong — ivory tile faces, the traditional ink / red / green / blue on
+     them, and the two rings. Faces stay light in both themes (as real tiles
+     and the playing cards do). Suits also differ by SHAPE (dots, sticks,
+     characters), so hue is the second signal. */
+  --mj-face: #fbf3df;         /* the tile face                         */
+  --mj-ink: #1b201c;          /* black glyphs on the face  (14.6:1)    */
+  --mj-red: #b3123b;          /* red glyphs               (6.1:1)      */
+  --mj-green: #176b35;        /* green glyphs             (5.6:1)      */
+  --mj-blue: #2a56b8;         /* blue glyphs              (5.9:1)      */
+  --mj-face-edge: #cbb98f;    /* the face's outline                    */
+  --mj-face-side: #b39a5e;    /* the drawn right/bottom side           */
+  --mj-select: #f2a541;       /* the lifted tile's ring                */
+  --mj-match: #1fae83;        /* a matching free tile's ring           */
+
 }
 
 /* The game palettes are shared by EVERY dark skin through one grouped selector.
@@ -333,6 +347,17 @@
   --cs-post: #6b6455;
   --cs-plate: #4a4636;
   --cs-cap: #6f9079;
+
+  /* Mahjong, on the night table: faces a shade warmer, glyphs unchanged. */
+  --mj-face: #ede3c8;
+  --mj-ink: #1b201c;
+  --mj-red: #a8113a;
+  --mj-green: #176b35;
+  --mj-blue: #2a56b8;
+  --mj-face-edge: #b7a57a;
+  --mj-face-side: #8f7a48;
+  --mj-select: #ffd76a;
+  --mj-match: #3ddba9;
 
 }
 

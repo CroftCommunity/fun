@@ -6,6 +6,8 @@
 //! settings degrade (session-only) rather than failing loud if storage is denied.
 
 const HINTS_KEY = "fun-hints";
+const MJ_TILES_KEY = "fun-mahjong-tiles";
+const MJ_DIM_KEY = "fun-mahjong-dim";
 const ASSIST_KEY = "fun-declare-assistance";
 const AUTOPLAY_KEY = "fun-autoplay";
 const AIM_GUIDE_KEY = "fun-bubble-aim-guide";
@@ -678,4 +680,38 @@ export function cribbageSeatsFlipped(): boolean {
 }
 export function setCribbageSeatsFlipped(on: boolean): void {
   write(CRIBBAGE_SEATS_KEY, on);
+}
+
+// ---------- Mahjong (tile faces, dim blocked tiles) ----------
+
+/** The two face sets — pure rendering of the same board. */
+export type MahjongTileStyle = "classic" | "large";
+
+/** Pure resolver: a stored valid style wins, else `classic`. */
+export function resolveMahjongTileStyle(stored: string | null): MahjongTileStyle {
+  return stored === "large" ? "large" : "classic";
+}
+
+/** The chosen tile faces — **classic by default**. */
+export function mahjongTileStyle(): MahjongTileStyle {
+  try {
+    return resolveMahjongTileStyle(localStorage.getItem(MJ_TILES_KEY));
+  } catch {
+    return "classic";
+  }
+}
+export function setMahjongTileStyle(style: MahjongTileStyle): void {
+  try {
+    localStorage.setItem(MJ_TILES_KEY, style);
+  } catch {
+    // Storage denied (private mode): the setting still applies for the session.
+  }
+}
+
+/** Dim the tiles that are not free — **on by default** (the free ones stand out). */
+export function mahjongDimBlocked(): boolean {
+  return read(MJ_DIM_KEY, true);
+}
+export function setMahjongDimBlocked(on: boolean): void {
+  write(MJ_DIM_KEY, on);
 }
