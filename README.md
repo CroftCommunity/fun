@@ -13,7 +13,11 @@ a portable artifact addressable at its own URL.
 `fun.croft.ing` presents games in a **slide-out drawer** over a persistent play area; each game can
 also go **full-screen** or **open in its own tab** (so every game has its own URL). A game is a module
 that implements one contract and renders chrome-agnostically into a mount point — the drawer is built
-once and every game reuses it. Shelf order: **solitaire → trio tumble → bubble → wyrdle → 2048 → drop 4 → align → blockdoku → loose ends → cribbage** (cribbage shipped 2026-08-29, against the engine).
+once and every game reuses it. Since 2026-08-30 every game page is the **game frame**
+(`docs/BUILDING-GAMES.md` §4c): a game bar (back · name · ⋯ with How to play and open-in-new-tab), a
+meter row, the stage the game renders into, and a dock of at most five verbs — four fixed-height bands
+around the board, so nothing above it moves while you play. Games are migrating onto it one at a time;
+an unmigrated game still shows its own controls inside the stage. Shelf order: **solitaire → trio tumble → bubble → wyrdle → 2048 → drop 4 → align → blockdoku → loose ends → cribbage** (cribbage shipped 2026-08-29, against the engine).
 
 ## Layout
 

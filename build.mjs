@@ -5,6 +5,7 @@
 // A second bundle (how-to.js) powers the shared "How to play" page (`/how-to/`).
 import { build } from "esbuild";
 import { skinInit } from "./tools/skin-init.mjs";
+import { GAME_PAGES as registryPages, readRegistryTitles } from "./tools/registry-titles.mjs";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,8 +14,13 @@ const root = dirname(fileURLToPath(import.meta.url));
 const dist = join(root, "dist");
 
 // Game entry pages: "" is the home/drawer page (no game mounted); the rest carry
-// <body data-game> so the chrome knows what to mount.
-const GAME_PAGES = ["", "placeholder", "solitaire", "trio-tumble", "bubble", "wyrdle", "2048", "drop4", "othello", "checkers", "dots", "furrow", "align", "blockdoku", "looseends", "color-sort", "orchard-drop", "cribbage"];
+// <body data-game> so the chrome knows what to mount. The list and each page's
+// name are READ FROM src/registry.ts (tools/registry-titles.mjs), so a game
+// registered without a page — or a page without a game — cannot happen, and the
+// tab reads the game's name rather than its slug.
+const REGISTRY_SOURCE = await readFile(join(root, "src/registry.ts"), "utf8");
+const TITLES = readRegistryTitles(REGISTRY_SOURCE);
+const GAME_PAGES = ["", ...registryPages(REGISTRY_SOURCE)];
 
 // Tier-2 wrapped games: their vendored bundle ships under src/games/<id>/vendor/
 // and is served at /<id>/vendor/ for the sandboxed iframe to load same-origin.
@@ -250,7 +256,7 @@ for (const id of GAME_PAGES) {
   await writeFile(
     join(dir, "index.html"),
     page({
-      title: id ? `Croft · fun — ${id}` : "Croft · fun",
+      title: id ? `Croft · fun — ${TITLES[id]}` : "Croft · fun",
       dataAttr: id ? ` data-game="${id}"` : "",
       base: id ? "/" : "./",
       script: "app.js",

@@ -12,6 +12,8 @@ import { appearanceSpec } from "./appearance.js";
 import { startMusic } from "./music.js";
 import { renderMusicBar } from "./music-bar.js";
 import { renderSettingsSheet } from "./settings-sheet.js";
+import { renderGameFrame, type GameFrame } from "./game-frame.js";
+import { displayName } from "./contract.js";
 import {
   LAYOUT_KEY,
   buildShelfModel,
@@ -241,16 +243,9 @@ export function boot(root: HTMLElement = document.body): Chrome {
     themeBtn,
     appearanceBtn,
   );
-  if (gameId) {
-    header.append(
-      el("a", { href: `/how-to/?game=${gameId}`, class: "how-to-link" }, "How to play"),
-      el(
-        "a",
-        { href: `/${gameId}/`, target: "_blank", rel: "noopener", class: "newtab", "aria-label": "Open this game in a new tab" },
-        "↗",
-      ),
-    );
-  }
+  // "How to play" and "open in a new tab" used to sit in this header and wrapped
+  // it to a second row on every phone (110px against home's 64 — plan Phase 0).
+  // They live in the game bar's ⋯ menu now; the frame renders them.
 
   // Click-off backdrop: covers the page while the drawer is open so a click
   // anywhere outside the drawer recollapses it.
@@ -273,6 +268,7 @@ export function boot(root: HTMLElement = document.body): Chrome {
 
   // --- mount the current game / welcome ---
   let mounted: GameModule | null = null;
+  let frame: GameFrame | null = null;
   const mode: PresentationMode = gameId ? "standalone" : "drawer";
   const entry = gameId ? findGame(gameId) : undefined;
   if (!gameId) {
@@ -286,8 +282,18 @@ export function boot(root: HTMLElement = document.body): Chrome {
       el("div", { class: "welcome" }, `${entry.title} is coming soon.`),
     );
   } else {
+    // Every game page renders inside the frame (plan Phase 2). A game that has
+    // not migrated keeps its own controls inside the stage; a migrated one
+    // declares them with frame.update().
+    frame = renderGameFrame(playArea, undefined, {
+      title: displayName(entry),
+      menu: [
+        { label: "How to play", href: `/how-to/?game=${entry.id}` },
+        { label: "Open in a new tab ↗", href: `/${entry.id}/`, newTab: true },
+      ],
+    });
     mounted = entry.load();
-    mounted.mount(playArea, { mode });
+    mounted.mount(frame.stage, { mode, frame });
     writeShelfState(noteOpened(readShelfState(), entry.id, new Date()));
   }
 

@@ -8,7 +8,7 @@ parameters does once every bare URL opens on a start screen) gates Phase 5** and
 thing between this plan and execution: Phases 0–4 may start now. D5 was resolved during
 planning (read-only, see Verified Assumptions) and is struck from Phase 0. Phases 1, 2, 3
 and 5 carry sub-phases (1a/1b, 2a/2b, 3a/3b, 5a/5b) — each with its own Done-when and
-wiring test — because each touched four or more files. Phases 0–1 COMPLETE (2026-08-30). Mocks
+wiring test — because each touched four or more files. Phases 0–2 COMPLETE (2026-08-30). Mocks
 landed on `main` (`mocks/d-game-frame.html`, PR #45, `6c4dd9c`); owner decisions D1–D5
 recorded.
 
@@ -1104,6 +1104,34 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
    it changes one test case either way.*
 
 ## Review Log
+
+### Phase 2b — executed 2026-08-30
+- RED first: `tests/page-titles.test.ts` failed to resolve `tools/registry-titles.mjs`;
+  then one real red after the tool existed — `Object.keys` hoists the integer-like `"2048"`
+  to the front, so the page list came out of registry order. Entries are now an ordered
+  array (`readRegistryEntries`), titles an object derived from it.
+- `build.mjs` reads both its page list and each page's name from the registry source;
+  the hand-kept `GAME_PAGES` array is gone and the test pins the list to `REGISTRY` for the
+  first time. `tests/game-frame.spec.ts` asserts the built tab titles through the page.
+  `TODO/README.md` item struck. Typecheck needed `tools/registry-titles.d.mts`, the
+  `skin-init` convention.
+
+### Phase 2a — executed 2026-08-30
+- RED first: three jsdom cases in `tests/chrome.test.ts` and the declare-on-first-update
+  case in `tests/game-frame.test.ts` failed (2 failing, 23 passing); the browser header
+  test's "red run" is Phase 0's measurement (110px on every game page) — the identical
+  assertion, made before the change.
+- The chrome now mounts `renderGameFrame(playArea, undefined, { title, menu })` for every
+  game page and hands the game `services.frame`; a frame with no spec accepts its first
+  `update()` as the declaration. The header's two links moved to the ⋯ menu.
+- Three things the tests caught: (1) one row is **64.19px**, not 64 — the hairline; the
+  threshold is 66 (two rows are 110); (2) `.gf-menu { display:flex }` beat the UA's
+  `[hidden]` → `.gf-menu[hidden] { display:none }`; (3) the how-to page's "← Back to the
+  game" reuses `.chrome-header .newtab`, which the header cleanup deleted — axe flagged
+  the unstyled blue link on both dark skins; the rule is restored with a comment.
+- Green: `tests/game-frame.spec.ts` 10/10 both engines; `npm run smoke` 45/45; typecheck,
+  lint, hex scan. **Not done:** the Samsung check under Validation — no device session in
+  this run; recorded as owed, to be done with Phase 5a's device check.
 
 ### Phase 1 — executed 2026-08-30 (1a `99dba07`, 1b this landing)
 - 1a: `src/game-frame.ts` + `.gf-*` block + `tests/game-frame.test.ts` (17 cases, RED

@@ -2,6 +2,8 @@
 //! container and never knows whether it is in the drawer, full-screen, or a
 //! standalone tab. Built once; every game implements this.
 
+import type { GameFrame } from "./game-frame.js";
+
 /** How the game is currently presented. */
 export type PresentationMode = "drawer" | "fullscreen" | "standalone";
 
@@ -9,6 +11,13 @@ export type PresentationMode = "drawer" | "fullscreen" | "standalone";
 export interface GameServices {
   /** The presentation mode at mount time. */
   readonly mode: PresentationMode;
+  /**
+   * The game frame this game renders inside (`src/game-frame.ts`). The chrome
+   * mounts the frame with the game's title and menu and hands the game its
+   * stage; a migrated game declares its meters and verbs with `frame.update()`.
+   * Absent only when a module is mounted outside the chrome (a unit test).
+   */
+  readonly frame?: GameFrame;
 }
 
 /** A live, mountable game instance. */

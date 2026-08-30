@@ -181,11 +181,23 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
     }
     menu.append(a);
   }
-  more.addEventListener("click", () => {
-    const open = menu.hidden;
+  const setMenu = (open: boolean): void => {
     menu.hidden = !open;
     more.setAttribute("aria-expanded", String(open));
-  });
+  };
+  more.addEventListener("click", () => setMenu(menu.hidden));
+  // Escape closes; a click anywhere outside the menu and its button closes. Both
+  // listeners are removed with the frame so a destroyed frame leaks nothing.
+  const onKey = (e: KeyboardEvent): void => {
+    if (e.key === "Escape" && !menu.hidden) setMenu(false);
+  };
+  const onDocClick = (e: MouseEvent): void => {
+    if (menu.hidden) return;
+    const t = e.target as Node;
+    if (!menu.contains(t) && !more.contains(t)) setMenu(false);
+  };
+  document.addEventListener("keydown", onKey);
+  document.addEventListener("click", onDocClick);
   const bar = el(
     "div",
     { class: "gf-game-bar" },
@@ -208,13 +220,20 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
   const stage = el("div", { class: "gf-stage" });
   const root = el("div", { class: "gf" }, bar);
 
+  // Undeclared until a spec arrives: mounted by the chrome for an unmigrated game,
+  // the frame shows the game bar and the stage only. The first update() is the
+  // declaration; from then on the meter count is fixed.
+  let declared = spec !== undefined;
   let meters: HTMLElement | null = null;
-  const meterCount = spec?.meters.length ?? 0;
-  if (spec && spec.meters.length > 0) {
-    meters = el("div", { class: "gf-meters" }, ...spec.meters.map(renderMeter));
-    root.append(meters);
-  }
+  let meterCount = spec?.meters.length ?? 0;
+  const declareMeters = (list: readonly Meter[]): void => {
+    meterCount = list.length;
+    if (list.length === 0) return;
+    meters = el("div", { class: "gf-meters" }, ...list.map(renderMeter));
+    stage.before(meters);
+  };
   root.append(stage);
+  if (spec) declareMeters(spec.meters);
 
   let dock: HTMLElement | null = null;
   const renderDock = (verbs: readonly Verb[]): void => {
@@ -239,6 +258,11 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
     stage,
     update(next: GameFrameSpec): void {
       assertVerbs(next);
+      if (!declared) {
+        declared = true;
+        declareMeters(next.meters);
+        console.debug(`[frame] declare title=${next.title} verbs=${next.verbs.length} meters=${next.meters.length}`);
+      }
       if (next.meters.length !== meterCount) {
         throw new Error(
           `[frame] ${next.title} changed its meters mid-game (mounted ${meterCount}, update has ${next.meters.length}); slots are fixed`,
@@ -255,6 +279,8 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
     destroy(): void {
       if (destroyed) return;
       destroyed = true;
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("click", onDocClick);
       root.remove();
     },
   };

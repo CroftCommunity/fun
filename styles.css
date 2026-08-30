@@ -47,6 +47,7 @@ body {
 }
 .chrome-header button,
 .chrome-header .newtab {
+  /* .newtab is the how-to page's "← Back to the game" (src/how-to-page.ts). */
   font: inherit;
   cursor: pointer;
   border: 1px solid var(--border);
@@ -58,18 +59,6 @@ body {
 }
 .chrome-header .theme-toggle {
   margin-left: auto;
-}
-.chrome-header .newtab {
-  margin-left: 0;
-}
-.chrome-header .how-to-link {
-  font: inherit;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--ink);
-  border-radius: var(--radius);
-  padding: 0.4rem 0.7rem;
-  text-decoration: none;
 }
 :focus-visible {
   outline: 3px solid var(--focus);
@@ -219,7 +208,23 @@ body.fullscreen .play-area {
 .gf {
   display: flex;
   flex-direction: column;
-  min-height: 100%;
+  flex: 1;
+  min-height: 0;
+}
+/* A game page is the header and the frame, nothing else: the play area drops
+   its padding and lets the frame take the rest of the viewport, so the dock
+   sits at the bottom of a phone and the stage owns what is between. */
+body:has(> .play-area > .gf) {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+.play-area:has(> .gf) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  min-height: 0;
 }
 .gf-game-bar {
   flex: 0 0 48px;
@@ -280,6 +285,9 @@ body.fullscreen .play-area {
   border-radius: var(--radius);
   background: var(--surface);
   box-shadow: var(--shadow, 0 10px 30px rgb(0 0 0 / 0.3));
+}
+.gf-menu[hidden] {
+  display: none; /* the class's display:flex would otherwise beat the UA's [hidden] */
 }
 .gf-menu a {
   padding: 0.6rem 0.75rem;
@@ -4575,10 +4583,10 @@ body.fullscreen .le-stage {
 
 @media (max-width: 40rem) {
   /* The header was at its limit before the bar arrived (six controls, "How to
-     play" wrapping inside its own button). Let it wrap: row one is the shelf's
-     controls, row two the game's links. */
+     play" wrapping inside its own button). The game's links moved into the
+     frame's ⋯ menu (plan 2026-08-30, Phase 2a) and the header is one row
+     again; it may still wrap rather than overflow if a future control arrives. */
   .chrome-header { flex-wrap: wrap; row-gap: 0.4rem; }
-  .chrome-header .how-to-link { white-space: nowrap; }
   .chrome-header .music-bar > .music-prev,
   .chrome-header .music-bar > .music-next,
   .chrome-header .music-bar > .music-name { display: none; }
