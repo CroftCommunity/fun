@@ -14,7 +14,7 @@ remains, per `CroftC/.claude/TRACKING.md`.
 - [ ] **Publishing substrate.** `src/record.ts` has the seam (`RecordSubstrate`); an atproto
   substrate would write the record with the DPoP client (`putRecord` was deliberately not
   carried in the port — `src/atproto/oauth/client.ts`). Owner's call; not a default.
-- [ ] **Mock E open questions** (`mocks/e-color-sort.html` § Open decisions): Q1 pour
+- [ ] **Mock E open questions** (`mocks/e-color-sort.html` § Open decisions): Q1 pour (since 2026-08-30) [device: android]
   timings on a real phone; Q3 whether the "N to go" counter also earns a place on the
   poster; Q4 the offer's copy (Design › Copy); Q5 the ball skin's lift during hops.
 - [x] **MOCKS.md rule 7** — the parity contract this game proved out — landed in the
