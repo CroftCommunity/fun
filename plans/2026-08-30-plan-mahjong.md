@@ -1,7 +1,8 @@
 # Plan — Mahjong: tile-matching solitaire, Tier-1
 
-**Status:** Phases 0–6 IN PROGRESS (2026-08-30). Branch `claude/mahjong`; worktree
-`CroftC/worktrees/mahjong/fun`.
+**Status:** Phases 0–6 COMPLETE (2026-08-30) — gate green, PR open, awaiting merge. Branch
+`claude/mahjong`; worktree `CroftC/worktrees/mahjong/fun`. Follow-ons: D4 (themed tile
+sets); an owed device pass on the Turtle at phone size `[device: android x2]`.
 
 ## Problem Statement
 
@@ -147,3 +148,13 @@ coverage.
 - 2026-08-30 — plan written from the research brief; phases begin.
 - 2026-08-30 — Phase 1–3 landed: the generator became a peel (see Reasoning), the solver
   gained restarts, the daily pack was dropped for the Loose Ends shape. Rust gate green.
+- 2026-08-30 — Phases 4–6: front end on the frame (fork), `npm run gate` PASS (unit 818,
+  browser 819 on both engines), Rust gate + cross-build re-run PASS on the final tree.
+  **Mutation audit of `mahjong-core`:** first run reported 40 missed and was FALSE — four
+  parallel workers sharing one `CARGO_TARGET_DIR` ran each other's stale test binaries (a
+  hand-applied survivor was caught by the existing test). Re-run with per-worker target
+  dirs: 37 missed → closed `matches_for`, `is_stuck`, bamboo ranks, layout names, the
+  greedy hint against a brute force, the RNG pinned to the JS `mulberry32` stream; dropped
+  the peel-unused `Layout::below` and `Rng::state`. Final: **277 caught, 3 survivors, all
+  equivalent** — `|`→`^` in `Origin::to_packed` and `Move::pair` (disjoint bit fields) and
+  `Layout::is_empty → false` (no shipped layout is empty).
