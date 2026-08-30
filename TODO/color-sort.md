@@ -17,5 +17,6 @@ remains, per `CroftC/.claude/TRACKING.md`.
 - [ ] **Mock E open questions** (`mocks/e-color-sort.html` § Open decisions): Q1 pour
   timings on a real phone; Q3 whether the "N to go" counter also earns a place on the
   poster; Q4 the offer's copy (Design › Copy); Q5 the ball skin's lift during hops.
-- [ ] **MOCKS.md rule 6** proposed to the workspace (`CroftC` PR) — the parity contract
-  that this game proved out.
+- [x] **MOCKS.md rule 7** — the parity contract this game proved out — landed in the
+  workspace as provisional (CroftC `3de09e6`, 2026-08-30); it firms up, and earns an audit
+  check, when a second repo builds a mock under it.
