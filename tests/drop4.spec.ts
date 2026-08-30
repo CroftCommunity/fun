@@ -9,6 +9,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
+import { boardTopStable } from "./helpers/board-top.js";
+
 async function ready(page: Page): Promise<void> {
   await expect(page.locator(".drop4-board")).toBeVisible();
   await page.waitForFunction(() => Boolean(window.__drop4));
@@ -33,15 +35,19 @@ test("the board, columns, turn bar, and options render", { tag: "@smoke" }, asyn
   await expect(page.locator(".drop4-board")).toBeVisible();
   await expect(page.locator(".drop4-col")).toHaveCount(7);
   // A goal banner explains the game (four in a row).
-  await expect(page.locator(".drop4-banner")).toContainText(/four in a row/i);
+  // The goal sentence is the opening toast (and the poster's pitch), not a banner in flow.
+  await expect(page.locator(".gf-toast")).toContainText(/four in a row/i);
+  await expect(page.locator(".drop4-banner")).toHaveCount(0);
   // The opponent has an identity: the turn bar names You and The Engine.
-  await expect(page.locator(".drop4-turnbar")).toContainText(/you/i);
-  await expect(page.locator(".drop4-turnbar")).toContainText(/the engine/i);
+  await expect(page.locator('.gf-seat[data-meter="you"]')).toContainText(/you/i);
+  await expect(page.locator('.gf-seat[data-meter="engine"]')).toContainText(/the engine/i);
+  await expect(page.locator(".drop4-turnbar")).toHaveCount(0);
   // The difficulty picker offers the four levels, with the top one labelled
   // "Expert" (not "Perfect").
-  await expect(page.locator(".drop4-level option")).toHaveCount(4);
-  await expect(page.locator(".drop4-level")).toContainText("Expert");
-  await expect(page.locator(".drop4-level")).not.toContainText("Perfect");
+  await page.locator('.gf-verb[data-verb="new"]').click();
+  const labels = await page.locator('.gf-sheet [data-setting="level"] .sheet-choice-opt').allTextContents();
+  expect(labels).toEqual(["Easy", "Medium", "Hard", "Expert"]);
+  await page.keyboard.press("Escape");
   // Fresh board: empty, and every column glows as a legal target.
   expect(await filled(page)).toBe(0);
   await expect(page.locator(".drop4-col.legal")).toHaveCount(7);
@@ -87,20 +93,12 @@ test("the core decides legality — a filled column is no longer a legal target"
 test("the difficulty picker persists the chosen level", async ({ page }) => {
   await page.goto("/drop4/?seed=7");
   await ready(page);
-  await page.locator(".drop4-level").selectOption("Hard");
+  await page.locator('.gf-verb[data-verb="new"]').click();
+  await page.locator('.gf-sheet [data-setting="level"] input[value="Hard"]').check();
+  await page.locator(".gf-sheet .gf-start").click();
+  await expect(page.locator(".gf-mode")).toHaveText("Hard");
   const stored = await page.evaluate(() => localStorage.getItem("fun-drop4-level"));
   expect(stored).toBe("Hard");
-});
-
-test("choosing the ○ mark makes the player's discs ○", async ({ page }) => {
-  await page.goto("/drop4/?seed=7");
-  await ready(page);
-  await page.locator('.drop4-mark[data-mark="o"]').click();
-  await expect(page.locator('.drop4-mark[data-mark="o"]')).toHaveAttribute("aria-pressed", "true");
-  await page.locator('.drop4-col[data-col="3"]').click();
-  // The human (Side A) now plays ○, so the first disc down is an ○ cell.
-  await expect(page.locator(".drop4-cell.o").first()).toBeVisible();
-  expect(await page.evaluate(() => localStorage.getItem("fun-drop4-mark"))).toBe("o");
 });
 
 test("a full game plays to a terminal result; the final board + winning line show; share re-verifies", { tag: "@long" }, async ({ page }) => {
@@ -147,8 +145,9 @@ test("the tutor panel is off by default and appears when enabled in settings", a
   // Default: no tutor panel (the game plays clean without coaching).
   await expect(page.locator(".drop4-tutor")).toHaveCount(0);
   // Enable the "Show tutor" setting → the panel appears.
-  await page.locator(".sol-settings summary").click();
-  await page.locator(".sol-set-tutor").check();
+  await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-input').click({ force: true });
   await expect(page.locator(".drop4-tutor-explain")).toBeVisible();
 });
 
@@ -193,7 +192,7 @@ test("the why-hint names a column and a reason", async ({ page }) => {
   await page.goto("/drop4/?seed=7");
   await ready(page);
   // Hints are on by default; the upgraded hint says *why*, not just "column N".
-  await page.locator(".sol-hint").click();
+  await page.locator('.gf-verb[data-verb="hint"]').click();
   const status = page.locator(".sol-status");
   await expect(status).toContainText(/column \d/i);
   await expect(status).toContainText(/strongest|stays safe|blocks|wins now/i);
@@ -202,9 +201,11 @@ test("the why-hint names a column and a reason", async ({ page }) => {
 test("with hints off, 'I'm done' ends the round", async ({ page }) => {
   await page.goto("/drop4/?seed=7");
   await ready(page);
-  await page.locator(".sol-settings summary").click();
-  await page.locator(".sol-set-hints").uncheck();
-  await page.locator(".sol-stuck").click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await page.locator('.gf-sheet [data-setting="hints"] .sheet-toggle-input').click({ force: true });
+  await page.keyboard.press("Escape");
+  await page.locator('.gf-verb[data-verb="done"]').click();
   await expect(page.locator(".sol-result")).toBeVisible();
 });
 
@@ -219,9 +220,9 @@ test("the experimental local-AI opponent is hidden with no real WebGPU adapter",
   });
   await page.goto("/drop4/?seed=7");
   await ready(page);
-  // The difficulty select stays exactly the four levels — no experimental entry.
-  await expect(page.locator(".drop4-level option")).toHaveCount(4);
-  await expect(page.locator(".drop4-ai-toggle")).toHaveCount(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await expect(page.locator('.gf-sheet [data-setting="local-ai"]')).toHaveCount(0);
 });
 
 test("the experimental local-AI toggle appears with a real adapter and discloses the download", async ({ page }) => {
@@ -235,14 +236,12 @@ test("the experimental local-AI toggle appears with a real adapter and discloses
   });
   await page.goto("/drop4/?seed=7");
   await ready(page);
-  // The difficulty select is unchanged (still 4 levels); the local-AI opponent is
-  // a separate toggle that appears once the probe resolves.
-  await expect(page.locator(".drop4-level option")).toHaveCount(4);
-  const toggle = page.locator(".drop4-ai-toggle-input");
-  await expect(toggle).toHaveCount(1);
-  // Enabling it discloses the one-time, multi-hundred-MB model download up front.
-  await toggle.check();
-  await expect(page.locator(".drop4-ai-disclosure")).toContainText(/download|one[- ]time|GB|MB/i);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  const row = page.locator('.gf-sheet [data-setting="local-ai"]');
+  await expect(row).toHaveCount(1);
+  // The one-time, multi-hundred-MB model download is disclosed up front, on the row.
+  await expect(row.locator(".sheet-hint")).toContainText(/download|one[- ]time|GB|MB/i);
 });
 
 test("the board has no axe violations in light and dark", async ({ page }) => {
@@ -274,4 +273,61 @@ test("the board fits a narrow phone with no horizontal overflow", async ({ page 
     () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
   );
   expect(noOverflow).toBe(true);
+});
+
+// --- the frame (plan Phase 11): seats, verbs, the mark as setup, and a board that does not move ---
+
+test("the mark is setup: choosing ○ on the New game sheet makes the player's discs ○", async ({ page }) => {
+  await page.goto("/drop4/?seed=7");
+  await ready(page);
+  await page.locator('.gf-verb[data-verb="new"]').click();
+  await page.locator('.gf-sheet [data-setting="mark"] input[value="o"]').check();
+  await page.locator(".gf-sheet .gf-start").click();
+  await expect(page.locator('.gf-seat[data-meter="you"] .gf-seat-glyph')).toHaveText("○");
+  expect(await page.evaluate(() => localStorage.getItem("fun-drop4-mark"))).toBe("o");
+});
+
+test("thinking is the engine's seat state, and the board does not move while it replies", { tag: "@smoke" }, async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/drop4/?seed=7");
+  await ready(page);
+  await page.evaluate(() => {
+    const el = document.querySelector('.gf-seat[data-meter="engine"]')!;
+    const w = window as unknown as { __seen: boolean };
+    w.__seen = false;
+    new MutationObserver(() => {
+      if (el.getAttribute("data-state") === "thinking") w.__seen = true;
+    }).observe(el, { attributes: true });
+  });
+  const v = await boardTopStable(page, ".drop4-board", async () => {
+    await page.locator('.drop4-col[data-col="3"]').click();
+    await page.waitForFunction(
+      () => window.__drop4!.game.board().cells.flat().filter((v: number) => v !== 0).length === 2,
+    );
+    await page.locator('.gf-verb[data-verb="settings"]').click();
+    await expect(page.locator(".gf-sheet")).toBeVisible();
+    await page.keyboard.press("Escape");
+  });
+  expect(await page.evaluate(() => (window as unknown as { __seen: boolean }).__seen)).toBe(true);
+  await expect(page.locator(".drop4-thinking")).toHaveCount(0);
+  expect(v.frames).toBeGreaterThan(5);
+  expect(v, `board top moved ${v.delta}px over ${v.frames} frames`).toMatchObject({ stable: true });
+});
+
+test("leaving mid-game and returning to the bare URL resumes the same position", async ({ page }) => {
+  await page.goto("/drop4/?seed=7");
+  await ready(page);
+  await page.locator('.drop4-col[data-col="3"]').click();
+  await page.waitForFunction(
+    () => window.__drop4!.game.board().cells.flat().filter((v: number) => v !== 0).length === 2,
+  );
+  const hash = await page.evaluate(() => window.__drop4!.game.currentHash());
+  await page.goto("/drop4/");
+  const card = page.locator(".gf-continue");
+  await expect(card).toBeVisible();
+  await expect(card.locator(".gf-start-line")).toContainText(/move/i);
+  await card.locator(".gf-continue-btn").click();
+  await ready(page);
+  await page.waitForFunction(() => window.__drop4!.game.board().toMove === 1);
+  expect(await page.evaluate(() => window.__drop4!.game.currentHash())).toBe(hash);
 });

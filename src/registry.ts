@@ -9,13 +9,13 @@ import { trioTumbleModule, trioTumbleSetup } from "./games/trio-tumble.js";
 import { bubbleModule } from "./games/bubble/bubble.js";
 import { wyrdleModule, wyrdleSetup } from "./games/wyrdle/wyrdle.js";
 import { twenty48Module } from "./games/2048/2048.js";
-import { drop4Module } from "./games/drop4/drop4.js";
+import { drop4Module, drop4Setup } from "./games/drop4/drop4.js";
 import { othelloModule, othelloSetup } from "./games/othello/othello.js";
 import { checkersModule } from "./games/checkers/checkers.js";
 import { dotsModule } from "./games/dots/dots.js";
 import { furrowModule } from "./games/furrow/furrow.js";
 import { alignModule } from "./games/align/align.js";
-import { blockdokuModule } from "./games/blockdoku/blockdoku.js";
+import { blockdokuModule, blockdokuSetup } from "./games/blockdoku/blockdoku.js";
 import { looseendsModule } from "./games/looseends/looseends.js";
 import { colorSortModule } from "./games/color-sort/color-sort.js";
 import { orchardDropModule } from "./games/orchard-drop/orchard-drop.js";
@@ -64,7 +64,17 @@ export const REGISTRY: readonly GameEntry[] = [
     load: wyrdleModule,
   },
   { id: "2048", title: "2048", emoji: "🔢", status: "playable", icon: true, load: twenty48Module },
-  { id: "drop4", title: "Drop 4", emoji: "🔴", status: "playable", icon: true, group: "versus", load: drop4Module },
+  {
+    id: "drop4",
+    title: "Drop 4",
+    emoji: "🔴",
+    status: "playable",
+    icon: true,
+    group: "versus",
+    pitch: "Drop a disc; line up four across, up or diagonally before the engine does — an engine that knows this game exactly.",
+    setup: drop4Setup,
+    load: drop4Module,
+  },
   {
     id: "othello",
     title: "Othello",
@@ -80,7 +90,16 @@ export const REGISTRY: readonly GameEntry[] = [
   { id: "dots", title: "Dots and Boxes", emoji: "▦", status: "playable", icon: true, group: "versus", load: dotsModule },
   { id: "furrow", title: "Furrow", emoji: "🌾", status: "playable", icon: true, group: "versus", load: furrowModule },
   { id: "align", title: "Align", emoji: "🟪", status: "playable", icon: true, load: alignModule },
-  { id: "blockdoku", title: "Blockdoku", emoji: "🟦", status: "playable", icon: true, load: blockdokuModule },
+  {
+    id: "blockdoku",
+    title: "Blockdoku",
+    emoji: "🟦",
+    status: "playable",
+    icon: true,
+    pitch: "Place the three pieces; fill a row, column or 3×3 box to clear it. It ends when nothing fits.",
+    setup: blockdokuSetup,
+    load: blockdokuModule,
+  },
   { id: "looseends", title: "Loose Ends", emoji: "🎯", status: "playable", icon: true, load: looseendsModule },
   { id: "color-sort", title: "Color Sort", emoji: "🧪", status: "playable", icon: true, load: colorSortModule },
   {

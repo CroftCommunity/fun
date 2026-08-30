@@ -10,7 +10,10 @@
 //! picker (Easy…Perfect) mapped to the engine's strength; both the level and the
 //! chosen mark persist.
 
-import type { GameModule } from "../../contract.js";
+import type { GameModule, GameServices } from "../../contract.js";
+import type { GameFrame, GameFrameSpec } from "../../game-frame.js";
+import type { Progress } from "../../progress.js";
+import type { SettingRow } from "../../settings-sheet.js";
 import { Drop4, type BoardView, type Level, type MoveAssessment } from "./drop4-wasm.js";
 import { WebLLMRuntime } from "../../harness/ai-runtime.js";
 import { speak } from "../../harness/banter.js";
@@ -28,11 +31,9 @@ import {
   drop4Mark,
   drop4TutorEnabled,
   hintsEnabled,
-  setDeclareAssistance,
   setDrop4Level,
   setDrop4Mark,
   setDrop4Tutor,
-  setHintsEnabled,
   type Drop4Mark,
 } from "../../settings.js";
 
@@ -254,6 +255,44 @@ export function renderResultScreen(
 
 // ---------- the game module ----------
 
+/**
+ * The New game card: difficulty and which mark you play. One builder for the
+ * poster and the sheet; each change persists at once.
+ */
+export function drop4SetupRows(onChange?: { level?(l: Level): void; mark?(m: Mark): void }): SettingRow[] {
+  return [
+    {
+      kind: "choice",
+      id: "level",
+      label: "Difficulty",
+      hint: "The Engine knows this game exactly; on Expert it never makes a mistake.",
+      value: drop4Level(),
+      options: LEVELS.map((l) => ({ value: l, label: LEVEL_LABELS[l] })),
+      onChange: (v) => {
+        setDrop4Level(v as Level);
+        onChange?.level?.(v as Level);
+      },
+    },
+    {
+      kind: "choice",
+      id: "mark",
+      label: "You play",
+      value: drop4Mark(),
+      options: [
+        { value: "x", label: "✕" },
+        { value: "o", label: "○" },
+      ],
+      onChange: (v) => {
+        setDrop4Mark(v as Mark);
+        onChange?.mark?.(v as Mark);
+      },
+    },
+  ];
+}
+
+/** The poster's setup card — the registry's `setup` factory. */
+export const drop4Setup = (): SettingRow[] => drop4SetupRows();
+
 /** Construct a fresh Drop 4 module (the registry `load`). */
 export function drop4Module(): GameModule {
   let game: Drop4 | null = null;
@@ -261,6 +300,11 @@ export function drop4Module(): GameModule {
   let container: HTMLElement | null = null;
   let disposed = false;
   let thinking = false;
+  let frame: GameFrame | null = null;
+  let pendingResume: Progress | null = null;
+  let moves: number[] = [];
+  let hinted = false;
+  let toasted: string | null = null;
   let ending = false;
   let seed = 0n;
   let level: Level = drop4Level();
@@ -323,6 +367,7 @@ export function drop4Module(): GameModule {
   const applyMove = (col: number): boolean => {
     if (!game) return false;
     if (game.play(col) !== "applied") return false;
+    moves.push(col);
     lastMove = [columnFill(game.board().cells, col) - 1, col];
     return true;
   };
@@ -357,7 +402,8 @@ export function drop4Module(): GameModule {
   const scheduleEngine = (pending: string | null): void => {
     if (!game) return;
     thinking = true;
-    setStatus(`${opponentIdentity().name} is thinking…`);
+    // Thinking is the engine's seat state (frame rule 2), not a status sentence.
+    setStatus("");
     render();
     window.setTimeout(() => void engineReply(pending), THINK_MS);
   };
@@ -490,155 +536,73 @@ export function drop4Module(): GameModule {
 
   // --- rendering ---
 
-  const renderTurnbar = (): HTMLElement => {
+  // --- what the frame shows: the seats, the level chip, the verbs, setup, preferences ---
+  const spec = (): GameFrameSpec => {
     const over = gameOver();
     const youActive = !over && !thinking && !ending && humanToMove();
-    const oppActive = !over && (thinking || !humanToMove());
-    const you = el(
-      "div",
-      { class: `drop4-player you${youActive ? " active" : ""}` },
-      el("span", { class: `drop4-chip ${playerMark}`, "aria-hidden": "true" }, glyphFor(playerMark)),
-      el("span", { class: "drop4-name" }, "You"),
-    );
-    const opp = el(
-      "div",
-      { class: `drop4-player opp${oppActive ? " active" : ""}` },
-      el(
-        "span",
-        { class: `drop4-chip ${other(playerMark)}`, "aria-hidden": "true" },
-        glyphFor(other(playerMark)),
-      ),
-      el(
-        "span",
-        { class: "drop4-name" },
-        `${opponentIdentity().name} ${opponentIdentity().avatar}`,
-      ),
-      ...(thinking ? [el("span", { class: "drop4-thinking" }, "thinking…")] : []),
-    );
-    return el(
-      "div",
-      { class: "drop4-turnbar", role: "group", "aria-label": "Players" },
-      you,
-      el("span", { class: "drop4-vs", "aria-hidden": "true" }, "vs"),
-      opp,
-    );
-  };
-
-  const renderOptions = (): HTMLElement => {
-    const opts = el("div", { class: "drop4-options" });
-
-    const levelLabel = el("label", { class: "drop4-level-label" }, "Difficulty ");
-    const select = el("select", { class: "drop4-level", "aria-label": "Difficulty" });
-    for (const lv of LEVELS) {
-      const o = el("option", { value: lv }, LEVEL_LABELS[lv]);
-      if (lv === level) (o as HTMLOptionElement).selected = true;
-      select.append(o);
-    }
-    select.addEventListener("change", () => {
-      level = (select as HTMLSelectElement).value as Level;
-      setDrop4Level(level);
-    });
-    levelLabel.append(select);
-
-    const marks = el("div", { class: "drop4-marks", role: "group", "aria-label": "Play as" });
-    marks.append(el("span", { class: "drop4-marks-label" }, "You play "));
-    for (const m of ["x", "o"] as Mark[]) {
-      const b = el(
-        "button",
-        {
-          type: "button",
-          class: `drop4-mark ${m}`,
-          "data-mark": m,
-          "aria-pressed": String(playerMark === m),
-          "aria-label": `Play as ${m === "x" ? "cross" : "nought"}`,
-        },
-        glyphFor(m),
-      );
-      b.addEventListener("click", () => {
-        if (playerMark === m) return;
-        playerMark = m;
-        setDrop4Mark(m);
-        render();
-      });
-      marks.append(b);
-    }
-
-    opts.append(levelLabel, marks);
-    // The experimental local-AI opponent — a separate toggle offered only when a
-    // real (non-fallback) WebGPU adapter is present. The classic engine + its
-    // difficulty picker stay the default and are unaffected.
-    if (localAiAvailable) {
-      const aiWrap = el("label", { class: "drop4-ai-toggle" });
-      const input = el("input", { type: "checkbox", class: "drop4-ai-toggle-input" });
-      (input as HTMLInputElement).checked = opponentKind === LOCAL_AI;
-      input.addEventListener("change", () => {
-        opponentKind = (input as HTMLInputElement).checked ? LOCAL_AI : "engine";
-        render();
-      });
-      aiWrap.append(input, document.createTextNode(" Experimental: local AI opponent"));
-      opts.append(aiWrap);
-    }
-    // First-use disclosure: the local-AI opponent downloads a model to the
-    // browser once, then runs on-device. Shown up front, before any download.
-    if (opponentKind === LOCAL_AI) {
-      opts.append(
-        el(
-          "p",
-          { class: "drop4-ai-disclosure", role: "note" },
-          "Experimental: this downloads a ~1 GB AI model to your browser once, then runs fully on your device (offline after that). It plays with personality, not extra strength — the classic engine stays the default and the stronger opponent.",
-        ),
-      );
-    }
-    return opts;
-  };
-
-  const renderControls = (): HTMLElement => {
-    const bar = el("div", { class: "sol-controls" });
-    const modes = el("div", { class: "sol-modes", role: "group", "aria-label": "Game" });
-    const fresh = el("button", { type: "button", class: "sol-new" }, "New game");
-    fresh.addEventListener("click", () => void startGame());
-    modes.append(fresh);
-
+    const engineThinking = !over && !ending && thinking;
+    const opp = opponentIdentity();
     const hints = hintsEnabled();
-    const actionBtn = el(
-      "button",
-      { type: "button", class: hints ? "sol-hint" : "sol-stuck" },
-      hints ? "Hint" : "I’m done",
-    );
-    actionBtn.addEventListener("click", hints ? showHint : endNow);
-
-    const setting = (
-      checked: boolean,
-      label: string,
-      cls: string,
-      onChange: (on: boolean) => void,
-    ): HTMLElement => {
-      const wrap = el("label", { class: "sol-setting" });
-      const input = el("input", { type: "checkbox", class: cls });
-      (input as HTMLInputElement).checked = checked;
-      input.addEventListener("change", () => onChange((input as HTMLInputElement).checked));
-      wrap.append(input, document.createTextNode(` ${label}`));
-      return wrap;
+    const preferences: SettingRow[] = [
+      {
+        kind: "toggle",
+        id: "tutor",
+        label: "Tutor",
+        hint: "Explains your options and flags a blunder, from the engine's own read.",
+        value: drop4TutorEnabled(),
+        onChange: (on) => {
+          setDrop4Tutor(on);
+          render();
+        },
+      },
+    ];
+    if (localAiAvailable) {
+      preferences.push({
+        kind: "toggle",
+        id: "local-ai",
+        label: "Experimental: local AI opponent",
+        hint: "Downloads a ~1 GB AI model to your browser once, then runs fully on your device (offline after that). It plays with personality, not extra strength — the classic engine stays the default and the stronger opponent.",
+        value: opponentKind === LOCAL_AI,
+        onChange: (on) => {
+          opponentKind = on ? LOCAL_AI : "engine";
+          render();
+        },
+      });
+    }
+    return {
+      title: "Drop 4",
+      mode: LEVEL_LABELS[level],
+      meters: [
+        { kind: "seat", id: "you", name: "You", glyph: glyphFor(playerMark), score: "", state: youActive ? "active" : "idle", ...(youActive ? { sub: "your move" } : {}) },
+        {
+          kind: "seat",
+          id: "engine",
+          name: `${opp.name} ${opp.avatar}`,
+          glyph: glyphFor(other(playerMark)),
+          score: "",
+          state: engineThinking ? "thinking" : "idle",
+          ...(engineThinking ? { sub: "thinking…" } : {}),
+        },
+      ],
+      verbs: [
+        hints
+          ? { id: "hint", label: "Hint", icon: "✦", primary: true, onPress: showHint }
+          : { id: "done", label: "I’m done", icon: "⇥", onPress: endNow },
+        { id: "new", label: "New game", icon: "⟳", onPress: (btn) => frame?.openSheet("setup", btn) },
+      ],
+      setup: drop4SetupRows({
+        level: (l) => {
+          level = l;
+        },
+        mark: (m) => {
+          playerMark = m;
+        },
+      }),
+      preferences,
+      onStart: () => void startGame(),
     };
-    const settings = el("details", { class: "sol-settings" });
-    settings.append(
-      el("summary", {}, "Settings"),
-      setting(hints, "Enable hints", "sol-set-hints", (on) => {
-        setHintsEnabled(on);
-        render();
-      }),
-      setting(declareAssistanceEnabled(), "Declare assistance used", "sol-set-assist", (on) => {
-        setDeclareAssistance(on);
-      }),
-      setting(drop4TutorEnabled(), "Show tutor", "sol-set-tutor", (on) => {
-        setDrop4Tutor(on);
-        render();
-      }),
-    );
-
-    bar.append(modes, actionBtn, settings);
-    return bar;
   };
+  const declare = (): void => frame?.update(spec());
 
   /** Build a board element. `interactive` adds the drop controls + click/glow;
    *  a static board (result screen / fanfare) just shows the final position. */
@@ -767,30 +731,23 @@ export function drop4Module(): GameModule {
   function render(): void {
     if (disposed || !container || !game) return;
     const board = game.board();
-    const banner = el(
-      "p",
-      { class: "drop4-banner" },
-      "Tap a column to drop your disc. Line up four in a row — across, up, or diagonally — before the engine does.",
-    );
     const parts: (Node | string)[] = [
-      renderTurnbar(),
-      renderOptions(),
-      renderControls(),
-      banner,
       buildBoard(board, { interactive: true, winLine: winLineNow(board) }),
-      // The tutor panel is opt-in (Settings → Show tutor); off by default.
+      // The tutor panel is opt-in (Settings → Tutor); off by default.
       ...(drop4TutorEnabled() ? [renderTutorPanel()] : []),
       statusEl,
     ];
-    // The local-AI opponent's spoken reason for its last move (personality).
-    if (aiSay && opponentKind === LOCAL_AI) {
-      parts.splice(
-        1,
-        0,
-        el("p", { class: "drop4-ai-say", role: "status" }, `${LOCAL_AI_PERSONA.name}: ${aiSay}`),
-      );
-    }
     container.replaceChildren(el("div", { class: "drop4-game" }, ...parts));
+    declare();
+    // Transients overlay the stage — never a <p> in flow above the board (frame rule 1).
+    if (aiSay && opponentKind === LOCAL_AI && aiSay !== toasted) {
+      toasted = aiSay;
+      frame?.toast(`${LOCAL_AI_PERSONA.name}: ${aiSay}`, 6000);
+    }
+    if (!hinted && moves.length === 0 && humanToMove() && !thinking) {
+      hinted = true;
+      frame?.toast("Tap a column to drop your disc. Line up four in a row — across, up, or diagonally — before the engine does.", 5000);
+    }
   }
 
   // Hold the winning board for a beat (a little fanfare) before the result.
@@ -805,18 +762,20 @@ export function drop4Module(): GameModule {
       { class: `drop4-flash${board.result === 1 ? " win" : ""}`, role: "status" },
       board.result === 0 ? "Draw" : `${label}${board.result === 1 ? " 🎉" : ""}`,
     );
+    // The fanfare sits BELOW the final board (above it, it moved the board — Othello
+    // measured 50–81px); rule 1 holds to the end.
     container.replaceChildren(
       el(
         "div",
         { class: "drop4-game" },
-        renderTurnbar(),
+        buildBoard(board, { interactive: false, winLine: line }),
         flash,
         ...(coachMsg
           ? [el("p", { class: "drop4-tutor-coach", role: "status" }, coachMsg)]
           : []),
-        buildBoard(board, { interactive: false, winLine: line }),
       ),
     );
+    declare();
     window.setTimeout(() => {
       if (disposed) return;
       void presentResult();
@@ -852,11 +811,38 @@ export function drop4Module(): GameModule {
     aiSay = null;
     seed = seedOverride ?? randomSeed();
     game.newGame(seed);
+    moves = [];
+    hinted = false;
     setStatus("");
     console.debug(`[drop4] mount seed=${seed} level=${level} mark=${playerMark}`);
     exposeHook();
     render();
   }
+
+  /** Replay a stored game: the seed and every column, then let the turn loop go on. */
+  const applyResume = (p: Progress): void => {
+    if (!game || disposed) return;
+    const rec = p.record as { seed?: unknown; moves?: unknown };
+    const setup = p.setup as { level?: unknown; mark?: unknown };
+    if (LEVELS.includes(setup.level as Level)) level = setup.level as Level;
+    if (setup.mark === "x" || setup.mark === "o") playerMark = setup.mark;
+    thinking = false;
+    ending = false;
+    lastMove = null;
+    coachMsg = null;
+    aiSay = null;
+    hinted = true;
+    seed = typeof rec.seed === "string" ? BigInt(rec.seed) : randomSeed();
+    game.newGame(seed);
+    moves = [];
+    for (const col of Array.isArray(rec.moves) ? (rec.moves as unknown[]) : []) {
+      if (typeof col !== "number" || !applyMove(col)) break;
+    }
+    setStatus("");
+    exposeHook();
+    render();
+    if (!humanToMove() && !gameOver()) scheduleEngine(null);
+  };
 
   const showShared = async (payload: string): Promise<void> => {
     if (!container) return;
@@ -891,11 +877,14 @@ export function drop4Module(): GameModule {
   };
 
   return {
-    mount(c: HTMLElement): void {
+    mount(c: HTMLElement, services?: GameServices): void {
       container = c;
+      frame = services?.frame ?? null;
       disposed = false;
       level = drop4Level();
       playerMark = drop4Mark();
+      frame?.onSettingsChange(() => render()); // Hints flips the verb
+      declare();
       container.replaceChildren(el("div", { class: "sol-loading" }, "Loading Drop 4…"));
       void (async () => {
         try {
@@ -914,10 +903,16 @@ export function drop4Module(): GameModule {
           await showShared(shared);
           return;
         }
-        const seedParam = url.searchParams.get("seed");
-        await startGame(seedParam !== null ? BigInt(seedParam) : undefined);
-        // Probe WebGPU in the background; if present, the picker re-renders with
-        // the experimental local-AI opponent offered (classic engine otherwise).
+        if (pendingResume) {
+          const p = pendingResume;
+          pendingResume = null;
+          applyResume(p);
+        } else {
+          const seedParam = url.searchParams.get("seed");
+          await startGame(seedParam !== null ? BigInt(seedParam) : undefined);
+        }
+        // Probe WebGPU in the background; if present, the settings sheet offers
+        // the experimental local-AI opponent (classic engine otherwise).
         void probeLocalAi();
       })();
     },
@@ -926,11 +921,31 @@ export function drop4Module(): GameModule {
       delete window.__drop4;
       container?.replaceChildren();
       container = null;
+      frame = null;
       game = null;
       verifier = null;
       // Release the WebGPU engine (local-AI) so its GPU resources can be freed.
       runtime = null;
       hybrid = null;
+    },
+    // --- the progress store: the seed and the columns played; resume is replay ---
+    snapshot(): Progress {
+      const now = new Date().toISOString();
+      const done = gameOver();
+      const b = game?.board();
+      return {
+        v: 1,
+        status: done ? "finished" : "in-progress",
+        startedAt: now,
+        updatedAt: now,
+        setup: { mode: "free", seed: seed.toString(), level, mark: playerMark },
+        record: { seed: seed.toString(), moves: [...moves] },
+        summary: { line: done && b ? outcomeLabel(b.result) : `Move ${moves.length} · ${humanToMove() ? "your move" : "the engine to move"}` },
+      };
+    },
+    resume(p: Progress): void {
+      if (game) applyResume(p);
+      else pendingResume = p;
     },
   };
 }

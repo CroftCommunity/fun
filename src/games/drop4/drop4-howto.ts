@@ -18,13 +18,13 @@ export const DROP4_GUIDE: Guide = {
         },
         {
           kind: "prose",
-          text: "You can choose which disc you play — ✕ or ○ — with the \"You play\" buttons, and set how strong The Engine is with the Difficulty picker (Easy, Medium, Hard, or Expert). Both choices are remembered for next time.",
+          text: "You choose which disc you play — ✕ or ○ — and how strong The Engine is (Easy, Medium, Hard, or Expert) on the start screen, or from the New game button under the board. Both choices are remembered for next time, and the level shows beside the game\u2019s name.",
         },
         {
           kind: "shot",
           name: "drop4-board",
-          alt: "A Drop 4 game: a turn bar reading “✕ You vs ○ The Engine”, a difficulty picker and disc chooser, and a seven-column board on a green felt frame with a drop-arrow above each column and red and blue discs stacked in the columns.",
-          caption: "The turn bar, the difficulty and disc pickers, and the board with a drop arrow above each column.",
+          alt: "A Drop 4 game inside the game frame: two seats above the board — ✕ You and ○ The Engine — a seven-column board on a green felt frame with a drop-arrow above each column and red and blue discs stacked in the columns, and New game and Settings buttons under it.",
+          caption: "The two seats (The Engine’s pulses while it thinks), and the board with a drop arrow above each column.",
         },
       ],
     },

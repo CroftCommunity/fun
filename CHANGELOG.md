@@ -12,6 +12,18 @@ earlier is in `git log`.
 
 ## 2026-08
 
+- 2026-08-30 **drop4:** inside the frame. Two seats above the board say who is who and whose
+  move it is — The Engine’s pulses while it thinks, instead of a "thinking…" word that
+  wrapped the turn bar; Difficulty and your mark are the start screen’s card and the New
+  game sheet; the tutor and the local-AI opponent are in Settings; the goal sentence and
+  Chip’s banter are toasts. Leave mid-game and the continue card replays it.
+  (`plans/2026-08-30-plan-game-frame.md` Phase 11)
+- 2026-08-30 **blockdoku:** inside the frame. Score, best and streak are the meters; Undo,
+  Hint (or I’m stuck) and New board are the buttons; today’s board versus a new one and
+  the difficulty (which restarts, so it belongs there) are the New board card. The
+  instruction banner that re-wrote itself above the board every time you picked a piece
+  up is a one-time toast. Leave a board and the continue card replays your placements.
+  (`plans/2026-08-30-plan-game-frame.md` Phase 10)
 - 2026-08-30 **wyrdle:** inside the frame. Guesses left is the meter, Hint (or I’m done)
   and New word are the buttons under the keyboard, today’s word versus a new one is the
   start screen’s card — and "Not in word list" is a toast over the grid, not a bar that
