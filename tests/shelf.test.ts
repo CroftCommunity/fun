@@ -157,3 +157,48 @@ describe("today() is a local calendar day", () => {
     expect(today(new Date(AT))).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });
+
+describe("Continue reads the progress store (plan Phase 5b)", () => {
+  const AT2 = new Date(AT);
+  const rec = (line: string) => ({
+    v: 1 as const,
+    status: "in-progress" as const,
+    startedAt: AT,
+    updatedAt: AT,
+    setup: { mode: "free" },
+    record: {},
+    summary: { line },
+  });
+
+  it("an in-progress entry gives resume its id, title and summary line", () => {
+    const m = buildShelfModel({ games: GAMES, state: {}, now: AT2, progress: { othello: rec("Move 14 · you lead 9–4") } });
+    expect(m.resume).toEqual({ id: "othello", title: "Othello", line: "Move 14 · you lead 9–4" });
+  });
+
+  it("a store entry beats a newer last-opened for a different game — Continue is about unfinished games", () => {
+    const state = noteOpened(noteOpened({}, "othello", new Date("2026-08-28T08:00:00Z")), "wyrdle", AT2);
+    const m = buildShelfModel({ games: GAMES, state, now: AT2, progress: { othello: rec("Move 3") } });
+    expect(m.resume?.id).toBe("othello");
+    expect(m.resume?.line).toBe("Move 3");
+  });
+
+  it("with no store entry, resume is the last-opened game without a line — today's behaviour, pinned", () => {
+    const m = buildShelfModel({ games: GAMES, state: noteOpened({}, "wyrdle", AT2), now: AT2, progress: {} });
+    expect(m.resume).toEqual({ id: "wyrdle", title: "Wyrdle" });
+  });
+
+  it("a stale key for a game not in the registry is ignored", () => {
+    const m = buildShelfModel({ games: GAMES, state: {}, now: AT2, progress: { "old-game": rec("Level 2") } });
+    expect(m.resume).toBeUndefined();
+  });
+
+  it("a finished entry is not Continue material — the last-opened rule applies", () => {
+    const m = buildShelfModel({
+      games: GAMES,
+      state: noteOpened({}, "wyrdle", AT2),
+      now: AT2,
+      progress: { othello: { ...rec("Won 33–31"), status: "finished" } },
+    });
+    expect(m.resume).toEqual({ id: "wyrdle", title: "Wyrdle" });
+  });
+});

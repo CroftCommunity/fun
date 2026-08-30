@@ -24,7 +24,8 @@ earlier is in `git log`.
   games' own controls migrate one at a time. And every game now opens on a **start
   screen** — the game's splash, its name, one line, Play — or, if you left a game
   unfinished, a continue card with where you were; a shared `?r=` link and any other
-  deep link still open straight onto the board. Also: a game page's tab now reads the game's name ("Trio Tumble: Jewel Drop")
+  deep link still open straight onto the board. The home page's *Continue* reads the same
+  record and says where you were ("Move 14 · you lead 9–4") instead of only naming the game. Also: a game page's tab now reads the game's name ("Trio Tumble: Jewel Drop")
   rather than its slug. (`plans/2026-08-30-plan-game-frame.md` Phases 1–2)
 - 2026-08-30 **shelf:** three more pieces in the library — *Porcelain Afternoon*, *The
   Last Cab Home*, *Tuesday Night Rainfall* (each about three minutes, so they play out
