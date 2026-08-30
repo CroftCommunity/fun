@@ -5,7 +5,7 @@ analysis) 2026-08-30; Pass 3 (quality gates) 2026-08-30. Every open question is
 owner-confirmed and none is BLOCKING-unresolved; the two PHASE-GATED items gate Phases 2
 and 9 and are already reflected in those phases. **Phase 0 executed 2026-08-30**
 (D1 / D2-desktop / D3-deferral / D4 / D6 closed; D2's Samsung half and D5's
-two-Android half owed, `[device: …]` tags on their task lines) — **Phase 1 executed 2026-08-30** (perft green at CI depth on all six positions; differential perft 200/0) — **Phase 2 executed 2026-08-30** (terminals, both trait impls, hash, SAN, vectors; gate green) — **Phase 3 executed 2026-08-30** (both chess cases green in wasm) — **Phase 4 executed 2026-08-30** (search green, deepen adopted ≥ d4, budgeted ladder 0/50 over 400 ms in Chromium; Samsung half owed) — **Phase 5 executed 2026-08-30** (band + tutor green; Expert v Easy 20/20, Easy v random 14/20) — **Phase 6 next.**
+two-Android half owed, `[device: …]` tags on their task lines) — **Phase 1 executed 2026-08-30** (perft green at CI depth on all six positions; differential perft 200/0) — **Phase 2 executed 2026-08-30** (terminals, both trait impls, hash, SAN, vectors; gate green) — **Phase 3 executed 2026-08-30** (both chess cases green in wasm) — **Phase 4 executed 2026-08-30** (search green, deepen adopted ≥ d4, budgeted ladder 0/50 over 400 ms in Chromium; Samsung half owed) — **Phase 5 executed 2026-08-30** (band + tutor green; Expert v Easy 20/20, Easy v random 14/20) — **Phase 6 executed 2026-08-30** (core 674: 60→23 all equivalent; solver 422: 302→69, real gaps closed and hand-verified) — **Phase 7 next.**
 Worktree `worktrees/chess/fun`, branch `claude/chess`.
 **Standards anchor:** `docs/BUILDING-GAMES.md` §10 + both new-game checklists;
 `docs/AI-PLAYERS.md` (search cost, honesty gate); `docs/HARNESS.md` (adding a game).
@@ -1295,7 +1295,7 @@ exists)*.
 **Goal:** The check on the check, before the crates have consumers.
 
 **Changes:**
-- [ ] **Commit the green state first** (CLAUDE.md's rule — before *every* round).
+- [x] **Commit the green state first** (CLAUDE.md's rule — before *every* round).
   `cargo mutants -p chess-core --in-place` then `-p chess-solver --in-place`
   (**`--in-place` because this worktree has `node_modules`** — the scratch copy
   fails with `File exists (os error 17)` otherwise, and `--in-place` refuses `-j`,
@@ -1304,19 +1304,19 @@ exists)*.
   `|`/`^` sites, the same as checkers' documented ones) or *real gap*, close the
   gaps with tests that pin behaviour, not implementation. Record the triage in the
   Review Log with counts.
-- [ ] Restore with `git checkout HEAD -- <path>` **only after** `git status
+- [x] Restore with `git checkout HEAD -- <path>` **only after** `git status
   --porcelain <path>` is empty for the files being restored.
-- [ ] **Closing a survivor means watching the new test fail against it (Pass 3;
+- [x] **Closing a survivor means watching the new test fail against it (Pass 3;
   `CLAUDE.md` → mutation testing).** Re-apply the mutation by hand, run the new test,
   see RED, restore, see GREEN — twice in one session a test written to kill a mutant
   did not. A survivor is not closed until that has been seen.
-- [ ] **Read the whole log, not its tail (Pass 3 — `VERIFICATION.md` shape 1).**
+- [x] **Read the whole log, not its tail (Pass 3 — `VERIFICATION.md` shape 1).**
   `tools/check.sh` writes the full `cargo mutants` output to `check-<label>.log`; the
   summary line (`N mutants tested: caught / missed / timeout / unviable`) and every
   `MISSED` line are read from that file. The Review Log records the four counts per
   crate and the per-survivor triage; "11 survivors looked like all of them" is the
   incident this bullet exists for.
-- [ ] After every restore, the **full** `cargo test -p chess-core -p chess-solver
+- [x] After every restore, the **full** `cargo test -p chess-core -p chess-solver
   --release` — not the one test that was mutated — because a bad restore shows up in
   the tests you were not looking at.
 
@@ -1852,6 +1852,84 @@ PR open; `workspace-audit.sh` clean.
 ---
 
 ## Review Log
+
+### Phase 6 execution — 2026-08-30
+
+**Every round committed green first; every restore after `git status
+--porcelain` on the exact files; the whole logs read at their summary lines.**
+
+**chess-core — 674 mutants.** Round 1: 577 caught, 5 timeouts (kills), 32
+unviable, **60 missed** (18 min). Triage found ~36 real gaps in exactly the
+shapes CLAUDE.md predicts and closed them with 14 tests (Phase 6 (part)
+commit): `move_to_text` had **no test caller at all**; SAN's pawn push, quiet
+king/bishop letters and the N/B/R promotion suffixes were untested; the
+queenside castling-rights causes (a1 rook move, a8 capture) were untested
+against the kingside pair; `perft(0)` and `divide` only ran inside a failing
+perft's message; the fullmove counter was never asserted after a move; the
+Zobrist fold's operation and table order were unpinned (now xor relations
+against RULES §15); the history-cap boundary walk the plan demanded was owed
+(100 reversible plies — a `<=` in `push_key` panics there); the white-capturer
+en-passant arm and the uncapturable-ep-does-not-count direction of 9.2.3.1
+had no fixture; the end-of-rank `RankSum` site; kings may not stand
+adjacent. **Also found:** the OppositeCheck malformed case from Phase 4 had
+silently no-oped against the fmt'd file (python `replace` without assert —
+the recurring trap of this session; every later patch asserts its anchor).
+Round 2: **614 caught, 23 missed** — the closing tests killed all 37 they
+targeted. **The 23 residual are equivalent, by class:** disjoint-bitfield
+`|`→`^` (cell_of, `MAX_MOVE_CODE`, `Move::code` ×2, the castling-mask pair);
+symmetric delta tables `+`→`-` (knight/king offsets in `attacked` and
+`leaper_moves` ×6 — negating a symmetric set is the set); the mod-8 parity
+identity in `insufficient_material`; the redundant ep-file clause in
+`apply_move` ×4 (the ep square is only ever reached diagonally by a pawn —
+a documented defensive redundancy) and the mirrored `ep_capturable` `df`
+loop; castle-direction `>`→`>=` twice (never equal); the king-count index
+swap (`[1, 1]` is symmetric); the bulk-count `perft` arm (identical value).
+
+**chess-solver — 422 mutants.** Round 1: **98 caught, 302 missed.** The
+cause was structural: cargo mutants builds debug and nearly every
+search-exercising test was release-gated, so the whole search and the PST
+data were unobserved — the plan's named blind spot ("cribbage's crib-table
+generator had 30 such survivors"), at full scale; ~170 of the misses were
+single-sign deletions in the tables. The remedy the repo prescribes —
+debug-affordable tests that reach the code — landed in three commits:
+PST file-symmetry and taper endpoints; the nudge's sign through
+`heuristic()`; the node-counting contract (40 at depth 1); the table's
+`len`/`is_empty`/`nodes`; mate = `MATE` + remaining depth and still exact at
+depth 3; a small-board minimax cross-check; `class_of`'s boundary pair; a live
+choice at Easy; the black mate-in-one arm; ep-capture and regret facts;
+quiescence with a promotion, an en-passant capture and a two-ply chain at the
+horizon; a proven draw is not seized by the always-take-a-mate rule; a
+full-width quiescence reference on capture-rich boards; `Table::hits()` (the
+answer policy is invisible to a result comparison — hits are its only honest
+evidence) asserted at depth 4 on small boards and in a release-gated midgame
+twin. Round 2: 310 caught, 88 missed. Round 3: **329 caught, 69 missed.**
+Then five hand-applied mutations (the plan's rule) each watched RED against
+their new test and restored: `table_answer → None`, the qsearch child-window
+negation, `best_col ==→!=`, the `Bound::Lower` guard `→ true` (release), and
+the castles `&&→||` — whose first assertion had ALSO no-oped and passed under
+the mutant (left 7, right 1 once it was real).
+
+**Two measured facts from the rounds, worth more than the counts:**
+(1) **at depth 3 the transposition table provably reuses nothing** (5962 vs
+5962 nodes on a small board) — two move orders meet only at four plies, so
+the strict-depth policy's savings and its bound guards are exercised from
+depth 4 up, which is where the tests now sit; (2) **`terminal_value`'s
+"mover won" branch was unreachable** (a terminal is always a loss for the
+side to move) — removed, not tested around.
+
+**The solver's residual, by class:** move ordering (20 — a speed device; the
+audit itself proves "ordering never changes a result"); conservative
+path-dependence flags (7 — more entries marked path-dependent means fewer
+stores, never a wrong value; the one dangerous direction, `→ false`, was
+caught by the leak test); prune-only and tie-break comparators (10); the
+redundant ep file clause (4, as in the core); `INFINITY`'s `+`→`*` (a larger
+bound is a bound); `Table::disabled → Default` (identical struct); a boundary
+value no score can take; and the bound-guard `false` variants, which only
+decline to answer. None changes a result; each is named so the next audit
+does not re-derive it.
+
+**Gate:** every round's restore was followed by the full crate suites; the
+whole-workspace `npm run test:rust` runs at Phase 7's gate on this tree.
 
 ### Phase 5 execution — 2026-08-30
 
