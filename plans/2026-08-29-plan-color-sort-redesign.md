@@ -1,7 +1,8 @@
 # Plan — Color Sort: endless-first, a real pour, sign-in, and the game frame
 
-**Status:** DRAFT (2026-08-29) — research done, decisions OPEN (§ Decisions). No phases
-run. Mock (`mocks/e-color-sort.html`) follows the decision round.
+**Status:** DECIDED (2026-08-29, owner) — D1–D12 settled (§ Decisions); mock
+`mocks/e-color-sort.html` v1 drawn against baseline `fun@d6c0813`
+(`mocks/snaps/color-sort.*`); phases not started.
 
 Branch `claude/color-sort-redesign`; worktree `CroftC/worktrees/color-sort-redesign/fun`.
 
@@ -123,22 +124,42 @@ solver-certified deal that never reshuffles, and par. The one "hard mode" the re
 found fair — hidden layers where a safe move exists across every permutation — is out of
 scope and not precluded.
 
-## Decisions (OPEN — the discussion round)
+## Decisions (settled 2026-08-29 — owner's words in quotes)
 
-| # | Decision | Options | Recommendation |
-|---|---|---|---|
-| D1 | Pour technique | (a) DOM + WAAPI, liquid counter-rotated; (b) same skeleton, water skin's liquid as inline SVG path under a clipPath (true waterline, waves); (c) canvas 2D + button overlay | **(a)** now; (b) is an upgrade the water skin alone benefits from and can come later without changing the skeleton |
-| D2 | Pour ambition | (i) lift + tilt + stream + level change; (ii) (i) plus a per-skin variant (balls arc-hop, nuts thread); (iii) (i) plus liquid wave/settle | **(ii)** — the skins are the game's identity; a tilted tube of balls is wrong |
-| D3 | Pour speed | a preference row: Slow / Normal / Fast / Off (Off = the reduced-motion path); `prefers-reduced-motion` sets Off | yes — the most-requested feel change in the leading app is "reduce animation" |
-| D4 | Threshold `N` | 3 / 5 / 10 endless levels solved; count dailies too? | **5 solved levels of any kind**; dailies solved (a deep-link share opens one) count |
-| D5 | Where Daily lives before the gate | (a) hidden entirely; (b) visible in setup but marked "unlocks after 5 solves"; (c) reachable by `?daily=1` deep link only | **(b)** — a locked row is an honest promise; hidden is a mystery |
-| D6 | Where Daily lives after the gate | (a) poster default flips to Daily; (b) poster stays Endless, a "Today's puzzle" chip/card appears; (c) ask once | **(b)** — the person chose Endless five times; do not move the door |
-| D7 | Endless L1 size | keep `colors_for(0..=2) = 4` (6 tubes); or 3 colours (5 tubes) for L1–2 | keep 4; the genre's L1 is 2–3 colours but 4 with two empties is a ~6-pour solve |
-| D8 | OAuth lineage | hand-rolled port (zero-dep, ~900 lines with the sheet) vs `@atproto/oauth-client-browser` (vendored per SUPPLY-CHAIN) | **owner's call** per DECISIONS.md — the router says ask which, not whether. Lean: hand-rolled, because fun has zero runtime deps and CSP-free means the port is smaller than croft-pwa's |
-| D9 | What the record holds | stats only (solved, strictSolved, streak, maxStreak, lastDay, bestLevel); or stats + the in-progress game (Continue across devices) | **stats only** first; Continue-across-devices is a second record type and a second decision |
-| D10 | Sign-in placement | shelf header (every game) vs a Color Sort-only affordance | **shelf header** — one identity, every game's stats can follow |
-| D11 | Sound | synthesised (zero bytes, per-skin timbre: glug / clink / clack) vs recorded samples | synthesised first, under the existing Sound preference |
-| D12 | Colourblind default | fruit icons default off for water, on for balls/bolts (today) vs on everywhere | keep; add a shape/pattern option only if a player asks |
+| # | Decision | Settled |
+|---|---|---|
+| D1 | Pour technique | **DOM + WAAPI, zero deps**, liquid counter-rotated so the surface stays level. An inline-SVG waterline for the water skin is a later upgrade on the same skeleton, not a fork |
+| D2 | Pour ambition | **"yes to variant, let's go all out"** — lift + tilt about the lip + stream + per-unit level change + return for water; balls **arc-hop** one at a time with a settle bounce; nuts **lift off the post, fly, and thread down** onto the target with a quarter-turn; the tube-complete beat (cap drops on, tick, sound) in every skin |
+| D3 | Pour speed | a preference row **Slow / Normal / Fast / Off**; Off is the reduced-motion path; `prefers-reduced-motion: reduce` selects Off until the player overrides |
+| D4 | Threshold `N` | **5 solved levels of any kind** (Endless levels and Dailies both count) — "agreed" |
+| D5 | Daily before the gate | **visible, locked**: the setup card's Daily row reads "Unlocks after 5 solves · 2 to go"; a shared `?r=` daily still opens (a deep link is a deep link) |
+| D6 | Daily after the gate | **poster stays Endless**; a "Today's puzzle · par 32" chip appears on the poster and the Daily row unlocks. The default never moves under the player |
+| D7 | Endless L1 size | keep `colors_for` as is (4 colours, 6 tubes) |
+| D8 | OAuth lineage | **"look at croft-pwa and standard dimension guidance"** → the croft-pwa port: `src/atproto/oauth/` hand-rolled zero-dep client (DECISIONS.md "documented port"; `croft-pwa/docs/ATPROTO.md`) and the `src/signin/` provider sheet exactly per `croft-pwa/docs/DESIGN.md` § "Choose your atmo provider" (all eight rules; rule 7 has no CSP to apply to on fun — recorded, not skipped) |
+| D9 | What the record holds | **both** stats and the in-progress game — **"but keep the state local to the browser but shaped for a later lexicon if we so choose, see forage doing the same thing"**. So: one record shape carrying `$type` and lexicon-shaped fields, persisted by a **substrate seam** (forage's `js/substrates/{memory,atproto}.js` — the caller owns persistence; a substrate never reaches for `localStorage`), with only the local substrate built now. Signing in binds the record to a DID locally; publishing it to the PDS is a later substrate, and the lexicon itself stays at LEXICONS.md's "unpublished stage" until we choose |
+| D10 | Sign-in placement | **shelf header**, one identity for every game |
+| D11 | Sound | synthesised first, per-skin timbre (glug / clink / clack), under the existing Sound preference |
+| D12 | Colourblind default | keep today's defaults |
+
+### The record shape (D9) — local now, a lexicon later
+
+```json
+{
+  "$type": "ing.croft.fun.progress",          // tentative NSID — LEXICONS act 1 before publishing
+  "game": "color-sort",
+  "did": null,                                 // bound on sign-in; null while anonymous
+  "stats": { "solved": 7, "strictSolved": 2, "streak": 3, "maxStreak": 5, "lastDay": 20694,
+             "bestLevel": 9, "played": 12 },
+  "inProgress": { "mode": "endless", "level": 9, "seed": "…", "moves": [[3,11],[0,10]] },
+  "updatedAt": "2026-08-29T23:10:00Z"
+}
+```
+
+`played` is the D4 gate's input. The shape is one object per game per browser
+(`localStorage` key `fun-record-<game>`), superseding the three ad-hoc keys Color Sort
+keeps today (`color-sort/stats`, `color-sort/endless`, `color-sort/daily/<day>`) and
+feeding the frame's progress store (`fun-progress-<id>`) rather than duplicating it —
+resolved in phase C, not here.
 
 ## Research (2026-08-29, two sweeps; sources inline)
 

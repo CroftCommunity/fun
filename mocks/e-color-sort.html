@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="mock-version" content="1" />
+<meta name="mock-baseline" content="fun@d6c0813" />
+<title>Color Sort — endless-first, a real pour, sign-in · v1 · fun.croft.ing mocks</title>
+<link rel="stylesheet" href="harness.css" />
+<style>
+/* =========================================================================
+   E — COLOR SORT: the redesign (plan 2026-08-29-plan-color-sort-redesign.md)
+
+   Eight proposals, drawn inside the game frame (direction D, shipped) on the
+   Worlds night skin. The pour is ANIMATED here — a CSS keyframe loop, so the
+   arc, the stream and the timing can be judged moving, not described. The
+   production version is the same choreography in the Web Animations API
+   (D1), with runtime-measured coordinates instead of these fixed ones.
+
+   "Current" frames are the CAPTURED snaps in snaps/ (baseline fun@d6c0813,
+   tools/mock-snaps.mjs); a drawn "current" would be a claim (MOCKS.md rule 2).
+   ========================================================================= */
+
+.dir-e .screen {
+  --bg: #0c0e11; --raise: #15191e; --raise2: #1e242b;
+  --ink: #f3f5f7; --dim: #98a2ad; --line: #262d35;
+  --acc: #d9b53c; --acc-ink: #14110a; --ok: #5ec98a; --danger: #d9534f;
+  --glass: rgb(255 255 255 / .06); --edge: #4a4636; --cap: #6f9079;
+  --c0: #e6423a; --c1: #f2c230; --c2: #8e44d0; --c3: #74c53b; --c4: #3a6fe6; --c5: #ef8b25; --c6: #ff7fbf;
+  background: var(--bg); color: var(--ink);
+  font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.dir-e .screen[data-theme="light"] {
+  --bg: #f2f0ea; --raise: #ffffff; --raise2: #eae6dc;
+  --ink: #191c1f; --dim: #5a636d; --line: #d6d0c2;
+  --acc: #c8a11f; --acc-ink: #1b201c; --ok: #2f6b45;
+  --glass: rgb(255 255 255 / .55); --edge: #cfc7b4; --cap: #37503f;
+}
+.dir-e .dsp { font-family: "Fredoka", "Baloo 2", system-ui, sans-serif; letter-spacing: -0.01em; }
+.dir-e .h-wrap { max-width: 1540px; }
+
+/* --- the frame's bands (as shipped: 56 / 48 / 56 / stage / 72) ----------- */
+.app { position: absolute; inset: 0; display: flex; flex-direction: column; }
+.shelfbar { flex: 0 0 56px; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: var(--raise); border-bottom: 1px solid var(--line); }
+.ib { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--ink); font: inherit; font-size: 17px; display: inline-grid; place-items: center; }
+.ib.avatar { border-radius: 50%; background: linear-gradient(135deg, #7fb3ff, #b07fff); color: #fff; font-weight: 700; font-size: 14px; border: 0; }
+.mark { font-weight: 600; font-size: 1.05rem; }
+.mark i { color: var(--acc); font-style: normal; }
+.sp { flex: 1; }
+.gamebar { flex: 0 0 48px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border-bottom: 1px solid var(--line); }
+.gamebar .title { font-size: 1.1rem; font-weight: 600; }
+.gamebar .mode { font-size: 0.78rem; color: var(--dim); padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; }
+.meter { flex: 0 0 56px; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 0 12px; }
+.stat { display: flex; flex-direction: column; align-items: center; min-width: 76px; }
+.stat b { font-size: 1.15rem; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.stat span { font-size: 0.68rem; color: var(--dim); letter-spacing: 0.06em; text-transform: uppercase; }
+.stage { flex: 1; position: relative; display: grid; place-items: center; padding: 8px 12px; min-height: 0; }
+.toast { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); background: var(--raise2); color: var(--ink); border: 1px solid var(--line); padding: 8px 14px; border-radius: 999px; font-size: 0.85rem; white-space: nowrap; box-shadow: 0 6px 20px rgb(0 0 0 / .35); display: flex; gap: 10px; align-items: center; }
+.toast b { color: var(--acc); font-weight: 600; }
+.dock { flex: 0 0 72px; display: flex; align-items: stretch; justify-content: space-around; padding: 6px 8px; border-top: 1px solid var(--line); background: var(--raise); }
+.verb { flex: 1; max-width: 96px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: 0.72rem; border-radius: 12px; }
+.verb i { font-style: normal; font-size: 1.35rem; line-height: 1; }
+.verb.primary { color: var(--acc); }
+.verb[disabled] { opacity: 0.38; }
+
+/* --- the board -------------------------------------------------------------
+   Tubes are 48px wide at 390 (the 44px tap floor with room), 4 units of 34px.
+   A level up to 7 tubes is ONE row; 8–12 tubes wrap to two rows of ≤6. */
+.board { display: flex; flex-wrap: wrap; justify-content: center; gap: 30px 22px; width: 100%; max-width: 366px; position: relative; padding: 30px 0 10px; }
+.tube { position: relative; width: 48px; height: 136px; flex: 0 0 auto; }
+.tube .lip { position: absolute; left: -3px; right: -3px; top: -7px; height: 9px; border: 2px solid var(--edge); border-radius: 6px 6px 3px 3px; background: var(--glass); }
+.tube .glass { position: absolute; inset: 0; border: 2px solid var(--edge); border-top: 0; border-radius: 0 0 22px 22px; background: var(--glass); overflow: hidden; display: flex; flex-direction: column-reverse; }
+.tube .glass::after { content: ""; position: absolute; left: 6px; top: 8px; bottom: 14px; width: 5px; border-radius: 3px; background: linear-gradient(180deg, rgb(255 255 255 / .35), rgb(255 255 255 / .05)); pointer-events: none; }
+.u { height: 34px; flex: 0 0 34px; background: linear-gradient(180deg, color-mix(in srgb, var(--f) 78%, white) 0%, var(--f) 42%, color-mix(in srgb, var(--f) 82%, black) 100%); display: grid; place-items: center; font-size: 15px; }
+.u:first-child { border-radius: 0 0 20px 20px; }
+.tube.locked .glass { border-color: var(--cap); }
+.tube.locked .cap { position: absolute; left: -4px; right: -4px; top: -9px; height: 12px; border-radius: 4px; background: linear-gradient(180deg, color-mix(in srgb, var(--cap) 80%, white), var(--cap)); box-shadow: 0 2px 6px rgb(0 0 0 / .4); }
+.tube.locked .lip { display: none; }
+.tube.legal .glass, .tube.legal .lip { border-color: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 35%, transparent); }
+.tube.selected { transform: translateY(-12px); }
+.tube.selected .glass, .tube.selected .lip { border-color: var(--acc); box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc) 35%, transparent); }
+.tube .n { position: absolute; left: 0; right: 0; bottom: -20px; text-align: center; font-size: .68rem; color: var(--dim); }
+
+/* --- THE POUR (water) ------------------------------------------------------
+   Choreography (D2): lift → travel + tilt about the LIP → stream + per-unit
+   level change → return. Durations here: lift 120ms · travel 200ms · pour
+   160ms/unit (2 units = 320ms) · return 200ms, then a hold so the loop reads.
+   Loop = 2.6s. `--dx/--dy` are the spout's docking offset above the target's
+   mouth — measured at runtime in production, fixed here. */
+.pour { --dx: 118px; --dy: -30px; --tilt: 104deg; --loop: 2.6s; }
+.pour .src { transform-origin: 100% 0; animation: pour-tube var(--loop) infinite; z-index: 3; will-change: transform; }
+.pour .src .glass { border-radius: 0 0 22px 22px; }
+@keyframes pour-tube {
+  0%    { transform: translate(0,0) rotate(0); }
+  4.6%  { transform: translate(0,-14px) rotate(0); }                       /* lift 120ms */
+  12.3% { transform: translate(var(--dx), var(--dy)) rotate(var(--tilt)); } /* travel+tilt 200ms, linear */
+  24.6% { transform: translate(var(--dx), var(--dy)) rotate(var(--tilt)); } /* pour 320ms */
+  32.3% { transform: translate(0,0) rotate(0); }                           /* return 200ms, ease-out */
+  100%  { transform: translate(0,0) rotate(0); }
+}
+/* the two units that leave: shrink toward the mouth while the stream runs,
+   the top one first; a slanted surface on whichever unit is currently top. */
+.pour .src .u.leave { transform-origin: 50% 0; animation: leave var(--loop) infinite; }
+.pour .src .u.leave.second { animation-name: leave2; }
+@keyframes leave  { 0%,12.3% { transform: scaleY(1); clip-path: polygon(0 0,100% 0,100% 100%,0 100%);} 13% { clip-path: polygon(0 26%,100% 0,100% 100%,0 100%);} 18.4% { transform: scaleY(0); clip-path: polygon(0 26%,100% 0,100% 100%,0 100%);} 32.3%,100% { transform: scaleY(0); } 100.1% { transform: scaleY(1);} }
+@keyframes leave2 { 0%,18.4% { transform: scaleY(1); clip-path: polygon(0 0,100% 0,100% 100%,0 100%);} 18.5% { clip-path: polygon(0 26%,100% 0,100% 100%,0 100%);} 24.6% { transform: scaleY(0);} 32.3%,100% { transform: scaleY(0);} }
+/* the stream: a 7px column from the spout down to the target's surface */
+.pour .stream { position: absolute; width: 7px; border-radius: 4px; transform-origin: 50% 0; transform: scaleY(0); animation: stream var(--loop) infinite; z-index: 2; background: linear-gradient(90deg, color-mix(in srgb, var(--f) 70%, white), var(--f) 60%, color-mix(in srgb, var(--f) 80%, black)); }
+@keyframes stream { 0%,12.3% { transform: scaleY(0);} 13.5% { transform: scaleY(1);} 23.5% { transform: scaleY(1);} 24.6%,100% { transform: scaleY(0);} }
+/* the two units that arrive: grow from the bottom, in step with the leaving ones */
+.pour .dst .u.arrive { transform-origin: 50% 100%; transform: scaleY(0); animation: arrive var(--loop) infinite; }
+.pour .dst .u.arrive.second { animation-name: arrive2; }
+@keyframes arrive  { 0%,12.3% { transform: scaleY(0);} 18.4% { transform: scaleY(1);} 19.4% { transform: scaleY(1.06);} 20.4%,100% { transform: scaleY(1);} }
+@keyframes arrive2 { 0%,18.4% { transform: scaleY(0);} 24.6% { transform: scaleY(1);} 25.6% { transform: scaleY(1.06);} 26.6%,100% { transform: scaleY(1);} }
+.pour .dst { animation: settle var(--loop) infinite; }
+@keyframes settle { 0%,24% { transform: translateY(0);} 25.5% { transform: translateY(3px);} 27.5%,100% { transform: translateY(0);} }
+/* a frozen pose: pause the loop at a phase (negative delay) */
+.pose * { animation-play-state: paused !important; }
+.pose.at-lift * { animation-delay: calc(-0.046 * var(--loop)) !important; }
+.pose.at-dock * { animation-delay: calc(-0.128 * var(--loop)) !important; }
+.pose.at-pour * { animation-delay: calc(-0.19 * var(--loop)) !important; }
+.pose.at-settle * { animation-delay: calc(-0.25 * var(--loop)) !important; }
+.pose.at-return * { animation-delay: calc(-0.30 * var(--loop)) !important; }
+
+/* --- the ball variant: no tilt — each ball hops in an arc, 140ms/ball ------- */
+.skin-ball .u { width: 30px; height: 30px; flex-basis: 30px; margin: 2px auto; border-radius: 50%; background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--f) 70%, white), var(--f) 58%, color-mix(in srgb, var(--f) 66%, black)); }
+.skin-ball .u:first-child { border-radius: 50%; }
+.skin-ball .glass { background: linear-gradient(180deg, rgb(255 255 255 / .06), rgb(255 255 255 / .01)); }
+.hop { --loop: 2.6s; }
+.hop .src { animation: hop-lift var(--loop) infinite; }
+@keyframes hop-lift { 0% { transform: translateY(0);} 4.6%,24.6% { transform: translateY(-12px);} 32.3%,100% { transform: translateY(0);} }
+.hop .ball { position: absolute; width: 30px; height: 30px; border-radius: 50%; z-index: 4; background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--f) 70%, white), var(--f) 58%, color-mix(in srgb, var(--f) 66%, black)); animation: ball-x var(--loop) infinite; }
+.hop .ball > i { display: block; width: 100%; height: 100%; border-radius: 50%; animation: ball-y var(--loop) infinite; }
+.hop .ball.second { animation-name: ball-x2; } .hop .ball.second > i { animation-name: ball-y2; }
+@keyframes ball-x  { 0%,4.6% { transform: translateX(0); opacity: 1;} 12% { transform: translateX(var(--hx)); opacity: 1;} 12.1%,100% { opacity: 0; } }
+@keyframes ball-y  { 0%,4.6% { transform: translateY(0);} 8.3% { transform: translateY(-70px);} 12% { transform: translateY(var(--hy));} }
+@keyframes ball-x2 { 0%,12.1% { transform: translateX(0); opacity: 0;} 12.2% { opacity: 1;} 19.6% { transform: translateX(var(--hx)); opacity: 1;} 19.7%,100% { opacity: 0; } }
+@keyframes ball-y2 { 0%,12.1% { transform: translateY(0);} 15.9% { transform: translateY(-70px);} 19.6% { transform: translateY(var(--hy2));} }
+.hop .src .u.leave { animation: hide var(--loop) infinite; } .hop .src .u.leave.second { animation-name: hide2; }
+@keyframes hide  { 0%,4.5% { opacity: 1;} 4.6%,100% { opacity: 0;} }
+@keyframes hide2 { 0%,12.1% { opacity: 1;} 12.2%,100% { opacity: 0;} }
+.hop .dst .u.arrive { animation: show var(--loop) infinite; opacity: 0; } .hop .dst .u.arrive.second { animation-name: show2; }
+@keyframes show  { 0%,11.9% { opacity: 0;} 12% { opacity: 1; transform: scale(1.12);} 13.5%,100% { opacity: 1; transform: scale(1);} }
+@keyframes show2 { 0%,19.5% { opacity: 0;} 19.6% { opacity: 1; transform: scale(1.12);} 21%,100% { opacity: 1; transform: scale(1);} }
+
+/* --- the bolt variant: the nut lifts off the post, flies, threads down ----- */
+.skin-bolt .glass { border: 0; border-radius: 0; background: linear-gradient(#6b6455, color-mix(in srgb, #6b6455 80%, black)) center / 8px 100% no-repeat, linear-gradient(180deg, color-mix(in srgb, #4a4636 88%, white), #4a4636) center / 100% 10px no-repeat bottom; }
+.skin-bolt .glass::after { display: none; }
+.skin-bolt .lip { display: none; }
+.skin-bolt .u { width: 42px; height: 30px; flex-basis: 30px; margin: 2px auto; border-radius: 6px; background: linear-gradient(180deg, color-mix(in srgb, var(--f) 80%, white), var(--f) 55%, color-mix(in srgb, var(--f) 78%, black)); clip-path: polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%); }
+.skin-bolt .u:first-child { border-radius: 6px; }
+.thread { --loop: 2.6s; }
+.thread .nut { position: absolute; width: 42px; height: 30px; z-index: 4; background: linear-gradient(180deg, color-mix(in srgb, var(--f) 80%, white), var(--f) 55%, color-mix(in srgb, var(--f) 78%, black)); clip-path: polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%); animation: nut var(--loop) infinite; }
+@keyframes nut { 0% { transform: translate(0,0) rotate(0); opacity: 1;} 6% { transform: translate(0,-64px) rotate(-30deg);} 13% { transform: translate(var(--hx),-64px) rotate(-30deg);} 20% { transform: translate(var(--hx), var(--hy)) rotate(60deg); opacity: 1;} 20.1%,100% { opacity: 0;} }
+.thread .src .u.leave { animation: hide var(--loop) infinite; }
+.thread .dst .u.arrive { animation: show-nut var(--loop) infinite; opacity: 0; }
+@keyframes show-nut { 0%,19.9% { opacity: 0;} 20%,100% { opacity: 1;} }
+
+/* --- tube complete ---------------------------------------------------------- */
+.done .cap { animation: capdrop 1.6s infinite; }
+@keyframes capdrop { 0% { transform: translateY(-26px); opacity: 0;} 20% { transform: translateY(0); opacity: 1;} 24% { transform: translateY(2px);} 28%,100% { transform: translateY(0); opacity: 1;} }
+.done .glass { animation: capglow 1.6s infinite; }
+@keyframes capglow { 0%,18% { box-shadow: none;} 26% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 60%, transparent), 0 0 24px color-mix(in srgb, var(--ok) 50%, transparent);} 70%,100% { box-shadow: 0 0 0 0 transparent;} }
+.tick { position: absolute; left: 50%; top: -34px; transform: translateX(-50%); color: var(--ok); font-weight: 700; font-size: 1.1rem; animation: tick 1.6s infinite; }
+@keyframes tick { 0%,20% { opacity: 0; transform: translate(-50%, 6px);} 30% { opacity: 1; transform: translate(-50%, 0);} 70%,100% { opacity: 0; transform: translate(-50%, -8px);} }
+
+/* --- sheets, cards, splash (as direction D) ------------------------------- */
+.scrim { position: absolute; inset: 0; background: rgb(0 0 0 / .45); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--raise); border-radius: 18px 18px 0 0; padding: 10px 16px 18px; box-shadow: 0 -12px 40px rgb(0 0 0 / .5); max-height: 84%; overflow: hidden; }
+.sheet .grip { width: 40px; height: 4px; border-radius: 2px; background: var(--line); margin: 0 auto 12px; }
+.sheet h4 { margin: 14px 0 6px; font-size: 0.72rem; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+.sheet h3 { margin: 0 0 4px; font-size: 1.15rem; }
+.sheet .intro { color: var(--dim); font-size: .86rem; margin: 0 0 6px; }
+.srow { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.srow:last-child { border-bottom: 0; }
+.srow .l { flex: 1; }
+.srow .l small { display: block; color: var(--dim); font-size: 0.78rem; }
+.srow.locked .l, .srow.locked .seg { opacity: .55; }
+.tog { width: 44px; height: 26px; border-radius: 13px; background: var(--line); position: relative; flex: 0 0 auto; }
+.tog::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--ink); }
+.tog.on { background: var(--ok); }
+.tog.on::after { left: 21px; background: #fff; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.seg span { padding: 7px 12px; font-size: 0.85rem; }
+.seg span.on { background: var(--acc); color: var(--acc-ink); font-weight: 600; }
+.seg span.off { color: var(--dim); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 46px; padding: 0 18px; border-radius: 12px; border: 1px solid var(--line); background: transparent; color: var(--ink); font: inherit; font-weight: 600; }
+.btn.primary { background: var(--acc); color: var(--acc-ink); border-color: var(--acc); }
+.btn.ghost { border-color: transparent; color: var(--dim); font-weight: 500; }
+.btn.block { width: 100%; }
+.btn.sm { height: 36px; padding: 0 12px; font-size: .85rem; }
+.splash { flex: 1; position: relative; display: flex; flex-direction: column; }
+.splash .art { position: absolute; inset: 0; background-size: cover; background-position: center top; }
+.splash .veil { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 20%, var(--bg) 62%); }
+.splash .body { position: relative; margin-top: auto; padding: 0 20px 20px; }
+.splash h2 { margin: 0; font-size: 2.2rem; line-height: 1; }
+.splash .pitch { color: var(--dim); margin: 6px 0 14px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--acc); color: var(--acc); font-size: .8rem; font-weight: 600; margin-bottom: 10px; }
+.chip.dim { border-color: var(--line); color: var(--dim); font-weight: 500; }
+.setup { background: var(--raise); border: 1px solid var(--line); border-radius: 14px; padding: 4px 14px; margin-bottom: 12px; }
+.setup .srow { padding: 9px 0; flex-wrap: wrap; }
+.setup .srow .l { flex: 1 0 100%; }
+.splash .links { display: flex; justify-content: center; gap: 18px; margin-top: 12px; font-size: 0.85rem; color: var(--dim); }
+.lock { font-size: .8rem; color: var(--dim); }
+.result { width: 100%; max-width: 366px; background: var(--raise); border: 1px solid var(--line); border-radius: 18px; padding: 18px; }
+.result h2 { margin: 0 0 6px; font-size: 1.5rem; line-height: 1.1; }
+.result .badge { display: inline-flex; gap: 6px; align-items: center; padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); font-size: .8rem; font-weight: 600; margin-bottom: 12px; }
+.result dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0 0 14px; font-size: .88rem; }
+.result dt { color: var(--dim); } .result dd { margin: 0; font-variant-numeric: tabular-nums; }
+.result .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .74rem; color: var(--dim); word-break: break-all; }
+.result .row { display: flex; gap: 8px; flex-wrap: wrap; }
+.offer { margin-top: 12px; padding: 12px; border-radius: 12px; background: var(--raise2); border: 1px solid var(--line); }
+.offer b { display: block; margin-bottom: 2px; }
+.offer p { margin: 0 0 10px; color: var(--dim); font-size: .85rem; }
+.prow { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.prow:last-child { border-bottom: 0; }
+.prow .pl { flex: 1; } .prow .pl small { display: block; color: var(--dim); font-size: .78rem; }
+.prow .pi { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; font-weight: 700; color: #fff; }
+.field { display: flex; gap: 8px; margin-top: 8px; }
+.field input { flex: 1; height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); padding: 0 12px; font: inherit; }
+.live { position: absolute; left: 12px; right: 12px; bottom: 14px; padding: 8px 12px; border-radius: 10px; border: 1px dashed var(--dim); color: var(--dim); font-size: .8rem; }
+
+/* --- desktop ---------------------------------------------------------------- */
+.desk .below { flex: 1; display: flex; min-height: 0; }
+.desk .stage { padding: 20px; }
+.desk .board { max-width: 760px; gap: 34px 26px; }
+.desk .tube { width: 56px; height: 156px; } .desk .u { height: 39px; flex-basis: 39px; }
+.rail { flex: 0 0 300px; border-left: 1px solid var(--line); background: var(--raise); display: flex; flex-direction: column; padding: 16px 18px; gap: 14px; overflow: hidden; }
+.rail .title { font-size: 1.4rem; font-weight: 600; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rail .stats { display: flex; gap: 10px; }
+.rail .verbs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rail .verbs .btn { height: 44px; padding: 0 10px; font-weight: 500; }
+.rail h4 { margin: 4px 0 0; font-size: 0.7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+.rail .srow { padding: 8px 0; }
+.rail .kv { display: flex; justify-content: space-between; font-size: .9rem; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.rail .kv span { color: var(--dim); }
+
+/* --- harness page bits ---------------------------------------------------- */
+.h-pair-title { font-size: 1.05rem; margin: 2.6rem 0 .2rem; }
+.h-pair { display: flex; gap: 24px; align-items: flex-start; overflow-x: auto; padding: 1rem 0 1.5rem; }
+.snap { width: 390px; height: 844px; border-radius: 22px; border: 1px solid var(--h-rule); object-fit: cover; object-position: top; display: block; }
+.snap.desk { width: 1180px; height: 740px; border-radius: 10px; object-fit: cover; }
+.strip { display: flex; gap: 14px; overflow-x: auto; padding: 1rem 0; }
+.strip figure { margin: 0; flex: 0 0 auto; }
+.strip figcaption { font-size: .78rem; color: var(--h-ink-dim); margin-top: .4rem; max-width: 220px; }
+.strip figcaption b { color: var(--h-ink); }
+.pane { position: relative; width: 300px; height: 330px; border-radius: 14px; border: 1px solid var(--h-rule); background: #0c0e11; color: #f3f5f7; overflow: hidden; contain: layout paint style; --glass: rgb(255 255 255 / .06); --edge: #4a4636; --cap: #6f9079; --ok: #5ec98a; --acc: #d9b53c; --dim: #98a2ad; --c0: #e6423a; --c1: #f2c230; --c2: #8e44d0; --c3: #74c53b; --c4: #3a6fe6; --c5: #ef8b25; }
+.pane .board { max-width: none; padding: 140px 0 0; gap: 0 30px; }
+.pane .label { position: absolute; left: 12px; top: 10px; font-size: .78rem; color: #98a2ad; }
+.pane.wide { width: 420px; }
+.rules { counter-reset: r; list-style: none; padding: 0; margin: 1rem 0 0; display: grid; gap: .8rem; }
+.rules li { counter-increment: r; padding-left: 2.4rem; position: relative; max-width: 78ch; }
+.rules li::before { content: counter(r); position: absolute; left: 0; top: .05rem; width: 1.7rem; height: 1.7rem; border-radius: 50%; background: var(--h-accent); color: #111; font-weight: 700; display: grid; place-items: center; font-size: .85rem; }
+.rules b { color: var(--h-ink); }
+.h-table td:first-child { white-space: normal; min-width: 9rem; }
+.h-table code { color: var(--h-ink); font-size: .85em; }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: .75rem; border: 1px solid var(--h-rule); color: var(--h-ink-dim); }
+.pill.rec { border-color: var(--h-accent); color: var(--h-accent); }
+.rev { font-size: .85rem; color: var(--h-ink-dim); }
+.rev code { color: var(--h-ink); }
+@media (prefers-reduced-motion: reduce) { .pour *, .hop *, .thread *, .done * { animation-duration: 0.001s !important; animation-iteration-count: 1 !important; } }
+</style>
+</head>
+<body class="dir-e">
+<div class="h-wrap">
+  <a class="h-back" href="index.html">← All directions</a>
+  <p class="h-kicker">Mock E · Color Sort · <b>v1</b> · baseline <code>fun@d6c0813</code></p>
+  <h1>Color Sort — endless-first, a real pour, sign-in</h1>
+  <p class="h-lede">Eight proposals for one game, to be talked through before a line of production code: how Color Sort opens, how a pour looks and sounds in each of its three skins, where the Daily lives before and after the fifth solve, and what signing in buys. Everything sits inside the shipped game frame. Plan: <code>plans/2026-08-29-plan-color-sort-redesign.md</code> (decisions D1–D12 settled 2026-08-29).</p>
+  <div class="h-switch" data-theme-switch><span class="rev">Theme:</span><button data-set="dark" aria-pressed="true">Night</button><button data-set="light" aria-pressed="false">Day</button></div>
+
+  <h2>Revisions</h2>
+  <p class="rev"><b>v1</b> — first draft, branch <code>claude/color-sort-redesign</code>. Captures: <code>snaps/color-sort.*</code> from <code>fun@d6c0813</code> via <code>tools/mock-snaps.mjs</code> (added on this branch).</p>
+
+  <h2>Open decisions</h2>
+  <table class="h-table">
+    <tr><th>#</th><th>Question</th><th>This draft shows</th><th>Standing</th></tr>
+    <tr><td>Q1</td><td>Pour timings — 120 / 200 / 160-per-unit / 200 ms are Decanta's measured numbers. Right on a phone?</td><td>those numbers, looping in proposal 3</td><td><span class="pill rec">tune on device</span> a preference row makes the pick reversible</td></tr>
+    <tr><td>Q2</td><td>Twelve tubes at 390px — two rows of six at 48px (drawn) or one scrolling row?</td><td>two rows; the bottom row's lips sit 30px under the top row's bases so a tilted tube clears them</td><td><span class="pill">open</span></td></tr>
+    <tr><td>Q3</td><td>Where the "N to go" counter lives before the gate — only in the locked Daily row, or also on the poster?</td><td>the row only; the poster stays clean until the chip earns its place</td><td><span class="pill rec">row only</span></td></tr>
+    <tr><td>Q4</td><td>The sign-in offer's copy after the first solve</td><td>"Keep this streak — sign in with your atmo provider"</td><td><span class="pill">open — Copy category</span></td></tr>
+    <tr><td>Q5</td><td>Does the ball skin keep the tube lift while balls hop, or stay put?</td><td>a 12px lift for the whole pour (the selection pose held)</td><td><span class="pill">open</span></td></tr>
+  </table>
+
+  <!-- ===================================================================== -->
+  <h2>The proposals, Current beside Proposed</h2>
+
+  <h3 class="h-pair-title">1 · First land — Endless, level 1, and a locked Daily</h3>
+  <p class="h-note">Today a bare <code>/color-sort/</code> is the Daily: twelve tubes, ten colours, par 32, for everyone. Proposed: the frame's poster with the setup card. <b>Mode</b> is Endless; the Daily row is visible and locked with the count to go. Play starts level 1 (4 colours, 6 tubes) — or "Continue · Level 9" when the record holds one.</p>
+  <div class="h-pair">
+    <figure class="h-frame"><figcaption><b>Current</b> — captured, <code>fun@d6c0813</code>, <code>?seed=4242</code> (a bare land is today's daily: the same shape)</figcaption><img class="snap" src="snaps/color-sort.board.phone.png" alt="Today: the shelf bar, the game bar, five pills (Daily, Endless, Undo, Restart, Hint), a Settings disclosure, a text HUD, then twelve tubes in two rows." /></figure>
+    <figure class="h-frame"><figcaption><b>Proposed</b> — the poster; Daily locked, 3 to go</figcaption><div class="screen" data-theme="dark"><div class="app">
+      <div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">♪</button><button class="ib">☾</button><button class="ib">⚙</button></div>
+      <div class="splash"><div class="art" style="background-image:url(../src/games/color-sort/assets/splash.jpg)"></div><div class="veil"></div><div class="body">
+        <h2 class="dsp">Color Sort</h2>
+        <p class="pitch">Pour until every tube holds one colour. Tap a tube, tap where it goes.</p>
+        <div class="setup">
+          <div class="srow"><div class="l">Mode</div><span class="seg"><span class="on">Endless</span><span class="off">Daily 🔒</span></span></div>
+          <div class="srow locked"><div class="l">Daily<small>One puzzle a day, the same for everyone, with a par. <b>Unlocks after 5 solves · 3 to go.</b></small></div></div>
+          <div class="srow"><div class="l">Look<small>Same puzzle, your choice of look — switch any time</small></div><span class="seg"><span class="on">Water</span><span>Balls</span><span>Bolts</span></span></div>
+        </div>
+        <button class="btn primary block">▸ Play · Level 1</button>
+        <div class="links"><span>How to play</span><span>Open in new tab ↗</span></div>
+      </div></div>
+    </div></div></figure>
+    <figure class="h-frame"><figcaption><b>Proposed, after the fifth solve</b> — the door does not move; a chip appears</figcaption><div class="screen" data-theme="dark"><div class="app">
+      <div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">♪</button><button class="ib">☾</button><button class="ib">⚙</button></div>
+      <div class="splash"><div class="art" style="background-image:url(../src/games/color-sort/assets/splash.jpg)"></div><div class="veil"></div><div class="body">
+        <span class="chip">☀ Today's puzzle · par 32 · not yet played</span>
+        <h2 class="dsp">Color Sort</h2>
+        <p class="pitch">Pour until every tube holds one colour. Tap a tube, tap where it goes.</p>
+        <div class="setup">
+          <div class="srow"><div class="l">Mode</div><span class="seg"><span class="on">Endless</span><span>Daily</span></span></div>
+          <div class="srow"><div class="l">Look</div><span class="seg"><span class="on">Water</span><span>Balls</span><span>Bolts</span></span></div>
+        </div>
+        <button class="btn primary block">▸ Continue · Level 9</button>
+        <div class="links"><span>New game…</span><span>How to play</span><span>↗</span></div>
+      </div></div>
+    </div></div></figure>
+  </div>
+
+  <h3 class="h-pair-title">2 · Playing — inside the frame, mid-pour</h3>
+  <p class="h-note">Today: five pills and a disclosure above a text HUD, a board that shifts when the deadlock card appears. Proposed: meters in band ③ (Moves · Level · Best), the board alone in the stage, four verbs in the dock. The pour is frozen here at the stream phase; proposal 3 has it moving. Tubes are 48px — above the 44px floor (today's are 43).</p>
+  <div class="h-pair">
+    <figure class="h-frame"><figcaption><b>Current</b> — captured, tube 1 selected, legal targets ringed</figcaption><img class="snap" src="snaps/color-sort.select.phone.png" alt="Today with the first tube raised and the two empty tubes ringed green." /></figure>
+    <figure class="h-frame"><figcaption><b>Proposed</b> — level 3 (5 colours, 7 tubes), tube 1 pouring into tube 6</figcaption><div class="screen" data-theme="dark"><div class="app">
+      <div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">♪</button><button class="ib">☾</button><button class="ib">⚙</button></div>
+      <div class="gamebar"><button class="ib">‹</button><span class="title">Color Sort</span><span class="mode">Endless</span><span class="sp"></span><button class="ib">⋯</button></div>
+      <div class="meter"><div class="stat"><b>4</b><span>moves</span></div><div class="stat"><b>3</b><span>level</span></div><div class="stat"><b>9</b><span>best</span></div></div>
+      <div class="stage"><div class="board pour pose at-pour" style="--dx:170px; --dy:-32px;">
+        <div class="tube src"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c4)"></div><div class="u leave second" style="--f:var(--c1)"></div><div class="u leave" style="--f:var(--c1)"></div></div><span class="n">1</span></div>
+        <div class="tube"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c0)"></div><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c3)"></div><div class="u" style="--f:var(--c0)"></div></div><span class="n">2</span></div>
+        <div class="tube"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c3)"></div><div class="u" style="--f:var(--c4)"></div><div class="u" style="--f:var(--c4)"></div></div><span class="n">3</span></div>
+        <div class="tube dst"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c1)"></div><div class="u" style="--f:var(--c1)"></div><div class="u arrive" style="--f:var(--c1)"></div><div class="u arrive second" style="--f:var(--c1)"></div></div><span class="n">4</span></div>
+        <div class="stream" style="--f:var(--c1); left: 236px; top: -2px; height: 100px;"></div>
+        <div class="tube locked"><div class="cap"></div><div class="glass"><div class="u" style="--f:var(--c0)"></div><div class="u" style="--f:var(--c0)"></div><div class="u" style="--f:var(--c0)"></div><div class="u" style="--f:var(--c0)"></div></div><span class="n">5</span></div>
+        <div class="tube"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c3)"></div><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c3)"></div></div><span class="n">6</span></div>
+        <div class="tube"><div class="lip"></div><div class="glass"></div><span class="n">7</span></div>
+      </div></div>
+      <div class="dock"><button class="verb"><i>↶</i>Undo</button><button class="verb"><i>✦</i>Hint</button><button class="verb"><i>＋</i>New game…</button><button class="verb"><i>⟳</i>Restart</button><button class="verb"><i>⚙</i>Settings</button></div>
+    </div></div></figure>
+    <figure class="h-frame"><figcaption><b>Proposed</b> — no moves left: a toast in the stage, the board does not move</figcaption><div class="screen" data-theme="dark"><div class="app">
+      <div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">♪</button><button class="ib">☾</button><button class="ib">⚙</button></div>
+      <div class="gamebar"><button class="ib">‹</button><span class="title">Color Sort</span><span class="mode">Endless</span><span class="sp"></span><button class="ib">⋯</button></div>
+      <div class="meter"><div class="stat"><b>11</b><span>moves</span></div><div class="stat"><b>3</b><span>level</span></div><div class="stat"><b>9</b><span>best</span></div></div>
+      <div class="stage"><div class="board">
+        <div class="tube"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c4)"></div><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c4)"></div></div></div>
+        <div class="tube"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c0)"></div><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c3)"></div><div class="u" style="--f:var(--c0)"></div></div></div>
+        <div class="tube"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c3)"></div><div class="u" style="--f:var(--c4)"></div><div class="u" style="--f:var(--c4)"></div><div class="u" style="--f:var(--c3)"></div></div></div>
+        <div class="tube locked"><div class="cap"></div><div class="glass"><div class="u" style="--f:var(--c1)"></div><div class="u" style="--f:var(--c1)"></div><div class="u" style="--f:var(--c1)"></div><div class="u" style="--f:var(--c1)"></div></div></div>
+        <div class="tube locked"><div class="cap"></div><div class="glass"><div class="u" style="--f:var(--c0)"></div><div class="u" style="--f:var(--c0)"></div><div class="u" style="--f:var(--c0)"></div><div class="u" style="--f:var(--c0)"></div></div></div>
+        <div class="tube"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c3)"></div><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c3)"></div><div class="u" style="--f:var(--c2)"></div></div></div>
+        <div class="tube"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c4)"></div><div class="u" style="--f:var(--c0)"></div><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c4)"></div></div></div>
+      </div><div class="toast">No moves left <b>Undo</b> <b>Restart</b></div></div>
+      <div class="dock"><button class="verb"><i>↶</i>Undo</button><button class="verb" disabled><i>✦</i>Hint</button><button class="verb"><i>＋</i>New game…</button><button class="verb"><i>⟳</i>Restart</button><button class="verb"><i>⚙</i>Settings</button></div>
+    </div></div></figure>
+  </div>
+
+  <h3 class="h-pair-title">3 · The pour — moving, in all three skins</h3>
+  <p class="h-note">One engine, one move, three choreographies (D2: "let's go all out"). <b>Water</b>: lift 120ms → travel and tilt about the lip 200ms → stream while the units leave and arrive at 160ms each → return 200ms; the next tap is accepted during the return. <b>Balls</b>: no tilt — each ball hops an arc, 140ms a ball, and lands with a squash. <b>Bolts</b>: the nut lifts off the post, crosses, and threads down with a quarter-turn. Below, the same pour frozen at each phase so a reviewer can point at a frame.</p>
+  <div class="strip">
+    <figure><div class="pane" style="--glass: rgb(255 255 255 / .06)"><span class="label">Water · looping · 2 units, tube 1 → tube 3</span><div class="board pour" style="--dx:116px; --dy:-32px;">
+      <div class="tube src"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c4)"></div><div class="u leave second" style="--f:var(--c1)"></div><div class="u leave" style="--f:var(--c1)"></div></div></div>
+      <div class="tube"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c0)"></div><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c3)"></div></div></div>
+      <div class="tube dst"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c1)"></div><div class="u" style="--f:var(--c1)"></div><div class="u arrive" style="--f:var(--c1)"></div><div class="u arrive second" style="--f:var(--c1)"></div></div></div>
+      <div class="stream" style="--f:var(--c1); left: 212px; top: 108px; height: 100px;"></div>
+    </div></div><figcaption><b>Water.</b> The tube rotates about its lip so the spout stays over the target's mouth; the leaving unit drains toward the mouth with a slanted surface; the arriving unit rises from the bottom and the target gives a 3px settle.</figcaption></figure>
+    <figure><div class="pane skin-ball"><span class="label">Balls · looping · 2 balls hop</span><div class="board hop" style="--hx:156px; --hy:32px; --hy2:-36px;">
+      <div class="tube src"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c4)"></div><div class="u leave second" style="--f:var(--c1)"></div><div class="u leave" style="--f:var(--c1)"></div></div></div>
+      <div class="tube"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c0)"></div><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c3)"></div></div></div>
+      <div class="tube dst"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c1)"></div><div class="u" style="--f:var(--c1)"></div><div class="u arrive" style="--f:var(--c1)"></div><div class="u arrive second" style="--f:var(--c1)"></div></div></div>
+      <div class="ball" style="--f:var(--c1); left: 57px; top: 142px;"><i></i></div>
+      <div class="ball second" style="--f:var(--c1); left: 57px; top: 176px;"><i></i></div>
+    </div></div><figcaption><b>Balls.</b> The source lifts and holds; the top ball arcs 70px up and over, lands one slot up, then the next. A tilted tube of balls would be the wrong physics.</figcaption></figure>
+    <figure><div class="pane skin-bolt"><span class="label">Bolts · looping · 1 nut threads over</span><div class="board thread" style="--hx:156px; --hy:0px;">
+      <div class="tube src"><div class="glass"><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c4)"></div><div class="u leave" style="--f:var(--c1)"></div></div></div>
+      <div class="tube"><div class="glass"><div class="u" style="--f:var(--c0)"></div><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c3)"></div></div></div>
+      <div class="tube dst"><div class="glass"><div class="u" style="--f:var(--c1)"></div><div class="u" style="--f:var(--c1)"></div><div class="u arrive" style="--f:var(--c1)"></div></div></div>
+      <div class="nut" style="--f:var(--c1); left: 51px; top: 176px;"></div>
+    </div></div><figcaption><b>Bolts.</b> The nut unthreads upward off the post, crosses level, and threads down onto the target with a turn — a "clack" when it seats.</figcaption></figure>
+  </div>
+  <div class="strip">
+    <figure><div class="pane"><span class="label">① lift · 120ms</span><div class="board pour pose at-lift" style="--dx:116px; --dy:-32px;"><div class="tube src"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c4)"></div><div class="u leave second" style="--f:var(--c1)"></div><div class="u leave" style="--f:var(--c1)"></div></div></div><div class="tube"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c0)"></div><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c3)"></div></div></div><div class="tube dst"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c1)"></div><div class="u" style="--f:var(--c1)"></div><div class="u arrive" style="--f:var(--c1)"></div><div class="u arrive second" style="--f:var(--c1)"></div></div></div><div class="stream" style="--f:var(--c1); left: 212px; top: 108px; height: 100px;"></div></div></div><figcaption>The selected tube rises 14px — the same pose as selection, so a pour begins from where the eye already is.</figcaption></figure>
+    <figure><div class="pane"><span class="label">② dock · +200ms</span><div class="board pour pose at-dock" style="--dx:116px; --dy:-32px;"><div class="tube src"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c4)"></div><div class="u leave second" style="--f:var(--c1)"></div><div class="u leave" style="--f:var(--c1)"></div></div></div><div class="tube"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c0)"></div><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c3)"></div></div></div><div class="tube dst"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c1)"></div><div class="u" style="--f:var(--c1)"></div><div class="u arrive" style="--f:var(--c1)"></div><div class="u arrive second" style="--f:var(--c1)"></div></div></div><div class="stream" style="--f:var(--c1); left: 212px; top: 108px; height: 100px;"></div></div></div><figcaption>Travel is linear and short; the tilt is 104°, past horizontal, because a physically small tilt "reads as stuck" (Decanta's finding).</figcaption></figure>
+    <figure><div class="pane"><span class="label">③ stream · 160ms per unit</span><div class="board pour pose at-pour" style="--dx:116px; --dy:-32px;"><div class="tube src"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c4)"></div><div class="u leave second" style="--f:var(--c1)"></div><div class="u leave" style="--f:var(--c1)"></div></div></div><div class="tube"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c0)"></div><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c3)"></div></div></div><div class="tube dst"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c1)"></div><div class="u" style="--f:var(--c1)"></div><div class="u arrive" style="--f:var(--c1)"></div><div class="u arrive second" style="--f:var(--c1)"></div></div></div><div class="stream" style="--f:var(--c1); left: 212px; top: 108px; height: 100px;"></div></div></div><figcaption>Source and target levels move in lockstep, one unit at a time — a partial pour (3 into 1 free slot) simply stops after one.</figcaption></figure>
+    <figure><div class="pane"><span class="label">④ settle</span><div class="board pour pose at-settle" style="--dx:116px; --dy:-32px;"><div class="tube src"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c4)"></div><div class="u leave second" style="--f:var(--c1)"></div><div class="u leave" style="--f:var(--c1)"></div></div></div><div class="tube"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c0)"></div><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c3)"></div></div></div><div class="tube dst"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c1)"></div><div class="u" style="--f:var(--c1)"></div><div class="u arrive" style="--f:var(--c1)"></div><div class="u arrive second" style="--f:var(--c1)"></div></div></div><div class="stream" style="--f:var(--c1); left: 212px; top: 108px; height: 100px;"></div></div></div><figcaption>The stream cuts; the target dips 3px and the new top unit overshoots 6% — the "glug" fires here.</figcaption></figure>
+    <figure><div class="pane"><span class="label">⑤ return · 200ms — next tap already accepted</span><div class="board pour pose at-return" style="--dx:116px; --dy:-32px;"><div class="tube src"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c4)"></div><div class="u leave second" style="--f:var(--c1)"></div><div class="u leave" style="--f:var(--c1)"></div></div></div><div class="tube"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c0)"></div><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c3)"></div></div></div><div class="tube dst"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c1)"></div><div class="u" style="--f:var(--c1)"></div><div class="u arrive" style="--f:var(--c1)"></div><div class="u arrive second" style="--f:var(--c1)"></div></div></div><div class="stream" style="--f:var(--c1); left: 212px; top: 108px; height: 100px;"></div></div></div><figcaption>Ease-out home. The core already applied the move at tap time; the animation is presentation, so a tap during the return starts the next pour from the true state.</figcaption></figure>
+  </div>
+
+  <h3 class="h-pair-title">4 · Tube complete, and undo</h3>
+  <p class="h-note">When a tube fills with one colour the core marks it locked; today the cap simply appears. Proposed: the cap drops on from 26px above, the glass flashes the success green once, a tick rises, and the skin's completion sound plays (a chime for water, a rattle for balls, a clack for bolts). Undo plays the pour in reverse at double speed — a snap that skips instantly reads as a bug.</p>
+  <div class="strip">
+    <figure><div class="pane" style="width:200px"><span class="label">Complete · looping</span><div class="board" style="padding-top:140px"><div class="tube locked done"><div class="tick">✓</div><div class="cap"></div><div class="glass"><div class="u" style="--f:var(--c3)"></div><div class="u" style="--f:var(--c3)"></div><div class="u" style="--f:var(--c3)"></div><div class="u" style="--f:var(--c3)"></div></div></div></div></div><figcaption>Cap drop → green flash → tick. Under reduced motion: the cap appears, the flash stays, the tick does not travel.</figcaption></figure>
+    <figure><div class="pane" style="width:300px"><span class="label">Selection and legal targets (unchanged in kind, restyled)</span><div class="board" style="padding-top:140px"><div class="tube selected"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c1)"></div><div class="u" style="--f:var(--c1)"></div></div></div><div class="tube legal"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c0)"></div><div class="u" style="--f:var(--c1)"></div></div></div><div class="tube legal"><div class="lip"></div><div class="glass"></div></div></div></div><figcaption>Brass ring on the source, green ring on every legal target — the core's <code>ui_moves</code> drawn, nothing decided in CSS.</figcaption></figure>
+  </div>
+
+  <h3 class="h-pair-title">5 · Settings — the frame's sheet, with a pour-speed row</h3>
+  <p class="h-note">Today: a <code>&lt;details&gt;</code> that opens in flow above the board. Proposed: the frame's settings sheet — <b>Every game</b> first, then Color Sort's rows. New: <b>Pour speed</b> (D3). Off is the reduced-motion path; the OS setting selects it until the player overrides.</p>
+  <div class="h-pair">
+    <figure class="h-frame"><figcaption><b>Proposed</b> — the settings sheet</figcaption><div class="screen" data-theme="dark"><div class="app">
+      <div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">♪</button><button class="ib">☾</button><button class="ib">⚙</button></div>
+      <div class="gamebar"><button class="ib">‹</button><span class="title">Color Sort</span><span class="mode">Endless</span><span class="sp"></span><button class="ib">⋯</button></div>
+      <div class="meter"><div class="stat"><b>4</b><span>moves</span></div><div class="stat"><b>3</b><span>level</span></div><div class="stat"><b>9</b><span>best</span></div></div>
+      <div class="stage"></div>
+      <div class="dock"><button class="verb"><i>↶</i>Undo</button><button class="verb"><i>✦</i>Hint</button><button class="verb"><i>＋</i>New game…</button><button class="verb"><i>⟳</i>Restart</button><button class="verb primary"><i>⚙</i>Settings</button></div>
+      <div class="scrim"></div>
+      <div class="sheet"><div class="grip"></div>
+        <h4>Every game</h4>
+        <div class="srow"><div class="l">Hints</div><span class="tog on"></span></div>
+        <div class="srow"><div class="l">Declare assistance used</div><span class="tog on"></span></div>
+        <div class="srow"><div class="l">Sound</div><span class="tog on"></span></div>
+        <div class="srow"><div class="l">Controls on the left</div><span class="tog"></span></div>
+        <h4>Color Sort</h4>
+        <div class="srow"><div class="l">Look</div><span class="seg"><span class="on">Water</span><span>Balls</span><span>Bolts</span></span></div>
+        <div class="srow"><div class="l">Pour speed<small>Off keeps the count and the target, drops the motion</small></div><span class="seg"><span>Slow</span><span class="on">Normal</span><span>Fast</span><span>Off</span></span></div>
+        <div class="srow"><div class="l">Fruit icons<small>A shape on every colour — off by default for water</small></div><span class="tog"></span></div>
+        <div class="srow"><div class="l">Strict<small>No undo — restart only</small></div><span class="tog"></span></div>
+      </div>
+    </div></div></figure>
+    <figure class="h-frame"><figcaption><b>Proposed</b> — Pour speed: Off (or reduced motion). The count and the target still land.</figcaption><div class="screen" data-theme="dark"><div class="app">
+      <div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">♪</button><button class="ib">☾</button><button class="ib">⚙</button></div>
+      <div class="gamebar"><button class="ib">‹</button><span class="title">Color Sort</span><span class="mode">Endless</span><span class="sp"></span><button class="ib">⋯</button></div>
+      <div class="meter"><div class="stat"><b>5</b><span>moves</span></div><div class="stat"><b>3</b><span>level</span></div><div class="stat"><b>9</b><span>best</span></div></div>
+      <div class="stage"><div class="board">
+        <div class="tube"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c4)"></div></div></div>
+        <div class="tube"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c0)"></div><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c3)"></div><div class="u" style="--f:var(--c0)"></div></div></div>
+        <div class="tube"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c3)"></div><div class="u" style="--f:var(--c4)"></div><div class="u" style="--f:var(--c4)"></div></div></div>
+        <div class="tube locked"><div class="cap"></div><div class="glass"><div class="u" style="--f:var(--c1)"></div><div class="u" style="--f:var(--c1)"></div><div class="u" style="--f:var(--c1)"></div><div class="u" style="--f:var(--c1)"></div></div></div>
+        <div class="tube locked"><div class="cap"></div><div class="glass"><div class="u" style="--f:var(--c0)"></div><div class="u" style="--f:var(--c0)"></div><div class="u" style="--f:var(--c0)"></div><div class="u" style="--f:var(--c0)"></div></div></div>
+        <div class="tube"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c3)"></div><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c3)"></div></div></div>
+        <div class="tube"><div class="lip"></div><div class="glass"></div></div>
+      </div><div class="live">aria-live: "Poured 2 lemon into tube 4. Tube 4 is complete."</div></div>
+      <div class="dock"><button class="verb"><i>↶</i>Undo</button><button class="verb"><i>✦</i>Hint</button><button class="verb"><i>＋</i>New game…</button><button class="verb"><i>⟳</i>Restart</button><button class="verb"><i>⚙</i>Settings</button></div>
+    </div></div></figure>
+  </div>
+
+  <h3 class="h-pair-title">6 · After the first solve — the result, and the sign-in offer</h3>
+  <p class="h-note">The verifiable result stays as it is (the shelf's differentiator). New, below it and only after a solve: the offer. Wordle's order — play, solve, stats, then "keep this". Signing in binds the local record to a DID (D9); it publishes nothing yet. The sheet is croft-pwa's "Choose your atmo provider", all eight rules, in the shelf header for every game (D8, D10).</p>
+  <div class="h-pair">
+    <figure class="h-frame"><figcaption><b>Proposed</b> — level 1 solved; the offer under the result</figcaption><div class="screen" data-theme="dark"><div class="app">
+      <div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">♪</button><button class="ib">☾</button><button class="ib">⚙</button></div>
+      <div class="gamebar"><button class="ib">‹</button><span class="title">Color Sort</span><span class="mode">Endless</span><span class="sp"></span><button class="ib">⋯</button></div>
+      <div class="meter"><div class="stat"><b>7</b><span>moves</span></div><div class="stat"><b>1</b><span>level</span></div><div class="stat"><b>1</b><span>best</span></div></div>
+      <div class="stage"><div class="result">
+        <h2 class="dsp">Solved clean in 7 moves</h2>
+        <span class="badge">✓ Verified — replayed every pour against the core</span>
+        <dl><dt>Level</dt><dd>1 · 4 colours</dd><dt>Play</dt><dd>no assistance</dd><dt>Solves</dt><dd>1 · Daily unlocks after 5</dd><dt>Final hash</dt><dd class="mono">3f9a…c21e</dd></dl>
+        <div class="row"><button class="btn primary">Next level ▸</button><button class="btn">Share</button><button class="btn ghost sm">Re-verify</button></div>
+        <div class="offer"><b>Keep this streak</b><p>Sign in with your atmo provider and your solves, streak and best level stay yours on any device. Nothing is sent until you say so.</p><button class="btn sm">Sign in or create an account</button></div>
+      </div></div>
+      <div class="dock"><button class="verb" disabled><i>↶</i>Undo</button><button class="verb" disabled><i>✦</i>Hint</button><button class="verb"><i>＋</i>New game…</button><button class="verb"><i>⟳</i>Restart</button><button class="verb"><i>⚙</i>Settings</button></div>
+    </div></div></figure>
+    <figure class="h-frame"><figcaption><b>Proposed</b> — the sign-in sheet, ported from croft-pwa (providers probed, Create only where signups are open)</figcaption><div class="screen" data-theme="dark"><div class="app">
+      <div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">♪</button><button class="ib">☾</button><button class="ib">⚙</button></div>
+      <div class="gamebar"><button class="ib">‹</button><span class="title">Color Sort</span><span class="mode">Endless</span><span class="sp"></span><button class="ib">⋯</button></div>
+      <div class="stage"></div>
+      <div class="scrim"></div>
+      <div class="sheet"><div class="grip"></div>
+        <h3>Choose your atmo provider</h3>
+        <p class="intro">An atmo provider is the server that keeps your account. Pick one you could join now, or find yours.</p>
+        <div class="prow"><span class="pi" style="background:#1185fe">B</span><div class="pl">Bluesky<small>open signups</small></div><button class="btn sm">Create account</button><button class="btn sm primary">Sign in</button></div>
+        <div class="prow"><span class="pi" style="background:#111">Bk</span><div class="pl">Blacksky<small>open signups</small></div><button class="btn sm">Create account</button><button class="btn sm primary">Sign in</button></div>
+        <div class="prow"><span class="pi" style="background:#2c5f8a">E</span><div class="pl">EuroSky<small>open signups</small></div><button class="btn sm">Create account</button><button class="btn sm primary">Sign in</button></div>
+        <h4>Another provider</h4>
+        <div class="prow"><span class="pi" style="background:#3b3f73">N</span><div class="pl">Northsky<small>invite only</small></div><button class="btn sm primary">Sign in</button></div>
+        <div class="field"><input placeholder="your handle, on any server" /><button class="btn sm">Sign in</button></div>
+      </div>
+    </div></div></figure>
+    <figure class="h-frame"><figcaption><b>Proposed</b> — signed in: the header carries the person; the record is bound to the DID</figcaption><div class="screen" data-theme="dark"><div class="app">
+      <div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">♪</button><button class="ib">☾</button><button class="ib avatar">A</button></div>
+      <div class="splash"><div class="art" style="background-image:url(../src/games/color-sort/assets/splash.jpg)"></div><div class="veil"></div><div class="body">
+        <span class="chip dim">alice.bsky.social · 6 solves · streak 2</span>
+        <h2 class="dsp">Color Sort</h2>
+        <p class="pitch">Pour until every tube holds one colour. Tap a tube, tap where it goes.</p>
+        <div class="setup">
+          <div class="srow"><div class="l">Mode</div><span class="seg"><span class="on">Endless</span><span>Daily</span></span></div>
+          <div class="srow"><div class="l">Look</div><span class="seg"><span class="on">Water</span><span>Balls</span><span>Bolts</span></span></div>
+        </div>
+        <button class="btn primary block">▸ Continue · Level 6</button>
+        <div class="links"><span>New game…</span><span>How to play</span><span>↗</span></div>
+      </div></div>
+    </div></div></figure>
+  </div>
+
+  <h3 class="h-pair-title">7 · Desktop — the rail</h3>
+  <p class="h-note">Today: "mobile, stretched". Proposed: the frame's rail at ≥900px — meters stacked, verbs in a two-column grid, <b>This game</b> read-only (Mode, Level, Look), then Settings inline. Twelve tubes fit one row at 56px.</p>
+  <div class="h-pair">
+    <figure class="h-frame"><figcaption><b>Current</b> — captured at 1280×900</figcaption><img class="snap desk" src="snaps/color-sort.board.desktop.png" alt="Today on desktop: the phone layout centred in a wide page." /></figure>
+  </div>
+  <div class="h-pair">
+    <figure class="h-frame"><figcaption><b>Proposed</b> — 1180×740 (fun's desktop frame)</figcaption><div class="screen desktop" data-theme="dark"><div class="app desk">
+      <div class="shelfbar"><button class="ib">☰</button><span class="mark">fun<i>.</i></span><span class="sp"></span><button class="ib">♪</button><button class="ib">☾</button><button class="ib avatar">A</button></div>
+      <div class="below">
+        <div class="stage"><div class="board pour pose at-dock" style="--dx:198px; --dy:-36px; --tilt:104deg;">
+          <div class="tube src"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c4)"></div><div class="u leave second" style="--f:var(--c1)"></div><div class="u leave" style="--f:var(--c1)"></div></div></div>
+          <div class="tube"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c0)"></div><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c3)"></div><div class="u" style="--f:var(--c0)"></div></div></div>
+          <div class="tube"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c3)"></div><div class="u" style="--f:var(--c4)"></div><div class="u" style="--f:var(--c4)"></div></div></div>
+          <div class="tube dst"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c1)"></div><div class="u" style="--f:var(--c1)"></div><div class="u arrive" style="--f:var(--c1)"></div><div class="u arrive second" style="--f:var(--c1)"></div></div></div>
+          <div class="tube locked"><div class="cap"></div><div class="glass"><div class="u" style="--f:var(--c0)"></div><div class="u" style="--f:var(--c0)"></div><div class="u" style="--f:var(--c0)"></div><div class="u" style="--f:var(--c0)"></div></div></div>
+          <div class="tube"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c3)"></div><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c3)"></div></div></div>
+          <div class="tube"><div class="lip"></div><div class="glass"></div></div>
+        </div></div>
+        <div class="rail">
+          <div class="title">Color Sort <span class="mode">Endless</span></div>
+          <div class="stats"><div class="stat"><b>4</b><span>moves</span></div><div class="stat"><b>3</b><span>level</span></div><div class="stat"><b>9</b><span>best</span></div></div>
+          <div class="verbs"><button class="btn">↶ Undo</button><button class="btn">✦ Hint</button><button class="btn">＋ New game…</button><button class="btn">⟳ Restart</button></div>
+          <h4>This game</h4>
+          <div class="kv"><span>Mode</span>Endless</div><div class="kv"><span>Level</span>3 · 5 colours</div><div class="kv"><span>Daily</span>unlocked · not yet played</div>
+          <h4>Settings</h4>
+          <div class="srow"><div class="l">Look</div><span class="seg"><span class="on">Water</span><span>Balls</span><span>Bolts</span></span></div>
+          <div class="srow"><div class="l">Pour speed</div><span class="seg"><span>Slow</span><span class="on">Normal</span><span>Fast</span><span>Off</span></span></div>
+          <div class="srow"><div class="l">Fruit icons</div><span class="tog"></span></div>
+          <div class="srow"><div class="l">Strict</div><span class="tog"></span></div>
+        </div>
+      </div>
+    </div></div></figure>
+  </div>
+
+  <h3 class="h-pair-title">8 · Sound — three timbres, one preference</h3>
+  <p class="h-note">Synthesised in Web Audio (D11): zero bytes, unlocked on the first tap. <b>Water</b>: four 80ms sine blips 200–500Hz during the stream, a 400→150Hz plop at settle. <b>Balls</b>: a short clink per landing, pitch rising with the slot. <b>Bolts</b>: a ratchet during the thread, a clack at seat. Tube complete: a two-note chime in every skin. The frame's Sound row governs all of it; the music bar is untouched.</p>
+
+  <!-- ===================================================================== -->
+  <h2>Mapping to code</h2>
+  <table class="h-table">
+    <tr><th>Proposal</th><th>Where it lands</th><th>Phase</th></tr>
+    <tr><td>1 · Poster, setup card, locked Daily, the chip</td><td><code>registry.ts</code> (<code>pitch</code>, <code>setup</code> factory) · <code>color-sort.ts</code> <code>GameFrameSpec.setup</code> · the record's <code>played</code></td><td>A, C</td></tr>
+    <tr><td>2 · Meters, dock, deadlock toast</td><td><code>color-sort.ts</code> <code>frame.update()</code>; the stability spec (frame plan Pass 3 recipe); <code>.cs-banner</code> deleted</td><td>A</td></tr>
+    <tr><td>3 · The pour, three skins</td><td><code>src/games/color-sort/pour.ts</code> (WAAPI sequence behind a <code>pour()</code> seam; <code>?fast=1</code> collapses it for e2e) · <code>styles.css</code> skin variants</td><td>B</td></tr>
+    <tr><td>4 · Complete beat, undo reverse</td><td><code>pour.ts</code> (<code>reverse()</code> on the same animations) · <code>styles.css</code></td><td>B</td></tr>
+    <tr><td>5 · Settings rows, Pour speed, reduced motion</td><td><code>settings.ts</code> (<code>colorSortPourSpeed</code>; <code>matchMedia</code> default) · <code>GameFrameSpec.preferences</code></td><td>B</td></tr>
+    <tr><td>6 · Result offer, sign-in sheet, header avatar</td><td><code>src/signin/</code> + <code>src/atproto/oauth/</code> ported from croft-pwa · <code>chrome.ts</code> header · <code>src/record.ts</code> (the <code>$type</code>-shaped local record, substrate seam)</td><td>D (own PR), C</td></tr>
+    <tr><td>7 · Desktop rail</td><td>free with A — the frame reflows the same spec</td><td>A</td></tr>
+    <tr><td>8 · Sound</td><td><code>src/games/color-sort/sound.ts</code> (Web Audio, gated by the frame's Sound row)</td><td>B</td></tr>
+  </table>
+</div>
+<script src="harness.js"></script>
+</body>
+</html>

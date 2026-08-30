@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 const dist = join(dirname(fileURLToPath(import.meta.url)), "..", "dist");
 // E2E_PORT lets two sessions' e2e runs share a machine: measured 2026-08-30, a peer's
 // run on 4180 took this one's server down mid-suite ("Could not connect to the server").
+// tools/mock-snaps.mjs sets it too, so a capture never collides with a running suite.
 const PORT = Number(process.env.E2E_PORT ?? 4180);
 const TYPES = {
   ".html": "text/html; charset=utf-8",

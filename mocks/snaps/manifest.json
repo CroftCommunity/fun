@@ -1,0 +1,43 @@
+{
+  "files": [
+    {
+      "file": "color-sort.board.phone.png",
+      "game": "color-sort",
+      "route": "board",
+      "url": "/color-sort/?seed=4242",
+      "viewport": "phone",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "file": "color-sort.select.phone.png",
+      "game": "color-sort",
+      "route": "select",
+      "url": "/color-sort/?seed=4242",
+      "viewport": "phone",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "file": "color-sort.board.desktop.png",
+      "game": "color-sort",
+      "route": "board",
+      "url": "/color-sort/?seed=4242",
+      "viewport": "desktop",
+      "width": 1280,
+      "height": 900
+    },
+    {
+      "file": "color-sort.select.desktop.png",
+      "game": "color-sort",
+      "route": "select",
+      "url": "/color-sort/?seed=4242",
+      "viewport": "desktop",
+      "width": 1280,
+      "height": 900
+    }
+  ],
+  "baseline": "fun@d6c0813",
+  "capturedAt": "2026-08-29",
+  "population": "deep link, fixed seed (hermetic)"
+}
