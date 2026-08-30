@@ -8,7 +8,7 @@ parameters does once every bare URL opens on a start screen) gates Phase 5** and
 thing between this plan and execution: Phases 0–4 may start now. D5 was resolved during
 planning (read-only, see Verified Assumptions) and is struck from Phase 0. Phases 1, 2, 3
 and 5 carry sub-phases (1a/1b, 2a/2b, 3a/3b, 5a/5b) — each with its own Done-when and
-wiring test — because each touched four or more files. Phases 0–2 COMPLETE (2026-08-30). Mocks
+wiring test — because each touched four or more files. Phases 0–3 COMPLETE (2026-08-30). Mocks
 landed on `main` (`mocks/d-game-frame.html`, PR #45, `6c4dd9c`); owner decisions D1–D5
 recorded.
 
@@ -1104,6 +1104,36 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
    it changes one test case either way.*
 
 ## Review Log
+
+### Phase 3b — executed 2026-08-30
+- RED first: 4 unit cases (the setting's off/on/off, garbage, storage-throws; the frame's
+  `data-gf-side` + `setSide`) then the browser mirror case. `controlsOnLeft()` reuses
+  `resolveBool` (not re-tested). One attribute on the frame's root drives both shapes:
+  `row-reverse` on the dock, a swapped grid template for the rail. The toggle in the
+  "Every game" section flips the frame live through `frame.setSide()` — no reload —
+  measured in both shapes by the browser spec: rail x < stage x at 1000 with it on, the
+  first dock verb's x the largest at 390.
+- Green: unit 224, `tests/game-frame.spec.ts` 20/20 both engines, `npm run smoke` 50/50,
+  typecheck, lint, hex scan. Docs: §6 gains the "Every game" section; §4c notes the flip.
+
+### Phase 3a — executed 2026-08-30
+- RED first: 12 unit cases failed (sections, sheets, the Settings verb, the cap); then the
+  browser cases. Two design points settled in code rather than the plan's words: (1) the
+  rail is the **same DOM** in a CSS grid (`data-gf-shape="rail"` at ≥ 900px from
+  `matchMedia`), not a `.gf-rail` wrapper — so the 1a band-order test still holds and no
+  `display: contents` is needed; the plan's ".gf-rail visible" assertion became "the dock's
+  box is beside the stage at 1000, under it at 899". (2) **Settings is the frame's verb**:
+  appended after the game's, so a game declares at most four (`MAX_GAME_VERBS`) and a
+  declared `settings` id throws — the reserved-verb rule from §4c, enforced.
+- What the tests caught: a touch tap on WebKit does not focus a button, so "return focus
+  to the opener" needed the opener passed explicitly (`openSheet(kind, from)`); the rail
+  panel's `<h3>` heads under a hidden `<h1>` failed axe `heading-order` → `<h2>`; the
+  1b spec's "one verb" became "one verb plus Settings".
+- Green: unit 30 (frame + sheet), `tests/game-frame.spec.ts` 18/18 both engines, `npm run
+  smoke` 49/49 (the matrix gained the open-sheet and rail states on the placeholder),
+  typecheck, lint, hex scan. Screenshots at 390 (sheet) and 1000 (rail) reviewed: the
+  sheet's sections read "Every game → Hints · Declare assistance · Sound"; the rail shows
+  the meter, the verb, and settings inline.
 
 ### Phase 2b — executed 2026-08-30
 - RED first: `tests/page-titles.test.ts` failed to resolve `tools/registry-titles.mjs`;

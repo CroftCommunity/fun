@@ -3,7 +3,11 @@
 
 import { describe, expect, it } from "vitest";
 
+import { afterEach, beforeEach, vi } from "vitest";
+
 import {
+  controlsOnLeft,
+  setControlsOnLeft,
   moveSpeedToMs,
   resolveBool,
   resolveDisc,
@@ -176,5 +180,35 @@ describe("resolveCribbageBoard (how the peg board is shown)", () => {
   it("falls back to the full board for null or a garbage value", () => {
     expect(resolveCribbageBoard(null, "board")).toBe("board");
     expect(resolveCribbageBoard("tracks", "board")).toBe("board");
+  });
+});
+
+describe("controlsOnLeft (the frame's mirror preference)", () => {
+  beforeEach(() => localStorage.clear());
+  afterEach(() => vi.restoreAllMocks());
+
+  it("is off with nothing stored, on after setControlsOnLeft(true), off again after (false)", () => {
+    expect(controlsOnLeft()).toBe(false);
+    setControlsOnLeft(true);
+    expect(controlsOnLeft()).toBe(true);
+    expect(localStorage.getItem("fun-controls-left")).toBe("on");
+    setControlsOnLeft(false);
+    expect(controlsOnLeft()).toBe(false);
+  });
+
+  it("reads a garbage stored value as off", () => {
+    localStorage.setItem("fun-controls-left", "sideways");
+    expect(controlsOnLeft()).toBe(false);
+  });
+
+  it("degrades to off, without throwing, when storage throws", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("denied");
+    });
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("denied");
+    });
+    expect(controlsOnLeft()).toBe(false);
+    expect(() => setControlsOnLeft(true)).not.toThrow();
   });
 });

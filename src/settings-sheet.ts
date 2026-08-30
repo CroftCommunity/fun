@@ -73,9 +73,17 @@ export interface ChoiceRow {
 
 export type SettingRow = ToggleRow | RangeRow | ChoiceRow;
 
+/** A headed group of rows. The frame uses it for "Every game" and the game's own section. */
+export interface SettingsSection {
+  readonly label: string;
+  readonly rows: readonly SettingRow[];
+}
+
 export interface SettingsSheetSpec {
   intro?: string;
   rows: SettingRow[];
+  /** Rendered after `rows`, each under an `<h3 class="sheet-section">`; a section with no rows is skipped. */
+  sections?: readonly SettingsSection[];
 }
 
 function renderToggleRow(row: ToggleRow): HTMLElement {
@@ -171,10 +179,13 @@ function renderChoiceRow(row: ChoiceRow): HTMLElement {
 export function renderSettingsSheet(spec: SettingsSheetSpec): HTMLElement {
   const sheet = el("div", { class: "sheet" });
   if (spec.intro) sheet.append(el("p", { class: "sheet-intro" }, spec.intro));
-  for (const row of spec.rows) {
-    if (row.kind === "toggle") sheet.append(renderToggleRow(row));
-    else if (row.kind === "range") sheet.append(renderRangeRow(row));
-    else sheet.append(renderChoiceRow(row));
+  const renderRow = (row: SettingRow): HTMLElement =>
+    row.kind === "toggle" ? renderToggleRow(row) : row.kind === "range" ? renderRangeRow(row) : renderChoiceRow(row);
+  for (const row of spec.rows) sheet.append(renderRow(row));
+  for (const section of spec.sections ?? []) {
+    if (section.rows.length === 0) continue;
+    sheet.append(el("h3", { class: "sheet-section" }, section.label));
+    for (const row of section.rows) sheet.append(renderRow(row));
   }
   return sheet;
 }

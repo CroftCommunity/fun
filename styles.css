@@ -210,6 +210,7 @@ body.fullscreen .play-area {
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  position: relative; /* the sheet and scrim are absolute inside the frame */
 }
 /* A game page is the header and the frame, nothing else: the play area drops
    its padding and lets the frame take the rest of the viewport, so the dock
@@ -462,6 +463,219 @@ body:has(> .play-area > .gf) {
 .gf-more:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
+}
+
+/* --- sheets: a dialog over the frame on a phone ------------------------------ */
+.gf-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  background: rgb(0 0 0 / 0.45);
+}
+.gf-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9;
+  max-height: 78%;
+  overflow-y: auto;
+  padding: 0.6rem 1rem 1.2rem;
+  border-radius: 18px 18px 0 0;
+  background: var(--surface);
+  box-shadow: 0 -12px 40px rgb(0 0 0 / 0.4);
+}
+.gf-sheet-grip {
+  width: 40px;
+  height: 4px;
+  margin: 0 auto 0.75rem;
+  border-radius: 2px;
+  background: var(--border);
+}
+.gf-sheet-title {
+  margin: 0 0 0.25rem;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+}
+.sheet-section {
+  margin: 0.4rem 0 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.gf-sheet-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.5rem;
+}
+.gf-start {
+  font: inherit;
+  font-weight: 600;
+  height: 46px;
+  padding: 0 1.2rem;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--accent-ink);
+  cursor: pointer;
+}
+.gf-start:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* --- the rail's extra panel: setup read-only + preferences inline ----------- */
+.gf-extra {
+  display: none; /* phone: the sheet carries these */
+}
+.gf-extra-head {
+  margin: 0.6rem 0 0.2rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.gf-readonly {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.92rem;
+}
+.gf-readonly-value {
+  color: var(--ink-muted);
+  text-align: right;
+}
+
+/* --- "Controls on the left" (plan D4): one attribute, both shapes ----------- */
+.gf[data-gf-side="left"] > .gf-dock {
+  flex-direction: row-reverse;
+}
+
+/* --- desktop: the dock stands up as a rail beside the board ------------------
+   Same DOM, one breakpoint (plan D2: a 280px rail holds at 900 with margin).
+   The bands keep their heights; only their column changes. */
+@media (min-width: 900px) {
+  .gf[data-gf-shape="rail"] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    grid-template-rows: auto auto auto minmax(0, 1fr);
+    grid-template-areas:
+      "stage bar"
+      "stage meters"
+      "stage dock"
+      "stage extra";
+  }
+  .gf[data-gf-shape="rail"] > .gf-game-bar {
+    grid-area: bar;
+    border-bottom: 0;
+    padding: 0.5rem 0.9rem 0;
+    height: auto;
+    flex-basis: auto;
+  }
+  .gf[data-gf-shape="rail"] > .gf-meters {
+    grid-area: meters;
+    flex-direction: column;
+    align-items: stretch;
+    height: auto;
+    flex-basis: auto;
+    padding: 0.4rem 0.9rem;
+    gap: 0.4rem;
+  }
+  .gf[data-gf-shape="rail"] .gf-seat {
+    min-width: 0;
+  }
+  .gf[data-gf-shape="rail"] > .gf-meters:has(.gf-stat) {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  .gf[data-gf-shape="rail"] > .gf-stage {
+    grid-area: stage;
+    padding: 1.25rem;
+    justify-content: center;
+  }
+  .gf[data-gf-shape="rail"] > .gf-dock {
+    grid-area: dock;
+    height: auto;
+    flex-basis: auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    padding: 0.5rem 0.9rem;
+    border-top: 0;
+    background: transparent;
+  }
+  .gf[data-gf-shape="rail"] .gf-verb {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    max-width: none;
+    height: 44px;
+    padding: 0 0.6rem;
+    border: 1px solid var(--border);
+    font-size: 0.88rem;
+    white-space: nowrap;
+  }
+  .gf[data-gf-shape="rail"] .gf-verb-icon {
+    font-size: 1.1rem;
+  }
+  /* Settings is inline in the rail; its dock verb has nothing to open. */
+  .gf[data-gf-shape="rail"] .gf-verb[data-verb="settings"] {
+    display: none;
+  }
+  .gf[data-gf-shape="rail"] > .gf-extra {
+    grid-area: extra;
+    display: block;
+    overflow-y: auto;
+    padding: 0 0.9rem 0.9rem;
+    min-height: 0;
+  }
+  .gf[data-gf-shape="rail"] > .gf-game-bar,
+  .gf[data-gf-shape="rail"] > .gf-meters,
+  .gf[data-gf-shape="rail"] > .gf-dock,
+  .gf[data-gf-shape="rail"] > .gf-extra {
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+  }
+  /* mirrored: the rail column comes first; the grid lays the dock out as a
+     two-column grid, so the phone's row-reverse must not apply here */
+  .gf[data-gf-shape="rail"][data-gf-side="left"] {
+    grid-template-columns: 280px minmax(0, 1fr);
+    grid-template-areas:
+      "bar stage"
+      "meters stage"
+      "dock stage"
+      "extra stage";
+  }
+  .gf[data-gf-shape="rail"][data-gf-side="left"] > .gf-game-bar,
+  .gf[data-gf-shape="rail"][data-gf-side="left"] > .gf-meters,
+  .gf[data-gf-shape="rail"][data-gf-side="left"] > .gf-dock,
+  .gf[data-gf-shape="rail"][data-gf-side="left"] > .gf-extra {
+    border-left: 0;
+    border-right: 1px solid var(--border);
+  }
+  .gf[data-gf-shape="rail"] .gf-sheet,
+  .gf[data-gf-shape="rail"] .gf-scrim {
+    /* the setup sheet is a centred dialog on desktop; settings never open a sheet */
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    top: 50%;
+    width: min(440px, 90vw);
+    transform: translate(-50%, -50%);
+    border-radius: 16px;
+  }
+  .gf[data-gf-shape="rail"] .gf-scrim {
+    left: 0;
+    top: 0;
+    width: auto;
+    right: 0;
+    bottom: 0;
+    transform: none;
+    border-radius: 0;
+  }
 }
 
 /* ---- solitaire: the felt table ----

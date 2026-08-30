@@ -19,7 +19,7 @@ function spec(over: Partial<GameFrameSpec> = {}): GameFrameSpec {
       { kind: "seat", id: "you", name: "You", glyph: "●", score: 2, state: "active", sub: "your move" },
       { kind: "seat", id: "engine", name: "The Engine", glyph: "○", score: 2 },
     ],
-    verbs: [verb("undo"), verb("hint"), verb("new"), verb("settings")],
+    verbs: [verb("undo"), verb("hint"), verb("new")],
     ...over,
   };
 }
@@ -51,9 +51,10 @@ describe("renderGameFrame — bands", () => {
     expect(frame.root.querySelector(".gf-title")?.textContent).toBe("Placeholder");
   });
 
-  it("zero verbs means no dock at all — nothing, not an empty band", () => {
+  it("zero game verbs still gives the dock its Settings verb — the common preferences are always reachable", () => {
     const frame = renderGameFrame(host, spec({ verbs: [] }));
-    expect(frame.root.querySelector(".gf-dock")).toBeNull();
+    const ids = [...frame.root.querySelectorAll(".gf-verb")].map((b) => b.getAttribute("data-verb"));
+    expect(ids).toEqual(["settings"]);
   });
 
   it("the mode chip shows when a mode is given and is absent otherwise", () => {
@@ -65,18 +66,28 @@ describe("renderGameFrame — bands", () => {
   it("logs one debug line at mount, in the shape the games use", () => {
     renderGameFrame(host, spec());
     expect(console.debug).toHaveBeenCalledTimes(1);
-    expect(console.debug).toHaveBeenCalledWith("[frame] mount title=Othello verbs=4 meters=2");
+    expect(console.debug).toHaveBeenCalledWith("[frame] mount title=Othello verbs=3 meters=2");
+  });
+
+  it("declares the shape it is in — dock or rail — from the media query, on the root", () => {
+    const frame = renderGameFrame(host, spec());
+    expect(["dock", "rail"]).toContain(frame.root.dataset.gfShape);
   });
 });
 
 describe("renderGameFrame — verbs", () => {
-  it("five verbs render five; six throw, naming the game and listing the verbs", () => {
-    const five = renderGameFrame(host, spec({ verbs: ["a", "b", "c", "d", "e"].map(verb) }));
-    expect(five.root.querySelectorAll(".gf-verb")).toHaveLength(5);
+  it("four game verbs plus the frame's Settings render five; five game verbs throw, naming the game and listing them", () => {
+    const four = renderGameFrame(host, spec({ verbs: ["a", "b", "c", "d"].map(verb) }));
+    const ids = [...four.root.querySelectorAll(".gf-verb")].map((b) => b.getAttribute("data-verb"));
+    expect(ids).toEqual(["a", "b", "c", "d", "settings"]);
     host.innerHTML = "";
-    expect(() => renderGameFrame(host, spec({ verbs: ["a", "b", "c", "d", "e", "f"].map(verb) }))).toThrow(
-      /Othello.*6 verbs.*a, b, c, d, e, f/,
+    expect(() => renderGameFrame(host, spec({ verbs: ["a", "b", "c", "d", "e"].map(verb) }))).toThrow(
+      /Othello.*5 verbs.*a, b, c, d, e/,
     );
+  });
+
+  it("the Settings verb is the frame's: it is last, and a game that declares its own 'settings' id is refused", () => {
+    expect(() => renderGameFrame(host, spec({ verbs: [verb("settings")] }))).toThrow(/settings.*frame/);
   });
 
   it("a verb press calls its handler; a disabled verb is disabled and a primary one is marked", () => {
@@ -166,7 +177,7 @@ describe("renderGameFrame — meters are fixed slots", () => {
     const frame = renderGameFrame(host, spec());
     frame.update(spec({ title: "Othello", mode: "Hard", verbs: [verb("one")] }));
     expect(frame.root.querySelector(".gf-mode")?.textContent).toBe("Hard");
-    expect(frame.root.querySelectorAll(".gf-verb")).toHaveLength(1);
+    expect(frame.root.querySelectorAll(".gf-verb")).toHaveLength(2); // one + Settings
   });
 });
 
@@ -190,5 +201,114 @@ describe("renderGameFrame — lifecycle", () => {
     more.click();
     expect(more.getAttribute("aria-expanded")).toBe("true");
     expect(frame.root.querySelector(".gf-menu a")?.getAttribute("href")).toBe("/how-to/?game=othello");
+  });
+});
+
+describe("renderGameFrame — the sheets", () => {
+  const common = () => [
+    { kind: "toggle" as const, id: "hints", label: "Hints", value: true, onChange: () => {} },
+    { kind: "toggle" as const, id: "assist", label: "Declare assistance", value: true, onChange: () => {} },
+  ];
+  const prefs = [{ kind: "toggle" as const, id: "tutor", label: "Tutor", value: false, onChange: () => {} }];
+  const setup = [
+    {
+      kind: "choice" as const,
+      id: "level",
+      label: "Difficulty",
+      value: "medium",
+      options: [
+        { value: "easy", label: "Easy" },
+        { value: "medium", label: "Medium" },
+      ],
+      onChange: () => {},
+    },
+  ];
+
+  it("the settings sheet is [common, then the game's preferences], each under its heading", () => {
+    const frame = renderGameFrame(host, spec({ preferences: prefs }), { common });
+    frame.openSheet("settings");
+    const sheet = frame.root.querySelector(".gf-sheet")!;
+    expect(sheet.getAttribute("role")).toBe("dialog");
+    expect(sheet.getAttribute("aria-modal")).toBe("true");
+    const heads = [...sheet.querySelectorAll(".sheet-section")].map((h) => h.textContent);
+    expect(heads).toEqual(["Every game", "Othello"]);
+    const ids = [...sheet.querySelectorAll(".sheet-row")].map((r) => r.getAttribute("data-setting"));
+    expect(ids).toEqual(["hints", "assist", "tutor"]);
+    expect(console.debug).toHaveBeenCalledWith("[frame] sheet=settings open");
+  });
+
+  it("a game with no preferences still gets the common section", () => {
+    const frame = renderGameFrame(host, spec(), { common });
+    frame.openSheet("settings");
+    const ids = [...frame.root.querySelectorAll(".gf-sheet .sheet-row")].map((r) => r.getAttribute("data-setting"));
+    expect(ids).toEqual(["hints", "assist"]);
+    expect([...frame.root.querySelectorAll(".gf-sheet .sheet-section")].map((h) => h.textContent)).toEqual(["Every game"]);
+  });
+
+  it("the setup sheet renders setup rows and a Start button, and not the preferences — and vice versa", () => {
+    const onStart = vi.fn();
+    const frame = renderGameFrame(host, spec({ setup, preferences: prefs, onStart }), { common });
+    frame.openSheet("setup");
+    let ids = [...frame.root.querySelectorAll(".gf-sheet .sheet-row")].map((r) => r.getAttribute("data-setting"));
+    expect(ids).toEqual(["level"]);
+    frame.root.querySelector<HTMLButtonElement>(".gf-sheet .gf-start")!.click();
+    expect(onStart).toHaveBeenCalledTimes(1);
+    expect(frame.root.querySelector(".gf-sheet")).toBeNull(); // Start closes the sheet
+    frame.openSheet("settings");
+    ids = [...frame.root.querySelectorAll(".gf-sheet .sheet-row")].map((r) => r.getAttribute("data-setting"));
+    expect(ids).toEqual(["hints", "assist", "tutor"]);
+    expect(frame.root.querySelector(".gf-sheet .gf-start")).toBeNull();
+  });
+
+  it("a second openSheet replaces the first — one sheet in the DOM, never two", () => {
+    const frame = renderGameFrame(host, spec({ setup, preferences: prefs }), { common });
+    frame.openSheet("settings");
+    frame.openSheet("setup");
+    expect(frame.root.querySelectorAll(".gf-sheet")).toHaveLength(1);
+    expect(frame.root.querySelectorAll(".gf-scrim")).toHaveLength(1);
+    expect(frame.root.querySelector(".gf-sheet .gf-start")).not.toBeNull();
+  });
+
+  it("Escape and the scrim close the sheet and return focus to the verb that opened it", () => {
+    const frame = renderGameFrame(host, spec({ preferences: prefs }), { common });
+    const settingsVerb = frame.root.querySelector<HTMLButtonElement>('.gf-verb[data-verb="settings"]')!;
+    settingsVerb.focus();
+    settingsVerb.click();
+    expect(frame.root.querySelector(".gf-sheet")).not.toBeNull();
+    expect(frame.root.querySelector(".gf-sheet")!.contains(document.activeElement)).toBe(true);
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(frame.root.querySelector(".gf-sheet")).toBeNull();
+    expect(document.activeElement).toBe(settingsVerb);
+    settingsVerb.click();
+    frame.root.querySelector<HTMLElement>(".gf-scrim")!.click();
+    expect(frame.root.querySelector(".gf-sheet")).toBeNull();
+    expect(document.activeElement).toBe(settingsVerb);
+  });
+
+  it("the rail panel shows the setup read-only and the preferences inline, and update() refreshes it", () => {
+    const frame = renderGameFrame(host, spec({ setup, preferences: prefs, mode: "Medium" }), { common });
+    const extra = frame.root.querySelector(".gf-extra")!;
+    expect(extra.querySelector(".gf-readonly")?.textContent).toContain("Difficulty");
+    expect(extra.querySelector(".gf-readonly")?.textContent).toContain("Medium");
+    expect([...extra.querySelectorAll(".sheet-row")].map((r) => r.getAttribute("data-setting"))).toEqual([
+      "hints",
+      "assist",
+      "tutor",
+    ]);
+    frame.update(spec({ setup: [{ ...setup[0]!, value: "easy" }], preferences: prefs }));
+    // update() replaces the panel wholesale; re-query rather than hold the old node.
+    expect(frame.root.querySelector(".gf-extra .gf-readonly")?.textContent).toContain("Easy");
+    expect(frame.root.querySelectorAll(".gf-extra")).toHaveLength(1);
+  });
+});
+
+describe("renderGameFrame — the mirror preference", () => {
+  it("data-gf-side follows the option, and setSide() flips it live", () => {
+    const frame = renderGameFrame(host, spec(), { side: "left" });
+    expect(frame.root.dataset.gfSide).toBe("left");
+    frame.setSide("right");
+    expect(frame.root.dataset.gfSide).toBe("right");
+    host.innerHTML = "";
+    expect(renderGameFrame(host, spec()).root.dataset.gfSide).toBe("right");
   });
 });

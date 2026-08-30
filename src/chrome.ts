@@ -13,6 +13,14 @@ import { startMusic } from "./music.js";
 import { renderMusicBar } from "./music-bar.js";
 import { renderSettingsSheet } from "./settings-sheet.js";
 import { renderGameFrame, type GameFrame } from "./game-frame.js";
+import {
+  controlsOnLeft,
+  declareAssistanceEnabled,
+  hintsEnabled,
+  setControlsOnLeft,
+  setDeclareAssistance,
+  setHintsEnabled,
+} from "./settings.js";
 import { displayName } from "./contract.js";
 import {
   LAYOUT_KEY,
@@ -287,6 +295,45 @@ export function boot(root: HTMLElement = document.body): Chrome {
     // declares them with frame.update().
     frame = renderGameFrame(playArea, undefined, {
       title: displayName(entry),
+      // The "Every game" section of the settings sheet. Read at open time so the
+      // rows show what is stored now, not what was stored at mount.
+      common: () => [
+        {
+          kind: "toggle",
+          id: "hints",
+          label: "Hints",
+          hint: "Off turns Hint into \u201cI\u2019m stuck\u201d, which ends the game honestly.",
+          value: hintsEnabled(),
+          onChange: (on) => setHintsEnabled(on),
+        },
+        {
+          kind: "toggle",
+          id: "declare-assistance",
+          label: "Declare assistance used",
+          hint: "Undo and hints mark the record.",
+          value: declareAssistanceEnabled(),
+          onChange: (on) => setDeclareAssistance(on),
+        },
+        {
+          kind: "toggle",
+          id: "sound",
+          label: "Sound",
+          value: music.isEnabled(),
+          onChange: (on) => music.setEnabled(on),
+        },
+        {
+          kind: "toggle",
+          id: "controls-left",
+          label: "Controls on the left",
+          hint: "The rail moves to the left of the board on a desktop; the dock's buttons reverse on a phone.",
+          value: controlsOnLeft(),
+          onChange: (on) => {
+            setControlsOnLeft(on);
+            frame?.setSide(on ? "left" : "right");
+          },
+        },
+      ],
+      side: controlsOnLeft() ? "left" : "right",
       menu: [
         { label: "How to play", href: `/how-to/?game=${entry.id}` },
         { label: "Open in a new tab ↗", href: `/${entry.id}/`, newTab: true },

@@ -97,3 +97,21 @@ for (const id of PLAYABLE) {
     }
   });
 }
+
+// The frame's own states the per-game entry scan cannot reach: the settings sheet
+// open on a phone, and the rail with its inline rows on desktop. Scanned on the
+// placeholder — the frame is shared chrome, so one page grades it for all.
+test("placeholder: the settings sheet and the rail are clean under every skin", { tag: "@smoke" }, async ({ page }) => {
+  for (const skin of ALL_SKINS) {
+    await withSkin(page, skin);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/placeholder/");
+    await page.locator('.gf-verb[data-verb="settings"]').click();
+    await expect(page.locator(".gf-sheet")).toBeVisible();
+    await scan(page);
+    await page.setViewportSize({ width: 1000, height: 680 });
+    await page.goto("/placeholder/");
+    await expect(page.locator(".gf-extra")).toBeVisible();
+    await scan(page);
+  }
+});

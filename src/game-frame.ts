@@ -10,7 +10,7 @@
 //!
 //! Plan: `plans/2026-08-30-plan-game-frame.md`. Mocks: `mocks/d-game-frame.html`.
 
-import type { SettingRow } from "./settings-sheet.js";
+import { renderSettingsSheet, type SettingRow } from "./settings-sheet.js";
 
 /** A seat in a versus game: who, their glyph, their score, and what they are doing. */
 export interface SeatMeter {
@@ -57,6 +57,8 @@ export interface GameFrameSpec {
   readonly setup?: readonly SettingRow[];
   /** The game's own section of the settings sheet. */
   readonly preferences?: readonly SettingRow[];
+  /** Called by the setup sheet's Start button, after the setup rows' own onChange handlers. */
+  onStart?(): void;
 }
 
 /** An item in the game bar's ⋯ menu. */
@@ -71,7 +73,17 @@ export interface GameFrameOptions {
   /** Used for the game bar when there is no spec yet (an unmigrated game). */
   readonly title?: string;
   readonly menu?: readonly MenuItem[];
+  /**
+   * The "Every game" rows of the settings sheet — hints, declare assistance, sound,
+   * controls on the left. A factory, so the values are read when the sheet opens.
+   */
+  readonly common?: () => readonly SettingRow[];
+  /** Which side the controls sit on: the rail's column, the dock's verb order. Default right. */
+  readonly side?: "left" | "right";
 }
+
+/** Which sheet to open. */
+export type SheetKind = "settings" | "setup";
 
 /** A mounted frame. */
 export interface GameFrame {
@@ -79,11 +91,21 @@ export interface GameFrame {
   /** Where the game renders. Fills whatever height the bands leave. */
   readonly stage: HTMLElement;
   update(spec: GameFrameSpec): void;
+  /** Open the settings or the New game sheet (a dialog on a phone; on desktop settings are inline).
+   *  `from` is the control to return focus to on close. */
+  openSheet(kind: SheetKind, from?: HTMLElement): void;
+  closeSheet(): void;
+  /** Flip the controls' side live — the mirror preference's onChange calls this. */
+  setSide(side: "left" | "right"): void;
   destroy(): void;
 }
 
-/** The dock has room for five labelled 44px targets at 390px. */
+/** The dock has room for five labelled 44px targets at 390px — four of the game's, plus Settings. */
 export const MAX_VERBS = 5;
+/** What a game may declare; the frame appends its own Settings verb. */
+export const MAX_GAME_VERBS = MAX_VERBS - 1;
+/** The dock-or-rail breakpoint (plan D2: the 280px rail holds at 900 with margin). */
+export const RAIL_MIN_WIDTH = 900;
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -97,12 +119,29 @@ function el<K extends keyof HTMLElementTagNameMap>(
 }
 
 function assertVerbs(spec: GameFrameSpec): void {
-  if (spec.verbs.length > MAX_VERBS) {
+  if (spec.verbs.length > MAX_GAME_VERBS) {
     throw new Error(
-      `[frame] ${spec.title} declares ${spec.verbs.length} verbs; the dock holds ${MAX_VERBS}: ` +
+      `[frame] ${spec.title} declares ${spec.verbs.length} verbs; the dock holds ${MAX_VERBS} and Settings is the frame's: ` +
         spec.verbs.map((v) => v.id).join(", "),
     );
   }
+  if (spec.verbs.some((v) => v.id === "settings")) {
+    throw new Error(`[frame] ${spec.title} declares a 'settings' verb; Settings is the frame's own verb`);
+  }
+}
+
+/** How a setup row reads in the rail's read-only "This game" panel. */
+function describeRow(row: SettingRow): string {
+  if (row.kind === "toggle") return row.value ? "On" : "Off";
+  if (row.kind === "range") return row.format ? row.format(row.value) : String(row.value);
+  return row.options.find((o) => o.value === row.value)?.label ?? row.value;
+}
+
+/** A focusable element inside `root`, in document order. */
+function firstFocusable(root: ParentNode): HTMLElement | null {
+  return root.querySelector<HTMLElement>(
+    'button:not([disabled]), input:not([disabled]), select:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+  );
 }
 
 function renderSeat(m: SeatMeter): HTMLElement {
@@ -189,7 +228,9 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
   // Escape closes; a click anywhere outside the menu and its button closes. Both
   // listeners are removed with the frame so a destroyed frame leaks nothing.
   const onKey = (e: KeyboardEvent): void => {
-    if (e.key === "Escape" && !menu.hidden) setMenu(false);
+    if (e.key !== "Escape") return;
+    if (!menu.hidden) setMenu(false);
+    else closeSheet();
   };
   const onDocClick = (e: MouseEvent): void => {
     if (menu.hidden) return;
@@ -198,6 +239,7 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
   };
   document.addEventListener("keydown", onKey);
   document.addEventListener("click", onDocClick);
+  // closeSheet is declared below; the listener is only ever invoked after mount.
   const bar = el(
     "div",
     { class: "gf-game-bar" },
@@ -220,6 +262,21 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
   const stage = el("div", { class: "gf-stage" });
   const root = el("div", { class: "gf" }, bar);
 
+  // The shape is declared on the root so a test — and a game — can read it without
+  // measuring. jsdom has no matchMedia; that is a dock.
+  const media = typeof matchMedia === "function" ? matchMedia(`(min-width: ${RAIL_MIN_WIDTH}px)`) : null;
+  const paintShape = (): void => {
+    root.dataset.gfShape = media?.matches ? "rail" : "dock";
+  };
+  paintShape();
+  media?.addEventListener("change", paintShape);
+  const setSide = (side: "left" | "right"): void => {
+    root.dataset.gfSide = side;
+  };
+  setSide(opts.side ?? "right");
+
+  let current: GameFrameSpec | undefined = spec;
+
   // Undeclared until a spec arrives: mounted by the chrome for an unmigrated game,
   // the frame shows the game bar and the stage only. The first update() is the
   // declaration; from then on the meter count is fixed.
@@ -235,19 +292,116 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
   root.append(stage);
   if (spec) declareMeters(spec.meters);
 
-  let dock: HTMLElement | null = null;
-  const renderDock = (verbs: readonly Verb[]): void => {
-    if (verbs.length === 0) {
-      dock?.remove();
-      dock = null;
+  // --- sheets: a dialog over the frame (phone), replaced never stacked -------
+  let sheet: HTMLElement | null = null;
+  let scrim: HTMLElement | null = null;
+  let opener: HTMLElement | null = null;
+  const closeSheet = (): void => {
+    if (!sheet) return;
+    sheet.remove();
+    scrim?.remove();
+    sheet = null;
+    scrim = null;
+    opener?.focus();
+    opener = null;
+  };
+  const sectionsFor = (kind: SheetKind, s: GameFrameSpec): HTMLElement => {
+    if (kind === "setup") {
+      const body = renderSettingsSheet({ rows: [...(s.setup ?? [])] });
+      const start = el("button", { class: "gf-start", type: "button" }, "▸ Start");
+      start.addEventListener("click", () => {
+        closeSheet();
+        s.onStart?.();
+      });
+      body.append(el("div", { class: "gf-sheet-actions" }, start));
+      return body;
+    }
+    return renderSettingsSheet({
+      rows: [],
+      sections: [
+        { label: "Every game", rows: opts.common?.() ?? [] },
+        { label: s.title, rows: s.preferences ?? [] },
+      ],
+    });
+  };
+  // `from` is the control that opened the sheet, so focus can return to it on
+  // close. Passed explicitly because a touch tap does not focus a button on
+  // WebKit — document.activeElement would be the body.
+  const openSheet = (kind: SheetKind, from?: HTMLElement): void => {
+    if (!current) return;
+    closeSheet();
+    opener = from ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+    scrim = el("div", { class: "gf-scrim" });
+    scrim.addEventListener("click", closeSheet);
+    sheet = el(
+      "div",
+      { class: "gf-sheet", role: "dialog", "aria-modal": "true", "aria-label": kind === "setup" ? "New game" : "Settings" },
+      el("div", { class: "gf-sheet-grip", "aria-hidden": "true" }),
+      el("h2", { class: "gf-sheet-title" }, kind === "setup" ? "New game" : "Settings"),
+      sectionsFor(kind, current),
+    );
+    root.append(scrim, sheet);
+    console.debug(`[frame] sheet=${kind} open`);
+    firstFocusable(sheet)?.focus();
+  };
+
+  // --- the rail's extra panel: setup read-only + preferences inline (desktop) --
+  let extra: HTMLElement | null = null;
+  const renderExtra = (s: GameFrameSpec): void => {
+    const hasSetup = (s.setup?.length ?? 0) > 0;
+    const hasPrefs = (s.preferences?.length ?? 0) > 0 || opts.common !== undefined;
+    if (!hasSetup && !hasPrefs) {
+      extra?.remove();
+      extra = null;
       return;
     }
-    const next = el("div", { class: "gf-dock" }, ...verbs.map(renderVerb));
+    const next = el("div", { class: "gf-extra" });
+    if (hasSetup) {
+      next.append(el("h2", { class: "gf-extra-head" }, "This game"));
+      for (const row of s.setup ?? []) {
+        next.append(
+          el("div", { class: "gf-readonly" }, el("span", {}, row.label), el("span", { class: "gf-readonly-value" }, describeRow(row))),
+        );
+      }
+    }
+    if (hasPrefs) {
+      next.append(
+        el("h2", { class: "gf-extra-head" }, "Settings"),
+        renderSettingsSheet({
+          rows: [],
+          sections: [
+            { label: "Every game", rows: opts.common?.() ?? [] },
+            { label: s.title, rows: s.preferences ?? [] },
+          ],
+        }),
+      );
+    }
+    if (extra) extra.replaceWith(next);
+    else root.append(next);
+    extra = next;
+  };
+
+  let dock: HTMLElement | null = null;
+  const settingsButton = (): HTMLButtonElement => {
+    const btn: HTMLButtonElement = renderVerb({
+      id: "settings",
+      label: "Settings",
+      icon: "☰",
+      onPress: () => openSheet("settings", btn),
+    });
+    return btn;
+  };
+  const renderDock = (verbs: readonly Verb[]): void => {
+    const next = el("div", { class: "gf-dock" }, ...verbs.map(renderVerb), settingsButton());
     if (dock) dock.replaceWith(next);
+    else if (extra) extra.before(next);
     else root.append(next);
     dock = next;
   };
-  if (spec) renderDock(spec.verbs);
+  if (spec) {
+    renderDock(spec.verbs);
+    renderExtra(spec);
+  }
 
   host.append(root);
   console.debug(`[frame] mount title=${title} verbs=${spec?.verbs.length ?? 0} meters=${meterCount}`);
@@ -274,13 +428,19 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
         const slots = [...meters.children] as HTMLElement[];
         next.meters.forEach((m, i) => patchMeter(slots[i]!, m));
       }
+      current = next;
       renderDock(next.verbs);
+      renderExtra(next);
     },
+    openSheet,
+    closeSheet,
+    setSide,
     destroy(): void {
       if (destroyed) return;
       destroyed = true;
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("click", onDocClick);
+      media?.removeEventListener("change", paintShape);
       root.remove();
     },
   };
