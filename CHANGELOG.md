@@ -5,13 +5,24 @@ landing *is* releasing: sections are months, each entry dated by its landing. Pe
 `CroftC/.claude/CHANGELOGS.md`, the branch that changes something a player runs adds its
 entry here before it lands. Contexts are the shelf's chrome and the individual games.
 
-Contexts: shelf · align · 2048 · bubble · checkers · wyrdle · trio-tumble · othello · cribbage · furrow · dots · drop4 · blockdoku · orchard · sinker · solitaire
+Contexts: shelf · color-sort · align · 2048 · bubble · checkers · wyrdle · trio-tumble · othello · cribbage · furrow · dots · drop4 · blockdoku · orchard · sinker · solitaire
 
 Started 2026-08-29; the August entries below are the landings of that month, and everything
 earlier is in `git log`.
 
 ## 2026-08
 
+- 2026-08-30 **color-sort:** inside the frame. Moves and par are the meters and the chip
+  says Daily or the level; Undo, Restart and Hint are dock verbs (Strict mode takes Undo
+  away); Daily/Endless is the New game card; skin, fruit icons and Strict mode are in
+  Settings; the rules and the no-moves-left notice are toasts. Leave mid-game and the
+  continue card replays every pour. (`plans/2026-08-30-plan-game-frame.md` Phase 19)
+- 2026-08-30 **shelf:** a choice in the settings sheet no longer loses its selection.
+  The sheet's radios were named by row id, and the frame renders a game's preferences
+  twice (the phone's sheet, and the rail's inline panel rebuilt on every update) — one
+  radio group across both copies, so the hidden copy unchecked the visible one. Seen as a
+  skin pick that "did not change its state" and as a CI-only unchecked peg-board mode on
+  Cribbage. Each sheet render now has its own group.
 - 2026-08-30 **align:** inside the frame. Score, level and lines are the meters (told only
   when they change, not every frame); Marathon (daily), a new Marathon or Sprint 40 is the
   New game card, and the chip says which; vibration and the left/right speed are in

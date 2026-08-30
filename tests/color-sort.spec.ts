@@ -4,6 +4,7 @@
 //! invariance, and mobile fit. Drives the binding through `window.__colorSort`.
 
 import { expect, test, type Page } from "@playwright/test";
+import { boardTopStable } from "./helpers/board-top.js";
 
 async function ready(page: Page): Promise<void> {
   await expect(page.locator(".cs-board")).toBeVisible();
@@ -16,6 +17,15 @@ test("daily board renders 12 tubes (10 colours + 2 empty)", { tag: "@smoke" }, a
   await expect(page.locator(".cs-tube")).toHaveCount(12);
   const colors = await page.evaluate(() => window.__colorSort!.board().colors);
   expect(colors).toBe(10);
+  // Moves and par are the frame's meters, the chip says Daily, and the game's own
+  // bar, HUD line and settings disclosure are gone. Undo, Restart and Hint are dock verbs.
+  await expect(page.locator('.gf-stat[data-meter="moves"]')).toContainText(/moves/i);
+  await expect(page.locator('.gf-stat[data-meter="par"]')).toContainText(/par/i);
+  await expect(page.locator(".gf-mode")).toHaveText(/daily/i);
+  await expect(page.locator(".sol-controls, .cs-hud, .sol-settings, .cs-banner")).toHaveCount(0);
+  for (const verb of ["undo", "restart", "hint", "new"]) {
+    await expect(page.locator(`.gf-verb[data-verb="${verb}"]`)).toHaveCount(1);
+  }
 });
 
 test("selecting a source glows exactly the core's legal targets", async ({ page }) => {
@@ -77,7 +87,7 @@ test("a legal pour changes the board; an illegal tap leaves it unchanged; undo r
   expect(hashMoved).not.toBe(hash0);
 
   // Undo reverts to the pre-move state.
-  await page.locator(".cs-undo").first().click();
+  await page.locator('.gf-verb[data-verb="undo"]').click();
   expect(await page.evaluate(() => window.__colorSort!.game.currentHash())).toBe(hash0);
 });
 
@@ -127,12 +137,75 @@ test("toggling skin mid-game leaves the engine state bit-identical (§10.7)", as
   const before = await page.evaluate(() => window.__colorSort!.game.currentHash());
 
   // Switch to the Ball skin via Settings.
-  await page.locator(".sol-settings summary").click();
-  await page.locator(".cs-skin-btn.cs-skin-ball").click();
+  await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await page.locator('.gf-sheet [data-setting="skin"] input[value="ball"]').check();
   await expect(page.locator(".cs-board.cs-skin-ball")).toBeVisible();
 
   const after = await page.evaluate(() => window.__colorSort!.game.currentHash());
   expect(after).toBe(before);
+});
+
+test("Strict mode is a preference: it takes the Undo verb away and gives it back", async ({ page }) => {
+  await page.goto("/color-sort/?level=1");
+  await ready(page);
+  await expect(page.locator('.gf-verb[data-verb="undo"]')).toHaveCount(1);
+  await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  const strict = page.locator('.gf-sheet [data-setting="strict"] .sheet-toggle-input');
+  await strict.click({ force: true });
+  await expect(page.locator('.gf-verb[data-verb="undo"]')).toHaveCount(0);
+  await strict.click({ force: true });
+  await expect(page.locator('.gf-verb[data-verb="undo"]')).toHaveCount(1);
+});
+
+test("the New game card picks Daily or Endless, and the chip says which", async ({ page }) => {
+  await page.goto("/color-sort/?level=1");
+  await ready(page);
+  await expect(page.locator(".gf-mode")).toHaveText(/level 1/i);
+  await page.locator('.gf-verb[data-verb="new"]').click();
+  const sheet = page.locator(".gf-sheet");
+  await expect(sheet.locator('[data-setting="mode"] .sheet-choice-opt')).toHaveText(["Daily", "Endless"]);
+  await sheet.locator('[data-setting="mode"] input[value="daily"]').check();
+  await sheet.locator(".gf-sheet-start").click();
+  await ready(page);
+  await expect(page.locator(".gf-mode")).toHaveText(/daily/i);
+  await expect(page.locator(".cs-tube")).toHaveCount(12);
+});
+
+test("a pour does not move the board, and neither does the settings sheet", { tag: "@smoke" }, async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/color-sort/?level=1");
+  await ready(page);
+  const mv = await page.evaluate(() => window.__colorSort!.game.hint());
+  const v = await boardTopStable(page, ".cs-board", async () => {
+    await page.locator(`.cs-tube[data-tube="${mv!.from}"]`).click();
+    await page.locator(`.cs-tube[data-tube="${mv!.to}"].legal`).click();
+    await page.locator('.gf-verb[data-verb="settings"]').click();
+    await expect(page.locator(".gf-sheet")).toBeVisible();
+    await page.keyboard.press("Escape");
+  });
+  expect(v.frames).toBeGreaterThan(5);
+  expect(v, `board top moved ${v.delta}px over ${v.frames} frames`).toMatchObject({ stable: true });
+});
+
+test("leaving mid-game and returning to the bare URL resumes the same position", async ({ page }) => {
+  await page.goto("/color-sort/?level=1");
+  await ready(page);
+  await page.evaluate(() => {
+    const h = window.__colorSort!;
+    const mv = h.game.hint();
+    if (mv) h.game.pour(mv.from, mv.to);
+    h.refresh();
+  });
+  const hash = await page.evaluate(() => window.__colorSort!.game.currentHash());
+  await page.goto("/color-sort/");
+  const card = page.locator(".gf-continue");
+  await expect(card).toBeVisible();
+  await expect(card.locator(".gf-start-line")).toContainText(/level 1/i);
+  await card.locator(".gf-continue-btn").click();
+  await ready(page);
+  expect(await page.evaluate(() => window.__colorSort!.game.currentHash())).toBe(hash);
 });
 
 test("the board fits a narrow phone with no horizontal overflow", async ({ page }) => {

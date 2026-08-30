@@ -8,7 +8,7 @@ parameters does once every bare URL opens on a start screen) gates Phase 5** and
 thing between this plan and execution: Phases 0–4 may start now. D5 was resolved during
 planning (read-only, see Verified Assumptions) and is struck from Phase 0. Phases 1, 2, 3
 and 5 carry sub-phases (1a/1b, 2a/2b, 3a/3b, 5a/5b) — each with its own Done-when and
-wiring test — because each touched four or more files. Phases 0–18 COMPLETE (2026-08-30). Mocks
+wiring test — because each touched four or more files. Phases 0–19 COMPLETE (2026-08-30). Mocks
 landed on `main` (`mocks/d-game-frame.html`, PR #45, `6c4dd9c`); owner decisions D1–D5
 recorded.
 
@@ -1104,6 +1104,31 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
    it changes one test case either way.*
 
 ## Review Log
+
+### Phase 19 — executed 2026-08-30 (Color Sort)
+- Red first: 7 of 11 against the unmigrated page (chromium). Two stats (moves, par or
+  "—"); the chip is Daily or `Level N`; Undo (absent under Strict), Restart, Hint / I'm
+  stuck and New game are the verbs — four, the ceiling; Daily/Endless is setup
+  (module-scope `chosenMode`, Endless resuming from the best level); skin (a choice),
+  fruit icons (its hint carries the per-skin default note) and Strict are preferences;
+  the rule sentence and the deadlock card are toasts (the deadlock one once per stuck
+  position). `snapshot()` is the deal and the pours from the core's own replay list;
+  `resume()` re-deals (today's, or the level) and replays the STORE's pours — the first
+  version restarted from the game's own save and the test caught it: a pour made through
+  the core bypasses that save, so the hash differed.
+- **What the skin test found — a frame bug, and PR 68's CI flake with it.** Picking a
+  skin radio "did not change its state". The sheet's radios were named `sheet-<row id>`,
+  and the frame renders preferences twice — the phone's sheet and the rail's inline panel,
+  which `update()` rebuilds every time — so both copies were ONE radio group, and
+  re-rendering the hidden copy (with `checked = value === opt`) unchecked the visible one.
+  The same mechanism made Cribbage's peg-board radio read unchecked on one CI shard: an
+  engine render landed between opening the sheet and the assertion. Unit test red first
+  (two sheets, one row id, independent groups), then a per-render suffix on the name in
+  `src/settings-sheet.ts`. Shared code, so the full `npm run e2e` ran locally.
+- Green (`E2E_PORT=4182`): 44/44 with `--repeat-each=2` at 2 workers on both engines;
+  typecheck, lint, touched unit suites (52 incl. the new one); full e2e — see the line
+  below. Shots for Color Sort only (2). Changelog landed in-phase; the how-to's Settings
+  wording still holds.
 
 ### Phase 18 — executed 2026-08-30 (Align)
 - Red first: 7 of 18 against the unmigrated page (chromium). Three stats (score, level,

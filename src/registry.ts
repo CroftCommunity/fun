@@ -24,7 +24,7 @@ import { furrowModule, furrowSetup } from "./games/furrow/furrow.js";
 import { alignModule, alignSetup } from "./games/align/align.js";
 import { blockdokuModule, blockdokuSetup } from "./games/blockdoku/blockdoku.js";
 import { looseendsModule } from "./games/looseends/looseends.js";
-import { colorSortModule } from "./games/color-sort/color-sort.js";
+import { colorSortModule, colorSortSetup } from "./games/color-sort/color-sort.js";
 import { orchardDropModule } from "./games/orchard-drop/orchard-drop.js";
 import { cribbageModule, cribbageSetup } from "./games/cribbage/cribbage.js";
 
@@ -157,7 +157,16 @@ export const SHIPPED: readonly GameEntry[] = [
     load: blockdokuModule,
   },
   { id: "looseends", title: "Loose Ends", emoji: "🎯", status: "playable", icon: true, load: looseendsModule },
-  { id: "color-sort", title: "Color Sort", emoji: "🧪", status: "playable", icon: true, load: colorSortModule },
+  {
+    id: "color-sort",
+    title: "Color Sort",
+    emoji: "🧪",
+    status: "playable",
+    icon: true,
+    pitch: "Pour until every tube holds one colour. A daily puzzle with a par, or endless levels — every pour replays to a verifiable solve.",
+    setup: colorSortSetup,
+    load: colorSortModule,
+  },
   {
     id: "orchard-drop",
     title: "Orchard Drop",
