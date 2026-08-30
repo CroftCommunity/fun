@@ -1,7 +1,7 @@
 # Plan — the Game Frame: one structure for every game page, and a progress store
 
 **Status:** Pass 1 + Pass 2 COMPLETE (2026-08-30); Pass 3 (quality gates, fresh context)
-pending; open questions awaiting the owner's severity confirmation. No phase started. Mocks
+pending; all six open questions' severities CONFIRMED by the owner 2026-08-30 ("accept all as recommended"). No phase started. Mocks
 landed on `main` (`mocks/d-game-frame.html`, PR #45, `6c4dd9c`); owner decisions D1–D5
 recorded.
 
@@ -572,31 +572,33 @@ says why not on iOS; (verification) `npm run gate`.
 
 ## Open Questions
 
-1. [RECOMMENDED: PHASE-GATED (Phase 22)] **What should ⤢ do on iOS Safari, which grants
+1. [CONFIRMED: PHASE-GATED (Phase 22)] **What should ⤢ do on iOS Safari, which grants
    no page fullscreen?** *Recommendation: the toast + a link to the PWA install (standalone
    display is the honest equivalent). Needs D1's recorded behaviour and the owner's OK on
    the copy.*
-2. [RECOMMENDED: PHASE-GATED (Phase 3)] **Is there a height breakpoint too — a short
+2. [CONFIRMED: PHASE-GATED (Phase 3)] **Is there a height breakpoint too — a short
    landscape phone where the rail should fold back to the dock, or the meter row
    collapse?** *D3 will produce the number; the decision is whether to design for
    landscape phones at all in this pass.*
-3. [RECOMMENDED: PHASE-GATED (Phase 6)] **Where does the AI's banter (`*-ai-say`) go — a
+3. [CONFIRMED: PHASE-GATED (Phase 6)] **Where does the AI's banter (`*-ai-say`) go — a
    bubble anchored to the opponent's seat, or a stage toast like every other transient?**
    *Recommendation: a seat-anchored bubble in the rail, a stage toast on the phone; both
    satisfy rule 1. The persona work (`docs/AI-PLAYERS.md`) cares about this.*
-4. [RECOMMENDED: ADVISORY] **Split `styles.css` into per-game files so Phases 7–21 can run
+4. [CONFIRMED: ADVISORY] **Split `styles.css` into per-game files so Phases 7–21 can run
    in parallel worktrees?** *It would cut wall-clock substantially, but it changes the
    repo's one-stylesheet convention and `tests/tokens.test.ts`'s hex scan; recommend no
    for this pass — sequential migrations are a day each.*
-5. [RECOMMENDED: ADVISORY] **Desktop poster art: keep the portrait splash as a left panel
+5. [CONFIRMED: ADVISORY] **Desktop poster art: keep the portrait splash as a left panel
    (row 1 as drawn) or commission landscape for the fourteen games without one?** *Either
    is fine for the frame; it changes only `renderStart`'s CSS.*
-6. [RECOMMENDED: PHASE-GATED (Phase 4)] **Should the store keep `finished` records (so the
+6. [CONFIRMED: PHASE-GATED (Phase 4)] **Should the store keep `finished` records (so the
    card can say "Won yesterday · play again"), or only in-progress ones?**
    *Recommendation: keep `finished` until the next daily rollover, then drop — it costs
    nothing and makes the home page's Today strip honest.*
 
 ## Review Log
+
+- 2026-08-30 — owner confirmed all six open-question severities as recommended (4 PHASE-GATED, 2 ADVISORY); none BLOCKING.
 
 ### Pass 2: Gap Analysis — 2026-08-30
 **Found:**
