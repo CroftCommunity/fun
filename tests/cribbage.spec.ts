@@ -363,20 +363,36 @@ test("in recap mode the board is absent during the deal and replays the pegging 
   await ready(page);
   await expect(page.locator(".crib-board")).toHaveCount(0);
   await expect(page.locator(".crib-bars")).toHaveCount(0);
+  // Under ?fast=1 the recap stays up for 60ms — two assertion round-trips lose that
+  // race on a slow runner (it did, on every CI run, while passing locally). Observe
+  // it from inside the page instead: record what the recap said, and whether it
+  // held a board, the moment it appeared.
+  await page.evaluate(() => {
+    const w = window as unknown as { __recap: { text: string; board: boolean } | null };
+    w.__recap = null;
+    new MutationObserver(() => {
+      if (w.__recap) return;
+      const el = document.querySelector(".crib-recap");
+      if (el) w.__recap = { text: el.textContent ?? "", board: el.querySelector(".crib-board") !== null };
+    }).observe(document.querySelector("#play-area")!, { childList: true, subtree: true });
+  });
+  const seen = (): Promise<{ text: string; board: boolean } | null> =>
+    page.evaluate(() => (window as unknown as { __recap: { text: string; board: boolean } | null }).__recap);
   // Play through the first deal; the recap appears once deal 2 begins.
-  const recap = page.locator(".crib-recap");
   for (let turn = 0; turn < 60; turn += 1) {
-    if ((await recap.count()) > 0) break;
+    if (await seen()) break;
     await waitHumanOrOver(page);
-    if ((await recap.count()) > 0) break;
+    if (await seen()) break;
     const v = await page.evaluate(() => window.__cribbage!.game.view());
     if (v.result !== -1) break;
     await humanMove(page);
   }
-  await expect(recap).toBeVisible();
-  await expect(recap).toContainText(/deal 1/i);
-  await expect(recap.locator(".crib-board")).toBeVisible();
+  await page.waitForFunction(() => (window as unknown as { __recap: unknown }).__recap !== null);
+  const recap = (await seen())!;
+  expect(recap.text).toMatch(/deal 1/i);
+  expect(recap.board).toBe(true);
 });
+
 
 for (const skin of familyMembers(familyOf(DEFAULT_SKIN))) {
   test(`no axe violations on the table (${skin})`, async ({ page }) => {
