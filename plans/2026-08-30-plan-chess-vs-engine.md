@@ -1,7 +1,7 @@
 # Chess vs the engine — the sixth adversarial game, and the first whose rules are the weight
 
-**Status:** PLANNED — Pass 1 (plan development) 2026-08-30. Pass 2 (gap analysis) and
-Pass 3 (quality gates) not yet run. No phase executed. Worktree `worktrees/chess/fun`,
+**Status:** PLANNED — Pass 1 (plan development) 2026-08-30; Pass 2 (gap analysis)
+2026-08-30. Pass 3 (quality gates) not yet run. No phase executed. Worktree `worktrees/chess/fun`,
 branch `claude/chess`.
 **Standards anchor:** `docs/BUILDING-GAMES.md` §10 + both new-game checklists;
 `docs/AI-PLAYERS.md` (search cost, honesty gate); `docs/HARNESS.md` (adding a game).
@@ -57,7 +57,7 @@ WebGPU gate, the rig adapter with a recorded baseline, the guide, and the frame.
   `crates/adversary-*`, `src/harness/{match-runner,scorer,tournament}.ts` and
   `src/game-frame.ts` must be empty at landing (Dots and Furrow set that bar).
 - **No new runtime dependency.** The workspace licence allowlist admits GPL-3.0
-  nowhere (`croft-pwa/.github/scripts/dep_gate.py:103-107`), the sourcing rule for
+  nowhere (`croft-pwa/.github/scripts/dep_gate.py:106-112`), the sourcing rule for
   code that is not ours is *vendor it + CI drift check* (`CroftC/.claude/DECISIONS.md`
   § workspace/dependency-sourcing), and the only maintained MIT move generator has
   not released since 2024. See Reasoning → "Build-fresh".
@@ -106,6 +106,18 @@ and every golden vector cites its section (cribbage's discipline).
 
 ### Build-fresh — the central decision, and why it flipped
 
+**First, what the choice is *not* about: the tier.** Tier-1 is defined by three
+properties (`BUILDING-GAMES.md` §§2–4): a deterministic Rust core compiled to
+wasm, a verifiable `(seed, moves)` record that replays to a stable hash, and the
+core deciding legality. A vendored move generator wrapped in our own `Adversary`,
+`state_hash` and move code satisfies all three — it is exact rules code, not the
+uncontrolled numerics (a physics engine, a solver we do not own) that define
+Tier-3 (§11). **Chess is Tier-1 either way.** The decision below is about
+licence, sourcing and verification, and the owner asked for it to be made
+plainly: build-fresh is *not required* for Tier-1; it is *recommended* for the
+four reasons that follow. (Owner, 2026-08-30: "I want this to be a tier 1 app so
+you tell me if needed" — answered here.)
+
 The first adversarial plan recommended a **vetted move generator** — chess.js or
 `shakmaty` — "recorded as a deviation from build-fresh, because chess rules are not
 simpler than an integration" (`plans/2026-07-31-drop4-ai-harness.md:625-644`). That
@@ -114,10 +126,13 @@ now, for four reasons that were checked rather than assumed:
 
 1. **Licence.** `shakmaty` is `GPL-3.0-or-later` (crates.io, 0.30.1, 2026-06-19).
    GPL-3.0 is absent from the workspace's single inbound allowlist
-   (`dep_gate.py:103-107` — it lists LGPL-2.1-or-later and MPL-2.0 as its strongest
-   copyleft entries; the allowlist "grows one named package at a time, by PR"). It
-   is legally absorbable by AGPL-3.0, so widening is *possible* — but it is a
-   workspace decision, not a game plan's, and it would be the first GPL entry.
+   (`dep_gate.py:106-112` — its copyleft entries are `GPL-2.0-or-later`,
+   `LGPL-2.1-or-later` and `MPL-2.0`; `GPL-3.0-only` / `GPL-3.0-or-later` are not
+   there, and `shakmaty`'s single-arm expression is not satisfied by the 2.0 entry;
+   the allowlist "grows one named package at a time, by PR"). It is legally
+   absorbable by AGPL-3.0, so widening is *possible* — but it is a workspace
+   decision, not a game plan's. *(Pass 2 corrected "it would be the first GPL
+   entry": GPL-2.0-or-later is already listed. The conclusion stands.)*
 2. **Sourcing.** For code that is not ours the recorded rule is *vendor it + a CI
    drift check* (`DECISIONS.md` § workspace/dependency-sourcing, 2026-08-09).
    Vendoring a 10k-line move generator to then wrap it in our own `Adversary`,
@@ -338,6 +353,14 @@ ringed, the checked king marked, legal destinations glowing from the core's
 - `crates/checkers-solver/src/search.rs:71-73,365-368,442` — `TRACTABLE_PIECES`
   buys extra plies, never claims; `OPENING_BUDGET_MS` is a *test* bound, not a
   runtime one.
+- `crates/xbuild/src/lib.rs:96-97` — the move input channel is `static mut IN:
+  [u8; 256]`, shared by dots, furrow and cribbage; every enrolled game's move
+  code fits a byte. Chess's 15-bit code does not, so Phase 3 adds a `u16` channel
+  (checkers, the other >255 code, is **not** enrolled in xbuild — its cross-build
+  claim rests on the wasm C-ABI tests alone; chess does better).
+  `crates/xbuild/check.mjs:8` takes one vectors directory per game as a positional
+  argument, and `run.sh:24-29` passes them; the vector file shape is
+  `{name, note, seed, moves, final_state_hash}` (`crates/dots-core/vectors/02-…json`).
 - `crates/checkers-wasm/src/lib.rs:90-468` — the C-ABI surface to mirror:
   `out_len`, `new_game(lo,hi)`, `board_json`, `legal_moves_json`, `current_hash`,
   `result_code`, `render_text`, `play(code)` (0 ok / 1 illegal / 2 over-or-invalid),
@@ -345,28 +368,60 @@ ringed, the checked king marked, legal destinations glowing from the core's
   `oracle_move_values_json`, `assess_json(code)`, `coach_json`, `tutor_json`,
   `mark_assistance`, `outcome_json(declare)`. Chess adds `fen()` and
   `san_json(code)`.
-- `src/harness/game-oracle.ts:104-114` — the ten-member port over `number` moves
-  and level `0..3`. `src/games/checkers/checkers-oracle.ts` (87 lines) is the
-  pass-through adapter to copy.
-- `src/harness/hybrid-player.ts` `buildBand` reads `{col, value, quality,
-  immediateWin, blocksOpponentWin}` — chess's tutor view is a structural superset,
+- `src/harness/game-oracle.ts:103-116` — the port over `number` moves and level
+  `0..3`. **Nine members** (`newGame`, `board`, `legalMoves`, `play`, `currentHash`,
+  `renderText`, `liveMove`, `assess`, `tutor`) — `docs/HARNESS.md:47` says "ten";
+  the doc miscounts, the interface is the truth (Pass 2 counted).
+  `src/games/checkers/checkers-oracle.ts` (87 lines) is the pass-through adapter
+  to copy.
+- `src/harness/hybrid-player.ts:14-37,66-70` `TutorFactMove` is `{col, value, quality,
+  immediateWin, blocksOpponentWin, idea?}` and `buildBand` maps it to `{col, value,
+  idea}` — chess's tutor view is a structural superset,
   carrying the two booleans honestly (`immediateWin` = mate in one; `blocksOpponentWin`
   = false) and its own `idea` (checkers wires `idea` in both `checkers.ts:540` and
   `checkers-oracle.ts:75`).
 - `src/registry.ts:106-116` — the versus entry shape (`group: "versus"`, `pitch`,
   `setup` factory, `load`); `src/how-to-registry.ts:12,30`; `build.mjs:165-167`
   (per-game wasm copy); `tools/guide-shots.mjs:358-363` (`SHOTS`);
-  `tools/build-wasm.sh` `-p` list; `Cargo.toml:14-56` explicit `members`;
-  `src/harness/harness-trial-entry.ts` `GAMES`; `tests/baselines.test.ts:153`
-  `ANCHORS`; `CHANGELOG.md:7` contexts line. **Ten registration points**, none
-  auto-discovered.
-- `tests/helpers/board-top.ts` — the frame stability spec every migrated game runs;
-  `tests/checkers.spec.ts`, `tests/checkers-harness.test.ts` (three non-vacuity
-  assertions), `tests/checkers-tutor.test.ts` (`coachFor`) — the test shapes to copy.
+  `tools/build-wasm.sh:19` `-p` list; `Cargo.toml:14-56` explicit `members`;
+  `src/harness/harness-trial-entry.ts:34` `GAMES` **and `:26` the `TrialGame`
+  union it is keyed on**; `tests/baselines.test.ts:152` `ANCHORS`; `CHANGELOG.md:7`
+  contexts line. **Registration points found by Pass 2 that Pass 1 missed** (each
+  scheduled in its phase below): `tests/chrome.test.ts:192` asserts the drawer's
+  id list **in order**, so a registry entry without that edit is a red unit
+  board; `src/settings.ts:252-315` holds each versus game's remembered level /
+  side / tutor preference as pure resolvers over `fun-<game>-*` keys, with
+  `tests/settings.test.ts:69` pinning them; `tokens.css:118-122` holds the board
+  tokens and `tests/tokens.test.ts:121-123` asserts their contrast pairs;
+  `tests/art.test.ts` asserts `icon: true` ⇔ `src/games/<id>/assets/icon.jpg`
+  **in both directions**; `src/music.ts:76-91` `BY_GAME` names a game's default
+  track (string-keyed with a shelf fallback, so optional); and
+  `crates/xbuild/{Cargo.toml,src/lib.rs,check.mjs,run.sh}` — the cross-build
+  harness enrols a game by hand in all four (Phase 3). Auto-discovered, no edit:
+  `tests/a11y-matrix.spec.ts:79` scans every `status: "playable"` registry entry
+  in every skin, and `tools/registry-titles.mjs` reads the page list from
+  `src/registry.ts` as text. **Seventeen hand-edited points**, not ten.
+- `tests/helpers/board-top.ts` — the frame stability sampler every migrated game
+  runs (`boardTopStable(page, selector, action)`; its pure `judgeTops` is
+  unit-tested in `tests/helpers/board-top.test.ts`); `tests/checkers.spec.ts`
+  (`@smoke` on the render and seat-state tests at `:52,308`, `@long` + `?fast=1` on
+  the full game at `:147-151`, the `window.__checkers` E2E hook declared at
+  `checkers.ts:50-60`), `tests/checkers-harness.test.ts` (three non-vacuity
+  assertions; loads the real wasm from `target/wasm32-unknown-unknown/release/`
+  through a fetch shim, which `preunit` → `build:wasm` produces),
+  `tests/checkers-tutor.test.ts` (`coachFor` **and** the `MockRuntime` hybrid
+  plug-in proof — there is no separate `checkers-hybrid.test.ts`) — the test
+  shapes to copy.
 - `docs/BUILDING-GAMES.md:213-352` — the frame contract: fixed-count meters, ≤ 4
   own verbs, `setup` / `preferences` rows, transients overlay the stage,
-  `snapshot()` / `resume()` for Continue, deep links (`?r=`, `?seed=`) mount the
-  board directly.
+  `snapshot()` / `resume()` for Continue (optional members of `GameModule`,
+  `src/contract.ts:46-49`), deep links (`?r=`, `?seed=`) mount the board directly.
+  `src/game-frame.ts:17-26` — a `SeatMeter` is `{id, name, glyph, score, sub?,
+  state?: "idle" | "active" | "thinking"}`: **`state` is the seat state, `sub` is
+  its text** — Reasoning → "Seats" above conflated them; Phase 9 uses both.
+  `docs/BUILDING-GAMES.md:410-414` — "run it against the pre-migration page first
+  … a stability spec that was never red proves nothing" is written for a
+  **migration**; a new game has no pre-migration page (see Open Questions).
 - `rust-toolchain.toml` — Rust **1.97.1** pinned, `wasm32-unknown-unknown` target;
   `[workspace.lints]` pedantic minus the cast family, opt-in via
   `[lints] workspace = true`.
@@ -374,6 +429,18 @@ ringed, the checked king marked, legal destinations glowing from the core's
   (cribbage's `spike/cribbage-solve/`, results in `results.txt`).
 - `tools/check.sh` — run every verification through it so the exit status is the
   command's (a piped `tail` was how 11 mutants once looked like all of them).
+- `crates/othello-solver/src/search.rs:547-610,977-995` — the independent plain
+  minimax and the `exact_endgame_agrees_with_an_independent_minimax` test Phase 4
+  copies (Pass 1 cited `:141-201`, which is the `Bound` enum and the TT).
+- `Cargo.toml:63-75` — `rand` / `rand_chacha` are workspace deps with
+  `default-features = false` (no `getrandom`, so a core that uses them still
+  cross-builds); `checkers-core` depends on neither. Chess's Zobrist table needs a
+  deterministic generator: Phase 2 decides between the two deps and a `const fn`.
+- `src/settings.ts:252-315` — the per-game preference shape: `resolveCheckersLevel`
+  / `resolveCheckersSide` (pure, unit-tested), `checkersLevel()` defaulting to
+  `"Medium"`, `checkersSide()` to the opener, `checkersTutorEnabled()` to `false`;
+  keys `fun-checkers-level` / `-side` / `-tutor`. `grep fun-chess src/settings.ts`
+  is empty — no key collision.
 - `CroftC/.claude/TESTBED.md:60-100` — an owed device check carries
   `[device: SPEC]` on the line that records it; fulfilled by editing the line to
   `[device done YYYY-MM-DD: …]`.
@@ -421,17 +488,21 @@ Every file this plan makes stale, scheduled in the phase that breaks it.
   recommendation left as the record of what was thought in July. **Phase 14.**
 - `docs/AI-PLAYERS.md` — the generality section (`:633-714`): chess becomes the
   third unsolved-game precedent, and "a future game (chess is the obvious one)"
-  (`:706`) becomes past tense; the "one principle" already lists chess. **Phase 14.**
+  (`:711`) becomes past tense; the "one principle" already lists chess. **Phase 14.**
   Search-cost section gains chess's measured `deepen` verdict and budget table.
   **Phase 5.**
 - `docs/BUILDING-GAMES.md` §10 — the roster paragraph (`:591-620`: "Furrow is the
   fifth") gains chess as the sixth; the honesty-gate line "(Othello, chess)"
-  (`:876`) becomes a reference to a shipped game; the adversarial checklist's
+  (`:877`) becomes a reference to a shipped game; the adversarial checklist's
   "Reference implementations" gains chess as the *quiescence + repetition-history*
   variant. A **"Variation — a move that changes the piece, and a state that carries
   history (chess)"** block, in the style of the Furrow/Dots variations. **Phase 14.**
-- `docs/HARNESS.md` — "All three games, side by side" table gains chess; the
-  adapter list names `chess-oracle.ts`. **Phase 11.**
+- `docs/HARNESS.md` — "All three games, side by side" table (`:297-307`) gains
+  chess — **only from a real WebGPU run**, since that table records the hybrid vs
+  `Engine(3)`, not a baseline; the row comes from Phase 10's `ai:trial` run, so
+  it is written in Phase 11 from Phase 10's Review Log entry; the adapter list
+  (`:46-55`) names `chess-oracle.ts`; `:47` "ten members" is corrected to nine
+  while the file is open. **Phase 11.**
 - `CLAUDE.md` (fun) — "Adversarial … Three shipped, in order" paragraph extended.
   **Phase 14.**
 - `README.md` — shelf inventory gains Chess. **Phase 14.**
@@ -439,10 +510,14 @@ Every file this plan makes stale, scheduled in the phase that breaks it.
   month written **before landing** (`CroftC/.claude/CHANGELOGS.md`). **Phase 14.**
 - `crates/chess-core/RULES.md` — **new**, written in **Phase 1 before the vectors**.
 - **Registration points** (the stale-reference failure mode without being docs):
-  `Cargo.toml` members (Phases 1, 4, 7), `tools/build-wasm.sh` + `build.mjs`
-  (Phase 7), `src/registry.ts` (Phase 9), `src/how-to-registry.ts` +
-  `tools/guide-shots.mjs` (Phase 12), `harness-trial-entry.ts` +
-  `tests/baselines.test.ts` (Phase 11).
+  `Cargo.toml` members (Phases 1, 4, 7), `crates/xbuild/{Cargo.toml,src/lib.rs,
+  check.mjs,run.sh}` (Phase 3), `tools/build-wasm.sh` + `build.mjs` (Phase 7),
+  `src/registry.ts` + `tests/chrome.test.ts:192` + `src/settings.ts` +
+  `tests/settings.test.ts` + `tokens.css` + `tests/tokens.test.ts` +
+  `src/games/chess/assets/icon.jpg` (`tests/art.test.ts`) + `src/music.ts`
+  (Phase 9), `src/how-to-registry.ts` + `tools/guide-shots.mjs` (Phase 12),
+  `harness-trial-entry.ts` (`GAMES` **and** `TrialGame`) + `tests/baselines.test.ts`
+  (Phase 11).
 - `crates/adversary-core/src/lib.rs:1-4` — already says "Drop 4, checkers, and
   chess"; becomes true rather than stale. No change.
 - `discovery/alpha/thinking/app/ponds/games-pond-authoritative-list.md:143-147`
@@ -489,12 +564,29 @@ re-derived.
 
 **Shared-state note applying to every phase:** all phases run in
 `worktrees/chess/fun` on `claude/chess`. None invokes `git checkout` / `stash` /
-`rebase` in any other worktree; none binds a port except Phases 9, 12, 13 (the
-Playwright server, started and stopped within the phase); none writes outside the
-worktree except `target/`, `dist/` and `test-results/` (git-ignored). Phase 13
-claims `testbed--samsung` / `testbed--pixel` in `CroftC/.coordination/claims/`
-before touching a phone. No phase is dispatched to a subagent, so no re-entry
+`rebase` in any other worktree; none binds a port except Phases 0 (D5's dev
+server), 9, 10 (`ai:trial` serves the built site), 12, 13 (the Playwright server,
+started and stopped within the phase); none writes outside the worktree except
+`target/`, `dist/` and `test-results/` (git-ignored). Phases 0 (D2, D5), 4 and 13
+claim `testbed--samsung` / `testbed--pixel` in `CroftC/.coordination/claims/`
+before touching a phone (Pass 1 named only Phase 13; Phase 4's own text already
+says "claim per TESTBED"). No phase is dispatched to a subagent, so no re-entry
 verification is required.
+
+**Missed-parallelism candidate surfaced by Pass 2 — {11 || 12}, the user
+decides.** Phase 11 (rig adapter) writes `src/games/chess/chess-oracle.ts`,
+`src/harness/harness-trial-entry.ts`, `tests/chess-harness.test.ts`,
+`tests/baselines.test.ts`, `docs/HARNESS.md`; Phase 12 (guide) writes
+`src/games/chess/chess-howto.ts`, `src/how-to-registry.ts`, `tools/guide-shots.mjs`,
+`assets/guide/chess-*.jpg`. Disjoint. Both depend only on Phase 9 (11 also on 10
+for the `idea` wording and the HARNESS row). The shared state is the **build**:
+`harness:trial` and `guide:shots` both run `node build.mjs` into the one `dist/`
+and both start a server on the default port, so they cannot run *at the same
+moment*; as two sequential shells in one session they are safe, and as two
+subagents they are not. Recommendation: keep sequential (the map's default) —
+the saving is under an hour and the `dist/` race is a real one. Recorded so it is
+not re-derived. Phase 10 is not a candidate: it writes `chess.ts`, which Phase 12
+screenshots.
 
 ---
 
@@ -633,7 +725,18 @@ be concrete values and images, not "it seems fine".
   halfmove clock (reset on pawn move or capture), the fullmove number.
 - [ ] **Perft** (`perft(&Board, depth) -> u64`) with the six positions asserted at
   the CI depths and the deeper rows under `#[ignore]`. Plus per-move split perft
-  (`divide`) as a test helper for locating a divergence.
+  (`divide`) as a test helper for locating a divergence. **The CI-depth tests
+  carry `#[cfg_attr(debug_assertions, ignore = "release only: ~16M nodes")]`**
+  (the repo's recorded mechanism, `CLAUDE.md` → mutation testing) — the release
+  gate runs them; `cargo mutants` and any debug run skip them; and depths ≤ 3 on
+  all six positions (~150k nodes) stay un-ignored so generation is still exercised
+  in debug. Record the release wall-clock of the suite in the Review Log (Pass 1's
+  question about the 53 s Rust job: ~16M nodes of a mailbox make-and-check
+  generator is single-digit seconds in release; the ≤ 10 s budget below decides).
+- [ ] `crates/chess-core/vectors/` — the golden vectors as JSON in the xbuild
+  shape (`{name, note, seed, moves, final_state_hash}`; `moves` are the `u16`
+  codes), written in Phase 2, **directory created here** so Phase 3's `run.sh`
+  argument has a home.
 
 **Call chain:** `Board::start → legal_moves → apply_move → …` (the perft driver is
 the first caller of everything).
@@ -667,10 +770,16 @@ deeper rows stay `#[ignore]`.
 **Goal:** A complete game as a pure state machine with a replayable record.
 
 **Changes:**
-- [ ] `Position` = `Board` + `history: Vec<Key>` (position keys since the last
-  irreversible move, ≤ 100). `Key` is a **Zobrist** hash (`hash.rs`, constants from
-  a fixed seeded ChaCha20 table — deterministic, native == wasm) over piece
-  placement, side, castling rights and the *capturable* ep square (9.2.2).
+- [ ] `Position` = `Board` + `history` (position keys since the last irreversible
+  move, ≤ 100) — **a fixed-capacity `[Key; 100]` + `len: u8` from the start, not a
+  `Vec`** (Pass 2's answer to Pass 1's first question; see Open Questions). `Key`
+  is a **Zobrist** hash (`hash.rs`) over piece placement, side, castling rights and
+  the *capturable* ep square (9.2.2). **The 781 constants come from a `const fn`
+  splitmix64 over a fixed seed, evaluated at compile time** — no `rand` /
+  `rand_chacha` dependency in the core (`checkers-core` has neither), no runtime
+  table init, and native == wasm by construction. The seed and the generator are
+  recorded in `RULES.md` beside the move-code layout so a reader can regenerate
+  the table.
 - [ ] `result(&Position)`: checkmate (loser = side to move), stalemate,
   insufficient material (the four cases), 50-move (clock ≥ 100), threefold
   (`history` holds the current key ≥ 2 more times). **Checkmate first** — D4(d).
@@ -679,8 +788,13 @@ deeper rows stay `#[ignore]`.
   `apply`, `result`, `state_hash` = sha256 over the canonical serialization of
   `Position` **including `history`**, `render_text` = ASCII board + FEN + "moves
   are long algebraic, e.g. e2e4", `move_to_text` / `parse_move` in UCI form).
-- [ ] `impl pond_outcome::Game` — replay `(seed, moves)`, skipping moves not in
-  `legal_moves` so a tampered list diverges (`othello-core/src/game.rs:252-276`).
+- [ ] `impl pond_outcome::Game` (`KIND = "chess"`, **`VERSION = 1`** — the trait
+  requires it, `crates/pond-outcome/src/lib.rs:18-27`) — replay `(seed, moves)`,
+  skipping moves not in `legal_moves` so a tampered list diverges
+  (`othello-core/src/game.rs:252-276`).
+- [ ] `state_hash` is defined over the **logical** history (the `len` keys in
+  order), never the container, so the array/ring choice can change later without
+  moving a single pinned hash.
 - [ ] `san_of(&Position, Move) -> String` — the rendering the panel reads
   (disambiguation by file/rank/both, `x`, `=Q`, `+`/`#`, `O-O`/`O-O-O`). Rendered,
   never parsed.
@@ -689,7 +803,9 @@ deeper rows stay `#[ignore]`.
   the K+B v K+B *opposite* colours non-case; castling rights lost by a rook
   capture; en passant only for one move; promotion to each piece; a full game
   from the start replayed to a pinned hash; two positions equal in FEN but
-  different in `history` hashing differently.
+  different in `history` hashing differently. The full game and the D4(a)
+  threefold game are **also** written to `crates/chess-core/vectors/01-full-game.json`
+  and `02-threefold.json` (the xbuild shape) — the vectors Phase 3 replays in wasm.
 
 **Call chain:** `Adversary::initial → legal_moves → apply → result → state_hash`;
 `pond_outcome::Game::replay` over a record.
@@ -706,8 +822,10 @@ fails verification.
 **Risks:** The repetition definition — the ep-possibility clause is the one every
 implementation gets wrong first (an ep *square* is set after every double push;
 it only counts if a capture is legal). Pinned by D4(b). Second: the `history`
-vector in `Position` makes `Clone` heavier for the search; measured in Phase 4, and
-the fallback is a fixed-size ring of 100 keys.
+in `Position` makes `Clone` heavier for the search — **resolved by Pass 2 as the
+fixed array above** (an 808-byte memcpy per node, no heap; a `Vec` would be an
+allocation per node at every one of Phase 4's ~10⁵–10⁶ nodes per move). Phase 4
+still measures; the number goes beside the constants.
 **Done when:**
 1. **Behavioral:** every vector green; the wiring test's tamper case fails
    verification.
@@ -719,16 +837,32 @@ the fallback is a fixed-size ring of 100 keys.
 **Goal:** The determinism claim, checked by the harness that exists for it.
 
 **Changes:**
-- [ ] A golden scenario for `crates/xbuild` — the Phase 2 full game and a
-  repetition-draw game — with natively recorded hashes; `npm run test:xbuild`
+- [ ] The two Phase 2 vectors (`crates/chess-core/vectors/01-full-game.json`,
+  `02-threefold.json`) with natively recorded hashes; `npm run test:xbuild`
   replays them in `wasm32` and asserts equality.
+- [ ] **Enrol chess in the harness — four hand edits** (Pass 2; the harness
+  auto-discovers nothing): `crates/xbuild/Cargo.toml` gains `chess-core = { path =
+  "../chess-core" }`; `src/lib.rs` gains `chess_replay_hash(seed_lo, seed_hi, len)`
+  over a **new `static mut CHESS_IN: [u16; 512]`** with `chess_in_ptr` /
+  `chess_in_cap` — the shared `IN: [u8; 256]` cannot carry a 15-bit code, and 256
+  bytes as LE pairs is 128 plies, shorter than a repetition game; `check.mjs`
+  takes a seventh positional `<chess-vectors>` and pushes a `chess ${v.name}`
+  case per file (the cribbage loop's shape, seed as two `u32` halves, moves
+  written as `Uint16Array`); `run.sh` passes `crates/chess-core/vectors`.
 - [ ] `crates/chess-core` builds for `wasm32-unknown-unknown` with no `std` feature
   it cannot have (no `getrandom`, no floats, no time).
 
 **Wiring test:** the xbuild scenario itself, run through `npm run test:xbuild`.
-**Depends on:** Phase 2. **Read-set:** `crates/xbuild/{run.sh,check.mjs,src/lib.rs}`.
-**Write-set:** the xbuild scenario file(s) for chess.
-**Risks:** none known; cribbage reported "nothing to report" at this phase.
+**Depends on:** Phase 2 (the vectors directory and the two files).
+**Read-set:** `crates/xbuild/{run.sh,check.mjs,src/lib.rs,Cargo.toml}`.
+**Write-set:** `crates/xbuild/{Cargo.toml,src/lib.rs,check.mjs,run.sh}`,
+`Cargo.lock` (xbuild's new dep).
+**Shared-state contract:** `crates/xbuild/**` is shared harness code — additive
+only (a new export, a new loop, a new argument); every existing case still runs.
+`tests/gate-reachability.test.ts` already covers `run.sh` (it is wired to
+`test:xbuild`), so no new reachability edit.
+**Risks:** none known beyond the buffer width; cribbage reported "nothing to
+report" at this phase.
 **Done when:** `bash tools/check.sh xbuild npm run test:xbuild` green.
 **Validation:** Narrow.
 
@@ -781,7 +915,8 @@ Expert's depth.
 
 **Depends on:** Phase 3; Phase 0 D2 (the position set and provisional budgets).
 **Read-set:** `crates/checkers-solver/src/{search,eval}.rs`,
-`crates/othello-solver/src/search.rs:141-201` (the minimax cross-check),
+`crates/othello-solver/src/search.rs:547-610,977-995` (the minimax cross-check
+and its test),
 `crates/adversary-solver/src/lib.rs`.
 **Write-set:** `crates/chess-solver/**`, root `Cargo.toml` members, `Cargo.lock`.
 **Shared-state contract:** `Cargo.toml` members — additive. The wasm timing needs
@@ -846,7 +981,10 @@ chess-solver --release`.
 
 **Changes:**
 - [ ] **Commit the green state first** (CLAUDE.md's rule — before *every* round).
-  `cargo mutants -p chess-core` then `-p chess-solver`, through `tools/check.sh`
+  `cargo mutants -p chess-core --in-place` then `-p chess-solver --in-place`
+  (**`--in-place` because this worktree has `node_modules`** — the scratch copy
+  fails with `File exists (os error 17)` otherwise, and `--in-place` refuses `-j`,
+  so it is one job; cribbage's finding, `CLAUDE.md`), through `tools/check.sh`
   so the log is whole. Triage every survivor into *equivalent* (the packed-code
   `|`/`^` sites, the same as checkers' documented ones) or *real gap*, close the
   gaps with tests that pin behaviour, not implementation. Record the triage in the
@@ -855,10 +993,15 @@ chess-solver --release`.
   --porcelain <path>` is empty for the files being restored.
 
 **Depends on:** Phases 2, 5. **Write-set:** tests in both crates; the plan.
-**Risks:** run time — the perft tests are the slow ones; mark them `#[ignore]`d for
-the mutants run via a `cargo mutants` config that skips `perft_*` at depth ≥ 4
-(they are exhaustive on *generation*, which the smaller depths and the vectors
-already mutate-test).
+**Risks:** run time — the perft tests are the slow ones, and `cargo mutants`
+builds **debug**. Phase 1 already marks the CI-depth perfts
+`#[cfg_attr(debug_assertions, ignore)]`, so the mutants run skips them by
+construction and the depth ≤ 3 perfts (un-ignored) plus the vectors still
+mutate-test generation. **The blind spot to check in the report:** a survivor
+inside a branch only depth ≥ 4 reaches (a castling-through-check bar that only
+Kiwipete at depth 4 exercises) is a real gap to close with a targeted vector,
+not an equivalent mutant — cribbage's crib-table generator had 30 such
+survivors for exactly this reason.
 **Done when:** every survivor is triaged and named.
 **Validation:** the mutants report, read in full.
 
@@ -874,8 +1017,12 @@ already mutate-test).
 - [ ] `crates/chess-wasm` mirroring `checkers-wasm`'s surface (Verified
   Assumptions) plus `fen()` and `san_json(code)`; `board_json` carries the 64
   cells, side, castling rights, ep square, halfmove clock, `in_check`, the last
-  move, captured material per side, and `result`; `legal_moves_json` the codes
-  **with** `from`/`to`/`promo` unpacked so the UI never re-derives them.
+  move **and its SAN (`lastSan`, computed at `play` time from the pre-move
+  position and kept in the session — Pass 2's answer to Pass 1's third question:
+  the seat `sub` reads "Nf3+" from the one call it already makes)**, captured
+  material per side, and `result`; `legal_moves_json` the codes **with**
+  `from`/`to`/`promo` unpacked so the UI never re-derives them. `san_json(code)`
+  stays for the one caller that names a move *not yet played* — the Hint ring.
 - [ ] `play(code)` returns 0 / 1 illegal / 2 over-or-invalid; `live_move`,
   `coach_json`, `tutor_json`, `assess_json` at the Phase 5 budgets;
   `outcome_json(declare)`.
@@ -912,7 +1059,10 @@ green.
 - [ ] `src/games/chess/chess-outcome.ts` — `verifyRecord` replaying `(seed,
   moves)` through the wasm; the `?r=` share format; the human-facing label from
   the A-centric result.
-- [ ] `tests/chess-unit.test.ts` (vitest over the real wasm, the checkers shim):
+- [ ] `tests/chess-unit.test.ts` (vitest over the real wasm, the checkers shim —
+  `readFile("target/wasm32-unknown-unknown/release/chess_wasm.wasm")` behind a
+  `globalThis.fetch` override, `tests/checkers-unit.test.ts:19-31`; `preunit`
+  builds it, which is why Phase 7's `build-wasm.sh` entry is a precondition):
   play a game, replay it, tamper it.
 
 **Call chain:** `chess.ts (Phase 9) → Chess → wasm`.
@@ -933,10 +1083,28 @@ tampered one does not, through `verifyRecord`.
 **Changes:**
 - [ ] `src/games/chess/chess.ts` — `chessModule` + `chessSetup` (rows: *Play as*
   White / Black / Random; *Difficulty*); `GameFrameSpec` with two seats (You / The
-  Engine, glyph by colour, `score` = captured material, `sub` = "your move" ·
-  "check!" · "thinking…" as seat states), verbs Undo · Hint · New game…; `mode`
+  Engine, glyph by colour, `score` = captured material, **`state`** = `"active"` /
+  `"thinking"` / `"idle"` per `SeatMeter`, **`sub`** = the text: "your move" ·
+  "check!" · "Nf3+" from `board().lastSan`), verbs Undo · Hint · New game…; `mode`
   chip = level; `snapshot()` / `resume()` (seed + moves + human side + level;
-  `summary.line` like "Move 14 · you're up a knight").
+  `summary.line` like "Move 14 · you're up a knight"); the `declare global {
+  Window.__chess }` E2E hook (checkers' `:50-60` shape) set on mount, deleted on
+  unmount.
+- [ ] `src/settings.ts` — `ChessLevel` / `ChessSide` types, `resolveChessLevel` /
+  `resolveChessSide` (pure), `chessLevel()` (default `"Medium"`), `chessSide()`
+  (default `"white"`, with `"random"` as a third stored value resolved at New
+  game), `chessTutorEnabled()` (default off), keys `fun-chess-{level,side,tutor}`;
+  `tests/settings.test.ts` gains the resolver cases (the checkers block at `:69`).
+- [ ] `tokens.css` — the chess board tokens (`--chs-light`, `--chs-dark`,
+  `--chs-a`, `--chs-b` for the piece fills, `--chs-legal`, `--chs-check`,
+  `--chs-last`), and `tests/tokens.test.ts` gains their contrast pairs beside the
+  `chk-*` rows at `:121-123` (piece on **both** square colours — chess pieces
+  stand on light squares too, which checkers' men never do). `styles.css` uses
+  only `var()` (the no-raw-hex unit test).
+- [ ] `tests/chrome.test.ts:192` — insert `"chess"` in the drawer id list at the
+  position the registry gives it (after `"checkers"`, the versus group's order).
+- [ ] `src/music.ts` `BY_GAME` — name a track for chess from the shelf library
+  (optional; unnamed falls back to `SHELF_TRACK`). See Open Questions.
 - [ ] The board: an 8×8 CSS grid in the stage, oriented to the human (D5's pieces
   as SVG or glyphs, coloured by tokens); tap a piece → the core's legal
   destinations glow; tap a destination → `play`; a promotion destination opens
@@ -950,14 +1118,24 @@ tampered one does not, through `verifyRecord`.
 - [ ] Undo takes back a pair of plies (yours and The Engine's) and marks
   assistance; Hint asks `coach_json` and rings the suggestion (marks assistance);
   hints-off → "I'm stuck" ends + reports, per §6.
-- [ ] `src/registry.ts` entry (`id: "chess"`, `group: "versus"`, `status:
-  "playable"`, `emoji: "♞"`, `pitch`, `setup: chessSetup`, `load: chessModule`);
-  `assets/{icon,splash}.jpg`.
+- [ ] `src/registry.ts` entry in `SHIPPED` (`id: "chess"`, `group: "versus"`,
+  `status: "playable"`, `emoji: "♞"`, `icon: true`, `pitch`, `setup: chessSetup`,
+  `load: chessModule`); `src/games/chess/assets/{icon,splash}.jpg` —
+  `tests/art.test.ts` asserts `icon: true` ⇔ the file exists, both directions, so
+  the flag and the JPEG land in the same commit.
 - [ ] `tests/chess.spec.ts` — the browser suite: a full game against Easy to a
-  result screen; castling by tapping the king two squares; a promotion through the
-  picker; en passant offered; a `?r=` share re-verifies; the **frame stability
-  spec** (`tests/helpers/board-top.ts`) run RED against the pre-migration page
-  first (§4c checklist); axe clean in both themes; 44px squares at 390px.
+  result screen (`@long`, `?fast=1` — the seam that collapses the engine's beats,
+  so the test asserts rules, not pacing; `checkers.spec.ts:147-151`); the render
+  and seat-state tests tagged `@smoke`; castling by tapping the king two squares;
+  a promotion through the picker; en passant offered; a `?r=` share re-verifies;
+  the **frame stability spec** (`tests/helpers/board-top.ts`) — **RED by
+  construction, since a new game has no pre-migration page** (see Open
+  Questions): the first commit of this phase mounts the board with the turn
+  text as an in-flow line above it, the sampler records the jump on the
+  engine's reply, the line moves into the seat `sub`, the sampler goes GREEN,
+  and the delta is written in the Review Log; axe clean in both themes; 44px
+  squares at 390px. `tests/a11y-matrix.spec.ts` picks chess up automatically
+  from the registry — no edit, but one more game in a per-game budget.
 
 **Call chain:** `main.ts → registry → chessModule.mount → frame.update(spec) →
 Chess (wasm)`.
@@ -968,10 +1146,13 @@ share re-verifies" — through the real page, both engines.
 with a multi-tap move), `src/games/othello/othello.ts` (the worked frame example),
 `docs/BUILDING-GAMES.md` §4c, `docs/RESPONSIVE-DESIGN.md`.
 **Write-set:** `src/games/chess/{chess,chess-howto(stub)}.ts`,
-`src/games/chess/assets/**`, `src/registry.ts`, `styles.css` (a chess block),
-`tests/chess.spec.ts`.
-**Shared-state contract:** `src/registry.ts` — one entry, additive. The Playwright
-server, within the phase.
+`src/games/chess/assets/**`, `src/registry.ts`, `src/settings.ts`, `src/music.ts`,
+`tokens.css`, `styles.css` (a chess block), `tests/chess.spec.ts`,
+`tests/chrome.test.ts`, `tests/settings.test.ts`, `tests/tokens.test.ts`.
+**Shared-state contract:** `src/registry.ts`, `src/settings.ts`, `src/music.ts`,
+`tokens.css`, `styles.css` and the three shared tests — every edit additive (a
+new entry, a new block, a new row); no existing game's line changes. The
+Playwright server, within the phase. `localStorage` keys are `fun-chess-*` only.
 **Risks:** The promotion picker is the one modal-like thing; §4c allows an
 overlay in the stage, and the `<dialog>` sheet is the one recorded modal
 exception — the picker is an overlay, not a dialog, and it must be
@@ -1012,7 +1193,9 @@ AIRuntime`.
 band" through `chessModule` with `MockRuntime`.
 **Depends on:** Phase 9.
 **Read-set:** `src/games/checkers/checkers.ts:129-140,480-620`,
-`src/harness/{hybrid-player,ai-runtime,banter}.ts`.
+`src/harness/{hybrid-player,ai-runtime,banter}.ts`, `tests/checkers-tutor.test.ts`
+(the `MockRuntime` plug-in proof lives there for checkers — the template for
+`chess-hybrid.test.ts`, which is a new file by choice, not by precedent).
 **Write-set:** `src/games/chess/chess.ts`, `tests/chess-{tutor,hybrid}.test.ts`.
 **Risks:** `banter.ts` rejects any digit or board noun — chess banter that says
 "e4" or "the queen" is filtered; the canned lines must avoid both. Recorded, not
@@ -1026,15 +1209,20 @@ ai:trial`) recorded in the Review Log as validated-not-gated.
 **Goal:** "The Engine never blunders" as a number.
 
 **Changes:**
-- [ ] `src/games/chess/chess-oracle.ts` — the pass-through adapter (ten members;
+- [ ] `src/games/chess/chess-oracle.ts` — the pass-through adapter (nine members;
   level `0..3` → `Level`); `idea` on tutor moves.
-- [ ] `src/harness/harness-trial-entry.ts` `GAMES.chess` with a prompt that
-  describes chess and the UCI move form.
+- [ ] `src/harness/harness-trial-entry.ts` — `"chess"` added to the `TrialGame`
+  union (`:26`; `GAMES` is `Record<TrialGame, …>`, so the union is the type
+  error that forces the entry) and `GAMES.chess` with a prompt that describes
+  chess and the UCI move form.
 - [ ] `tests/chess-harness.test.ts` — self-play tournament over the real wasm with
   the three non-vacuity assertions (`blunders === 0`, `scoredMoves > 0`,
   `abortedGames === 0`).
 - [ ] `tests/baselines.test.ts` `ANCHORS.chess` — the Report recorded with the date.
-- [ ] `docs/HARNESS.md` — the side-by-side table and the adapter list.
+- [ ] `docs/HARNESS.md` — the adapter list, the "ten members" → nine correction,
+  and the side-by-side table's chess row **from Phase 10's real WebGPU run**
+  (the table is a hybrid-vs-engine record, not a baseline — if Phase 10's run
+  was skipped, the row is omitted and the omission is said in the Review Log).
 
 **Wiring test:** `tests/chess-harness.test.ts` itself — the rig grades chess with
 **no rig change** (`git diff --stat src/harness/{match-runner,scorer,tournament}.ts`
@@ -1083,8 +1271,10 @@ JPEGs.
 
 **Changes:**
 - [ ] Claim `testbed--samsung` and `testbed--pixel`; seat the queue
-  (`bash .claude/bin/device-queue.sh --have samsung,pixel`) and take chess's items
-  plus any older owed check the phones fulfil.
+  (`bash /Users/cpettet/git/chasemp/CroftC/.claude/bin/device-queue.sh --have
+  samsung,pixel` — the script lives in the workspace root, three levels above
+  this worktree, not in `fun/`) and take chess's items plus any older owed check
+  the phones fulfil.
 - [ ] On both phones: a full game by tap; the promotion picker at 44px; the
   glyphs/SVG in both themes; Expert's move latency felt and timed against Phase 4's
   table; the share link opened cold.
@@ -1106,8 +1296,13 @@ JPEGs.
   `docs/BUILDING-GAMES.md` §10 (roster, the honesty line, the new Variation
   block), `CLAUDE.md`, `README.md`, `CHANGELOG.md` (contexts + entry).
 - [ ] Review Log entries for every phase, newest first, with the numbers.
-- [ ] `bash tools/check.sh gate npm run gate` (Rust + xbuild + typecheck + lint +
-  unit + build + e2e); `bash ../.claude/bin/workspace-audit.sh`.
+- [ ] `bash tools/check.sh gate npm run gate` (Rust + xbuild + binding + typecheck
+  + lint + unit + build + e2e — `package.json` `test`); `bash
+  /Users/cpettet/git/chasemp/CroftC/.claude/bin/workspace-audit.sh` (Pass 1 wrote
+  `../.claude/…`, which from `worktrees/chess/fun` resolves to nothing).
+- [ ] `TODO/README.md:19` — the target heading is "Shipped — Tier-1 Croft-native
+  (playable)"; the chess entry leaves "Next games" (`:82`) and the list below it
+  renumbers.
 - [ ] Rebase onto `origin/main`, push, open the PR (`land: chess — …`) — **ask
   before merging**, per COORDINATION; landing claims `landing-on-main` for the
   registry edit.
@@ -1164,9 +1359,187 @@ this plan wrote.
   objection and the vendoring requirement, so the next person does not re-derive
   either.*
 
+*Added by Pass 2 (2026-08-30):*
+
+- `[RECOMMENDED: PHASE-GATED (Phase 2)]` **The repetition history as a
+  fixed-capacity array from the start, not a `Vec` measured later?**
+  *Recommendation: yes — `[Key; 100]` + `len`. Pass 1's first question to Pass 2.
+  The search calls `Adversary::apply` (a new `Position`) at every node; a `Vec`
+  is a heap allocation per node, an array is an 808-byte copy with none. The
+  hash is defined over the logical list, so the container is free to change and
+  no pinned vector moves. Phase 4 still measures `Clone` cost and records it.
+  Gated on Phase 2 because that is where `Position` is written; the change is
+  already reflected in Phase 2's bullets on the recommendation.*
+
+- `[RECOMMENDED: ADVISORY]` **How is a new game's frame stability spec ever
+  RED?** *Pass 1's fourth question. `BUILDING-GAMES.md:410-414` and the §4c
+  checklist say "run it against the pre-migration page first"; that is written
+  for a migration, and a new game has no pre-migration page — a spec that fails
+  because `/chess/` does not exist proves nothing about stability.
+  Recommendation: RED by construction (Phase 9's bullet now says so): the first
+  mount puts the turn text in flow above the board, the sampler records the jump
+  on the engine's reply, the text moves to the seat `sub`, GREEN, delta in the
+  Review Log. This is the checklist's intent (the sampler must be seen to see
+  movement) satisfied honestly; Phase 14's `BUILDING-GAMES.md` edit adds one
+  sentence to `:414` saying what a new game does.*
+
+- `[RECOMMENDED: ADVISORY]` **`board_json` carries the last move's SAN?** *Pass
+  1's third question. Recommendation: yes — `lastSan`, computed once at `play`
+  time from the pre-move position. The seat `sub` then says "Nf3+" from the call
+  the UI already makes per render; `san_json(code)` stays only for the Hint ring,
+  which names a move not yet played. Reflected in Phase 7.*
+
+- `[RECOMMENDED: ADVISORY]` **A default music track for chess?** *`src/music.ts`
+  `BY_GAME` is optional (an unnamed game plays `SHELF_TRACK`). Recommendation:
+  name one from the existing library rather than ship the shelf default — every
+  other versus game names one; the choice is taste and takes a minute in Phase 9.*
+
+- `[RECOMMENDED: ADVISORY]` **Run Phases 11 and 12 in parallel?** *Recommendation:
+  no — see the Concurrency Map's candidate note. Disjoint files, but both build
+  into the one `dist/` and both serve on the default port.*
+
 ---
 
 ## Review Log
+
+### Pass 2: Gap Analysis — 2026-08-30
+
+**Found:**
+- **Seven more registration points than the "ten" Pass 1 counted**, every one
+  a red board or a silent miss if skipped: `tests/chrome.test.ts:192` asserts the
+  drawer's id list in order; `src/settings.ts` + `tests/settings.test.ts` hold
+  each versus game's remembered level / side / tutor preference (the plan said
+  "both remembered" and named no file); `tokens.css` + `tests/tokens.test.ts`
+  contrast pairs; `tests/art.test.ts` asserting `icon: true` ⇔
+  `src/games/<id>/assets/icon.jpg` in both directions; `src/music.ts` `BY_GAME`
+  (optional); `harness-trial-entry.ts:26` `TrialGame` union (the `GAMES` record
+  is keyed on it); and `crates/xbuild` in four files.
+- **Phase 3 could not have been executed as written.** xbuild enrols a game by
+  hand in `Cargo.toml`, `src/lib.rs`, `check.mjs` and `run.sh`; its one move
+  channel is `[u8; 256]`, and a 15-bit chess code does not fit. Write-set was "the
+  xbuild scenario file(s) for chess"; the vectors also had no named home
+  (`crates/chess-core/vectors/` in the `{name, note, seed, moves,
+  final_state_hash}` shape check.mjs reads).
+- **Phase 2's Zobrist constants "from a fixed seeded ChaCha20 table" needed a
+  dependency Phase 1's crate list did not have** (`rand` + `rand_chacha`;
+  `checkers-core` carries neither). Resolved with a `const fn` splitmix64 table —
+  no dep, compile-time, native == wasm by construction.
+- `impl pond_outcome::Game` omitted the required `VERSION` const.
+- **Five factual errors in citations**: `dep_gate.py:103-107` → `:106-112`, and
+  "it would be the first GPL entry" is false — `GPL-2.0-or-later` is on the
+  allowlist (the argument survives: `GPL-3.0-*` is absent and `shakmaty`'s
+  single-arm expression is not satisfied by the 2.0 entry); `othello-solver
+  search.rs:141-201` is the `Bound` enum and TT, the minimax is at `:547-610` with
+  its test at `:977-995`; `AI-PLAYERS.md:706` → `:711`; `BUILDING-GAMES.md:876`
+  → `:877`; and `GameOracle` has **nine** members, not ten (`game-oracle.ts:103-116`
+  — `docs/HARNESS.md:47` miscounts; Phase 11 corrects it while the file is open).
+- **Two script paths that resolve to nothing from this worktree**: Phase 13's
+  `bash .claude/bin/device-queue.sh` and Phase 14's `bash ../.claude/bin/
+  workspace-audit.sh` — both live in `CroftC/.claude/bin/`, three levels up.
+- Phase 6's "a `cargo mutants` config that skips `perft_*`" is not the repo's
+  mechanism; `#[cfg_attr(debug_assertions, ignore)]` is (`CLAUDE.md`, from the
+  cribbage audit), and `--in-place` is required in a worktree with `node_modules`.
+  Moved the `cfg_attr` to Phase 1 where the tests are written, and named the
+  blind spot it creates (a branch only depth ≥ 4 reaches).
+- Phase 9 conflated the frame's seat `state` (`"idle" | "active" | "thinking"`,
+  `game-frame.ts:25`) with its `sub` text; Phase 14's `TODO/README.md` target
+  heading and the `npm run test` composition (`test:binding` was missing from the
+  list) were imprecise; Phase 10's `MockRuntime` template is
+  `tests/checkers-tutor.test.ts`, not a `checkers-hybrid.test.ts` (none exists).
+- `docs/HARNESS.md`'s side-by-side table is a real-WebGPU record, so its chess
+  row can only come from Phase 10's `ai:trial` run — the Phase 11 doc bullet now
+  says so, and says what to write if that run was skipped.
+- **Pass 1's five questions, answered:** (1) history container — fixed array
+  from Phase 2, hash over the logical list (new PHASE-GATED question, reflected
+  in Phase 2); (2) perft next to the 53 s job — ~16M nodes of mailbox
+  make-and-check is single-digit seconds in release, the ≤ 10 s budget stands,
+  and Phase 1 now records the measured wall-clock; (3) `board_json` SAN — yes,
+  `lastSan` at `play` time (Phase 7); (4) stability spec RED for a new game — RED
+  by construction, the checklist's wording is migration-shaped (new ADVISORY
+  question; Phase 9 bullet; one sentence owed to `BUILDING-GAMES.md:414` in
+  Phase 14); (5) baseline determinism — confirmed: the anchor is a Report over
+  moves chosen by `select_in_band` with a seeded ChaCha20 RNG and a nodes-not-ms
+  budget (`adversary-solver/src/lib.rs:87-100`), so the `history` hash changes
+  nothing the Report sees; `tests/baselines.test.ts:152-170` records checkers on
+  the pinned toolchain the same way.
+
+**Concurrency:**
+- Disjointness confirmed: the map is all-sequential and every write-set overlap
+  found (Phases 1/4/7 on `Cargo.toml` + `Cargo.lock`; Phase 3 on `Cargo.lock`
+  via xbuild's new dep; Phases 9/10 on `chess.ts`) is already on the spine.
+- Shared-state contracts sharpened to invariants: Phase 3 (`crates/xbuild/**`
+  additive, every existing case still runs); Phase 9 (six shared files, every
+  edit additive, `localStorage` keys `fun-chess-*` only); the every-phase note
+  now names the ports (Phases 0, 9, 10, 12, 13) and the device claims (Phases 0,
+  4, 13 — Pass 1's note named only 13).
+- Missed-parallelism candidate {11 || 12} surfaced: disjoint write-sets, but both
+  build into one `dist/` and serve on one port. Recommended sequential; recorded
+  in the map and as an ADVISORY question for the user to decide.
+- No re-entry verification added — no phase is dispatched to a subagent, and the
+  candidate above is recommended against.
+
+**Changed:**
+- Verified Assumptions: `dep_gate.py` lines and the GPL-2.0 correction;
+  `game-oracle.ts` nine members; the seventeen registration points with their
+  lines; `TutorFactMove` fields; the test shapes (tags, `?fast=1`, the fetch
+  shim, `__checkers`, the `MockRuntime` home); `SeatMeter` fields; the
+  migration-shaped stability rule; new entries for xbuild's buffer and vector
+  shape, `othello-solver` minimax lines, the workspace `rand` deps, and
+  `settings.ts`'s resolver shape.
+- Reasoning → "Build-fresh" point 1: the allowlist's actual copyleft entries.
+- Documentation Impact: `AI-PLAYERS.md:711`, `BUILDING-GAMES.md:877`,
+  `HARNESS.md` bullet expanded (real-run row, "ten" → nine), registration-point
+  list extended per phase.
+- Phase 1: `cfg_attr(debug_assertions, ignore)` on the CI-depth perfts, depth ≤ 3
+  un-ignored, wall-clock recorded; `crates/chess-core/vectors/` created.
+- Phase 2: fixed-capacity history; `const fn` splitmix64 Zobrist table with the
+  seed in `RULES.md`; `VERSION = 1`; hash over the logical list; the two vectors
+  written in xbuild's shape; risk text updated.
+- Phase 3: the four xbuild edits with the `[u16; 512]` channel; write-set,
+  read-set, shared-state contract and dependency rewritten to match.
+- Phase 4: minimax read-set lines.
+- Phase 6: `--in-place`; the `cfg_attr` mechanism; the depth ≥ 4 blind spot.
+- Phase 7: `lastSan` in `board_json`; `san_json` scoped to the Hint ring.
+- Phase 8: the fetch-shim load path and why Phase 7 is its precondition.
+- Phase 9: `state` vs `sub`; the `__chess` hook; `settings.ts`, `tokens.css`,
+  `tests/chrome.test.ts`, `src/music.ts`, `icon: true` ⇔ file; `@smoke` / `@long`
+  / `?fast=1`; RED-by-construction stability; a11y matrix auto-enrolment;
+  write-set and shared-state contract extended.
+- Phase 10: read-set names the `MockRuntime` template.
+- Phase 11: nine members; `TrialGame` union; the HARNESS row's provenance.
+- Phase 13: absolute path to `device-queue.sh`.
+- Phase 14: absolute path to `workspace-audit.sh`; `test:binding` in the gate
+  list; the `TODO/README.md` target heading.
+- Concurrency Map: ports and claims per phase; the {11 || 12} candidate.
+- Open Questions: five added (one PHASE-GATED, four ADVISORY); none re-opened.
+- Status line.
+
+**Confirmed:**
+- Every other file:line in Verified Assumptions and the Phases opened and read
+  as cited: `adversary-core/src/lib.rs`, `checkers-core/src/game.rs` (and the
+  1,883-line size), `adversary-solver/src/lib.rs`, `checkers-solver/src/{tutor,
+  search,live}.rs`, `checkers-wasm/src/lib.rs` (all sixteen exports at the lines
+  given), `checkers-oracle.ts` (87 lines, `idea` at `:74-79`), `checkers.ts:540`
+  (1,018 lines), `registry.ts:106-116`, `how-to-registry.ts:12,30`,
+  `build.mjs:165-167`, `guide-shots.mjs:357-363`, `build-wasm.sh:19`,
+  `Cargo.toml:14-56`, `baselines.test.ts:152`, `CHANGELOG.md:7`,
+  `rust-toolchain.toml` (1.97.1), `spike/` (five projects, cribbage's
+  `results.txt`), `tools/check.sh`, `TESTBED.md:63-102`, `TODO/README.md:110-127`,
+  `TODO/drop4.md:185`, the July plan's `:18` and `:625-644`, `DECISIONS.md:66-81`,
+  `pond-outcome`'s `Game` trait, `xbuild`'s wiring into `test:xbuild` and the
+  gate-reachability guard, `docs/RESPONSIVE-DESIGN.md` exists, `[device: …]`
+  tags conform to TESTBED rule 2.
+- The build-fresh decision and its four reasons hold after the GPL-2.0
+  correction; the honesty gate, the 15-bit code, quiescence, nodes-not-ms and
+  the Stockfish objection are unchanged by anything found.
+- The "Depends on" fields are accurate after the changes: Phase 3 now names the
+  vectors it needs from Phase 2; Phase 8's dependency on Phase 7 has its reason
+  (`preunit` builds the wasm the shim reads); nothing circular.
+- The spine order is right: no phase consumes anything a later phase produces.
+  Shipping any prefix leaves a coherent tree (a core without a solver, a solver
+  without a binding, a binding without a page — each is green on its own gate).
+- The Concurrency Map's named near-miss (D2 beside Phase 1) still holds for the
+  reason given.
 
 ### Pass 1: Plan development — 2026-08-30
 
