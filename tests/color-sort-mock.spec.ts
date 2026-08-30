@@ -488,3 +488,49 @@ test("mock E1.6: Continue resumes the in-progress level", async ({ page }) => {
   await expect(page.locator(".gf-mode")).toHaveText(/level 4/i);
   expect(await page.evaluate(() => window.__colorSort!.game.currentHash())).toBe(hash);
 });
+
+// ---------- phase D: the offer (mock E6.1) ----------
+
+test("mock E6.1: the sign-in offer appears after a solve and nowhere else", async ({ page }) => {
+  await page.goto("/color-sort/");
+  await expect(page.locator(".cs-signin-offer")).toHaveCount(0);
+  await page.goto("/color-sort/?level=1");
+  await ready(page);
+  await pourOnce(page);
+  await expect(page.locator(".cs-signin-offer")).toHaveCount(0);
+  await page.evaluate(() => {
+    const h = window.__colorSort!;
+    for (let i = 0; i < 300 && !h.game.isWon(); i++) {
+      const mv = h.game.hint();
+      if (!mv) break;
+      h.game.pour(mv.from, mv.to);
+    }
+    h.refresh();
+  });
+  await expect(page.locator(".sol-result")).toBeVisible();
+  const offer = page.locator(".sol-result .cs-signin-offer");
+  await expect(offer).toContainText(/keep this streak/i);
+  await offer.locator("button").click();
+  await expect(page.locator("dialog[data-signin-sheet]")).toHaveAttribute("open", "");
+  await page.keyboard.press("Escape");
+  // Signed in, the offer is gone.
+  await page.evaluate(() =>
+    localStorage.setItem(
+      "fun-signin-session",
+      JSON.stringify({ did: "did:plc:e2e", pds: "https://pds.test", issuer: "https://pds.test", accessToken: "t", tokenEndpoint: "https://pds.test/oauth/token", clientId: "c", dpopKey: { privateJwk: {}, publicJwk: { kty: "EC", crv: "P-256", x: "x", y: "y" } }, handle: "alice.test" }),
+    ),
+  );
+  await page.reload();
+  await ready(page);
+  await page.evaluate(() => {
+    const h = window.__colorSort!;
+    for (let i = 0; i < 300 && !h.game.isWon(); i++) {
+      const mv = h.game.hint();
+      if (!mv) break;
+      h.game.pour(mv.from, mv.to);
+    }
+    h.refresh();
+  });
+  await expect(page.locator(".sol-result")).toBeVisible();
+  await expect(page.locator(".cs-signin-offer")).toHaveCount(0);
+});

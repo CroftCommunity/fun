@@ -269,6 +269,15 @@ for (const id of GAME_PAGES) {
   );
 }
 
+// Sign-in (plan 2026-08-29 color-sort redesign, D8/D10): the OAuth callback page
+// and the hosted client metadata that IS the client_id when deployed.
+await mkdir(join(dist, "signin"), { recursive: true });
+await writeFile(
+  join(dist, "signin", "index.html"),
+  page({ title: "Croft · fun — signing in", dataAttr: ' data-page="signin"', base: "/", script: "app.js" }),
+);
+await cp(join(root, "client-metadata.json"), join(dist, "client-metadata.json"));
+
 // The shared "How to play" page (reads ?game=<id>).
 await mkdir(join(dist, "how-to"), { recursive: true });
 await writeFile(

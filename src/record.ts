@@ -191,3 +191,18 @@ export function recordSolve(
 export function solvesToDaily(r: GameRecord | null): number {
   return Math.max(0, DAILY_UNLOCK_SOLVES - (r?.stats.played ?? 0));
 }
+
+/**
+ * Sign-in happened: stamp the DID on every local record that exists. Returns
+ * the games whose record was bound. Nothing is sent anywhere (plan D9).
+ */
+export function bindRecordsToDid(did: string, games: readonly string[], sub: RecordSubstrate = localSubstrate): string[] {
+  const bound: string[] = [];
+  for (const game of games) {
+    const r = readRecord(game, sub);
+    if (!r) continue;
+    writeRecord({ ...r, did, updatedAt: new Date().toISOString() }, sub);
+    bound.push(game);
+  }
+  return bound;
+}

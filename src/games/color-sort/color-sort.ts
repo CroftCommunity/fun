@@ -272,6 +272,7 @@ export function colorSortModule(): GameModule {
   let skin: ColorSortSkin = colorSortSkin();
   let selected: number | null = null;
   let frame: GameFrame | null = null;
+  let signIn: GameServices["signIn"] | undefined;
   let pendingResume: Progress | null = null;
   let toasted = false;
   /** The deadlock toast fires once per stuck position, not on every re-render of it. */
@@ -316,7 +317,8 @@ export function colorSortModule(): GameModule {
       level: mode === "daily" ? dayIndexUTC(new Date()) : level,
       seed: seed.toString(),
       moves: replayMoves().map((m) => [m.from, m.to] as const),
-      ...(mode === "daily" ? { par: b.par, solved, strict: strict() } : {}),
+      solved,
+      ...(mode === "daily" ? { par: b.par, strict: strict() } : {}),
     };
     saveRecord({ ...r, inProgress, stats: { ...r.stats, bestLevel: Math.max(r.stats.bestLevel, mode === "endless" ? level : 1) } });
   };
@@ -768,7 +770,24 @@ export function colorSortModule(): GameModule {
             : () => void startDaily(),
         playAgainLabel: mode === "endless" ? "Next level" : "Play again",
       });
-    container.replaceChildren(build());
+    const section = build();
+    const o = offer();
+    if (o) section.append(o);
+    container.replaceChildren(section);
+  };
+
+  /** After a solve, for an anonymous record: keep this streak — sign in (mock E6.1). */
+  const offer = (): HTMLElement | null => {
+    if (!signIn || signIn.current()) return null;
+    const box = el("aside", { class: "cs-signin-offer", "aria-label": "Keep this streak" });
+    box.append(
+      el("b", {}, "Keep this streak"),
+      el("p", {}, "Sign in with your atmo provider and your solves, streak and best level stay yours on any device. Nothing is sent until you say so."),
+    );
+    const btn = el("button", { type: "button", class: "cs-signin-btn" }, "Sign in or create an account");
+    btn.addEventListener("click", () => signIn?.open());
+    box.append(btn);
+    return box;
   };
 
   const showShared = async (payload: string): Promise<void> => {
@@ -864,7 +883,8 @@ export function colorSortModule(): GameModule {
     celebrated = new Set();
     solveRecorded = false;
     const saved = savedGame();
-    if (saved && saved.mode === "endless" && saved.level === level && saved.seed === seed.toString()) applyMoves(savedMoves(saved));
+    // A solved level is not resumed — replaying its pours would land on the result again.
+    if (saved && saved.mode === "endless" && saved.level === level && saved.seed === seed.toString() && !saved.solved) applyMoves(savedMoves(saved));
     selected = null;
     setStatus("");
     console.debug(`[color-sort] endless level=${level} seed=${seed}`);
@@ -895,6 +915,7 @@ export function colorSortModule(): GameModule {
     mount(c: HTMLElement, services?: GameServices): void {
       container = c;
       frame = services?.frame ?? null;
+      signIn = services?.signIn;
       disposed = false;
       skin = colorSortSkin();
       frame?.onSettingsChange(() => rebuild()); // Hints flips the verb

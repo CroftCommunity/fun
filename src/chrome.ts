@@ -9,6 +9,7 @@ import { findGame, REGISTRY } from "./registry.js";
 import { applySkin, currentSkin, isDark, setSkin, siblingOf, togglePalette } from "./skins.js";
 import { renderHome } from "./home.js";
 import { appearanceSpec } from "./appearance.js";
+import { currentSession, handleCallback, openSignIn, renderSignInControl } from "./signin/index.js";
 import { startMusic } from "./music.js";
 import { renderMusicBar } from "./music-bar.js";
 import { renderSettingsSheet } from "./settings-sheet.js";
@@ -100,7 +101,9 @@ export function boot(root: HTMLElement = document.body): Chrome {
     "aria-controls": "games-drawer",
     "aria-label": "Open games drawer",
   });
-  toggle.textContent = "☰ Games";
+  // "☰ Games" on a desktop; the glyph alone under 40rem, where the header is
+  // full (measured 2026-08-30 at 390px: 381px of controls before sign-in joined).
+  toggle.append("☰ ", el("span", { class: "drawer-toggle-text" }, "Games"));
 
   const drawer = el("nav", {
     id: "games-drawer",
@@ -242,6 +245,9 @@ export function boot(root: HTMLElement = document.body): Chrome {
     { class: "visually-hidden" },
     gameId ? `fun.croft.ing — ${gameId}` : "fun.croft.ing — games",
   );
+  // Sign in — one identity for every game (plan 2026-08-29 color-sort redesign,
+  // D10): "Sign in" opens the atmo-provider sheet; signed in, the person.
+  const signInControl = renderSignInControl({ host: root, onChange: () => undefined });
   const header = el(
     "header",
     { class: "chrome-header" },
@@ -251,6 +257,7 @@ export function boot(root: HTMLElement = document.body): Chrome {
     musicBar.bar,
     themeBtn,
     appearanceBtn,
+    signInControl,
   );
   // "How to play" and "open in a new tab" used to sit in this header and wrapped
   // it to a second row on every phone (110px against home's 64 — plan Phase 0).
@@ -287,7 +294,20 @@ export function boot(root: HTMLElement = document.body): Chrome {
   let frameUpdateHook: (() => void) | null = null;
   const mode: PresentationMode = gameId ? "standalone" : "drawer";
   const entry = gameId ? findGame(gameId) : undefined;
-  if (!gameId) {
+  if (root.dataset.page === "signin") {
+    // The OAuth callback page (/signin/): finish the exchange and go back where
+    // the person was. Silence is success; the only copy here is the failure.
+    const status = el("p", { class: "welcome", "data-signin-callback": "", role: "status" }, "Signing in…");
+    playArea.append(status);
+    handleCallback(REGISTRY.map((g) => g.id))
+      .then((handled) => {
+        if (!handled) status.replaceChildren("Nothing to finish here. ", el("a", { href: "/" }, "Back to the games"));
+      })
+      .catch((err: unknown) => {
+        const reason = err instanceof Error ? err.message : String(err);
+        status.replaceChildren(`Could not finish sign-in: ${reason}. `, el("a", { href: "/" }, "Back to the games"));
+      });
+  } else if (!gameId) {
     // The home page. Was one sentence over an empty page; it is now the model
     // rendered in whichever layout is in force (M3).
     repaintHome();
@@ -358,7 +378,17 @@ export function boot(root: HTMLElement = document.body): Chrome {
     };
     const mountGame = (resume?: Progress): void => {
       mounted = game.load!();
-      mounted.mount(theFrame.mount, { mode, frame: theFrame });
+      mounted.mount(theFrame.mount, {
+        mode,
+        frame: theFrame,
+        signIn: {
+          current: () => {
+            const s = currentSession();
+            return s ? { did: s.did, handle: s.handle } : null;
+          },
+          open: () => openSignIn({ host: root, onChange: () => undefined }),
+        },
+      });
       if (resume) mounted.resume?.(resume);
       save();
     };
