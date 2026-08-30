@@ -1317,7 +1317,7 @@ this plan wrote.
 
 ## Open Questions
 
-- `[RECOMMENDED: BLOCKING]` **Build-fresh `chess-core`, or a vetted generator?**
+- `[CONFIRMED: BLOCKING — owner, 2026-08-30, "accept all"]` **Build-fresh `chess-core`, or a vetted generator?**
   *Recommendation: build-fresh, for the four reasons in Reasoning — licence
   (GPL-3.0 is not on the allowlist), sourcing (not-ours means vendor + drift
   check), staleness of the MIT option, and perft making our own code the
@@ -1325,43 +1325,43 @@ this plan wrote.
   list; if the owner would rather widen the allowlist for `shakmaty`, Phases 1–2
   become a vendoring harness + wrapper and the plan is re-passed.*
 
-- `[RECOMMENDED: BLOCKING]` **Threefold repetition and the 50-move rule as
+- `[CONFIRMED: BLOCKING — owner, 2026-08-30, "accept all"]` **Threefold repetition and the 50-move rule as
   automatic draws (no claim)?** *Recommendation: yes — a claim needs a claimant;
   every consumer chess site auto-draws; it terminates the shuffles. The
   alternative (fivefold + 75-move, the FIDE automatic pair) is also deterministic
   but lets a dead position run ~150 extra plies against a bored engine. Blocking
   because the `history` in the state and the hash depend on it (Phase 2).*
 
-- `[RECOMMENDED: PHASE-GATED (Phase 9)]` **Flip the board for a human playing
+- `[CONFIRMED: PHASE-GATED (Phase 9) — owner, 2026-08-30, "accept all"]` **Flip the board for a human playing
   Black?** *Recommendation: flip — chess's convention is universal and the cost is
   one tested function. Checkers' deferral was about checkers. Gated on Phase 9
   because nothing before it renders a board.*
 
-- `[RECOMMENDED: PHASE-GATED (Phase 9)]` **Unicode glyphs or our own SVG set?**
+- `[CONFIRMED: PHASE-GATED (Phase 9) — owner, 2026-08-30, "accept all"]` **Unicode glyphs or our own SVG set?**
   *Resolved by D5's screenshots; the recommendation is SVG (rendering consistency,
   and no CC-BY-SA attribution surface). Gated on Phase 9.*
 
-- `[RECOMMENDED: ADVISORY]` **A Resign verb?** *Recommendation: no, for v1 — none
+- `[CONFIRMED: ADVISORY — owner, 2026-08-30, "accept all"]` **A Resign verb?** *Recommendation: no, for v1 — none
   of the five versus games has one, New game… is the exit, and a resigned game's
   record would need a terminal the replay cannot reach (a new outcome shape).
   Tracked in `TODO/chess.md` with that reason.*
 
-- `[RECOMMENDED: ADVISORY]` **The hybrid persona's name.** *Recommendation: "Ash"
+- `[CONFIRMED: ADVISORY — owner, 2026-08-30, "accept all"]` **The hybrid persona's name.** *Recommendation: "Ash"
   — the roster is trees (Rowan, Alder) plus Chip; a tree name that also reads
   austere. Inlined in `chess.ts` like the others until the roster thread lands.*
 
-- `[RECOMMENDED: ADVISORY]` **Should the seed mean Chess960 later?** *Recommendation:
+- `[CONFIRMED: ADVISORY — owner, 2026-08-30, "accept all"]` **Should the seed mean Chess960 later?** *Recommendation:
   reserve it in `RULES.md` now (the comment `initial(_seed)` carries), build
   nothing. A follow-up in `TODO/chess.md`.*
 
-- `[RECOMMENDED: ADVISORY]` **The "Grandmaster" Stockfish level.** *Recommendation:
+- `[CONFIRMED: ADVISORY — owner, 2026-08-30, "accept all"]` **The "Grandmaster" Stockfish level.** *Recommendation:
   out of this plan, recorded as a Tier-3-shaped follow-up with the `exact`
   objection and the vendoring requirement, so the next person does not re-derive
   either.*
 
 *Added by Pass 2 (2026-08-30):*
 
-- `[RECOMMENDED: PHASE-GATED (Phase 2)]` **The repetition history as a
+- `[CONFIRMED: PHASE-GATED (Phase 2) — owner, 2026-08-30, "accept all"]` **The repetition history as a
   fixed-capacity array from the start, not a `Vec` measured later?**
   *Recommendation: yes — `[Key; 100]` + `len`. Pass 1's first question to Pass 2.
   The search calls `Adversary::apply` (a new `Position`) at every node; a `Vec`
@@ -1371,7 +1371,7 @@ this plan wrote.
   Gated on Phase 2 because that is where `Position` is written; the change is
   already reflected in Phase 2's bullets on the recommendation.*
 
-- `[RECOMMENDED: ADVISORY]` **How is a new game's frame stability spec ever
+- `[CONFIRMED: ADVISORY — owner, 2026-08-30, "accept all"]` **How is a new game's frame stability spec ever
   RED?** *Pass 1's fourth question. `BUILDING-GAMES.md:410-414` and the §4c
   checklist say "run it against the pre-migration page first"; that is written
   for a migration, and a new game has no pre-migration page — a spec that fails
@@ -1383,18 +1383,18 @@ this plan wrote.
   movement) satisfied honestly; Phase 14's `BUILDING-GAMES.md` edit adds one
   sentence to `:414` saying what a new game does.*
 
-- `[RECOMMENDED: ADVISORY]` **`board_json` carries the last move's SAN?** *Pass
+- `[CONFIRMED: ADVISORY — owner, 2026-08-30, "accept all"]` **`board_json` carries the last move's SAN?** *Pass
   1's third question. Recommendation: yes — `lastSan`, computed once at `play`
   time from the pre-move position. The seat `sub` then says "Nf3+" from the call
   the UI already makes per render; `san_json(code)` stays only for the Hint ring,
   which names a move not yet played. Reflected in Phase 7.*
 
-- `[RECOMMENDED: ADVISORY]` **A default music track for chess?** *`src/music.ts`
+- `[CONFIRMED: ADVISORY — owner, 2026-08-30, "accept all"]` **A default music track for chess?** *`src/music.ts`
   `BY_GAME` is optional (an unnamed game plays `SHELF_TRACK`). Recommendation:
   name one from the existing library rather than ship the shelf default — every
   other versus game names one; the choice is taste and takes a minute in Phase 9.*
 
-- `[RECOMMENDED: ADVISORY]` **Run Phases 11 and 12 in parallel?** *Recommendation:
+- `[CONFIRMED: ADVISORY — owner, 2026-08-30, "accept all"]` **Run Phases 11 and 12 in parallel?** *Recommendation:
   no — see the Concurrency Map's candidate note. Disjoint files, but both build
   into the one `dist/` and both serve on the default port.*
 
