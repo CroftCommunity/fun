@@ -8,7 +8,7 @@ parameters does once every bare URL opens on a start screen) gates Phase 5** and
 thing between this plan and execution: Phases 0–4 may start now. D5 was resolved during
 planning (read-only, see Verified Assumptions) and is struck from Phase 0. Phases 1, 2, 3
 and 5 carry sub-phases (1a/1b, 2a/2b, 3a/3b, 5a/5b) — each with its own Done-when and
-wiring test — because each touched four or more files. Phases 0–19 COMPLETE (2026-08-30). Mocks
+wiring test — because each touched four or more files. Phases 0–20 COMPLETE (2026-08-30). Mocks
 landed on `main` (`mocks/d-game-frame.html`, PR #45, `6c4dd9c`); owner decisions D1–D5
 recorded.
 
@@ -1104,6 +1104,25 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
    it changes one test case either way.*
 
 ## Review Log
+
+### Phase 20 — executed 2026-08-30 (Orchard Drop)
+- Red first: 3 of 11 against the unmigrated page (chromium). Three stats (score, best,
+  next fruit by name — the colour chip had no home in a text meter and the name is the
+  accessible form anyway); the sync runs every frame, so the frame is told on a change
+  of score/best/next/mode only. Daily/Free play is setup (module-scope `chosenMode`);
+  no preferences; one verb (New game); the rule sentence is a toast. The module already
+  had a `frame()` (its paint model), so the handle is `gf`, as in Align.
+- Two things the tests decided: a `?seed=` deep link now starts a FREE run (it started
+  the daily with the seed overridden — the chip said "Daily" for a seed that was not
+  the day's); and the stability sampler needs frames — the drop is a fast-forward, so
+  the test waits 250 ms on the settled crate before opening the sheet, or the sampler
+  sees five frames and cannot judge.
+- **No `snapshot()`/`resume()`**, as Align: the run is wall-clock physics and the core's
+  `record()` is the end-of-run proof, not a mid-run log. The poster shows; the continue
+  card never does. Recorded in the changelog.
+- Green (`E2E_PORT=4182`): 40/40 with `--repeat-each=2` at 2 workers on both engines,
+  smoke, typecheck, lint, touched unit suites. Shots for Orchard only (1). How-to copy and
+  changelog landed in-phase.
 
 ### Phase 19 — executed 2026-08-30 (Color Sort)
 - Red first: 7 of 11 against the unmigrated page (chromium). Two stats (moves, par or

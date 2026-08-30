@@ -25,7 +25,7 @@ import { alignModule, alignSetup } from "./games/align/align.js";
 import { blockdokuModule, blockdokuSetup } from "./games/blockdoku/blockdoku.js";
 import { looseendsModule } from "./games/looseends/looseends.js";
 import { colorSortModule, colorSortSetup } from "./games/color-sort/color-sort.js";
-import { orchardDropModule } from "./games/orchard-drop/orchard-drop.js";
+import { orchardDropModule, orchardSetup } from "./games/orchard-drop/orchard-drop.js";
 import { cribbageModule, cribbageSetup } from "./games/cribbage/cribbage.js";
 
 /** What fun.croft.ing ships, in drawer order. */
@@ -177,6 +177,8 @@ export const SHIPPED: readonly GameEntry[] = [
     // record, a re-checkable `?r=` share. No `tier` key — Tier-1 is the default
     // — and no `attribution`, which `Tier1GameEntry` does not have a field for.
     // The Suika-lineage credit lives in the how-to guide instead.
+    pitch: "Drop fruit into the crate; two of a kind merge into the next one up. A daily crate to compare, or free play — every run replays to a verifiable score.",
+    setup: orchardSetup,
     load: orchardDropModule,
   },
   {

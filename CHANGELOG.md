@@ -12,6 +12,12 @@ earlier is in `git log`.
 
 ## 2026-08
 
+- 2026-08-30 **orchard-drop:** inside the frame. Score, best and the next fruit are the
+  meters (told only when they change, not every frame); Daily or Free play is the New
+  game card, and the chip says which; the rules sentence is a toast. A `?seed=` link is
+  a free-play run of that seed, as on every other game. No continue card: the run is
+  wall-clock physics, and the core hands out its record only at the end.
+  (`plans/2026-08-30-plan-game-frame.md` Phase 20)
 - 2026-08-30 **color-sort:** inside the frame. Moves and par are the meters and the chip
   says Daily or the level; Undo, Restart and Hint are dock verbs (Strict mode takes Undo
   away); Daily/Endless is the New game card; skin, fruit icons and Strict mode are in

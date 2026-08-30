@@ -61,7 +61,7 @@ export const ORCHARD_DROP_GUIDE: Guide = {
       blocks: [
         {
           kind: "prose",
-          text: "The daily crate is the same for everyone on a given day, so a score is worth comparing. Free play deals a fresh crate whenever you want one. Which fruit arrives next comes from the seed, so the same seed always deals the same run — that is what makes a record checkable.",
+          text: "The daily crate is the same for everyone on a given day, so a score is worth comparing. Free play deals a fresh crate whenever you want one — pick either on the New game card. Which fruit arrives next comes from the seed, so the same seed always deals the same run — that is what makes a record checkable.",
         },
       ],
     },

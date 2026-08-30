@@ -4927,39 +4927,6 @@ body.fullscreen .le-stage {
    live in tokens.css with the rest of the palette. The eleven FRUIT colours are
    the game's own identity, are not skinned, and live in render.ts — a cherry is
    red in every skin. */
-.orch-modes {
-  display: flex;
-  justify-content: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-.orch-mode {
-  /* 44px tap floor — the mobile-first standard, not a suggestion. */
-  min-height: 44px;
-  min-width: 44px;
-  padding: 0 1rem;
-}
-.orch-hud {
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-  color: var(--ink);
-  font-family: var(--font-display);
-}
-.orch-hud p { margin: 0; }
-.orch-score-value,
-.orch-best-value { font-weight: 700; }
-.orch-next { display: inline-flex; align-items: center; gap: 0.35rem; }
-.orch-next-chip {
-  width: 0.9rem;
-  height: 0.9rem;
-  border-radius: 50%;
-  display: inline-block;
-  border: 1px solid rgb(0 0 0 / 20%);
-}
-.orch-next-name { color: var(--ink-muted); }
-
 .orch-surface {
   display: flex;
   justify-content: center;
