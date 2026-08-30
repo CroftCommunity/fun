@@ -264,6 +264,22 @@ mod tests {
     }
 
     #[test]
+    fn a_proven_draw_is_not_mistaken_for_a_mate() {
+        // The always-take-a-mate rule reads BOTH halves — proven AND a win.
+        // Here h2h1 is a proven repetition draw (exact, value 0) while the
+        // rook has winning moves: the rule must not seize the draw.
+        let start = pos_of("k7/8/8/8/8/8/8/K6R w - - 0 1");
+        let mut pos = start;
+        for text in ["h1h2", "a8a7", "h2h1", "a7a8", "h1h2", "a8a7"] {
+            pos = pos.play(<Chess as Adversary>::parse_move(&pos, text).expect("legal"));
+        }
+        let draw = <Chess as Adversary>::parse_move(&pos, "h2h1").expect("legal");
+        let mut rng = ChaCha20Rng::seed_from_u64(11);
+        let mv = choose(&pos, Level::Expert, &mut rng).expect("live");
+        assert_ne!(mv, draw, "Expert, a rook up, does not take the proven draw");
+    }
+
+    #[test]
     fn a_terminal_position_has_no_move_to_choose() {
         let mated = pos_of("7k/6Q1/6K1/8/8/8/8/8 b - - 0 1");
         let mut rng = ChaCha20Rng::seed_from_u64(1);

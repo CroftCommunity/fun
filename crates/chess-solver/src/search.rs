@@ -635,6 +635,76 @@ mod tests {
     }
 
     #[test]
+    fn quiescence_resolves_promotions_en_passant_and_two_ply_chains() {
+        // The three parts of the horizon the hanging-queen test does not
+        // reach: a promotion push (no capture), an en-passant capture (an
+        // empty landing square), and a capture the opponent answers with a
+        // capture — the child window must be negated correctly for the reply
+        // to be seen at all.
+        let unlimited = || (Table::new(), NodeBudget::unlimited());
+
+        let promo = pos_of("7k/4P3/8/8/8/8/8/4K3 w - - 0 1");
+        let (mut tt, mut b) = unlimited();
+        let q = qsearch(&promo, -INFINITY, INFINITY, &mut tt, &mut b).expect("unlimited");
+        assert!(
+            q.value >= heuristic(&promo) + 700,
+            "the promotion is resolved, not stood past"
+        );
+
+        let before = pos_of("4k3/3p4/8/4P3/8/8/8/4K3 b - - 0 1");
+        let pushed = before.play(uci(&before, "d7d5"));
+        let (mut tt, mut b) = unlimited();
+        let q = qsearch(&pushed, -INFINITY, INFINITY, &mut tt, &mut b).expect("unlimited");
+        assert!(
+            q.value >= heuristic(&pushed) + 80,
+            "the en-passant capture is resolved: a pawn up"
+        );
+
+        // Qe6 can take f7 but Rf8 takes back: from White's side the grab is
+        // NOT banked, because the child's recapture is searched.
+        let trap = pos_of("5r1k/5p2/4Q3/8/8/8/8/7K w - - 0 1");
+        let (mut tt, mut b) = unlimited();
+        let q = qsearch(&trap, -INFINITY, INFINITY, &mut tt, &mut b).expect("unlimited");
+        assert!(
+            q.value < heuristic(&trap) + 100,
+            "a defended pawn's capture is not banked at the horizon"
+        );
+    }
+
+    #[test]
+    fn the_table_changes_speed_never_results_on_small_boards() {
+        // The debug-affordable twin of the release-gated midgame test, at
+        // depth FOUR: a transposition needs two different move orders to meet,
+        // which is four plies (at depth 3 the table provably has nothing to
+        // reuse — measured 5962 vs 5962 nodes). Every table policy (strict
+        // depth, bound guards, exact-in-window) is exercised here and must
+        // leave values AND flags identical to an untabled search while saving
+        // work overall — a table that never answers is the one difference a
+        // result comparison cannot see.
+        let (mut with_total, mut without_total) = (0u64, 0u64);
+        for fen in [
+            "8/8/4k3/8/8/4K3/4R3/8 w - - 0 1",
+            "k7/8/8/8/8/8/1R6/1K6 w - - 10 30",
+        ] {
+            let pos = pos_of(fen);
+            let mut with = Table::new();
+            let with_scores =
+                move_scores_with(&pos, 4, &mut with, &mut NodeBudget::unlimited()).expect("runs");
+            let mut without = Table::disabled();
+            let without_scores =
+                move_scores_with(&pos, 4, &mut without, &mut NodeBudget::unlimited())
+                    .expect("runs");
+            assert_eq!(with_scores, without_scores, "{fen}");
+            with_total += with.nodes();
+            without_total += without.nodes();
+        }
+        assert!(
+            with_total < without_total,
+            "the table saved work across the boards: {with_total} vs {without_total}"
+        );
+    }
+
+    #[test]
     fn quiescence_stands_pat_on_a_quiet_position() {
         let quiet = pos_of("4k3/8/8/8/8/8/8/4K3 w - - 0 1");
         let q = qsearch(

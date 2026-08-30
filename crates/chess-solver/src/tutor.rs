@@ -266,10 +266,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(
-        debug_assertions,
-        ignore = "release only: four budgeted searches in debug"
-    )]
     fn the_one_ply_facts_read_from_the_board() {
         // A capture, a check, a castle, a promotion — each from a position
         // where the fact is unambiguous.
