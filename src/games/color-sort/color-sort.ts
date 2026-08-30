@@ -11,6 +11,16 @@
 import type { GameModule, GameServices } from "../../contract.js";
 import type { GameFrame, GameFrameSpec } from "../../game-frame.js";
 import type { Progress } from "../../progress.js";
+import {
+  DAILY_UNLOCK_SOLVES,
+  emptyRecord,
+  readRecord,
+  recordSolve,
+  solvesToDaily,
+  writeRecord,
+  type GameRecord,
+  type InProgress,
+} from "../../record.js";
 import type { SettingRow } from "../../settings-sheet.js";
 import { today } from "../../shelf.js";
 import { ColorSort, type BoardView, type Move } from "./color-sort-wasm.js";
@@ -151,66 +161,65 @@ export function renderResultScreen(
   return section;
 }
 
-// ---------- persistence (namespaced per shelf convention) ----------
+// ---------- persistence: the game record (src/record.ts; plan D9) ----------
+//
+// One `$type`-shaped record per game — stats (the Daily gate reads `played`) and
+// the deal in progress — through the local substrate. The three ad-hoc keys this
+// game kept before (`color-sort/stats`, `color-sort/endless`, `color-sort/daily/…`)
+// are read once, folded in, and left behind.
 
-const NS = "color-sort";
-interface DailySave {
-  seed: string;
-  moves: Move[];
-  solved: boolean;
-  par: number;
-  strict: boolean;
-}
-interface EndlessSave {
-  level: number;
-  seed: string;
-  moves: Move[];
-  bestLevel: number;
-}
-interface Stats {
-  solved: number;
-  strictSolved: number;
-  streak: number;
-  maxStreak: number;
-  lastDay: number;
-}
+const GAME_ID = "color-sort";
 
-function load<T>(key: string): T | null {
+function legacy<T>(key: string): T | null {
   try {
-    const raw = localStorage.getItem(`${NS}/${key}`);
+    const raw = localStorage.getItem(`${GAME_ID}/${key}`);
     return raw ? (JSON.parse(raw) as T) : null;
   } catch {
     return null;
   }
 }
-function save(key: string, value: unknown): void {
-  try {
-    localStorage.setItem(`${NS}/${key}`, JSON.stringify(value));
-  } catch {
-    // storage denied — session-only, no failure
-  }
+
+/** The record, migrating the pre-record keys the first time. */
+function record(): GameRecord {
+  const r = readRecord(GAME_ID);
+  if (r) return r;
+  const stats = legacy<{ solved: number; strictSolved: number; streak: number; maxStreak: number; lastDay: number }>("stats");
+  const endless = legacy<{ bestLevel: number }>("endless");
+  const fresh = emptyRecord(GAME_ID);
+  const migrated: GameRecord = {
+    ...fresh,
+    stats: {
+      ...fresh.stats,
+      solved: stats?.solved ?? 0,
+      strictSolved: stats?.strictSolved ?? 0,
+      streak: stats?.streak ?? 0,
+      maxStreak: stats?.maxStreak ?? 0,
+      lastDay: stats?.lastDay ?? -1,
+      bestLevel: endless?.bestLevel ?? 1,
+      played: stats?.solved ?? 0,
+    },
+  };
+  return migrated;
+}
+
+function saveRecord(r: GameRecord): void {
+  writeRecord({ ...r, updatedAt: new Date().toISOString() });
 }
 
 function todayKey(): string {
   return new Date().toISOString().slice(0, 10); // UTC YYYY-MM-DD
 }
 
-function recordDailySolved(strict: boolean): void {
+/** The poster's chip: today's puzzle, once the Daily is unlocked (mock E1.4). */
+export function colorSortChip(): string | null {
+  const r = record();
+  if (solvesToDaily(r) > 0) return null;
   const day = dayIndexUTC(new Date());
-  const s = load<Stats>("stats") ?? {
-    solved: 0,
-    strictSolved: 0,
-    streak: 0,
-    maxStreak: 0,
-    lastDay: -1,
-  };
-  if (s.lastDay === day) return; // already counted today
-  s.streak = s.lastDay === day - 1 ? s.streak + 1 : 1;
-  s.maxStreak = Math.max(s.maxStreak, s.streak);
-  s.solved += 1;
-  if (strict) s.strictSolved += 1;
-  s.lastDay = day;
-  save("stats", s);
+  const p = r.inProgress;
+  const today = p && p.mode === "daily" && p.level === day ? p : null;
+  const par = today?.par ? ` · par ${today.par}` : "";
+  const state = today?.solved ? "solved" : today && today.moves.length > 0 ? "in progress" : "not yet played";
+  return `Today's puzzle${par} · ${state}`;
 }
 
 // ---------- the game module ----------
@@ -219,23 +228,29 @@ type ModeChoice = "daily" | "endless";
 
 // The New game card's choice lives at module scope: the poster renders the card
 // before the module exists, and the module reads it when a game starts.
-let chosenMode: ModeChoice = "daily";
+// Endless first (plan D5/D6): a first-timer lands on level 1, not a par-32 daily.
+let chosenMode: ModeChoice = "endless";
 
-/** The New game card: today's puzzle with its par, or endless from your best level. */
+/** The New game card: Endless from your best level, or — after five solves — today's puzzle. */
 export function colorSortSetupRows(): SettingRow[] {
+  const toGo = solvesToDaily(record());
+  const locked = toGo > 0;
+  if (locked) chosenMode = "endless";
   return [
     {
       kind: "choice",
       id: "mode",
       label: "Mode",
-      hint: "Daily is one fixed puzzle a day with a par to beat; Endless keeps going from your best level, adding a colour as you climb.",
+      hint: locked
+        ? `Endless keeps going from your best level, adding a colour as you climb. Daily — one fixed puzzle a day, the same for everyone, with a par — unlocks after ${DAILY_UNLOCK_SOLVES} solves · ${toGo} to go.`
+        : "Endless keeps going from your best level, adding a colour as you climb; Daily is one fixed puzzle a day, the same for everyone, with a par to beat.",
       value: chosenMode,
       options: [
-        { value: "daily", label: "Daily" },
         { value: "endless", label: "Endless" },
+        { value: "daily", label: locked ? "Daily 🔒" : "Daily", disabled: locked },
       ],
       onChange: (v) => {
-        chosenMode = v === "endless" ? "endless" : "daily";
+        chosenMode = v === "daily" && !locked ? "daily" : "endless";
       },
     },
   ];
@@ -277,6 +292,8 @@ export function colorSortModule(): GameModule {
   const sound = new ColorSortSound();
   /** Tubes already celebrated as complete in this deal (the beat fires once per tube). */
   let celebrated = new Set<number>();
+  /** The solve of this deal has been written to the record (once, however the win arrived). */
+  let solveRecorded = false;
   /** `?fast=1`: every pour collapses to a frame, for the browser suite (mock E3.7). */
   let fast = false;
   const pourSpeed = (): PourSpeed => (fast ? "off" : colorSortPourSpeed());
@@ -289,29 +306,19 @@ export function colorSortModule(): GameModule {
   const strict = (): boolean => colorSortStrict();
   const iconsOn = (): boolean => colorSortIconsFor(skin);
 
-  // ---- persistence of the in-progress deal ----
+  // ---- persistence of the in-progress deal: the record's `inProgress` ----
   const persist = (solved = false): void => {
     if (!game) return;
     const b = game.board();
-    if (mode === "daily") {
-      const s: DailySave = {
-        seed: seed.toString(),
-        moves: replayMoves(),
-        solved,
-        par: b.par,
-        strict: strict(),
-      };
-      save(`daily/${todayKey()}`, s);
-    } else {
-      const prev = load<EndlessSave>("endless");
-      const s: EndlessSave = {
-        level,
-        seed: seed.toString(),
-        moves: replayMoves(),
-        bestLevel: Math.max(prev?.bestLevel ?? 1, level),
-      };
-      save("endless", s);
-    }
+    const r = record();
+    const inProgress: InProgress = {
+      mode,
+      level: mode === "daily" ? dayIndexUTC(new Date()) : level,
+      seed: seed.toString(),
+      moves: replayMoves().map((m) => [m.from, m.to] as const),
+      ...(mode === "daily" ? { par: b.par, solved, strict: strict() } : {}),
+    };
+    saveRecord({ ...r, inProgress, stats: { ...r.stats, bestLevel: Math.max(r.stats.bestLevel, mode === "endless" ? level : 1) } });
   };
 
   // The moves played so far, reconstructed from the outcome record (the binding
@@ -490,6 +497,15 @@ export function colorSortModule(): GameModule {
       const last = pendingPour;
       pendingPour = null;
       if (last) celebrate(last.to, b);
+      if (!solveRecorded) {
+        // Every solve counts toward the Daily gate; a daily also feeds the streak.
+        solveRecorded = true;
+        const day = dayIndexUTC(new Date());
+        saveRecord(
+          recordSolve(record(), mode === "daily" ? { kind: "daily", strict: strict(), day } : { kind: "endless", level, strict: strict(), day }),
+        );
+        persist(true);
+      }
       void presentResult();
       return;
     }
@@ -614,13 +630,7 @@ export function colorSortModule(): GameModule {
     render();
     if (!game) return;
     const b = game.board();
-    if (b.won) {
-      if (mode === "daily") {
-        recordDailySolved(strict());
-        persist(true);
-      }
-      return; // render() already routed to the result on next tick
-    }
+    if (b.won) return; // render() recorded the solve and routed to the result
     if (b.deadlocked) setStatus("No moves left — restart" + (strict() ? "." : " or undo."));
   };
 
@@ -667,6 +677,7 @@ export function colorSortModule(): GameModule {
     if (!game) return;
     game.restart();
     celebrated = new Set();
+    solveRecorded = false;
     selected = null;
     setStatus("Restarted this deal.");
     persist();
@@ -784,7 +795,9 @@ export function colorSortModule(): GameModule {
   };
 
   // ---- lifecycle ----
-  const bestLevel = (): number => load<EndlessSave>("endless")?.bestLevel ?? 1;
+  const bestLevel = (): number => record().stats.bestLevel;
+  const savedGame = (): InProgress | null => record().inProgress;
+  const savedMoves = (p: InProgress): Move[] => p.moves.map(([from, to]) => ({ from, to }));
 
   const applyMoves = (moves: Move[]): void => {
     if (!game) return;
@@ -821,16 +834,20 @@ export function colorSortModule(): GameModule {
     game.newDaily(day);
     seed = game.seed();
     celebrated = new Set();
-    // Resume today's in-progress deal if the seed still matches.
-    const saved = load<DailySave>(`daily/${todayKey()}`);
-    if (saved && saved.seed === seed.toString() && !saved.solved) applyMoves(saved.moves);
+    solveRecorded = false;
+    // Resume today's in-progress deal if the record holds it.
+    const saved = savedGame();
+    const today = saved && saved.mode === "daily" && saved.level === day && saved.seed === seed.toString() ? saved : null;
+    if (today && !today.solved) applyMoves(savedMoves(today));
     selected = null;
     setStatus("");
     console.debug(`[color-sort] daily seed=${seed}`);
+    persist(today?.solved ?? false);
     exposeHook();
-    if (saved?.solved && saved.seed === seed.toString()) {
+    if (today?.solved) {
       // Already solved today — replay to the solved state and show the result.
-      applyMoves(saved.moves);
+      solveRecorded = true;
+      applyMoves(savedMoves(today));
       void presentResult();
       return;
     }
@@ -845,8 +862,9 @@ export function colorSortModule(): GameModule {
     game.newEndless(level);
     seed = game.seed();
     celebrated = new Set();
-    const saved = load<EndlessSave>("endless");
-    if (saved && saved.level === level && saved.seed === seed.toString()) applyMoves(saved.moves);
+    solveRecorded = false;
+    const saved = savedGame();
+    if (saved && saved.mode === "endless" && saved.level === level && saved.seed === seed.toString()) applyMoves(savedMoves(saved));
     selected = null;
     setStatus("");
     console.debug(`[color-sort] endless level=${level} seed=${seed}`);
@@ -910,6 +928,10 @@ export function colorSortModule(): GameModule {
           const p = pendingResume;
           pendingResume = null;
           applyResume(p);
+          return;
+        }
+        if (url.searchParams.get("daily") === "1") {
+          await startDaily();
           return;
         }
         const levelParam = url.searchParams.get("level");

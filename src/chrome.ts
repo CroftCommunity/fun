@@ -368,6 +368,7 @@ export function boot(root: HTMLElement = document.body): Chrome {
         title: displayName(game),
         ...(game.pitch ? { pitch: game.pitch } : {}),
         ...(game.setup ? { setup: game.setup() } : {}),
+        ...(game.chip ? { chip: game.chip() } : {}),
         progress: readProgress(game.id),
         onPlay: () => mountGame(),
         onResume: (p) => mountGame(p),

@@ -90,7 +90,7 @@ test("mock E2.2: the board does not move on pour, deadlock, hint or undo", async
 
 test("mock E2.3: tubes clear the 44px tap floor at 390", async ({ page }) => {
   await page.setViewportSize(PHONE);
-  await page.goto("/color-sort/?play=1"); // the daily: twelve tubes, the tightest fit
+  await page.goto("/color-sort/?daily=1"); // the daily: twelve tubes, the tightest fit
   await ready(page);
   const boxes = await page.locator(".cs-tube").evaluateAll((els) =>
     els.map((e) => {
@@ -384,4 +384,107 @@ test("mock E8.1: sound follows the Sound row and differs per skin", async ({ pag
   const water = await page.evaluate(() => window.__colorSort!.sound.cue("water", "pour"));
   const bolt = await page.evaluate(() => window.__colorSort!.sound.cue("bolt", "pour"));
   expect(water).not.toEqual(bolt);
+});
+
+// ---------- phase C: endless-first, the gate, the record (mock E1.2–E1.6) ----------
+
+/** Seed a record with `played` solves so the poster reads it on load. */
+async function seedPlayed(page: Page, played: number): Promise<void> {
+  await page.evaluate((n) => {
+    localStorage.setItem(
+      "fun-record-color-sort",
+      JSON.stringify({
+        $type: "ing.croft.fun.progress",
+        game: "color-sort",
+        did: null,
+        stats: { solved: n, strictSolved: 0, streak: 0, maxStreak: 0, lastDay: -1, bestLevel: 1, played: n },
+        inProgress: null,
+        updatedAt: new Date().toISOString(),
+      }),
+    );
+  }, played);
+}
+
+test("mock E1.2: Play from a fresh record starts endless level 1 with 6 tubes", async ({ page }) => {
+  await page.goto("/color-sort/");
+  const poster = page.locator(".gf-start.gf-poster");
+  await expect(poster.locator('[data-setting="mode"] input[value="endless"]')).toBeChecked();
+  await poster.locator(".gf-play").click();
+  await ready(page);
+  await expect(page.locator(".gf-mode")).toHaveText(/level 1/i);
+  await expect(page.locator(".cs-tube")).toHaveCount(6);
+  expect(await page.evaluate(() => window.__colorSort!.board().colors)).toBe(4);
+});
+
+test("mock E1.3: Daily is visible, locked, and counts down to 5 solves", async ({ page }) => {
+  await page.goto("/color-sort/");
+  const row = page.locator('.gf-start.gf-poster [data-setting="mode"]');
+  await expect(row.locator('input[value="daily"]')).toBeDisabled();
+  await expect(row).toContainText(/unlocks after 5 solves · 5 to go/i);
+  await seedPlayed(page, 3);
+  await page.reload();
+  await expect(row.locator('input[value="daily"]')).toBeDisabled();
+  await expect(row).toContainText(/unlocks after 5 solves · 2 to go/i);
+});
+
+test("mock E1.4: the fifth solve unlocks Daily and the poster chip without moving the default", async ({ page }) => {
+  await page.goto("/color-sort/");
+  await expect(page.locator(".gf-start-chip")).toHaveCount(0);
+  await seedPlayed(page, 4);
+  // The fifth solve, through the game: solve endless level 1 with the solver's line.
+  await page.goto("/color-sort/?level=1");
+  await ready(page);
+  await page.evaluate(() => {
+    const h = window.__colorSort!;
+    for (let i = 0; i < 300 && !h.game.isWon(); i++) {
+      const mv = h.game.hint();
+      if (!mv) break;
+      h.game.pour(mv.from, mv.to);
+    }
+    h.refresh();
+  });
+  await expect(page.locator(".sol-result")).toBeVisible();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("fun-record-color-sort")!).stats.played)).toBe(5);
+  await page.goto("/color-sort/");
+  // A finished game shows the play-again card; New game brings the poster.
+  const newGame = page.locator(".gf-newgame");
+  if (await newGame.count()) await newGame.click();
+  const poster = page.locator(".gf-start.gf-poster");
+  await expect(poster.locator('[data-setting="mode"] input[value="daily"]')).toBeEnabled();
+  await expect(poster.locator('[data-setting="mode"] input[value="endless"]')).toBeChecked();
+  await expect(poster.locator(".gf-start-chip")).toContainText(/today's puzzle/i);
+});
+
+test("mock E1.5: a shared daily record opens below the gate", async ({ page }) => {
+  await page.goto("/color-sort/?daily=1"); // the daily, by deep link — below the gate
+  await ready(page);
+  await page.evaluate(() => {
+    const h = window.__colorSort!;
+    for (let i = 0; i < 400 && !h.game.isWon(); i++) {
+      const mv = h.game.hint();
+      if (!mv) break;
+      h.game.pour(mv.from, mv.to);
+    }
+    h.refresh();
+  });
+  const href = await page.locator(".sol-share").getAttribute("href");
+  const fresh = await page.context().browser()!.newContext();
+  const other = await fresh.newPage();
+  await other.goto(href!);
+  await expect(other.locator(".sol-result .sol-verify-badge.ok")).toBeVisible();
+  await fresh.close();
+});
+
+test("mock E1.6: Continue resumes the in-progress level", async ({ page }) => {
+  await page.goto("/color-sort/?level=4");
+  await ready(page);
+  await pourOnce(page);
+  const hash = await page.evaluate(() => window.__colorSort!.game.currentHash());
+  await page.goto("/color-sort/");
+  const card = page.locator(".gf-start.gf-continue");
+  await expect(card.locator(".gf-start-line")).toContainText(/level 4/i);
+  await card.locator(".gf-continue-btn").click();
+  await ready(page);
+  await expect(page.locator(".gf-mode")).toHaveText(/level 4/i);
+  expect(await page.evaluate(() => window.__colorSort!.game.currentHash())).toBe(hash);
 });

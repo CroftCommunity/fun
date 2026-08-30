@@ -24,7 +24,7 @@ import { furrowModule, furrowSetup } from "./games/furrow/furrow.js";
 import { alignModule, alignSetup } from "./games/align/align.js";
 import { blockdokuModule, blockdokuSetup } from "./games/blockdoku/blockdoku.js";
 import { looseendsModule, looseendsSetup } from "./games/looseends/looseends.js";
-import { colorSortModule, colorSortSetup } from "./games/color-sort/color-sort.js";
+import { colorSortChip, colorSortModule, colorSortSetup } from "./games/color-sort/color-sort.js";
 import { orchardDropModule, orchardSetup } from "./games/orchard-drop/orchard-drop.js";
 import { cribbageModule, cribbageSetup } from "./games/cribbage/cribbage.js";
 
@@ -172,8 +172,9 @@ export const SHIPPED: readonly GameEntry[] = [
     emoji: "🧪",
     status: "playable",
     icon: true,
-    pitch: "Pour until every tube holds one colour. A daily puzzle with a par, or endless levels — every pour replays to a verifiable solve.",
+    pitch: "Pour until every tube holds one colour. Tap a tube, tap where it goes — endless levels, and a daily with a par once you have five solves.",
     setup: colorSortSetup,
+    chip: colorSortChip,
     load: colorSortModule,
   },
   {

@@ -564,6 +564,13 @@ body:has(> .play-area > .gf) {
   font-size: 2rem;
   line-height: 1;
 }
+.gf-start-chip {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  padding: 0.3rem 0.7rem; margin-bottom: 0.5rem;
+  border: 1px solid var(--accent); border-radius: 999px;
+  color: var(--ink); font-size: 0.8rem; font-weight: 600;
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+}
 .gf-start-pitch {
   margin: 0;
   color: var(--ink-muted);

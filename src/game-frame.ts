@@ -91,6 +91,8 @@ export interface StartOptions {
   readonly id: string;
   readonly title: string;
   readonly pitch?: string;
+  /** A chip above the title on the poster ("Today's puzzle · par 32"), or null. */
+  readonly chip?: string | null;
   /** The poster's setup card (the entry's `setup` factory), if the game has one. */
   readonly setup?: readonly SettingRow[];
   /** A record in the store, if any — decides poster vs continue card. */
@@ -458,11 +460,9 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
         clearStart();
         o.onPlay();
       });
-      const body = el(
-        "div",
-        { class: "gf-start-body" },
-        el("h2", { class: "gf-start-title" }, o.title),
-      );
+      const body = el("div", { class: "gf-start-body" });
+      if (o.chip) body.append(el("span", { class: "gf-start-chip" }, o.chip));
+      body.append(el("h2", { class: "gf-start-title" }, o.title));
       if (o.pitch) body.append(el("p", { class: "gf-start-pitch" }, o.pitch));
       if (o.setup && o.setup.length > 0) {
         body.append(el("div", { class: "gf-start-setup" }, renderSettingsSheet({ rows: [...o.setup] })));
