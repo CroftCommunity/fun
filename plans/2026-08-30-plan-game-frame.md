@@ -8,7 +8,7 @@ parameters does once every bare URL opens on a start screen) gates Phase 5** and
 thing between this plan and execution: Phases 0–4 may start now. D5 was resolved during
 planning (read-only, see Verified Assumptions) and is struck from Phase 0. Phases 1, 2, 3
 and 5 carry sub-phases (1a/1b, 2a/2b, 3a/3b, 5a/5b) — each with its own Done-when and
-wiring test — because each touched four or more files. No phase started. Mocks
+wiring test — because each touched four or more files. Phase 0 COMPLETE (2026-08-30). Mocks
 landed on `main` (`mocks/d-game-frame.html`, PR #45, `6c4dd9c`); owner decisions D1–D5
 recorded.
 
@@ -342,7 +342,7 @@ for **every** game unless filtered — each migration filters to its own game.
 
 **Goal:** Resolve the five unknowns that later phases lean on, before sizing them.
 
-- [ ] **D1: Does the Fullscreen API work under Playwright, and what does `mobile-webkit`
+- [x] **D1: Does the Fullscreen API work under Playwright, and what does `mobile-webkit`
   do with it?**
   - **Probe:** a throwaway spec calling `document.documentElement.requestFullscreen()` from
     a click handler on `/placeholder/`, in both projects; record `document.fullscreenElement`
@@ -351,20 +351,20 @@ for **every** game unless filtered — each migration filters to its own game.
     fake, recorded either way); webkit's behaviour recorded — it is expected to reject, and
     Phase 22 designs the fallback from the recorded error, not a guess.
   - **Disposition:** `throwaway`.
-- [ ] **D2: Does a 900px breakpoint hold the rail and a 520px board at 1000×680 with real
+- [x] **D2: Does a 900px breakpoint hold the rail and a 520px board at 1000×680 with real
   fonts?** — the mock is CSS, the app has `styles.css`'s type scale.
   - **Probe:** mount the placeholder in a static HTML copy of the frame's bands with the
     app's `tokens.css` + `styles.css`, screenshot at 1000×680 and 900×600.
   - **Success criteria:** no rail overflow, board ≥ 480px at 1000×680; a number for the
     minimum width at which the rail must fold back into the dock.
   - **Disposition:** `keep-as-fixture` — the screenshots go into the plan's Review Log.
-- [ ] **D3: What does the frame's stage height budget do to the tallest phone boards?**
+- [x] **D3: What does the frame's stage height budget do to the tallest phone boards?**
   - **Probe:** compute per game the board's rendered height at 390 wide via `boundingBox`
     on the existing pages; compare with 612px.
   - **Success criteria:** every board ≤ 612px, or a list of games that need the meter row
     to collapse (Bubble's aim bar and Wyrdle's keyboard are the candidates).
   - **Disposition:** `keep-as-fixture` (a table in the Review Log).
-- [ ] **D4: Can Othello's "thinking" beat be caught by a rAF sampler in a test, so the
+- [x] **D4: Can Othello's "thinking" beat be caught by a rAF sampler in a test, so the
   stability spec is not flaky?**
   - **Probe:** on `main`, inject a `requestAnimationFrame` sampler recording
     `min/max` of `.othello-board`'s `top` from before the human's click until
@@ -401,6 +401,63 @@ Pass 3 discipline notes for D1–D4, so each probe answers its question and noth
 **Checkpoint (Phase 0):** the Verified Assumptions section carries a dated entry per
 probe with a number, a screenshot path or an error string — not an adjective. Nothing is
 committed except the plan doc's own update (`plans:` subject).
+
+
+**Findings (executed 2026-08-30, worktree `game-panel`, `main@9d9a9bf`, local server on
+:4180 serving `dist/` built against the shared wasm target):**
+
+- **D1 — recorded.** Chromium (1280×800): `requestFullscreen()` from a click handler
+  resolves, `document.fullscreenElement` = `HTML`, `fullscreenEnabled` = true. Playwright's
+  `mobile-webkit` (iPhone 13 emulation): **there is no API at all** —
+  `document.documentElement.requestFullscreen` is `undefined`, `webkitRequestFullscreen`
+  is `undefined`, the call throws `TypeError: … is not a function`. So Phase 22's fallback
+  is a **feature-detect** (`typeof el.requestFullscreen === "function" &&
+  document.fullscreenEnabled`), not a try/catch on a rejection; the toast shows when the
+  detect fails. (Q1 as adopted.)
+- **D2 — the breakpoint holds.** The frame's rail markup with the app's real
+  `tokens.css` + `styles.css` (16px base): rail 280px wide, `scrollWidth` 279, **no
+  overflowing element** at 1000×680, 900×600, 820×600, 760×600; the board is 520px at 1000
+  and 900, 500 at 820, 440 at 760. Rail content is 635px tall against 624 visible at 680
+  high — the rail scrolls vertically by 11px with three settings rows; acceptable, and the
+  rail is `overflow-y: auto` by design. **The 900px breakpoint stands**; the rail would
+  need to fold below ~760 (board < 440), which 900 clears with margin. The numbers here are
+  the fixture.
+- **D3 — measured at 390 (iPhone 13, WebKit), largest element under `.play-area`:**
+
+  | game | wrapper measured | height | ≤ 612? |
+  |---|---|---|---|
+  | solitaire | `.sol-board` | 316 | yes |
+  | trio-tumble | `.m3-game` (incl. 4 rows of pills) | 709 | **no** |
+  | bubble | `.bub-game` (incl. aim bar + fire) | 892 | **no** |
+  | wyrdle | `.wy-grid` | 282 (keyboard separate) | yes |
+  | 2048 | `.t48-game` (incl. d-pad) | 630 | **no** |
+  | drop4 | `.drop4-game` (incl. options rows) | 633 | **no** |
+  | othello | `.othello-game` | 570 | yes |
+  | checkers | `.checkers-game` | 575 | yes |
+  | dots | `.dots-game` | 478 | yes |
+  | furrow | `.furrow-game` | 382 | yes |
+  | align | `.al-game` (incl. touch pad) | 773 | **no** |
+  | blockdoku | `.bdk-game` (board + tray) | 599 | yes |
+  | looseends | `.le-home` | 404 | yes |
+  | color-sort | `.cs-game` | 430 | yes |
+  | orchard-drop | `.orch-surface` | 465 | yes |
+  | cribbage | `.crib-game` | 533 | yes |
+
+  Every "no" is a wrapper that today contains the controls the frame removes (pills,
+  option rows) or an on-board input the frame keeps (2048's d-pad, Align's touch pad,
+  Bubble's aim bar). **Candidates that must re-measure in their own phase:** Bubble (16),
+  Align (18), 2048 (17) — the stage may need the meter row to collapse or the input to
+  shrink; Trio Tumble and Drop 4 lose their rows and fit. Answers Q2's height half:
+  portrait phones are fine; a landscape phone is Phase 3a's breakpoint question.
+- **D4 — the sampler is sound, and it found the bug it exists for.** rAF sampler on
+  `.othello-board` from the human's click until the engine's reply, 10 runs per project:
+  chromium sees 56–59 frames per run, 52–53 of them during the engine's move, board top
+  delta **0.00** (desktop does not move). `mobile-webkit` sees 33–35 frames, 27–28 during
+  the engine's move, and the board top moves **24.8px on 10/10 runs** — the turn bar
+  re-wraps when "Your move" becomes "The Engine to move". The stability spec asserts on
+  geometry as planned; the sampler is promoted to `tests/helpers/board-top.ts` in Phase 6,
+  and Phase 6's watch-it-fail step has its expected red number: 24.8.
+- **D5** — resolved during Pass 3 (read-only); see Verified Assumptions.
 
 **Done when:** D1–D4 recorded in Verified Assumptions with evidence (D5 already is);
 Phases 1, 3, 6, 22 adjusted if any answer differs from the assumption they carry.
@@ -1047,6 +1104,11 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
    it changes one test case either way.*
 
 ## Review Log
+
+### Phase 0 — executed 2026-08-30
+- D1–D4 run (findings under Phase 0). No assumption was invalidated; two were sharpened:
+  Phase 22 uses a feature-detect rather than a rejection handler (D1), and Phases 16/17/18
+  carry a re-measure step (D3). D4 gave Phase 6 its expected red value (24.8px on WebKit).
 
 ### Pass 3: Quality Gates — 2026-08-30
 **TDD ordering:**
