@@ -20,13 +20,13 @@ export const CRIBBAGE_GUIDE: Guide = {
         },
         {
           kind: "prose",
-          text: "Your cards are along the bottom. The Engine's are the face-down backs at the top — you only ever see how many it holds (Settings can swap the two). Between the board and your hand sit the cut card, the crib (marked with whose it is), and the cards played in the current count.",
+          text: "Your cards are along the bottom. The Engine's are the face-down backs at the top — you only ever see how many it holds (the New game card can swap the two). Between the board and your hand sit the cut card, the crib (marked with whose it is), and the cards played in the current count.",
         },
         {
           kind: "shot",
           name: "cribbage-table",
-          alt: "A cribbage game: a turn bar naming You and The Engine with scores, a difficulty picker, then the table — The Engine's cards face down at the top, a three-street peg board with two pegs a side and a skunk-line marker, the cut slot and crib below it, and six face-up cards along the bottom with two selected.",
-          caption: "The turn bar and the table: the engine's hand, the peg board, the middle, your hand. Two cards are selected for the throw.",
+          alt: "A cribbage game: the frame's two seats naming You and The Engine with scores and whose crib it is, then the table — The Engine's cards face down at the top, a three-street peg board with two pegs a side and a skunk-line marker, the cut slot and crib below it, and six face-up cards along the bottom with two selected.",
+          caption: "The seats and the table: the engine's hand, the peg board, the middle, your hand. Two cards are selected for the throw.",
         },
       ],
     },
@@ -85,7 +85,7 @@ export const CRIBBAGE_GUIDE: Guide = {
         },
         {
           kind: "prose",
-          text: "By default the app counts every hand and shows the breakdown. Turn on \"Count my own hands\" in Settings to do it yourself: type your total and the core grades it. Count short and The Engine takes the difference — that is muggins. Count high and you get the true total.",
+          text: "By default the app counts every hand and shows the breakdown. Turn on \"Count my own hands\" in Settings (the gear, or the panel beside the table on a wide screen) to do it yourself: type your total and the core grades it. Count short and The Engine takes the difference — that is muggins. Count high and you get the true total.",
         },
         {
           kind: "shot",
@@ -106,7 +106,7 @@ export const CRIBBAGE_GUIDE: Guide = {
         },
         {
           kind: "prose",
-          text: "Difficulty sets how The Engine throws and pegs, from Easy to Expert. Expert throws by exact expectation over every card that could be cut and looks two plays ahead when pegging. It cannot see your hand — the engine only ever gets its own view of the table, and the shelf tests that.",
+          text: "Difficulty is on the New game card and sets how The Engine throws and pegs, from Easy to Expert. Expert throws by exact expectation over every card that could be cut and looks two plays ahead when pegging. It cannot see your hand — the engine only ever gets its own view of the table, and the shelf tests that.",
         },
         {
           kind: "note",
@@ -114,7 +114,7 @@ export const CRIBBAGE_GUIDE: Guide = {
         },
         {
           kind: "note",
-          text: "On a small screen the board can give way: Settings → Peg board offers two compact score bars, or no board during the deal and a replay of the deal's pegging once it ends. The scores in the turn bar stay either way.",
+          text: "On a small screen the board can give way: Settings → Peg board offers two compact score bars, or no board during the deal and a replay of the deal's pegging once it ends. The scores on the seats stay either way.",
         },
       ],
     },

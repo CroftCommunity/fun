@@ -12,6 +12,7 @@
 
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { boardTopStable } from "./helpers/board-top.js";
 import { DEFAULT_SKIN, familyMembers, familyOf } from "../src/skins.js";
 
 async function ready(page: Page): Promise<void> {
@@ -72,12 +73,19 @@ test("the table, the peg board and the pickers render", { tag: "@smoke" }, async
   await expect(page.locator(".crib-opp .crib-card.back")).toHaveCount(backs);
   await expect(page.locator(".crib-board .crib-track")).toHaveCount(2);
   await expect(page.locator(".crib-board .crib-skunk")).toHaveCount(2);
-  await expect(page.locator(".crib-turnbar")).toContainText(/you/i);
-  await expect(page.locator(".crib-turnbar")).toContainText(/the engine/i);
-  await expect(page.locator(".crib-turnbar")).toContainText(/crib/i);
-  await expect(page.locator(".crib-level option")).toHaveCount(4);
-  await expect(page.locator(".crib-level")).toContainText("Expert");
-  await expect(page.locator(".crib-level")).not.toContainText("Perfect");
+  // The frame carries the seats and the controls; the game's own bars are gone.
+  await expect(page.locator(".crib-turnbar, .crib-controls, .crib-settings")).toHaveCount(0);
+  await expect(page.locator('.gf-seat[data-meter="you"]')).toContainText(/you/i);
+  await expect(page.locator('.gf-seat[data-meter="engine"]')).toContainText(/the engine/i);
+  // Whose crib it is rides on the dealer's seat.
+  await expect(page.locator(".gf-seat .gf-sub").filter({ hasText: /crib/i })).toHaveCount(1);
+  // The opening rule sentence is a toast, not a banner above the table.
+  await expect(page.locator(".gf-toast")).toContainText(/crib/i);
+  // Difficulty is the New game card, and tops out at Expert — cribbage is not solved.
+  await page.locator('.gf-verb[data-verb="new"]').click();
+  const labels = await page.locator('.gf-sheet [data-setting="level"] .sheet-choice-opt').allTextContents();
+  expect(labels).toEqual(["Easy", "Medium", "Hard", "Expert"]);
+  await page.keyboard.press("Escape");
 });
 
 test("a throw is two selected cards and a confirm; the cut then turns", async ({ page }) => {
@@ -164,8 +172,11 @@ test("the engine's cards are never in the DOM", async ({ page }) => {
 test("the difficulty picker persists the chosen level", async ({ page }) => {
   await page.goto("/cribbage/?seed=7");
   await ready(page);
-  await page.locator(".crib-level").selectOption("Hard");
+  await page.locator('.gf-verb[data-verb="new"]').click();
+  await page.locator('.gf-sheet [data-setting="level"] input[value="Hard"]').check();
+  await page.locator(".gf-sheet .gf-start").click();
   expect(await page.evaluate(() => localStorage.getItem("fun-cribbage-level"))).toBe("Hard");
+  await expect(page.locator(".gf-mode")).toHaveText("Hard");
 });
 
 test("a full game plays to a result stating its value; the share re-verifies", { tag: "@long" }, async ({ page }) => {
@@ -266,7 +277,7 @@ test("a hint names cards, and says it counts as assistance", async ({ page }) =>
   await page.goto("/cribbage/?seed=7");
   await ready(page);
   await waitHumanOrOver(page);
-  await page.locator(".crib-hint").click();
+  await page.locator('.gf-verb[data-verb="hint"]').click();
   const status = page.locator(".crib-status");
   await expect(status).toContainText(/Hint: throw/);
   await expect(status).toContainText(/assistance/i);
@@ -277,8 +288,8 @@ test("with hints off the control ends the game and reports the deal in progress"
   await page.goto("/cribbage/?seed=7&fast=1");
   await ready(page);
   await waitHumanOrOver(page);
-  await expect(page.locator(".crib-hint")).toHaveCount(0);
-  await page.locator(".crib-stuck").click();
+  await expect(page.locator('.gf-verb[data-verb="hint"]')).toHaveCount(0);
+  await page.locator('.gf-verb[data-verb="done"]').click();
   const result = page.locator(".sol-result");
   await expect(result).toBeVisible({ timeout: 30_000 });
   await expect(result).toContainText(/ended early/i);
@@ -292,8 +303,10 @@ test("the tutor panel is off by default, appears when enabled, and is exact for 
   await expect(page.locator(".crib-tutor")).toHaveCount(0);
   // Open the panel while the engine may still be moving: its resting render
   // must not snap the panel shut (the Dots hang; `src/ui-state.ts`).
-  await page.locator(".crib-settings summary").click();
-  await page.locator(".crib-set-tutor").check();
+  await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-input').click({ force: true });
+  await page.keyboard.press("Escape");
   await expect(page.locator(".crib-tutor-explain")).toBeVisible();
   await waitHumanOrOver(page);
   await page.locator(".crib-tutor-explain").click();
@@ -313,8 +326,11 @@ test("the table reads engine, board, middle, your hand — and the seats can be 
   expect(initial.indexOf("crib-board")).toBeLessThan(initial.indexOf("crib-hand"));
   await expect(page.locator(".crib-board .crib-track")).toHaveCount(2);
   await expect(page.locator(".crib-board .crib-peg-front")).toHaveCount(2);
-  await page.locator(".crib-settings summary").click();
-  await page.locator(".crib-set-seats").check();
+  // Which way the table faces is a New game decision, not a mid-deal one.
+  await page.locator('.gf-verb[data-verb="new"]').click();
+  await page.locator('.gf-sheet [data-setting="seats"] .sheet-toggle-input').click({ force: true });
+  await page.locator(".gf-sheet .gf-start").click();
+  await ready(page);
   const flipped = await order();
   expect(flipped.indexOf("crib-hand")).toBeLessThan(flipped.indexOf("crib-board"));
   expect(flipped.indexOf("crib-board")).toBeLessThan(flipped.indexOf("crib-opp"));
@@ -353,7 +369,9 @@ test("the board can be two compact bars instead", async ({ page }) => {
   await expect(page.locator(".crib-bars .crib-track")).toHaveCount(2);
   await expect(page.locator(".crib-bars .crib-skunk")).toHaveCount(2);
   await expect(page.locator(".crib-bars .crib-bar-peg")).toHaveCount(2);
-  await expect(page.locator(".crib-board-mode")).toHaveValue("bars");
+  await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await expect(page.locator('.gf-sheet [data-setting="board"] input[value="bars"]')).toBeChecked();
 });
 
 test("in recap mode the board is absent during the deal and replays the pegging when the deal ends", async ({ page }) => {
@@ -404,6 +422,42 @@ for (const skin of familyMembers(familyOf(DEFAULT_SKIN))) {
     expect(results.violations).toEqual([]);
   });
 }
+
+test("thinking is the engine's seat state and the table does not move across its reply", { tag: "@smoke" }, async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/cribbage/?seed=7");
+  await ready(page);
+  await waitHumanOrOver(page);
+  // The status line under the table is reserved height: empty or narrating, same box.
+  const statusHeight = await page.locator(".crib-status").evaluate((e) => e.getBoundingClientRect().height);
+  expect(statusHeight).toBeGreaterThan(0);
+  const v = await boardTopStable(page, ".crib-table", async () => {
+    await humanMove(page);
+    await waitHumanOrOver(page);
+    await page.locator('.gf-verb[data-verb="settings"]').click();
+    await expect(page.locator(".gf-sheet")).toBeVisible();
+    await page.keyboard.press("Escape");
+  });
+  expect(v.frames).toBeGreaterThan(5);
+  expect(v, `table top moved ${v.delta}px over ${v.frames} frames`).toMatchObject({ stable: true });
+});
+
+test("leaving mid-game and returning to the bare URL resumes the same position", async ({ page }) => {
+  await page.goto("/cribbage/?seed=7&fast=1");
+  await ready(page);
+  await waitHumanOrOver(page);
+  await humanMove(page);
+  await waitHumanOrOver(page);
+  const hash = await page.evaluate(() => window.__cribbage!.game.currentHash());
+  await page.goto("/cribbage/");
+  const card = page.locator(".gf-continue");
+  await expect(card).toBeVisible();
+  await expect(card.locator(".gf-start-line")).toContainText(/deal 1/i);
+  await card.locator(".gf-continue-btn").click();
+  await ready(page);
+  await waitHumanOrOver(page);
+  expect(await page.evaluate(() => window.__cribbage!.game.currentHash())).toBe(hash);
+});
 
 test("the table fits a narrow phone viewport (no horizontal overflow)", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 720 });

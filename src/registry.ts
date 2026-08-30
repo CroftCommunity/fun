@@ -26,7 +26,7 @@ import { blockdokuModule, blockdokuSetup } from "./games/blockdoku/blockdoku.js"
 import { looseendsModule } from "./games/looseends/looseends.js";
 import { colorSortModule } from "./games/color-sort/color-sort.js";
 import { orchardDropModule } from "./games/orchard-drop/orchard-drop.js";
-import { cribbageModule } from "./games/cribbage/cribbage.js";
+import { cribbageModule, cribbageSetup } from "./games/cribbage/cribbage.js";
 
 /** What fun.croft.ing ships, in drawer order. */
 export const SHIPPED: readonly GameEntry[] = [
@@ -143,7 +143,17 @@ export const SHIPPED: readonly GameEntry[] = [
     // The Suika-lineage credit lives in the how-to guide instead.
     load: orchardDropModule,
   },
-  { id: "cribbage", title: "Cribbage", emoji: "🎴", status: "playable", icon: true, group: "versus", load: cribbageModule },
+  {
+    id: "cribbage",
+    title: "Cribbage",
+    emoji: "🎴",
+    status: "playable",
+    icon: true,
+    group: "versus",
+    pitch: "Throw two to the crib, play to 31, count your hand. The engine never sees your cards — a rig proves it.",
+    setup: cribbageSetup,
+    load: cribbageModule,
+  },
 ];
 
 /** Dev fixtures: mounted by the test runs, never on the site. */

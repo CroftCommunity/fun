@@ -4743,15 +4743,6 @@ body.fullscreen .le-stage {
 }
 .crib-seat.you.active { border-color: var(--crib-peg-a); }
 .crib-seat.them.active { border-color: var(--crib-peg-b); }
-.crib-controls {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-.crib-field { display: inline-flex; align-items: center; gap: 0.35rem; }
-.crib-toggle { display: block; margin-block: 0.25rem; }
 
 /* The peg board — a real one, as SVG: three streets of forty holes in fives,
    down and back and down, the engine's lane above yours, two pegs a side. The
@@ -4956,6 +4947,8 @@ body.fullscreen .le-stage {
   margin: 0;
   text-align: center;
   max-width: 32rem;
+  /* Reserved height: an empty status must not collapse the row and shift the table (frame rule, plan D4). */
+  min-height: 1.55em;
 }
 .crib-flash {
   margin: 0;

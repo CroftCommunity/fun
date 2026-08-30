@@ -12,6 +12,13 @@ earlier is in `git log`.
 
 ## 2026-08
 
+- 2026-08-30 **cribbage:** inside the frame. Seats carry the scores and whose crib it is;
+  Difficulty and which way the table faces are the New game card; the tutor, counting your
+  own hands (muggins) and the peg-board mode are in Settings; the rules sentence is a
+  toast; the status line under the table keeps its height. The phase verbs — throw, go,
+  the count — stay on the table, where the cards are. Leave mid-game and the continue
+  card replays every code both seats played.
+  (`plans/2026-08-30-plan-game-frame.md` Phase 15)
 - 2026-08-30 **shelf:** every game's start screen is the poster again — the splash art,
   the title, the pitch and Play over the whole frame. It had been rendering as a 46px
   bordered strip with the art cropped away in both palettes: the setup sheet's Start

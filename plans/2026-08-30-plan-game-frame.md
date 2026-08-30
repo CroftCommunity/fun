@@ -8,7 +8,7 @@ parameters does once every bare URL opens on a start screen) gates Phase 5** and
 thing between this plan and execution: Phases 0–4 may start now. D5 was resolved during
 planning (read-only, see Verified Assumptions) and is struck from Phase 0. Phases 1, 2, 3
 and 5 carry sub-phases (1a/1b, 2a/2b, 3a/3b, 5a/5b) — each with its own Done-when and
-wiring test — because each touched four or more files. Phases 0–14 COMPLETE (2026-08-30). Mocks
+wiring test — because each touched four or more files. Phases 0–15 COMPLETE (2026-08-30). Mocks
 landed on `main` (`mocks/d-game-frame.html`, PR #45, `6c4dd9c`); owner decisions D1–D5
 recorded.
 
@@ -1104,6 +1104,24 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
    it changes one test case either way.*
 
 ## Review Log
+
+### Phase 15 — executed 2026-08-30 (Cribbage)
+- Red first: 10 of 21 against the unmigrated page (chromium). Seats carry the scores with
+  "the crib" as the dealer's sub-label; thinking is the engine's seat state; Difficulty and
+  the seat flip are setup (the seats stay put once cards are out); tutor, manual counting
+  (muggins) and the peg-board mode are preferences; the rules sentence is a toast; the phase
+  verbs (throw, go, the count) stay on the table. `.crib-status` keeps a `min-height`.
+  `snapshot()` is the seed and every code both seats played (logged at all three
+  `game.play` sites); `resume()` replays and sets the pegs to the score, then re-enters
+  the loop.
+- What the tests caught: the block cut from `renderControls` to `showHint` removed
+  `humanToMove` (the Blockdoku/Dots slip a third time); typecheck caught it; restored from
+  `HEAD`. Two sheet tests clicked the Settings verb on a desktop viewport, where the rail
+  hides it — they set the phone viewport, as the Dots spec does. One run lost its dev
+  server mid-suite (`ERR_CONNECTION_REFUSED` from test 13 on); the rerun was clean.
+- Green (scoped gate): 84/84 with `--repeat-each=2` at 2 workers on both engines, smoke,
+  typecheck, lint, touched unit suites. Shots for Cribbage only (3). How-to copy and
+  changelog landed in-phase. CI runs the full gate on the PR.
 
 ### Phase 14 — executed 2026-08-30 (Furrow)
 - Red first: 26 of 50 against the unmigrated page. Seats carry the stores and say "go

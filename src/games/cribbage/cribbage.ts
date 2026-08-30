@@ -19,7 +19,10 @@
 //!
 //! A finished game is a verifiable `pond-outcome` record, shareable via `?r=`.
 
-import type { GameModule } from "../../contract.js";
+import type { GameModule, GameServices } from "../../contract.js";
+import type { GameFrame, GameFrameSpec } from "../../game-frame.js";
+import type { Progress } from "../../progress.js";
+import type { SettingRow } from "../../settings-sheet.js";
 import { captureUiState, restoreUiState } from "../../ui-state.js";
 import {
   cribbageBoard,
@@ -34,8 +37,6 @@ import {
   setCribbageManualCount,
   setCribbageSeatsFlipped,
   setCribbageTutor,
-  setDeclareAssistance,
-  setHintsEnabled,
   type CribbageBoard,
   type CribbageLevel,
 } from "../../settings.js";
@@ -318,6 +319,38 @@ function renderResultScreen(
   return section;
 }
 
+/**
+ * The New game card: difficulty and which way the table faces. Both are decisions
+ * for the start of a game, not the middle of a deal — the seats stay put once cards
+ * are out. Each row persists itself; `onChange` lets the live module follow.
+ */
+export function cribbageSetupRows(onChange?: { level?(l: CribbageLevel): void }): SettingRow[] {
+  return [
+    {
+      kind: "choice",
+      id: "level",
+      label: "Difficulty",
+      hint: "Expert throws by exact expectation over every card that could be cut and looks two plays ahead when pegging. It never sees your hand.",
+      value: cribbageLevel(),
+      options: LEVELS.map((l) => ({ value: l, label: l })),
+      onChange: (v) => {
+        setCribbageLevel(v as CribbageLevel);
+        onChange?.level?.(v as CribbageLevel);
+      },
+    },
+    {
+      kind: "toggle",
+      id: "seats",
+      label: "Your hand on top, the engine's below",
+      value: cribbageSeatsFlipped(),
+      onChange: (on) => setCribbageSeatsFlipped(on),
+    },
+  ];
+}
+
+/** The poster's setup card — the registry's `setup` factory. */
+export const cribbageSetup = (): SettingRow[] => cribbageSetupRows();
+
 /** Construct a fresh cribbage module (the registry `load`). */
 export function cribbageModule(): GameModule {
   let game: Cribbage | null = null;
@@ -326,6 +359,11 @@ export function cribbageModule(): GameModule {
   let disposed = false;
   let busy = false;
   let ending = false;
+  let frame: GameFrame | null = null;
+  let pendingResume: Progress | null = null;
+  /** Every code played this game, both seats, in order — the progress record. */
+  let moves: number[] = [];
+  let toasted = false;
   let seed = 0n;
   let level: CribbageLevel = cribbageLevel();
   let status = "";
@@ -647,72 +685,95 @@ export function cribbageModule(): GameModule {
     return el("div", { class: "crib-table", role: "group", "aria-label": "The table" }, ...order);
   };
 
-  const renderControls = (): HTMLElement => {
-    const select = el("select", { class: "crib-level", "aria-label": "Difficulty" });
-    for (const l of LEVELS) {
-      const opt = el("option", l === level ? { selected: "selected" } : {}, l);
-      opt.setAttribute("value", l);
-      select.append(opt);
-    }
-    select.addEventListener("change", () => {
-      level = select.value as CribbageLevel;
-      setCribbageLevel(level);
-    });
-    const fresh = el("button", { type: "button", class: "crib-new" }, "New game");
-    fresh.addEventListener("click", () => void startGame());
-    const hints = hintsEnabled();
-    const action = el("button", { type: "button", class: hints ? "crib-hint" : "crib-stuck" }, hints ? "Hint" : "I’m done");
-    action.addEventListener("click", hints ? showHint : endNow);
+  const humanToMove = (): boolean => Boolean(game) && game!.view().toMove === HUMAN && game!.view().result === -1;
 
-    const toggle = (checked: boolean, label: string, cls: string, onChange: (on: boolean) => void): HTMLElement => {
-      const input = el("input", { type: "checkbox", class: cls });
-      (input as HTMLInputElement).checked = checked;
-      input.addEventListener("change", () => onChange((input as HTMLInputElement).checked));
-      return el("label", { class: "crib-toggle" }, input, ` ${label}`);
-    };
-    const boardMode = el("select", { class: "crib-board-mode", "aria-label": "Peg board" });
-    for (const m of BOARD_MODES) {
-      const opt = el("option", m.value === cribbageBoard() ? { selected: "selected" } : {}, m.label);
-      opt.setAttribute("value", m.value);
-      boardMode.append(opt);
-    }
-    boardMode.addEventListener("change", () => {
-      setCribbageBoard(boardMode.value as CribbageBoard);
-      // Whatever was mid-walk or mid-recap is dropped: the new mode starts at rest.
-      recap = null;
-      window.clearTimeout(recapTimer);
-      walkQueue = [];
-      shown = { 1: pegs[1].front, 2: pegs[2].front };
-      back = { 1: pegs[1].back, 2: pegs[2].back };
-      render();
-    });
-    const details = el("details", { class: "sol-settings crib-settings" });
-    details.append(
-      el("summary", {}, "Settings"),
-      toggle(hints, "Enable hints", "crib-set-hints", (on) => {
-        setHintsEnabled(on);
-        render();
-      }),
-      toggle(declareAssistanceEnabled(), "Declare assistance used", "crib-set-assist", (on) => setDeclareAssistance(on)),
-      toggle(cribbageTutorEnabled(), "Show tutor", "crib-set-tutor", (on) => {
-        setCribbageTutor(on);
-        render();
-      }),
-      toggle(cribbageManualCount(), "Count my own hands (muggins on)", "crib-set-manual", (on) => {
-        setCribbageManualCount(on);
-        render();
-        void step();
-      }),
-      toggle(cribbageSeatsFlipped(), "Your hand on top, the engine's below", "crib-set-seats", (on) => {
-        setCribbageSeatsFlipped(on);
-        render();
-      }),
-      el("label", { class: "crib-field crib-board-field" }, "Peg board ", boardMode),
-    );
-    return el("div", { class: "crib-controls" }, el("label", { class: "crib-field" }, "Difficulty ", select), fresh, action, details);
+  // --- what the frame shows: seats with scores and whose crib, the level chip, verbs, setup, preferences ---
+  const dropWalk = (): void => {
+    // Whatever was mid-walk or mid-recap is dropped: the new mode starts at rest.
+    recap = null;
+    window.clearTimeout(recapTimer);
+    walkQueue = [];
+    shown = { 1: pegs[1].front, 2: pegs[2].front };
+    back = { 1: pegs[1].back, 2: pegs[2].back };
   };
 
-  const humanToMove = (): boolean => Boolean(game) && game!.view().toMove === HUMAN && game!.view().result === -1;
+  const spec = (): GameFrameSpec => {
+    const v = game && !ending ? game.view() : null;
+    const opp = opponentIdentity();
+    const live = v !== null && v.result === -1;
+    const humanTurn = live && v.toMove === HUMAN && !busy;
+    const engineThinking = live && v.toMove === ENGINE && busy;
+    const hints = hintsEnabled();
+    const cribSub = (seat: 1 | 2): { sub: string } | Record<string, never> => (v && v.dealer === seat ? { sub: "the crib" } : {});
+    const preferences: SettingRow[] = [
+      {
+        kind: "toggle",
+        id: "tutor",
+        label: "Tutor",
+        hint: "Explains your options — exact at the throw, the engine's reading while pegging — and grades the move you made.",
+        value: cribbageTutorEnabled(),
+        onChange: (on) => {
+          setCribbageTutor(on);
+          render();
+        },
+      },
+      {
+        kind: "toggle",
+        id: "manual",
+        label: "Count my own hands (muggins on)",
+        hint: "Type your total at the show and the core grades it. Count short and the engine takes the difference.",
+        value: cribbageManualCount(),
+        onChange: (on) => {
+          setCribbageManualCount(on);
+          render();
+          void step();
+        },
+      },
+      {
+        kind: "choice",
+        id: "board",
+        label: "Peg board",
+        hint: "Two compact bars, or no board during the deal and a replay of its pegging when it ends — for a small screen.",
+        value: cribbageBoard(),
+        options: BOARD_MODES.map((m) => ({ value: m.value, label: m.label })),
+        onChange: (value) => {
+          setCribbageBoard(value as CribbageBoard);
+          dropWalk();
+          render();
+        },
+      },
+    ];
+    return {
+      title: "Cribbage",
+      mode: level,
+      meters: [
+        { kind: "seat", id: "you", name: "You", glyph: "🙂", score: v ? v.scores[0] : 0, state: humanTurn ? "active" : "idle", ...cribSub(HUMAN) },
+        {
+          kind: "seat",
+          id: "engine",
+          name: opp.name,
+          glyph: opp.avatar,
+          score: v ? v.scores[1] : 0,
+          state: engineThinking ? "thinking" : "idle",
+          ...cribSub(ENGINE),
+        },
+      ],
+      verbs: [
+        hints
+          ? { id: "hint", label: "Hint", icon: "✦", primary: true, onPress: showHint }
+          : { id: "done", label: "I’m done", icon: "⇥", onPress: endNow },
+        { id: "new", label: "New game", icon: "⟳", onPress: (btn) => frame?.openSheet("setup", btn) },
+      ],
+      setup: cribbageSetupRows({
+        level: (l) => {
+          level = l;
+        },
+      }),
+      preferences,
+      onStart: () => void startGame(),
+    };
+  };
+  const declare = (): void => frame?.update(spec());
 
   const showHint = (): void => {
     if (!game || busy || ending || !humanToMove()) return;
@@ -789,8 +850,6 @@ export function cribbageModule(): GameModule {
       el(
         "div",
         { class: "crib-game" },
-        renderTurnbar(v),
-        renderControls(),
         renderTable(v, interactive),
         el("p", { class: "crib-turnline" }, turnLine(v, opponentIdentity().name)),
         ...(cribbageTutorEnabled() ? [renderTutorPanel()] : []),
@@ -798,6 +857,11 @@ export function cribbageModule(): GameModule {
       ),
     );
     container.querySelector(".crib-hand")?.addEventListener("click", onHandClick);
+    if (!toasted && interactive && v.phase === "discard") {
+      toasted = true;
+      frame?.toast("Throw two to the crib, play to 31, count your hand — first to 121 wins. Whose crib it is rides on the dealer's seat.", 6000);
+    }
+    declare();
     restoreUiState(container, ui);
   };
 
@@ -837,6 +901,7 @@ export function cribbageModule(): GameModule {
       render();
       return;
     }
+    moves.push(code);
     selected = [];
     coachMsg = pendingCoach;
     pendingCoach = null;
@@ -875,6 +940,7 @@ export function cribbageModule(): GameModule {
           const mv = game.liveMove(level as Level);
           if (mv === null) break;
           game.play(mv);
+          moves.push(mv);
         } else if (atShow && !cribbageManualCount()) {
           render();
           await sleep(beats.show);
@@ -882,6 +948,7 @@ export function cribbageModule(): GameModule {
           const claim = game.autoClaim();
           if (claim === null) break;
           game.play(claim);
+          moves.push(claim);
         } else {
           break;
         }
@@ -928,12 +995,12 @@ export function cribbageModule(): GameModule {
       el(
         "div",
         { class: "crib-game" },
-        renderTurnbar(v),
-        el("p", { class: `crib-flash${won ? " win" : ""}`, role: "status" }, outcomeLabel(v, endedEarly)),
         renderFinalBoard(v),
+        el("p", { class: `crib-flash${won ? " win" : ""}`, role: "status" }, outcomeLabel(v, endedEarly)),
         el("p", { class: "crib-status", role: "status" }, status),
       ),
     );
+    declare();
     window.setTimeout(() => {
       if (disposed) return;
       void presentResult();
@@ -971,11 +1038,45 @@ export function cribbageModule(): GameModule {
     resetBoard();
     seed = seedOverride ?? randomSeed();
     game.newGame(seed);
+    moves = [];
     setStatus("");
     exposeHook();
     render();
     await step();
   }
+
+  /** Resume is replay: the seed, then every code both seats played, with the pegs set to the score. */
+  const applyResume = async (p: Progress): Promise<void> => {
+    if (!game || disposed) return;
+    const rec = p.record as { seed?: unknown; moves?: unknown };
+    const setup = p.setup as { level?: unknown };
+    if (LEVELS.includes(setup.level as CribbageLevel)) level = setup.level as CribbageLevel;
+    busy = false;
+    ending = false;
+    selected = [];
+    coachMsg = null;
+    pendingCoach = null;
+    endedEarly = null;
+    tutorView = null;
+    toasted = true;
+    resetBoard();
+    seed = typeof rec.seed === "string" ? BigInt(rec.seed) : randomSeed();
+    game.newGame(seed);
+    moves = [];
+    for (const code of Array.isArray(rec.moves) ? (rec.moves as unknown[]) : []) {
+      if (typeof code !== "number" || game.play(code) !== "applied") break;
+      moves.push(code);
+    }
+    const v = game.view();
+    pegs = { 1: { back: 0, front: v.scores[0] }, 2: { back: 0, front: v.scores[1] } };
+    shown = { 1: v.scores[0], 2: v.scores[1] };
+    lastScores = v.scores;
+    lastDealNo = v.dealNo;
+    setStatus("");
+    exposeHook();
+    render();
+    await step();
+  };
 
   const showShared = async (payload: string): Promise<void> => {
     if (!container) return;
@@ -1015,10 +1116,13 @@ export function cribbageModule(): GameModule {
   };
 
   return {
-    mount(c: HTMLElement): void {
+    mount(c: HTMLElement, services?: GameServices): void {
       container = c;
+      frame = services?.frame ?? null;
       disposed = false;
       level = cribbageLevel();
+      frame?.onSettingsChange(() => render()); // Hints flips the verb
+      declare();
       container.replaceChildren(el("div", { class: "sol-loading" }, "Loading Cribbage…"));
       void (async () => {
         try {
@@ -1038,6 +1142,12 @@ export function cribbageModule(): GameModule {
           await showShared(shared);
           return;
         }
+        if (pendingResume) {
+          const p = pendingResume;
+          pendingResume = null;
+          await applyResume(p);
+          return;
+        }
         const seedParam = url.searchParams.get("seed");
         await startGame(seedParam !== null ? BigInt(seedParam) : undefined);
       })();
@@ -1048,8 +1158,28 @@ export function cribbageModule(): GameModule {
       delete window.__cribbage;
       container?.replaceChildren();
       container = null;
+      frame = null;
       game = null;
       verifier = null;
+    },
+    // --- the progress store: the seed and every code played; resume is replay ---
+    snapshot(): Progress {
+      const v = game?.view();
+      const now = new Date().toISOString();
+      const done = v !== undefined && v.result !== -1;
+      return {
+        v: 1,
+        status: done ? "finished" : "in-progress",
+        startedAt: now,
+        updatedAt: now,
+        setup: { mode: "free", seed: seed.toString(), level },
+        record: { seed: seed.toString(), moves: [...moves] },
+        summary: { line: done && v ? outcomeLabel(v, endedEarly) : `Deal ${v?.dealNo ?? 1} · you ${v?.scores[0] ?? 0}–${v?.scores[1] ?? 0}` },
+      };
+    },
+    resume(p: Progress): void {
+      if (game) void applyResume(p);
+      else pendingResume = p;
     },
   };
 }
