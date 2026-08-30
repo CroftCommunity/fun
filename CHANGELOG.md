@@ -12,6 +12,12 @@ earlier is in `git log`.
 
 ## 2026-08
 
+- 2026-08-30 **solitaire:** inside the frame. Moves, cards in stock and cards home are the
+  meters above the felt; Undo, Hint (or I’m stuck) and New deal are the buttons under it;
+  Today’s deal versus a new deal is chosen on the start screen or the New deal sheet;
+  Auto-play is in Settings. Leave a deal and come back to the bare URL: the continue card
+  says "7 moves · 3 of 52 home" and Continue replays it, assistance and all.
+  (`plans/2026-08-30-plan-game-frame.md` Phase 7)
 - 2026-08-30 **othello:** the first game inside the frame. Two seats above the board say
   who is who, the score, and whose move it is — The Engine's seat pulses while it thinks
   instead of a line of text appearing; Difficulty and which disc you play moved to the

@@ -6,6 +6,8 @@
 
 import { expect, test, type Page } from "@playwright/test";
 
+import { boardTopStable } from "./helpers/board-top.js";
+
 /** Wait until the board and the test hook are live. */
 async function ready(page: Page): Promise<void> {
   await expect(page.locator(".sol-board")).toBeVisible();
@@ -99,7 +101,7 @@ test("a legal move changes the board; an illegal tap leaves it unchanged; undo r
   expect(hashMoved).not.toBe(hash0);
 
   // Undo reverts to the pre-move state.
-  await page.locator(".sol-undo").click();
+  await page.locator('.gf-verb[data-verb="undo"]').click();
   const hashUndone = await page.evaluate(() => window.__solitaire!.game.currentHash());
   expect(hashUndone).toBe(hash0);
 });
@@ -144,7 +146,10 @@ test("New deal deals a different game (the up-turned cards change)", async ({ pa
   await ready(page);
 
   const before = await page.evaluate(() => window.__solitaire!.game.currentHash());
-  await page.locator(".sol-new").click();
+  // Daily or free is setup: the New deal sheet chooses, Start deals.
+  await page.locator('.gf-verb[data-verb="new"]').click();
+  await page.locator('.gf-sheet [data-setting="deal"] input[value="free"]').check();
+  await page.locator(".gf-sheet .gf-start").click();
   await page.waitForFunction((h) => window.__solitaire!.game.currentHash() !== h, before);
   const after = await page.evaluate(() => window.__solitaire!.game.currentHash());
   expect(after).not.toBe(before);
@@ -154,7 +159,7 @@ test("Hint points at a legal move and marks the game assisted", async ({ page })
   await page.goto("/solitaire/?seed=0");
   await ready(page);
 
-  await page.locator(".sol-hint").click();
+  await page.locator('.gf-verb[data-verb="hint"]').click();
   // A hint highlights exactly one target to move toward…
   await expect(page.locator(".hint-to")).toHaveCount(1);
   await expect(page.locator(".sol-status")).toContainText(/hint/i);
@@ -171,11 +176,14 @@ test("with hints off, 'I'm stuck' ends the game and reports whether a move exist
   await page.goto("/solitaire/?seed=0");
   await ready(page);
 
-  // Disable hints in settings — the control flips to "I'm stuck".
-  await page.locator(".sol-settings summary").click();
-  await page.locator(".sol-set-hints").uncheck();
-  const stuck = page.locator(".sol-stuck");
+  // Disable hints in the settings sheet's "Every game" section — the verb flips to "I'm stuck".
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await page.locator('.gf-sheet [data-setting="hints"] .sheet-toggle-input').click({ force: true });
+  await page.keyboard.press("Escape");
+  const stuck = page.locator('.gf-verb[data-verb="stuck"]');
   await expect(stuck).toBeVisible();
+  await expect(page.locator('.gf-verb[data-verb="hint"]')).toHaveCount(0);
   await stuck.click();
 
   // The game ends as a Stuck outcome, and honestly notes a move was available
@@ -208,8 +216,10 @@ test("auto-play (opt-in) sends safe cards to the foundations", async ({ page }) 
   await page.goto("/solitaire/?seed=0");
   await ready(page);
 
-  await page.locator(".sol-settings summary").click();
-  await page.locator(".sol-set-autoplay").check();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await page.locator('.gf-sheet [data-setting="autoplay"] .sheet-toggle-input').click({ force: true });
+  await page.keyboard.press("Escape");
   await page.locator(".sol-stock").click(); // seed 0: draws the Ace of Hearts
 
   const board = await page.evaluate(() => window.__solitaire!.game.board());
@@ -240,4 +250,60 @@ test("full-screen keeps the board mounted and playable", async ({ page }) => {
   await page.locator(".sol-stock").click();
   const after = await page.evaluate(() => window.__solitaire!.game.board().wasteCount);
   expect(after).toBe(before + 1);
+});
+
+// --- the frame (plan Phase 7): meters, the mode chip, and a board that does not move ---
+
+test("the meters count moves, stock and home; the chip names the deal", { tag: "@smoke" }, async ({ page }) => {
+  await page.goto("/solitaire/?seed=0");
+  await ready(page);
+  await expect(page.locator(".gf-mode")).toHaveText(/free deal/i);
+  await expect(page.locator('.gf-stat[data-meter="moves"] .gf-stat-value')).toHaveText("0");
+  await expect(page.locator('.gf-stat[data-meter="stock"] .gf-stat-value')).toHaveText("24");
+  await expect(page.locator('.gf-stat[data-meter="home"] .gf-stat-value')).toHaveText("0 / 52");
+  await page.locator(".sol-stock").click();
+  await expect(page.locator('.gf-stat[data-meter="moves"] .gf-stat-value')).toHaveText("1");
+  await expect(page.locator('.gf-stat[data-meter="stock"] .gf-stat-value')).toHaveText("23");
+  // No controls row above the felt any more; the verbs are the frame's.
+  await expect(page.locator(".sol-controls")).toHaveCount(0);
+  const verbs = await page.locator(".gf-dock .gf-verb").evaluateAll((els) => els.map((e) => e.getAttribute("data-verb")));
+  expect(verbs).toEqual(["undo", "hint", "new", "settings"]);
+});
+
+test("the felt does not move across a draw, a hint, an undo, and the settings sheet", { tag: "@smoke" }, async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/solitaire/?seed=0");
+  await ready(page);
+  const v = await boardTopStable(page, ".sol-board", async () => {
+    await page.locator(".sol-stock").click();
+    await page.locator('.gf-verb[data-verb="hint"]').click();
+    await expect(page.locator(".hint-to")).toHaveCount(1);
+    await page.locator('.gf-verb[data-verb="undo"]').click();
+    await page.locator('.gf-verb[data-verb="settings"]').click();
+    await expect(page.locator(".gf-sheet")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".gf-sheet")).toBeHidden();
+  });
+  expect(v.frames).toBeGreaterThan(5);
+  expect(v, `felt top moved ${v.delta}px over ${v.frames} frames`).toMatchObject({ stable: true });
+});
+
+test("leaving mid-deal and returning to the bare URL resumes the same position, moves and assistance", async ({ page }) => {
+  await page.goto("/solitaire/?seed=0");
+  await ready(page);
+  await page.locator(".sol-stock").click();
+  await page.locator('.gf-verb[data-verb="hint"]').click(); // assistance
+  const hash = await page.evaluate(() => window.__solitaire!.game.currentHash());
+  await page.goto("/solitaire/");
+  const card = page.locator(".gf-continue");
+  await expect(card).toBeVisible();
+  await expect(card.locator(".gf-start-line")).toContainText(/1 move/i);
+  await card.locator(".gf-continue-btn").click();
+  await ready(page);
+  expect(await page.evaluate(() => window.__solitaire!.game.currentHash())).toBe(hash);
+  await expect(page.locator('.gf-stat[data-meter="moves"] .gf-stat-value')).toHaveText("1");
+  const assisted = await page.evaluate(
+    () => (window.__solitaire!.game.outcome("abandoned", true) as { payload: { assistance: boolean | null } }).payload.assistance,
+  );
+  expect(assisted).toBe(true);
 });

@@ -889,10 +889,6 @@ body:has(> .play-area > .gf) {
   align-items: center;
   gap: 0.35rem;
 }
-.sol-moves {
-  margin-left: auto;
-  color: var(--ink-muted);
-}
 .sol-status {
   min-height: 1.4em;
   margin: 0.75rem 0 0;

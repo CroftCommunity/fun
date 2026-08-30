@@ -4,7 +4,7 @@
 
 import type { GameEntry } from "./contract.js";
 import { placeholderModule } from "./games/placeholder.js";
-import { solitaireModule } from "./games/solitaire.js";
+import { solitaireModule, solitaireSetup } from "./games/solitaire.js";
 import { trioTumbleModule } from "./games/trio-tumble.js";
 import { bubbleModule } from "./games/bubble/bubble.js";
 import { wyrdleModule } from "./games/wyrdle/wyrdle.js";
@@ -31,7 +31,16 @@ export const REGISTRY: readonly GameEntry[] = [
     pitch: "Nothing to play; everything to prove.",
     load: placeholderModule,
   },
-  { id: "solitaire", title: "Solitaire", emoji: "♠", status: "playable", icon: true, load: solitaireModule },
+  {
+    id: "solitaire",
+    title: "Solitaire",
+    emoji: "♠",
+    status: "playable",
+    icon: true,
+    pitch: "Klondike, draw one. Today’s deal is winnable, and everyone gets the same one.",
+    setup: solitaireSetup,
+    load: solitaireModule,
+  },
   { id: "trio-tumble", title: "Trio Tumble", subtitle: "Jewel Drop", emoji: "💎", status: "playable", icon: true, load: trioTumbleModule },
   { id: "bubble", title: "Bubble", emoji: "🫧", status: "playable", icon: true, load: bubbleModule },
   { id: "wyrdle", title: "Wyrdle", emoji: "🐉", status: "playable", icon: true, load: wyrdleModule },

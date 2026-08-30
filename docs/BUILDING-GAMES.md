@@ -378,6 +378,17 @@ reserved-height slot. Two things the sampler caught on the way: the fanfare line
 end of a game rendered *above* the final board (it sits below now), and the rail's stage
 was vertically centring, so a status line growing below the board moved it by half.
 
+#### A worked example — the solo archetype (Solitaire, `src/games/solitaire.ts`)
+
+Three stats instead of seats (`moves`, `in stock`, `home`); the deal (today's / free) is
+`setup` — a module-level `chosenMode` the poster's row and the New deal sheet both write,
+so the module's `startDeal(chosenMode)` reads one truth; the `Hint` verb becomes `I’m
+stuck` when the common **Hints** row is off, which is why the module registers
+`frame.onSettingsChange(() => render())` — the row is the chrome's, the verb is the
+game's. The record is the core's own move list (`game.outcome(...).payload.moves`) plus
+the assistance flag; resume replays with `play()` and re-marks assistance. The status
+line stays below the felt, reserved-height, for hint and undo sentences.
+
 #### The test every migration ships
 
 `tests/<game>.spec.ts` records the board's `boundingBox().y` at move 1 and asserts it is

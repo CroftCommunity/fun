@@ -335,3 +335,23 @@ describe("renderGameFrame — toasts and verb buttons", () => {
     expect(seen).toEqual([btn]);
   });
 });
+
+describe("renderGameFrame — a game hears the common rows change", () => {
+  it("onSettingsChange fires after a common row's own onChange, from the sheet and from the rail panel", () => {
+    const stored: boolean[] = [];
+    const common = () => [{ kind: "toggle" as const, id: "hints", label: "Hints", value: true, onChange: (v: boolean) => stored.push(v) }];
+    const frame = renderGameFrame(host, spec(), { common });
+    const heard: number[] = [];
+    frame.onSettingsChange(() => heard.push(stored.length));
+    frame.openSheet("settings");
+    const box = frame.root.querySelector<HTMLInputElement>('.gf-sheet [data-setting="hints"] input')!;
+    box.checked = false;
+    box.dispatchEvent(new Event("change"));
+    expect(stored).toEqual([false]);
+    expect(heard).toEqual([1]); // stored first, then heard
+    const rail = frame.root.querySelector<HTMLInputElement>('.gf-extra [data-setting="hints"] input')!;
+    rail.checked = true;
+    rail.dispatchEvent(new Event("change"));
+    expect(heard).toEqual([1, 2]);
+  });
+});

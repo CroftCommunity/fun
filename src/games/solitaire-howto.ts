@@ -79,8 +79,8 @@ export const SOLITAIRE_GUIDE: Guide = {
         {
           kind: "steps",
           items: [
-            "Today’s deal: the same hand everyone gets today (and it is always winnable). Come back tomorrow for a new one.",
-            "New deal: a fresh random hand right now — tap it again any time to reshuffle.",
+            "Today’s deal: the same hand everyone gets today (and it is always winnable). Come back tomorrow for a new one. Choose it on the start screen, or from New deal under the felt.",
+            "New deal: a fresh random hand right now — New deal under the felt, pick it, Start.",
           ],
         },
       ],
@@ -95,7 +95,7 @@ export const SOLITAIRE_GUIDE: Guide = {
           items: [
             "Undo steps back one move.",
             "Hint (on by default) points at a good move you can make right now, and only says you are stuck when there is genuinely no move left.",
-            "Turn hints off in Settings and the control becomes “I’m stuck”: it ends the game and tells you honestly whether a move was still available.",
+            "Turn hints off in Settings (the Every game section) and the button becomes “I’m stuck”: it ends the game and tells you honestly whether a move was still available.",
           ],
         },
         {

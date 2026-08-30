@@ -8,7 +8,7 @@ parameters does once every bare URL opens on a start screen) gates Phase 5** and
 thing between this plan and execution: Phases 0–4 may start now. D5 was resolved during
 planning (read-only, see Verified Assumptions) and is struck from Phase 0. Phases 1, 2, 3
 and 5 carry sub-phases (1a/1b, 2a/2b, 3a/3b, 5a/5b) — each with its own Done-when and
-wiring test — because each touched four or more files. Phases 0–6 COMPLETE (2026-08-30). Mocks
+wiring test — because each touched four or more files. Phases 0–7 COMPLETE (2026-08-30). Mocks
 landed on `main` (`mocks/d-game-frame.html`, PR #45, `6c4dd9c`); owner decisions D1–D5
 recorded.
 
@@ -1104,6 +1104,24 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
    it changes one test case either way.*
 
 ## Review Log
+
+### Phase 7 — executed 2026-08-30 (Solitaire, the solo archetype)
+- Red first: the rewritten `tests/solitaire.spec.ts` against the unmigrated page, 16 of 29
+  failing (verbs, the New deal sheet, the meters, the felt's stability, resume).
+- The frame gained `onSettingsChange` (unit-tested: fires after the common row's own
+  onChange, from the sheet and from the rail) — Hints is the chrome's row but flips this
+  game's verb between Hint and I'm stuck, so the game re-renders when it changes. The
+  game's own hints/assistance toggles are gone (the common section carries them);
+  Auto-play is its one preference. Meters: moves · in stock · home; verbs: Undo · Hint/I'm
+  stuck · New deal; the deal (today's / free) is `setup` through a module-level
+  `chosenMode` the poster and the sheet both write. The record is the core's own move
+  list plus the assistance flag; resume replays with `play()` and re-marks assistance.
+- What the tests caught: the store did not learn a hint's assistance until the next move —
+  `showHint` did not re-declare; it does now (the resume case asserts the flag).
+- Green: `tests/solitaire.spec.ts` 58/58 with `--repeat-each=2` on both engines (the felt's
+  top stable across draw, hint, undo and the sheet); `npm run e2e` 657/657; typecheck,
+  lint, unit; guide shots regenerated for Solitaire only (4). How-to copy, §4c solo
+  worked example, changelog landed in-phase.
 
 ### Phase 6 — executed 2026-08-30 (Othello, the versus archetype)
 - **Red first, and the red was real.** The rewritten `tests/othello.spec.ts` against the
