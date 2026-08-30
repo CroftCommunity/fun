@@ -28,6 +28,24 @@
       "height": 844
     },
     {
+      "file": "color-sort.result.phone.png",
+      "game": "color-sort",
+      "route": "result",
+      "url": "/color-sort/?level=1",
+      "viewport": "phone",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "file": "color-sort.signin.phone.png",
+      "game": "color-sort",
+      "route": "signin",
+      "url": "/color-sort/?level=1",
+      "viewport": "phone",
+      "width": 390,
+      "height": 844
+    },
+    {
       "file": "color-sort.board.desktop.png",
       "game": "color-sort",
       "route": "board",
@@ -53,9 +71,27 @@
       "viewport": "desktop",
       "width": 1280,
       "height": 900
+    },
+    {
+      "file": "color-sort.result.desktop.png",
+      "game": "color-sort",
+      "route": "result",
+      "url": "/color-sort/?level=1",
+      "viewport": "desktop",
+      "width": 1280,
+      "height": 900
+    },
+    {
+      "file": "color-sort.signin.desktop.png",
+      "game": "color-sort",
+      "route": "signin",
+      "url": "/color-sort/?level=1",
+      "viewport": "desktop",
+      "width": 1280,
+      "height": 900
     }
   ],
-  "baseline": "fun@1452290",
+  "baseline": "fun@4fa5fbf",
   "capturedAt": "2026-08-30",
   "population": "deep link, fixed seed (hermetic)"
 }

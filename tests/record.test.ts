@@ -17,8 +17,8 @@ import {
   type GameRecord,
 } from "../src/record.js";
 
-describe("mock E6.5: the record is one $type-shaped object behind a substrate", () => {
-  it("an empty record carries the lexicon-shaped fields and no identity", () => {
+describe("the game record", () => {
+  it("mock E6.5: the record is one $type-shaped object behind a substrate", () => {
     const r = emptyRecord("color-sort");
     expect(r.$type).toBe(RECORD_TYPE);
     expect(RECORD_TYPE).toMatch(/^ing\.croft\.fun\./);

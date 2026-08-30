@@ -1,7 +1,7 @@
 # Plan — Color Sort: endless-first, a real pour, sign-in, and the game frame
 
-**Status:** Phases A–B COMPLETE (2026-08-30) — C, D in progress. D1–D12 settled
-(§ Decisions); mock `mocks/e-color-sort.html` v4, baseline `fun@1452290`.
+**Status:** Phases A–D COMPLETE (2026-08-30) — landing. D1–D12 settled (§ Decisions);
+mock `mocks/e-color-sort.html` v5, baseline `fun@4fa5fbf`.
 
 Branch `claude/color-sort-redesign`; worktree `CroftC/worktrees/color-sort-redesign/fun`.
 
