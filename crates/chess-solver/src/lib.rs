@@ -12,10 +12,14 @@
 #![warn(missing_docs)]
 
 pub mod eval;
+pub mod live;
 pub mod search;
+pub mod tutor;
 
 pub use adversary_solver::NodeBudget;
 pub use eval::{heuristic, phase, MATE};
+pub use live::{choose, class_of, live_band, Level};
 pub use search::{
     best_move, move_scores, move_scores_with, move_values, search_root, Scored, SearchReport, Table,
 };
+pub use tutor::{assess, assess_for_move, coach_line, MoveClass, TutorMove, TutorReport};

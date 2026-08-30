@@ -5,7 +5,7 @@ analysis) 2026-08-30; Pass 3 (quality gates) 2026-08-30. Every open question is
 owner-confirmed and none is BLOCKING-unresolved; the two PHASE-GATED items gate Phases 2
 and 9 and are already reflected in those phases. **Phase 0 executed 2026-08-30**
 (D1 / D2-desktop / D3-deferral / D4 / D6 closed; D2's Samsung half and D5's
-two-Android half owed, `[device: …]` tags on their task lines) — **Phase 1 executed 2026-08-30** (perft green at CI depth on all six positions; differential perft 200/0) — **Phase 2 executed 2026-08-30** (terminals, both trait impls, hash, SAN, vectors; gate green) — **Phase 3 executed 2026-08-30** (both chess cases green in wasm) — **Phase 4 executed 2026-08-30** (search green, deepen adopted ≥ d4, budgeted ladder 0/50 over 400 ms in Chromium; Samsung half owed) — **Phase 5 next.**
+two-Android half owed, `[device: …]` tags on their task lines) — **Phase 1 executed 2026-08-30** (perft green at CI depth on all six positions; differential perft 200/0) — **Phase 2 executed 2026-08-30** (terminals, both trait impls, hash, SAN, vectors; gate green) — **Phase 3 executed 2026-08-30** (both chess cases green in wasm) — **Phase 4 executed 2026-08-30** (search green, deepen adopted ≥ d4, budgeted ladder 0/50 over 400 ms in Chromium; Samsung half owed) — **Phase 5 executed 2026-08-30** (band + tutor green; Expert v Easy 20/20, Easy v random 14/20) — **Phase 6 next.**
 Worktree `worktrees/chess/fun`, branch `claude/chess`.
 **Standards anchor:** `docs/BUILDING-GAMES.md` §10 + both new-game checklists;
 `docs/AI-PLAYERS.md` (search cost, honesty gate); `docs/HARNESS.md` (adding a game).
@@ -1235,13 +1235,13 @@ yet a draw; the key includes the clock bucket where it matters (≥ 90).
 **Goal:** Four honest levels and an engine-grounded coach.
 
 **Changes:**
-- [ ] `live.rs` — `Level {Easy, Medium, Hard, Expert}` with `depth()` and
+- [x] `live.rs` — `Level {Easy, Medium, Hard, Expert}` with `depth()` and
   `budget()` from Phase 4's table; `class_of(value)`: `+1` proven mate for the
   mover, `-1` proven mate against, else `0` (checkers' `capped_class` shape —
   centipawns are not a class); `live_band(level)` → `LiveBand`; `choose(board,
   level, rng)` over `adversary_solver::select_in_band`; an immediate mate is always
   taken.
-- [ ] `tutor.rs` — `assess` (panel: `TUTOR_DEPTH = Expert + 1`) and
+- [x] `tutor.rs` — `assess` (panel: `TUTOR_DEPTH = Expert + 1`) and
   `assess_for_move` (tap path: `COACH_DEPTH = Hard`), the compile-time orderings;
   `TutorMove { code, san, value, regret, quality, exact, immediate_win (mate in
   one), blocks_opponent_win (false), gives_check, captures (piece or none),
@@ -1249,16 +1249,16 @@ yet a draw; the key includes the clock bucket where it matters (≥ 90).
   from regret with **`Blunder` only when both values are proven**; `coach_line`
   bound to `exact` ("that threw the game" vs "looks risky") — the `coachFor` test
   asserts both branches.
-- [ ] Tests: `expert_never_drops_a_proven_class` (over a mate-in-2 set, 200 seeds);
+- [x] Tests: `expert_never_drops_a_proven_class` (over a mate-in-2 set, 200 seeds);
   `easy_beats_random_but_loses_to_expert` (self-play, small N — the order check,
   not a strength claim); `zero_sloppiness_does_not_consume_the_rng`; `coachFor`
   both branches.
-- [ ] **RED first, the level table included (Pass 3).** `depth()` and `budget()` are
+- [x] **RED first, the level table included (Pass 3).** `depth()` and `budget()` are
   non-decreasing Easy → Expert and Expert's depth is ≥ 4 unless D2's re-plan trigger
   fired (then the recorded value); `TUTOR_DEPTH > Level::Expert.depth()` and
   `COACH_DEPTH == Level::Hard.depth()` are compile-time assertions (checkers'
   `tutor.rs:54,68`). Written before the table.
-- [ ] **The edges (Pass 3 — mutation resistance).** *`class_of` at three points:* a
+- [x] **The edges (Pass 3 — mutation resistance).** *`class_of` at three points:* a
   proven mate for the mover → `+1`, a proven mate against → `−1`, and a heuristic
   `+900` → `0` — the third is the edge, since magnitude is not class. *Sloppiness at
   0 and 100* plus the no-floor case (the selector must sometimes pick below the best
@@ -1267,7 +1267,7 @@ yet a draw; the key includes the clock bucket where it matters (≥ 90).
   branches*, as checkers' test has them (`checkers-tutor.test.ts:41,49,55`): "threw
   the game" only when both values are proven; "looks risky" for a clearly weak
   horizon judgement; silent when there is nothing honest to flag.
-- [ ] **The qualitative claims get numbers (Pass 3).** Over 20 seeded games each,
+- [x] **The qualitative claims get numbers (Pass 3).** Over 20 seeded games each,
   Expert beats Easy ≥ 15 and Easy beats a seeded-random player ≥ 14; the counts go
   in the Review Log, and a miss is a finding about the level table, not a flaky
   test to loosen.
@@ -1852,6 +1852,52 @@ PR open; `workspace-audit.sh` clean.
 ---
 
 ## Review Log
+
+### Phase 5 execution — 2026-08-30
+
+**Green:** chess-solver 30/30 release (6.7 s), 17 debug (0.28 s); the gate
+(`npm run test:rust`) green. The wiring test
+(`expert_vs_easy_self_play_terminates_and_expert_wins_most`, two full games
+through `choose` over the real `Adversary` loop) runs on the release gate.
+
+**The strength counts, measured (this M-series Mac, release, seeds 0..20):**
+**Expert v Easy 20/20 wins, 0 draws** (bar ≥ 15) · **Easy v a seeded-random
+player 14/20 wins, 5 draws, 1 loss** (bar ≥ 14 — met exactly). Recorded per
+the phase's rule: a future miss is a finding about the level table, not a
+flaky test to loosen. Easy's knobs as shipped: depth 2, 10k nodes, no class
+floor, 60% sloppiness — whether that is *fun* is `TODO/chess.md`'s question,
+as cribbage left it.
+
+**The level table** (from Phase 4's measured ladder): Easy d2/10k · Medium
+d3/40k · Hard d4/100k · Expert d5/150k; Hard/Expert class-preserving; Expert
+sloppiness 0 (RNG untouched — pinned). `class_of` is checkers' magnitude
+shape over `MATE/2`. **A proven mate is taken at every level** — Easy may be
+sloppy between mates, but declining a visible mate reads as broken, not easy;
+pinned by the immediate-mate test at Easy across 50 draws.
+
+**The tutor:** `assess` (d6, 600k budget) / `assess_for_move` (Hard's d4/100k,
+the tap path) with the compile-time depth orderings; `TutorMove` carries the
+shared wire shape (`col`, `value`, `quality`, `exact`, the two booleans) plus
+chess's own facts (san, gives_check, captures-as-piece-kind, promotes,
+castles) and the report carries `depth`/`nodes` for Phase 7's JSON.
+`coach_line` bound to `exact` with the three branches pinned ("threw the
+game" only on a two-proof Blunder; "looks risky" on a big unproven regret;
+silence otherwise). Blunder-needs-both-proofs pinned at the seam at every
+combination, checkers' shape.
+
+**Debug-suite discipline:** six search-heavy tests are release-gated
+(`cfg_attr(debug_assertions, ignore)`) so the debug run stays 0.28 s; the
+40-game strength counts are `#[ignore]` on-demand (run once above, numbers
+here), matching the shelf's opt-in-baselines precedent.
+
+**Docs in this commit (the Pass 3 rule):** `docs/AI-PLAYERS.md` — the Oracle
+paragraph now names three unsolved-game precedents with chess's two soundness
+refinements, and the deepening table gains the chess column (the first
+verdict that differs by depth).
+
+**Clippy note:** `TutorMove`'s five booleans tripped
+`struct_excessive_bools`; allowed with the justification comment — the
+booleans are the shared wire contract, not a state machine in disguise.
 
 ### Phase 4 execution — 2026-08-30
 
