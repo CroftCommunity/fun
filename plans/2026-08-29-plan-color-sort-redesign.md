@@ -339,3 +339,26 @@ Proposed after it has survived one game, not before — PATTERN.md's own sequenc
 ## Review Log
 
 - 2026-08-29 — drafted from two research sweeps + code reading; decisions D1–D12 open.
+- 2026-08-29 — D1–D12 settled by the owner; mock E v1 → v2 (bolts are bolts); the parity
+  contract added (`claims.json` + `tests/mock-parity.test.ts`, watched red with a fake
+  "Phases A–B COMPLETE": 16 owed).
+- 2026-08-30 — owner: "go, complete plan, pr merge". The frame migration of Color Sort had
+  landed on main meanwhile (`ad9f225`, a peer session); rebased, and phase A shrank to
+  its parity specs plus what they caught: the dock order, two meters not three, 43px
+  tubes. **Phase A COMPLETE** (`bac0c55`); mock v3 with Shipped captures.
+- 2026-08-30 — **Phase B COMPLETE** (`1452290`): `pour.ts` (WAAPI, zero deps), `sound.ts`,
+  pour speed, the completion beat, the bolt skin redrawn as a bolt. Two things the build
+  taught the mock: the stage clips (`overflow-y: auto`), so the board reserves 5.5rem of
+  headroom for the tilt and the arcs; and the ball/bolt flying units live in the board,
+  not the tube, so a lifted tube does not carry them. Mock v4.
+- 2026-08-30 — **Phase C COMPLETE** (`5e7678e`): `record.ts`, the gate, the chip, endless
+  first. Deviations recorded: E1.4's chip carries par once today's daily has been opened
+  (par needs the engine; the poster renders before it) — the claim text says "par N" and
+  the chip says "Today's puzzle · not yet played" until then; E7.1's "This game" shows the
+  setup rows read-only (Mode; Daily once unlocked) — the mock drew Level too, which is a
+  meter, not setup. `?play=1` no longer means the daily; `?daily=1` does. A solved
+  endless level is not resumed (found by E6.1: the deep link replayed to the result).
+- 2026-08-30 — **Phase D COMPLETE** (`2f72c22`): the croft-pwa port. The header was full at
+  390px (measured: 381px of controls), so the drawer toggle is the ☰ alone under 40rem
+  and the sign-in control a glyph. WebKit's `route.fulfill` cannot answer a 302; the
+  round-trip spec bounces through a page that `location.replace`s instead.

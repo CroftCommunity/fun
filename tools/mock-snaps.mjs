@@ -43,6 +43,32 @@ const ROUTES = {
       },
       settle: 0,
     },
+    // A solved level: the verifiable result with the sign-in offer beneath it.
+    {
+      route: "result",
+      url: "/color-sort/?level=1",
+      after: async (page) => {
+        await page.evaluate(() => {
+          const h = window.__colorSort;
+          for (let i = 0; i < 300 && !h.game.isWon(); i++) {
+            const mv = h.game.hint();
+            if (!mv) break;
+            h.game.pour(mv.from, mv.to);
+          }
+          h.refresh();
+        });
+        await page.waitForSelector(".sol-result");
+      },
+    },
+    // The atmo-provider sheet, open.
+    {
+      route: "signin",
+      url: "/color-sort/?level=1",
+      after: async (page) => {
+        await page.click("[data-signin-open]");
+        await page.waitForSelector("dialog[data-signin-sheet][open]");
+      },
+    },
   ],
 };
 

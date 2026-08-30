@@ -12,6 +12,28 @@ earlier is in `git log`.
 
 ## 2026-08
 
+- 2026-08-30 **color-sort:** the pour is a pour. The tube lifts, travels and tilts over
+  its target, a stream bridges them while each unit leaves and arrives, and it returns —
+  balls hop an arc, nuts unscrew off the thread and screw down onto the bolt (the bolt
+  skin is now a bolt on a base plate, not a tube of hexagons). A tap during the return
+  acts on the true board. Undo plays the pour back. A tube that fills drops its cap on,
+  flashes, and chimes. **Pour speed** (Slow · Normal · Fast · Off) joins Settings; a
+  reduced-motion preference picks Off until you choose. Sound is synthesised, a voice per
+  skin, under the shelf's Sound row. (`plans/2026-08-29-plan-color-sort-redesign.md`, mock E)
+- 2026-08-30 **color-sort:** Endless first. A bare land opens the poster on Endless level
+  1 (four colours, six tubes); Daily is visible in the card and locked — "unlocks after 5
+  solves · N to go" — then opens, with a Today's-puzzle chip on the poster while the
+  default stays Endless. `?daily=1` is the deep link. Moves · par-or-level · best are the
+  meters; Undo · Hint · New game · Restart the dock; tubes are 48px on a phone (they were
+  43, under the tap floor). Your stats and the deal in progress are one record per game
+  (`fun-record-<game>`), shaped for a lexicon, kept in this browser.
+- 2026-08-30 **shelf:** sign in with your atmo provider. The header's ◎ opens the sheet
+  ported from croft-pwa — Bluesky, Blacksky and EuroSky with Create account and Sign in,
+  Northsky (invite only) and any handle behind Another provider. OAuth is PAR + PKCE +
+  DPoP, no dependencies; `/signin/` is the callback. Signing in ties your local records to
+  your DID; nothing is sent anywhere. Color Sort offers it under a result. Under 40rem the
+  drawer toggle is the ☰ alone — the header was full.
+
 - 2026-08-30 **shelf:** ⤢ is the real thing. Full screen asks the browser's Fullscreen
   API — the frame stays, the shelf bar goes, and leaving by Esc or a gesture un-presses
   the toggle — and where a browser has no API for a page (iOS Safari; Playwright's WebKit)
