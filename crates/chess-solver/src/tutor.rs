@@ -252,7 +252,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(debug_assertions, ignore = "release only: a budgeted search in debug")]
     fn a_mate_in_one_is_proven_immediate_and_optimal() {
         let report = assess_for_move(&pos_of("6k1/5ppp/8/8/8/8/8/4R1K1 w - - 0 1"));
         let mate = report
@@ -303,6 +302,30 @@ mod tests {
             .find(|m| m.san == "Rh8+")
             .expect("Rh8+ is in the report");
         assert!(rook_check.gives_check);
+
+        // En passant reads as a pawn capture (kind 1), and regret is the gap
+        // to the best value on every entry.
+        let start = pos_of("4k3/3p4/8/4P3/8/8/8/4K3 b - - 0 1");
+        let push = <Chess as Adversary>::parse_move(&start, "d7d5").expect("legal");
+        let ep_report = assess_for_move(&<Chess as Adversary>::apply(&start, push));
+        let ep = ep_report
+            .moves
+            .iter()
+            .find(|m| m.san == "exd6")
+            .expect("exd6 offered");
+        assert_eq!(ep.captures, 1);
+        for m in &ep_report.moves {
+            assert_eq!(m.regret, m.best_value - m.value);
+        }
+
+        // A BLACK mate in one is flagged immediate too (the other arm).
+        let black = assess_for_move(&pos_of("kr6/8/8/8/8/8/r7/6K1 b - - 0 1"));
+        let mate = black
+            .moves
+            .iter()
+            .find(|m| m.immediate_win)
+            .expect("Rb1# flagged");
+        assert_eq!(mate.san, "Rb1#");
     }
 
     #[test]

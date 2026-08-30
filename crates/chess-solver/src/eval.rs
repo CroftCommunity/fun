@@ -229,6 +229,50 @@ mod tests {
     }
 
     #[test]
+    fn every_table_is_symmetric_across_the_files() {
+        // Data-shape contract: every rank reads the same a→h as h→a, on every
+        // table — the standard shapes are file-symmetric, and a single sign
+        // or value slip in one entry breaks the mirror.
+        for table in [
+            &PST_PAWN,
+            &PST_KNIGHT,
+            &PST_BISHOP,
+            &PST_ROOK,
+            &PST_QUEEN,
+            &PST_KING_MG,
+            &PST_KING_EG,
+        ] {
+            for sq in 0..64usize {
+                assert_eq!(table[sq], table[sq ^ 7], "entry {sq} vs its file mirror");
+            }
+        }
+    }
+
+    #[test]
+    fn the_king_table_tapers_between_its_two_shapes() {
+        // phase 24 = the middlegame table exactly, 0 = the endgame table
+        // exactly, 12 = their midpoint.
+        for sq in 0..64u8 {
+            let i = usize::from(sq);
+            assert_eq!(pst(PieceKind::King, Color::White, sq, 24), PST_KING_MG[i]);
+            assert_eq!(pst(PieceKind::King, Color::White, sq, 0), PST_KING_EG[i]);
+            assert_eq!(
+                pst(PieceKind::King, Color::White, sq, 12),
+                (PST_KING_MG[i] + PST_KING_EG[i]) / 2
+            );
+        }
+    }
+
+    #[test]
+    fn the_nudge_is_added_to_material_not_subtracted() {
+        // Through heuristic() itself: a centre knight outscores a rim knight,
+        // so the table enters with the sign its shape means.
+        let centre = Position::from_board(board("4k3/7p/8/8/3N4/8/8/4K3 w - - 0 1"));
+        let rim = Position::from_board(board("4k3/7p/8/8/N7/8/8/4K3 w - - 0 1"));
+        assert!(heuristic(&centre) > heuristic(&rim));
+    }
+
+    #[test]
     fn the_start_position_is_level_and_material_dominates() {
         let start = Position::start();
         let v = heuristic(&start);

@@ -736,6 +736,75 @@ mod tests {
         }
     }
 
+    // ---- debug-affordable reach into the internals (the mutation audit's
+    // lesson: release-gated tests leave the search unobserved under mutants) ----
+
+    #[test]
+    fn nodes_count_every_visit_including_quiescence_entries() {
+        // The counting contract the report carries: depth 1 from the start
+        // is 20 horizon entries, each counted once by negamax and once by
+        // the quiescence it hands off to — 40, nothing else.
+        let report = search_root(&Position::start(), 1, u64::MAX);
+        assert_eq!(report.nodes, 40);
+        assert_eq!(report.depth, 1);
+    }
+
+    #[test]
+    fn the_table_reports_what_it_holds_and_a_disabled_one_holds_nothing() {
+        let pos = pos_of("6k1/5ppp/8/8/8/8/8/4R1K1 w - - 0 1");
+        let mut tt = Table::new();
+        assert!(tt.is_empty());
+        let _ = move_scores_with(&pos, 2, &mut tt, &mut NodeBudget::unlimited());
+        assert!(!tt.is_empty());
+        assert!(tt.len() > 0);
+        assert!(tt.nodes() > 0);
+        let mut off = Table::disabled();
+        let _ = move_scores_with(&pos, 2, &mut off, &mut NodeBudget::unlimited());
+        assert!(off.is_empty(), "a disabled table stores nothing");
+        assert_eq!(off.len(), 0);
+    }
+
+    #[test]
+    fn a_mate_scores_mate_plus_the_remaining_depth_and_stays_exact_deeper() {
+        // The shorter-mate-first convention is (MATE + remaining depth), and
+        // exactness must survive a wider search: a window bound set too tight
+        // would turn the mated node into an alpha-beta bound and lose it.
+        let pos = pos_of("6k1/5ppp/8/8/8/8/8/4R1K1 w - - 0 1");
+        let mate = uci(&pos, "e1e8");
+        assert_eq!(score_of(&move_scores(&pos, 2), mate).value, MATE + 1);
+        let d3 = move_scores(&pos, 3);
+        let deep = score_of(&d3, mate);
+        assert_eq!(deep.value, MATE + 2);
+        assert!(deep.exact, "still proven at depth 3");
+        // A quiet alternative's line is heuristic — not exact — even though a
+        // proven node exists elsewhere in the tree.
+        let quiet = score_of(&d3, uci(&pos, "g1h1"));
+        assert!(!quiet.exact);
+        assert!(quiet.value < MATE);
+    }
+
+    #[test]
+    fn alpha_beta_agrees_with_plain_minimax_on_small_boards() {
+        // The debug-affordable half of the cross-check (the 20-position sweep
+        // is release-only): tiny armies at depth 3, where full width is cheap.
+        for fen in [
+            "8/8/4k3/8/8/4K3/4R3/8 w - - 0 1",
+            "7k/8/R7/1R6/8/8/8/6K1 w - - 0 1",
+            "4k3/7p/8/8/8/8/3Q4/4K3 b - - 0 1",
+        ] {
+            let pos = pos_of(fen);
+            for (mv, scored) in move_scores(&pos, 3) {
+                assert_eq!(scored.value, -ref_minimax(&pos.play(mv), 2), "{fen} {mv:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn move_values_carries_every_legal_move() {
+        let pos = pos_of("6k1/5ppp/8/8/8/8/8/4R1K1 w - - 0 1");
+        assert_eq!(move_values(&pos, 1).len(), legal_moves(&pos.board).len());
+    }
+
     // ---- budgets: whole iterations or nothing ----
 
     #[test]

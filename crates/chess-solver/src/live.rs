@@ -181,14 +181,13 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(debug_assertions, ignore = "release only: 50 searched choices")]
     fn an_immediate_mate_is_taken_even_at_easy() {
         // Easy's 60% sloppiness would otherwise skip Re8# often; a visible
         // declined mate reads as broken, so it never may.
         let pos = pos_of("6k1/5ppp/8/8/8/8/8/4R1K1 w - - 0 1");
         let mate = <Chess as Adversary>::parse_move(&pos, "e1e8").expect("legal");
         let mut rng = ChaCha20Rng::seed_from_u64(7);
-        for _ in 0..50 {
+        for _ in 0..12 {
             assert_eq!(choose(&pos, Level::Easy, &mut rng), Some(mate));
         }
     }
@@ -240,6 +239,28 @@ mod tests {
                 .is_some_and(|mv| mv != best)
         });
         assert!(varied, "Easy never strayed from the best move in 40 seeds");
+    }
+
+    #[test]
+    fn class_of_is_exact_at_the_terminal_boundary() {
+        assert_eq!(
+            class_of(TERMINAL_MAGNITUDE),
+            0,
+            "the boundary itself is not proven"
+        );
+        assert_eq!(class_of(TERMINAL_MAGNITUDE + 1), 1);
+        assert_eq!(class_of(-TERMINAL_MAGNITUDE), 0);
+        assert_eq!(class_of(-TERMINAL_MAGNITUDE - 1), -1);
+    }
+
+    #[test]
+    fn a_live_position_yields_a_legal_move_at_easy() {
+        // Budgets are sized so depth 1 always completes; a zero- or one-node
+        // budget would return nothing here.
+        let pos = pos_of("6k1/5ppp/8/8/8/8/6P1/4R1K1 w - - 0 1");
+        let mut rng = ChaCha20Rng::seed_from_u64(9);
+        let mv = choose(&pos, Level::Easy, &mut rng).expect("Easy finds a move");
+        assert!(legal_moves(&pos.board).contains(&mv));
     }
 
     #[test]
