@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="mock-version" content="1" />
+<meta name="mock-version" content="2" />
 <meta name="mock-baseline" content="fun@d6c0813" />
-<title>Color Sort — endless-first, a real pour, sign-in · v1 · fun.croft.ing mocks</title>
+<title>Color Sort — endless-first, a real pour, sign-in · v2 · fun.croft.ing mocks</title>
 <link rel="stylesheet" href="harness.css" />
 <style>
 /* =========================================================================
@@ -143,18 +143,34 @@
 @keyframes show  { 0%,11.9% { opacity: 0;} 12% { opacity: 1; transform: scale(1.12);} 13.5%,100% { opacity: 1; transform: scale(1);} }
 @keyframes show2 { 0%,19.5% { opacity: 0;} 19.6% { opacity: 1; transform: scale(1.12);} 21%,100% { opacity: 1; transform: scale(1);} }
 
-/* --- the bolt variant: the nut lifts off the post, flies, threads down ----- */
-.skin-bolt .glass { border: 0; border-radius: 0; background: linear-gradient(#6b6455, color-mix(in srgb, #6b6455 80%, black)) center / 8px 100% no-repeat, linear-gradient(180deg, color-mix(in srgb, #4a4636 88%, white), #4a4636) center / 100% 10px no-repeat bottom; }
-.skin-bolt .glass::after { display: none; }
+/* --- the bolt variant: a threaded BOLT, not a tube. Nuts sit on the shaft;
+   a move UNSCREWS the top nut (it spins as it rises off the thread), carries
+   it level, and SCREWS it down onto the target (spinning the other way). ---- */
 .skin-bolt .lip { display: none; }
-.skin-bolt .u { width: 42px; height: 30px; flex-basis: 30px; margin: 2px auto; border-radius: 6px; background: linear-gradient(180deg, color-mix(in srgb, var(--f) 80%, white), var(--f) 55%, color-mix(in srgb, var(--f) 78%, black)); clip-path: polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%); }
-.skin-bolt .u:first-child { border-radius: 6px; }
+.skin-bolt .glass { border: 0; border-radius: 0; background: none; overflow: visible; }
+.skin-bolt .glass::after { display: none; }
+.skin-bolt .glass::before { content: ""; position: absolute; left: 50%; top: -6px; bottom: 6px; width: 14px; transform: translateX(-50%); border-radius: 4px 4px 0 0;
+  background: repeating-linear-gradient(180deg, #8d8672 0 3px, #5c564a 3px 6px), #6b6455; box-shadow: inset 2px 0 0 rgb(255 255 255 / .18), inset -2px 0 0 rgb(0 0 0 / .35); }
+.skin-bolt .tube .plate { position: absolute; left: -6px; right: -6px; bottom: -8px; height: 14px; border-radius: 4px; background: linear-gradient(180deg, #7a7363, #4a4636); box-shadow: 0 3px 8px rgb(0 0 0 / .45); z-index: 1; }
+.skin-bolt .u { position: relative; z-index: 2; width: 44px; height: 30px; flex-basis: 30px; margin: 2px auto; border-radius: 0; clip-path: polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%);
+  background: radial-gradient(circle at 50% 50%, #2a2622 0 5px, transparent 5.5px), linear-gradient(180deg, color-mix(in srgb, var(--f) 80%, white), var(--f) 55%, color-mix(in srgb, var(--f) 78%, black)); }
+.skin-bolt .u:first-child { border-radius: 0; }
+.skin-bolt .tube.legal .glass, .skin-bolt .tube.selected .glass { box-shadow: none; }
+.skin-bolt .tube.legal .glass::before { box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 55%, transparent); }
+.skin-bolt .tube.selected .glass::before { box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc) 55%, transparent); }
 .thread { --loop: 2.6s; }
-.thread .nut { position: absolute; width: 42px; height: 30px; z-index: 4; background: linear-gradient(180deg, color-mix(in srgb, var(--f) 80%, white), var(--f) 55%, color-mix(in srgb, var(--f) 78%, black)); clip-path: polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%); animation: nut var(--loop) infinite; }
-@keyframes nut { 0% { transform: translate(0,0) rotate(0); opacity: 1;} 6% { transform: translate(0,-64px) rotate(-30deg);} 13% { transform: translate(var(--hx),-64px) rotate(-30deg);} 20% { transform: translate(var(--hx), var(--hy)) rotate(60deg); opacity: 1;} 20.1%,100% { opacity: 0;} }
+.thread .nut { position: absolute; width: 44px; height: 30px; z-index: 4; clip-path: polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%);
+  background: radial-gradient(circle at 50% 50%, #2a2622 0 5px, transparent 5.5px), linear-gradient(180deg, color-mix(in srgb, var(--f) 80%, white), var(--f) 55%, color-mix(in srgb, var(--f) 78%, black)); animation: nut var(--loop) infinite; }
+@keyframes nut {
+  0%    { transform: translate(0,0) rotate(0); opacity: 1; }
+  7.7%  { transform: translate(0,-48px) rotate(-540deg); }                 /* unscrew: 1.5 turns while rising off the thread, 200ms */
+  13.5% { transform: translate(var(--hx),-48px) rotate(-540deg); }         /* carry level, 150ms */
+  21%   { transform: translate(var(--hx), var(--hy)) rotate(0); opacity: 1; } /* screw down: 1.5 turns the other way, 200ms */
+  21.1%,100% { opacity: 0; }
+}
 .thread .src .u.leave { animation: hide var(--loop) infinite; }
 .thread .dst .u.arrive { animation: show-nut var(--loop) infinite; opacity: 0; }
-@keyframes show-nut { 0%,19.9% { opacity: 0;} 20%,100% { opacity: 1;} }
+@keyframes show-nut { 0%,20.9% { opacity: 0;} 21%,100% { opacity: 1;} }
 
 /* --- tube complete ---------------------------------------------------------- */
 .done .cap { animation: capdrop 1.6s infinite; }
@@ -264,12 +280,13 @@
 <body class="dir-e">
 <div class="h-wrap">
   <a class="h-back" href="index.html">← All directions</a>
-  <p class="h-kicker">Mock E · Color Sort · <b>v1</b> · baseline <code>fun@d6c0813</code></p>
+  <p class="h-kicker">Mock E · Color Sort · <b>v2</b> · baseline <code>fun@d6c0813</code></p>
   <h1>Color Sort — endless-first, a real pour, sign-in</h1>
   <p class="h-lede">Eight proposals for one game, to be talked through before a line of production code: how Color Sort opens, how a pour looks and sounds in each of its three skins, where the Daily lives before and after the fifth solve, and what signing in buys. Everything sits inside the shipped game frame. Plan: <code>plans/2026-08-29-plan-color-sort-redesign.md</code> (decisions D1–D12 settled 2026-08-29).</p>
   <div class="h-switch" data-theme-switch><span class="rev">Theme:</span><button data-set="dark" aria-pressed="true">Night</button><button data-set="light" aria-pressed="false">Day</button></div>
 
   <h2>Revisions</h2>
+  <p class="rev"><b>v2</b> — the bolt skin redrawn as a threaded bolt with a base plate (owner: nuts screw and unscrew; they were drawn as a tube of hexagons); the pour choreography for bolts is now unscrew → carry → screw down. Adds <code>e-color-sort.claims.json</code>, the parity contract (§ "Does the build match the mock?").</p>
   <p class="rev"><b>v1</b> — first draft, branch <code>claude/color-sort-redesign</code>. Captures: <code>snaps/color-sort.*</code> from <code>fun@d6c0813</code> via <code>tools/mock-snaps.mjs</code> (added on this branch).</p>
 
   <h2>Open decisions</h2>
@@ -357,7 +374,7 @@
   </div>
 
   <h3 class="h-pair-title">3 · The pour — moving, in all three skins</h3>
-  <p class="h-note">One engine, one move, three choreographies (D2: "let's go all out"). <b>Water</b>: lift 120ms → travel and tilt about the lip 200ms → stream while the units leave and arrive at 160ms each → return 200ms; the next tap is accepted during the return. <b>Balls</b>: no tilt — each ball hops an arc, 140ms a ball, and lands with a squash. <b>Bolts</b>: the nut lifts off the post, crosses, and threads down with a quarter-turn. Below, the same pour frozen at each phase so a reviewer can point at a frame.</p>
+  <p class="h-note">One engine, one move, three choreographies (D2: "let's go all out"). <b>Water</b>: lift 120ms → travel and tilt about the lip 200ms → stream while the units leave and arrive at 160ms each → return 200ms; the next tap is accepted during the return. <b>Balls</b>: no tilt — each ball hops an arc, 140ms a ball, and lands with a squash. <b>Bolts</b>: the top nut unscrews — spinning as it rises off the thread — crosses level, and screws down onto the target. Below, the same pour frozen at each phase so a reviewer can point at a frame.</p>
   <div class="strip">
     <figure><div class="pane" style="--glass: rgb(255 255 255 / .06)"><span class="label">Water · looping · 2 units, tube 1 → tube 3</span><div class="board pour" style="--dx:116px; --dy:-32px;">
       <div class="tube src"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c4)"></div><div class="u leave second" style="--f:var(--c1)"></div><div class="u leave" style="--f:var(--c1)"></div></div></div>
@@ -372,12 +389,12 @@
       <div class="ball" style="--f:var(--c1); left: 57px; top: 142px;"><i></i></div>
       <div class="ball second" style="--f:var(--c1); left: 57px; top: 176px;"><i></i></div>
     </div></div><figcaption><b>Balls.</b> The source lifts and holds; the top ball arcs 70px up and over, lands one slot up, then the next. A tilted tube of balls would be the wrong physics.</figcaption></figure>
-    <figure><div class="pane skin-bolt"><span class="label">Bolts · looping · 1 nut threads over</span><div class="board thread" style="--hx:156px; --hy:0px;">
-      <div class="tube src"><div class="glass"><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c4)"></div><div class="u leave" style="--f:var(--c1)"></div></div></div>
-      <div class="tube"><div class="glass"><div class="u" style="--f:var(--c0)"></div><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c3)"></div></div></div>
-      <div class="tube dst"><div class="glass"><div class="u" style="--f:var(--c1)"></div><div class="u" style="--f:var(--c1)"></div><div class="u arrive" style="--f:var(--c1)"></div></div></div>
+    <figure><div class="pane skin-bolt"><span class="label">Bolts · looping · 1 nut unscrews, crosses, screws down</span><div class="board thread" style="--hx:156px; --hy:0px;">
+      <div class="tube src"><div class="plate"></div><div class="glass"><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c4)"></div><div class="u leave" style="--f:var(--c1)"></div></div></div>
+      <div class="tube"><div class="plate"></div><div class="glass"><div class="u" style="--f:var(--c0)"></div><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c3)"></div></div></div>
+      <div class="tube dst"><div class="plate"></div><div class="glass"><div class="u" style="--f:var(--c1)"></div><div class="u" style="--f:var(--c1)"></div><div class="u arrive" style="--f:var(--c1)"></div></div></div>
       <div class="nut" style="--f:var(--c1); left: 51px; top: 176px;"></div>
-    </div></div><figcaption><b>Bolts.</b> The nut unthreads upward off the post, crosses level, and threads down onto the target with a turn — a "clack" when it seats.</figcaption></figure>
+    </div></div><figcaption><b>Bolts.</b> Nuts on a threaded bolt, not in a tube: the top nut spins a turn and a half as it rises off the thread, crosses level, and spins back down onto the target bolt — a ratchet while it turns, a clack when it seats.</figcaption></figure>
   </div>
   <div class="strip">
     <figure><div class="pane"><span class="label">① lift · 120ms</span><div class="board pour pose at-lift" style="--dx:116px; --dy:-32px;"><div class="tube src"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c4)"></div><div class="u leave second" style="--f:var(--c1)"></div><div class="u leave" style="--f:var(--c1)"></div></div></div><div class="tube"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c0)"></div><div class="u" style="--f:var(--c2)"></div><div class="u" style="--f:var(--c3)"></div></div></div><div class="tube dst"><div class="lip"></div><div class="glass"><div class="u" style="--f:var(--c1)"></div><div class="u" style="--f:var(--c1)"></div><div class="u arrive" style="--f:var(--c1)"></div><div class="u arrive second" style="--f:var(--c1)"></div></div></div><div class="stream" style="--f:var(--c1); left: 212px; top: 108px; height: 100px;"></div></div></div><figcaption>The selected tube rises 14px — the same pose as selection, so a pour begins from where the eye already is.</figcaption></figure>
@@ -517,7 +534,11 @@
   </div>
 
   <h3 class="h-pair-title">8 · Sound — three timbres, one preference</h3>
-  <p class="h-note">Synthesised in Web Audio (D11): zero bytes, unlocked on the first tap. <b>Water</b>: four 80ms sine blips 200–500Hz during the stream, a 400→150Hz plop at settle. <b>Balls</b>: a short clink per landing, pitch rising with the slot. <b>Bolts</b>: a ratchet during the thread, a clack at seat. Tube complete: a two-note chime in every skin. The frame's Sound row governs all of it; the music bar is untouched.</p>
+  <p class="h-note">Synthesised in Web Audio (D11): zero bytes, unlocked on the first tap. <b>Water</b>: four 80ms sine blips 200–500Hz during the stream, a 400→150Hz plop at settle. <b>Balls</b>: a short clink per landing, pitch rising with the slot. <b>Bolts</b>: a ratchet while the nut turns, a clack when it seats. Tube complete: a two-note chime in every skin. The frame's Sound row governs all of it; the music bar is untouched.</p>
+
+  <!-- ===================================================================== -->
+  <h2>Does the build match the mock?</h2>
+  <p class="h-note">Every promise on this page that a build could fail to keep is a row in <code>e-color-sort.claims.json</code> — 30 claims, each naming the exact title of the test that proves it and the phase that builds it. <code>tests/mock-parity.test.ts</code> (in the gate) refuses a plan Status that calls a phase COMPLETE while one of its claims has no wired spec, and refuses a claims file whose timings differ from the numbers on this page. After each phase the shipped surface is re-captured with <code>tools/mock-snaps.mjs</code> and stands here as <b>Shipped</b> beside Proposed. Full mechanism: the plan, § "Does the build match the mock?".</p>
 
   <!-- ===================================================================== -->
   <h2>Mapping to code</h2>

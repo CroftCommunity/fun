@@ -161,6 +161,61 @@ keeps today (`color-sort/stats`, `color-sort/endless`, `color-sort/daily/<day>`)
 feeding the frame's progress store (`fun-progress-<id>`) rather than duplicating it —
 resolved in phase C, not here.
 
+## Does the build match the mock? — the parity contract
+
+Owner, 2026-08-29: "sometimes our plans have not quite matched our mocks so let's build
+in protections to verify it looks and behaves like the mock". The protection is three
+documents bound by one test, so drift between them is a red board, not a feeling:
+
+```
+ mocks/e-color-sort.html ◀── mockVersion must equal ──┐
+        │ states timings (120ms, 160ms …)              │
+        ▼                                              │
+ mocks/e-color-sort.claims.json ── every promise the drawing makes, as
+        │   { id, proposal, phase, kind, claim, spec }   one claim naming the
+        │                                                exact spec title
+        ▼
+ plans/…-color-sort-redesign.md **Status:** "Phases A–B COMPLETE"
+        │
+        ▼
+ tests/mock-parity.test.ts  (unit, in the gate)
+   · claims well-formed; ids and spec titles unique; spec title starts "mock <id>:"
+   · every `NNNms` a claim quotes appears in the mock's own text
+   · for every phase the Status line calls COMPLETE, each of its claims has a
+     `test("<spec title>")` somewhere under tests/ — or the board is red
+```
+
+Watched red 2026-08-29: with Status edited to "Phases A–B COMPLETE" the test listed the
+sixteen A/B claims that have no spec yet; restored, it is green with zero owed.
+
+**Four kinds of claim, four kinds of proof** (the claim's `kind` says which):
+
+| kind | proves it by | example |
+|---|---|---|
+| `structure` | DOM queries in the frame's bands: which verbs, which meters, which rows, in the mock's order | E2.1 dock = Undo · Hint · New game… · Restart · Settings |
+| `measure` | `getBoundingClientRect()` at 390×844 and 1280×900 | E2.3 tube ≥ 44px; E2.2 board top pixel identical before/after |
+| `behaviour` | drive the core, then read `document.getAnimations()` for durations, or the DOM for the outcome | E3.1 four animations, 120 / 200 / 160·n / 200 ms |
+| `look` | a computed-style or capture assertion | E3.2 `transform-origin` at the lip; E9.1 a Shipped capture beside Proposed |
+
+**Definition of done, per phase** (in addition to the repo's gate and the guide shots):
+
+1. Every claim tagged with the phase has its spec, written RED first against the
+   unmigrated page where the mock changes behaviour (the frame plan's Pass-3 recipe).
+2. The plan's Status line names the phase COMPLETE — which is what makes the parity test
+   demand those specs — and the Review Log pastes the test's line for that phase.
+3. `node tools/mock-snaps.mjs color-sort` is re-run on the committed tree and the capture
+   stands in the mock as a **Shipped** column beside Proposed (mock-version and
+   mock-baseline bumped). The visual half is a human comparison; the claims are the
+   checkable half. Neither replaces the other.
+
+What this cannot catch: a spec that passes without proving its claim. That is review
+(pr-reviewer reads claims.json next to the spec); the test only guarantees the spec exists,
+is wired, and agrees with the mock's numbers.
+
+**Owed to the workspace:** this is a candidate rule for `CroftC/.claude/MOCKS.md` (rule 6:
+"a mock that will be built ships a claims file, and the plan's phases are gated on it").
+Proposed after it has survived one game, not before — PATTERN.md's own sequencing.
+
 ## Research (2026-08-29, two sweeps; sources inline)
 
 ### Genre — what the leading apps do
