@@ -751,8 +751,9 @@ What is the same, and what is new:
   horizon-visible loss) — the full-solve speed wall means those are the honest
   bounds. See `docs/AI-PLAYERS.md` → "How Drop 4 ships it".
 - **Give the opponent an identity.** A computer opponent should be legible as a
-  *who*, not a silent force: a turn bar naming both sides (Drop 4: "The Engine — since the game frame, the seats in band ③ with "thinking" as a seat state (§4c)
-  🤖") and showing whose turn it is, the opponent's move made **visible** (a ring
+  *who*, not a silent force: the frame's two seats naming both sides (Drop 4: "The Engine
+  🤖") and showing whose turn it is — since the game frame, band ③ with "thinking" as a
+  seat state (§4c) — the opponent's move made **visible** (a ring
   on its last drop + a brief "thinking" beat), and — on a decisive end — the
   winning move shown with a beat of fanfare before the result screen (which
   carries the final board). Where the marks are symmetric, let the player choose

@@ -245,8 +245,11 @@ test("a campaign success surfaces a skippable Biscuit beat; Skip dismisses it", 
   // --ink on --surface, i.e. 12.9:1.
   // Wait for the animations themselves rather than sleeping.
   await beat.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
-  // The card is accessible while shown.
-  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  // The card is accessible while shown. Scoped to the card: the beat auto-dismisses
+  // after 6 s (`trio-tumble-overlay.ts`), and a whole-page scan on CI's WebKit under
+  // load ran past that — Skip was then looked for on a card that had already gone
+  // (PR 69, run 33295477257). The claim is about the card, so scan the card.
+  expect((await new AxeBuilder({ page }).include(".m3-beat").analyze()).violations).toEqual([]);
   // Skip is one tap and dismisses it.
   await beat.locator(".m3-beat-skip").click();
   await expect(beat).toHaveCount(0);

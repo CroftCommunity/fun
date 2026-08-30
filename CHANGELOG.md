@@ -12,6 +12,18 @@ earlier is in `git log`.
 
 ## 2026-08
 
+- 2026-08-30 **shelf:** ⤢ is the real thing. Full screen asks the browser's Fullscreen
+  API — the frame stays, the shelf bar goes, and leaving by Esc or a gesture un-presses
+  the toggle — and where a browser has no API for a page (iOS Safari; Playwright's WebKit)
+  it says so in a toast instead of pretending: "Full screen isn't available in this
+  browser — install the app for it." A feature-detect, not a try/catch: on those browsers
+  the function simply is not there. (`plans/2026-08-30-plan-game-frame.md` Phase 22, D5)
+- 2026-08-30 **shelf:** the control surfaces the games used to draw for themselves are
+  gone from `styles.css` — the Solitaire-era control bar, mode buttons and settings
+  disclosure, Drop 4's turn bar, Align's slider row, Color Sort's action row, the Tier-2
+  wrapped-game residue (3.4 KB) — and a unit test keeps them out of `src/` and the
+  stylesheet. Cribbage's `.crib-turnbar` survives as the final table's scoreline.
+  (`plans/2026-08-30-plan-game-frame.md` Phase 22)
 - 2026-08-30 **looseends:** inside the frame. The poster is the home now — its own home
   screen is gone — and the Levels card (the dock's one verb) offers the next unsolved
   level, the level grid or the daily calendar; the level and the solved tally are the

@@ -146,49 +146,6 @@ body {
   border-radius: var(--radius);
 }
 
-/* Tier-2 honest-representation banner: a wrapped game has no verifiable record,
-   and the shelf says so above the game. Uses semantic tokens only. */
-.wrapped-banner {
-  margin: 0 0 0.75rem;
-  padding: 0.6rem 0.9rem;
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--accent);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--ink-muted);
-  font-size: 0.85rem;
-  line-height: 1.35;
-}
-.wrapped-banner p {
-  margin: 0;
-}
-.wrapped-banner-claim {
-  color: var(--ink);
-  font-weight: 600;
-}
-.wrapped-banner-credit {
-  margin-top: 0.2rem;
-}
-.wrapped-banner a {
-  color: var(--link);
-}
-
-/* A wrapped game's sandboxed frame fills the play area with no chrome of its
-   own; the honest-representation banner sits above it (in our chrome). */
-.wrapped-game-frame {
-  display: block;
-  width: 100%;
-  height: 70vh;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-}
-body.fullscreen .wrapped-game-frame {
-  height: 100vh;
-  border: 0;
-  border-radius: 0;
-}
-
 /* Full-screen: hide the chrome, let the play area fill the viewport. */
 body.fullscreen .chrome-header,
 body.fullscreen .drawer {
@@ -865,14 +822,6 @@ body:has(> .play-area > .gf) {
    The board is a felt play surface; cards are warm ivory with classic suits;
    the brass accent marks legal targets and actions, moss marks the verifiable
    win, rust a failed verification. */
-.sol-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-.sol-controls button,
 .sol-result-controls button,
 .sol-result-controls .sol-share {
   font: inherit;
@@ -883,20 +832,6 @@ body:has(> .play-area > .gf) {
   border-radius: var(--radius);
   padding: 0.4rem 0.7rem;
   text-decoration: none;
-}
-.sol-modes {
-  display: flex;
-  gap: 0.25rem;
-}
-.sol-controls button[aria-pressed="true"] {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--accent-ink);
-}
-.sol-assist-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
 }
 .sol-status {
   min-height: 1.4em;
@@ -1060,23 +995,7 @@ body:has(> .play-area > .gf) {
   }
 }
 
-/* Settings disclosure + contextual result note. */
-.sol-settings {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 0.2rem 0.5rem;
-  background: var(--surface);
-}
-.sol-settings summary {
-  cursor: pointer;
-  padding: 0.2rem 0;
-}
-.sol-setting {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.15rem 0;
-}
+/* Contextual result note. */
 .sol-note {
   margin: 0 0 1rem;
   color: var(--ink-muted);
@@ -2532,40 +2451,6 @@ body:has(> .play-area > .gf) {
   padding-inline: 0.6rem;
 }
 
-/* Turn bar — the two players' identities, with the active side lit. */
-.drop4-player {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.25rem 0.6rem;
-  border-radius: 999px;
-  border: 2px solid transparent;
-  color: var(--ink);
-  font-weight: 600;
-}
-.drop4-player.active {
-  border-color: var(--active);
-  background: color-mix(in srgb, var(--active) 14%, transparent);
-}
-.drop4-vs {
-  color: var(--ink-muted);
-  font-size: 0.85rem;
-}
-/* A small disc chip, reused in the turn bar + the mark chooser. */
-.drop4-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.4rem;
-  height: 1.4rem;
-  border-radius: 50%;
-  font-size: 0.9rem;
-  line-height: 1;
-  color: rgb(255 255 255 / 92%);
-  text-shadow: 0 1px 1px rgb(0 0 0 / 45%);
-}
-.drop4-chip.x { background: var(--d4-x); }
-.drop4-chip.o { background: var(--d4-o); }
 
 /* Options: difficulty + which mark you play. */
 .drop4-mark {
@@ -3127,25 +3012,6 @@ body:has(> .play-area > .gf) {
   .al-tbtn:active { transform: none; }
 }
 
-/* The left/right speed slider row inside the Align settings sheet. */
-.al-range {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.al-range-label {
-  flex: 0 0 auto;
-}
-.al-range .al-set-speed {
-  flex: 1 1 auto;
-  min-width: 6rem;
-  accent-color: var(--active);
-}
-.al-range-val {
-  flex: 0 0 auto;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-muted);
-}
 @media (min-width: 720px) {
   /* On a real keyboard the touch pad is optional — keep it but shrink it. */
   .al-touch { max-width: 22rem; }
@@ -3277,16 +3143,6 @@ body:has(> .play-area > .gf) {
    hues live in tokens.css as --cs-c0..c11).
    ============================================================================ */
 .cs-game { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; width: 100%; }
-.cs-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; justify-content: center; }
-.cs-undo, .cs-restart {
-  padding: 0.35rem 0.7rem;
-  border-radius: var(--r-card);
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--ink);
-  cursor: pointer;
-}
-.cs-undo:hover, .cs-restart:hover { border-color: var(--accent); }
 
 
 /* The board: tubes wrap into balanced rows and stay centred. `--cs-cols` caps
@@ -3694,9 +3550,6 @@ a.le-btn {
   overflow: hidden;
   background: var(--le-bg);
   touch-action: none;
-}
-body.fullscreen .le-stage {
-  height: 100dvh;
 }
 .le-canvas {
   display: block;

@@ -237,12 +237,19 @@ test("the board fits a narrow phone with no horizontal overflow", async ({ page 
   expect(noOverflow).toBe(true);
 });
 
-test("full-screen keeps the board mounted and playable", async ({ page }) => {
+test("full-screen keeps the board mounted and playable", async ({ page, browserName }) => {
   await page.goto("/solitaire/?seed=0");
   await ready(page);
 
   await page.getByRole("button", { name: /toggle full screen/i }).click();
-  await expect(page.locator("body")).toHaveClass(/fullscreen/);
+  // ⤢ is the Fullscreen API (plan D5). Playwright's WebKit has no API at all (D1),
+  // so there it says so in a toast and the page stays as it was.
+  if (browserName === "webkit") {
+    await expect(page.locator(".gf-toast")).toContainText(/install the app/i);
+    await expect(page.locator("body")).not.toHaveClass(/fullscreen/);
+  } else {
+    await expect(page.locator("body")).toHaveClass(/fullscreen/);
+  }
   await expect(page.locator(".sol-board")).toBeVisible();
 
   // Still playable: the stock still draws in full-screen.

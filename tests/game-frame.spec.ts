@@ -243,6 +243,32 @@ test("leaving mid-game and coming back shows the continue card, and Continue res
   expect(await page.evaluate(() => localStorage.getItem("fun-progress-placeholder"))).toBeNull();
 });
 
+test("⤢ is the Fullscreen API: the frame stays, the shelf bar goes; without the API it says so", async ({ page, browserName }) => {
+  await page.goto("/placeholder/?play=1");
+  await ready(page);
+  // By class, not role: once the shelf bar is hidden the button has no accessible
+  // presence, and the assertions below read it while hidden.
+  const toggle = page.locator(".fullscreen-toggle");
+  await toggle.click();
+  if (browserName === "webkit") {
+    // D1, recorded: no requestFullscreen at all here (and none on iOS Safari for a
+    // page), so the honest thing is a toast and an unpressed toggle.
+    await expect(page.locator(".gf-toast")).toContainText(/install the app/i);
+    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+    expect(await page.evaluate(() => document.fullscreenElement)).toBeNull();
+    return;
+  }
+  await expect.poll(() => page.evaluate(() => document.fullscreenElement?.tagName ?? null)).toBe("HTML");
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".chrome-header")).toBeHidden();
+  await expect(page.locator(".gf-game-bar")).toBeVisible();
+  await expect(page.locator(".gf-stage .placeholder-game")).toBeVisible();
+  // Leave by the browser's own route: the toggle follows.
+  await page.evaluate(() => document.exitFullscreen());
+  await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator(".chrome-header")).toBeVisible();
+});
+
 test("?r= and any other query is a deep link — no poster, the board mounts", async ({ page }) => {
   for (const q of ["?r=x", "?seed=7", "?fast=1"]) {
     await page.goto(`/placeholder/${q}`);

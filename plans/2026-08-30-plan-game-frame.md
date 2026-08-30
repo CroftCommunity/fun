@@ -1,6 +1,6 @@
 # Plan — the Game Frame: one structure for every game page, and a progress store
 
-**Status:** Pass 1 + Pass 2 + **Pass 3 COMPLETE** (2026-08-30, fresh context). Six open
+**Status:** **LANDED — Phases 0–22 executed and merged 2026-08-30** (Review Log below, newest first). Planning history: Pass 1 + Pass 2 + **Pass 3 COMPLETE** (2026-08-30, fresh context). Six open
 questions CONFIRMED by the owner 2026-08-30 ("accept all as recommended"); Pass 3 added
 **Q7 and Q8**; both ADOPTED as recommended under the owner's blanket "go until all phases
 are done, PR and merge when ready" (2026-08-30) — **Q7 (what a URL with query
@@ -8,7 +8,7 @@ parameters does once every bare URL opens on a start screen) gates Phase 5** and
 thing between this plan and execution: Phases 0–4 may start now. D5 was resolved during
 planning (read-only, see Verified Assumptions) and is struck from Phase 0. Phases 1, 2, 3
 and 5 carry sub-phases (1a/1b, 2a/2b, 3a/3b, 5a/5b) — each with its own Done-when and
-wiring test — because each touched four or more files. Phases 0–21 COMPLETE (2026-08-30). Mocks
+wiring test — because each touched four or more files. Phases 0–22 COMPLETE — the plan is landed (2026-08-30). Mocks
 landed on `main` (`mocks/d-game-frame.html`, PR #45, `6c4dd9c`); owner decisions D1–D5
 recorded.
 
@@ -1104,6 +1104,37 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
    it changes one test case either way.*
 
 ## Review Log
+
+### Phase 22 — executed 2026-08-30 (full screen, the sweep, the docs)
+- Red first, three cases in `tests/chrome.test.ts` on a fake Fullscreen API installed on
+  the root (jsdom has none): ⤢ calls `requestFullscreen` where the detect passes and the
+  body takes `.fullscreen`; without the API it toasts Q1's copy and stays unpressed;
+  `fullscreenchange` with no element (Esc) un-presses it. `tests/dead-css.test.ts`: none
+  of the retired control classes in `src/`, none of their rules in `styles.css`, the only
+  `*-turnbar` rule Cribbage's final scoreline, no `*-banner` rule at all.
+- `src/chrome.ts`: the feature-detect D1 recorded (`typeof requestFullscreen ===
+  "function" && fullscreenEnabled`), the API call with a `.catch` that un-paints, exit
+  through `exitFullscreen`, and a `fullscreenchange` listener. The browser spec covers
+  both engines: chromium reaches `fullscreenElement = HTML` with the shelf bar hidden and
+  the game bar showing, and comes back on `exitFullscreen()`; WebKit sees the toast. The
+  two older specs that clicked ⤢ and expected the CSS-only class now branch on the engine.
+  Found on the way: the toggle has no accessible presence once the bar is hidden, so the
+  spec reads it by class.
+- `styles.css` −3,408 chars: `.wrapped-*` (Tier-2, no caller since 2026-08-29),
+  `.sol-controls` / `.sol-modes` / `.sol-settings` / `.sol-setting` / `.sol-assist-label`,
+  `.drop4-player` / `.drop4-vs` / `.drop4-chip`, `.al-range*`, `.cs-actions` / `.cs-undo` /
+  `.cs-restart`, `body.fullscreen .le-stage`. The shared button rule keeps its
+  `.sol-result-controls` selectors.
+- Docs: `README.md` (every game is on the frame; ⤢; Drop 4's seats), `docs/BUILDING-GAMES.md`
+  (a sentence §10 had garbled in an earlier phase), `docs/STATE-OF-PLAY.md` (the
+  2026-08-30 addendum: what the migration measured and what stays open), `mocks/README.md`
+  (Direction D marked shipped, with the two places the shipped thing differs from the mock).
+- **Owed, and recorded as owed:** the broad device pass (Samsung + Pixel) across the
+  migrated games and this phase's "fills the display on Android / says why not on iOS".
+  The sampler and both engines stood in for every phase; the phones did not run today.
+  Also open: Align's continue card (needs the core's input log).
+- Green: unit suite in full, typecheck, lint, the three ⤢ specs on both engines, the full
+  `npm run e2e` locally (shared code changed) — see the line below.
 
 ### Phase 21 — executed 2026-08-30 (Loose Ends)
 - Red first: 3 of 7 against the unmigrated page (chromium). The game's own home screen

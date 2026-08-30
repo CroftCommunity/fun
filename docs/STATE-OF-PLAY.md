@@ -1,4 +1,39 @@
-# State of play — 2026-08-06, with a 2026-08-07 addendum
+# State of play — 2026-08-06, with 2026-08-07 and 2026-08-30 addenda
+
+> ## Addendum — 2026-08-30: every game page is the game frame
+>
+> The shelf's game pages share one structure now — `docs/BUILDING-GAMES.md` §4c, the
+> plan `plans/2026-08-30-plan-game-frame.md` (Phases 0–22, all landed the same day, one
+> game per phase, each a PR gated by the full CI suite). What a game declares is a
+> `GameFrameSpec` — meters, verbs, a setup card, preferences — and the frame renders it
+> as four fixed-height bands around the stage: nothing above the board moves while you
+> play, which was the phone complaint that started this. The poster is every game's
+> front door; the continue card comes from `src/progress.ts`.
+>
+> What the migration measured, because the plan's estimates were wrong where it mattered:
+>
+> - **Two real layout bugs the stability sampler found.** Bubble's page was 893px tall at
+>   390×844 (the body used `min-height`, so a tall game grew the page rather than the
+>   stage scrolling) and tapping Fire moved the board 123px; Align's column was 83px taller
+>   than the stage and a pad tap moved it 46px. Both boards now size to the stage. And a
+>   CSS-only fix that held on Chromium squashed the canvas on WebKit (a max-height clamp)
+>   and never settled on CI's Linux WebKit (`height: 100%` of a flexed row): Align's board
+>   height is set in pixels by a ResizeObserver. Two engines are two engines.
+> - **One frame bug that CI found before a person did.** The settings sheet's radios were
+>   named by row id and the frame renders preferences twice (the phone's sheet, the rail's
+>   inline copy rebuilt on every update) — one radio group across both, so the hidden copy
+>   unchecked the visible one. It showed as a CI-only unchecked Cribbage peg-board mode
+>   and a Color Sort skin pick that "did not change its state".
+> - **Continue is honest about what it is.** Twelve games replay their move list; Align and
+>   Orchard Drop have no card (wall-clock runs whose core hands out its record only at the
+>   end); Loose Ends reopens the level.
+> - ⤢ is the Fullscreen API where the browser has one and a toast where it does not —
+>   Playwright's mobile-webkit and iOS Safari have **no API at all** for a page, so the
+>   check is a feature-detect, not a try/catch (D1).
+>
+> Open from the plan: the owed Samsung + Pixel device passes across the migrated games
+> (recorded per phase as owed; the sampler and both engines stood in), and Align's
+> continue card, which needs the core to expose its input log.
 
 > ## Addendum — 2026-08-07: the latency floor, closed
 >

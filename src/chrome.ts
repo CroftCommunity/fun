@@ -433,13 +433,40 @@ export function boot(root: HTMLElement = document.body): Chrome {
     }
   });
 
-  // --- full screen (chrome hidden; the game instance is NOT remounted) ---
+  // --- full screen: the Fullscreen API, the frame intact, the shelf bar gone (plan D5) ---
+  // Feature-detect, not try/catch: Playwright's mobile-webkit (and iOS Safari for
+  // anything but video) has NO API — `requestFullscreen` is undefined and the
+  // call throws TypeError (D1, recorded) — so asking is the wrong shape. Where the
+  // detect fails, ⤢ says so in the frame's toast and stays unpressed. The game
+  // instance is never remounted either way.
   let full = false;
-  const setFull = (next: boolean): void => {
+  const paintFull = (next: boolean): void => {
     full = next;
     root.classList.toggle("fullscreen", full);
     fullscreenBtn.setAttribute("aria-pressed", String(full));
   };
+  const canFullscreen = (): boolean =>
+    typeof document.documentElement.requestFullscreen === "function" && document.fullscreenEnabled === true;
+  const setFull = (next: boolean): void => {
+    if (next && !canFullscreen()) {
+      console.debug("[chrome] fullscreen unavailable: no Fullscreen API");
+      frame?.toast("Full screen isn\u2019t available in this browser \u2014 install the app for it.", 6000);
+      return;
+    }
+    paintFull(next);
+    if (next) {
+      document.documentElement.requestFullscreen().catch((err: unknown) => {
+        console.debug(`[chrome] fullscreen refused: ${String(err)}`);
+        paintFull(false);
+      });
+    } else if (document.fullscreenElement) {
+      void document.exitFullscreen();
+    }
+  };
+  // The browser leaves full screen on its own too (Esc, a gesture): follow it.
+  document.addEventListener("fullscreenchange", () => {
+    if (!document.fullscreenElement && full) paintFull(false);
+  });
   fullscreenBtn.addEventListener("click", () => setFull(!full));
 
   return {

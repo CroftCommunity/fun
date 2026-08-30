@@ -16,8 +16,9 @@ that implements one contract and renders chrome-agnostically into a mount point 
 once and every game reuses it. Since 2026-08-30 every game page is the **game frame**
 (`docs/BUILDING-GAMES.md` §4c): a game bar (back · name · ⋯ with How to play and open-in-new-tab), a
 meter row, the stage the game renders into, and a dock of at most five verbs — four fixed-height bands
-around the board, so nothing above it moves while you play. Games are migrating onto it one at a time;
-an unmigrated game still shows its own controls inside the stage. Shelf order: **solitaire → trio tumble → bubble → wyrdle → 2048 → drop 4 → align → blockdoku → loose ends → cribbage** (cribbage shipped 2026-08-29, against the engine).
+around the board, so nothing above it moves while you play. Every game is on it (the migration
+landed 2026-08-30, one game per phase); ⤢ in the shelf bar is the real Fullscreen API where the
+browser has one, and says so where it does not (iOS Safari). Shelf order: **solitaire → trio tumble → bubble → wyrdle → 2048 → drop 4 → align → blockdoku → loose ends → cribbage** (cribbage shipped 2026-08-29, against the engine).
 
 ## Layout
 
@@ -148,8 +149,8 @@ Plan: `plans/2026-07-31-2048.md`.
 `/drop4/` is the shelf's first **two-player adversarial** game: you versus **The
 Engine**, the classic computer opponent. Tap anywhere in a column to drop your
 disc into its lowest empty slot; four in a row — across, up, or diagonally —
-wins, and a full board is a draw. A turn bar shows both players and whose move it
-is; The Engine's reply is ringed so you can see it; on a win the four is
+wins, and a full board is a draw. The frame's two seats show both players and whose
+move it is ("thinking" is the engine's seat state); The Engine's reply is ringed so you can see it; on a win the four is
 highlighted before a final board you can re-verify. You choose your disc (✕ or ○)
 and the opponent's strength (Easy / Medium / Hard / Expert); both persist. The
 core owns legality (a full column is not a legal target); a match records **both**
