@@ -15,7 +15,7 @@ import { solitaireModule, solitaireSetup } from "./games/solitaire.js";
 import { trioTumbleModule, trioTumbleSetup } from "./games/trio-tumble.js";
 import { bubbleModule, bubbleSetup } from "./games/bubble/bubble.js";
 import { wyrdleModule, wyrdleSetup } from "./games/wyrdle/wyrdle.js";
-import { twenty48Module } from "./games/2048/2048.js";
+import { twenty48Module, twenty48Setup } from "./games/2048/2048.js";
 import { drop4Module, drop4Setup } from "./games/drop4/drop4.js";
 import { othelloModule, othelloSetup } from "./games/othello/othello.js";
 import { checkersModule, checkersSetup } from "./games/checkers/checkers.js";
@@ -71,7 +71,16 @@ export const SHIPPED: readonly GameEntry[] = [
     setup: wyrdleSetup,
     load: wyrdleModule,
   },
-  { id: "2048", title: "2048", emoji: "🔢", status: "playable", icon: true, load: twenty48Module },
+  {
+    id: "2048",
+    title: "2048",
+    emoji: "🔢",
+    status: "playable",
+    icon: true,
+    pitch: "Slide, merge, double. Reach the 2048 tile on today's board or a fresh one — every slide replays to a verifiable score.",
+    setup: twenty48Setup,
+    load: twenty48Module,
+  },
   {
     id: "drop4",
     title: "Drop 4",

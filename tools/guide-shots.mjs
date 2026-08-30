@@ -195,10 +195,19 @@ const SHOTS = [
           window.__t2048.playDir(d);
         }
       });
-      // End the round to reach the verifiable result screen.
-      await page.click(".sol-settings summary");
-      await page.uncheck(".sol-set-hints");
-      await page.click(".sol-stuck");
+      // End the round to reach the verifiable result screen: with hints off the
+      // dock's verb is "I'm done".
+      await page.evaluate(() => localStorage.setItem("fun-hints", "off"));
+      await page.reload({ waitUntil: "networkidle" });
+      await page.waitForFunction(() => Boolean(window.__t2048));
+      await page.evaluate(() => {
+        for (let i = 0; i < 20; i += 1) {
+          const d = window.__t2048.game.hint();
+          if (!d) break;
+          window.__t2048.playDir(d);
+        }
+      });
+      await page.click('.gf-verb[data-verb="done"]');
       await page.waitForSelector(".sol-result");
     },
   },

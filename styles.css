@@ -2379,11 +2379,6 @@ body:has(> .play-area > .gf) {
   margin: 0 auto;
   padding-inline: 0.75rem;
 }
-.t48-game .sol-controls {
-  justify-content: center;
-  margin-bottom: 0;
-}
-
 .t48-board {
   display: inline-flex;
   flex-direction: column;
@@ -2438,13 +2433,6 @@ body:has(> .play-area > .gf) {
   color: var(--t48-max-ink);
 }
 
-.t48-hud {
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-  margin: 0.3rem 0;
-  color: var(--ink);
-}
 
 .t48-pad {
   display: grid;
@@ -2497,14 +2485,9 @@ body:has(> .play-area > .gf) {
 }
 
 /* 2048 legibility: a goal banner, a merge score-float, and a subtle tile pop. */
-.t48-banner {
-  max-width: 22rem;
-  margin: 0.2rem auto 0;
-  text-align: center;
-  color: var(--ink-muted);
-  font-size: 0.95rem;
-}
-.t48-score {
+/* The "+N" floats up from the top edge of the board (the score itself is a
+   meter in the frame, patched in place — nothing to hang a float on). */
+.t48-board {
   position: relative;
 }
 .t48-float {
