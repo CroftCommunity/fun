@@ -3954,35 +3954,6 @@ body.fullscreen .le-stage {
   align-items: center;
   gap: 0.5rem;
 }
-.dots-turnbar {
-  display: flex;
-  gap: 0.9rem;
-  align-items: baseline;
-  font-weight: 600;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-.dots-turn {
-  color: var(--ink-muted);
-  font-weight: 500;
-}
-.dots-controls {
-  flex-wrap: wrap;
-  justify-content: center;
-}
-.dots-field {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.9rem;
-}
-.dots-banner {
-  max-width: 26rem;
-  margin: 0;
-  text-align: center;
-  font-size: 0.9rem;
-  color: var(--ink-muted);
-}
 .dots-board {
   /* `width: max-content` so the lattice keeps its own size wherever it is put.
      Inside `.dots-game` the flex column centres it; on the result screen it is a
@@ -4149,24 +4120,7 @@ body.fullscreen .le-stage {
   text-align: center;
   color: var(--ink);
 }
-.dots-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-}
 /* The experimental local-AI opponent's spoken line + its disclosure. */
-.dots-ai-say {
-  margin: 0;
-  text-align: center;
-  font-size: 0.9rem;
-  color: var(--ink);
-}
-.dots-ai-disclosure {
-  margin: 0.2rem 0 0;
-  font-size: 0.8rem;
-  color: var(--ink-muted);
-  max-width: 26rem;
-}
 
 /* ---------- Furrow (mancala) ---------- */
 

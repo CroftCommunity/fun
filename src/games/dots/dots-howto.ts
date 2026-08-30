@@ -20,13 +20,13 @@ export const DOTS_GUIDE: Guide = {
         },
         {
           kind: "prose",
-          text: 'Two pickers sit above the board. "You play" chooses your seat — Second by default, and that default is not an accident: on this size of board the second player can always win with perfect play, so opening against a perfect opponent is a losing position before anyone has moved. "Difficulty" sets how hard The Engine tries, from Easy up to Perfect. Both are remembered for next time.',
+          text: 'The New game card — on the start screen, or from the button under the board — has two choices. "You play" chooses your seat — Second by default, and that default is not an accident: on this size of board the second player can always win with perfect play, so opening against a perfect opponent is a losing position before anyone has moved. "Difficulty" sets how hard The Engine tries, from Easy up to Perfect. Both are remembered for next time.',
         },
         {
           kind: "shot",
           name: "dots-board",
-          alt: "A Dots and Boxes game: a turn bar showing both players' box counts, difficulty and seat pickers, and a paper-coloured 4×4 lattice of dots with faint tan lines marking the edges that can still be drawn.",
-          caption: "The turn bar, the pickers, and the lattice — faint tan lines mark every edge you can still draw.",
+          alt: "A Dots and Boxes game inside the game frame: two seats above the board showing both players' box counts, and a paper-coloured 4×4 lattice of dots with faint tan lines marking the edges that can still be drawn.",
+          caption: "The two seats and the lattice — faint tan lines mark every edge you can still draw.",
         },
       ],
     },
@@ -89,7 +89,7 @@ export const DOTS_GUIDE: Guide = {
         },
         {
           kind: "note",
-          text: 'Turn on Settings → Show tutor and tap "Explain my options" to see the reasonable lines, each with the engine\'s own one-line reason — "safe: leaves no box on three sides", "hands over one box", or "closes a box, and you move again".',
+          text: 'Turn on Settings → Tutor and tap "Explain my options" to see the reasonable lines, each with the engine\'s own one-line reason — "safe: leaves no box on three sides", "hands over one box", or "closes a box, and you move again".',
         },
         {
           kind: "shot",

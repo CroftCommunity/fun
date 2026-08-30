@@ -12,7 +12,7 @@ import { twenty48Module } from "./games/2048/2048.js";
 import { drop4Module, drop4Setup } from "./games/drop4/drop4.js";
 import { othelloModule, othelloSetup } from "./games/othello/othello.js";
 import { checkersModule, checkersSetup } from "./games/checkers/checkers.js";
-import { dotsModule } from "./games/dots/dots.js";
+import { dotsModule, dotsSetup } from "./games/dots/dots.js";
 import { furrowModule } from "./games/furrow/furrow.js";
 import { alignModule } from "./games/align/align.js";
 import { blockdokuModule, blockdokuSetup } from "./games/blockdoku/blockdoku.js";
@@ -97,7 +97,17 @@ export const REGISTRY: readonly GameEntry[] = [
     setup: checkersSetup,
     load: checkersModule,
   },
-  { id: "dots", title: "Dots and Boxes", emoji: "▦", status: "playable", icon: true, group: "versus", load: dotsModule },
+  {
+    id: "dots",
+    title: "Dots and Boxes",
+    emoji: "▦",
+    status: "playable",
+    icon: true,
+    group: "versus",
+    pitch: "Draw an edge; the fourth side of a box claims it — and you go again. Most boxes wins.",
+    setup: dotsSetup,
+    load: dotsModule,
+  },
   { id: "furrow", title: "Furrow", emoji: "🌾", status: "playable", icon: true, group: "versus", load: furrowModule },
   { id: "align", title: "Align", emoji: "🟪", status: "playable", icon: true, load: alignModule },
   {
