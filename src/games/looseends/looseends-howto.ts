@@ -78,7 +78,7 @@ export const LOOSEENDS_GUIDE: Guide = {
         {
           kind: "shot",
           name: "looseends-home",
-          alt: "The Loose Ends home screen with a Play button, a Daily puzzle button, and an All levels button.",
+          alt: "The Loose Ends poster: the splash art, the title, the pitch and a Play button, with the New game card offering the next level, the level grid or the daily puzzle.",
           caption: "Play jumps to your first unsolved level; the daily calendar has one board per day, and your streak grows as you keep solving.",
         },
         {

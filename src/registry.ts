@@ -23,7 +23,7 @@ import { dotsModule, dotsSetup } from "./games/dots/dots.js";
 import { furrowModule, furrowSetup } from "./games/furrow/furrow.js";
 import { alignModule, alignSetup } from "./games/align/align.js";
 import { blockdokuModule, blockdokuSetup } from "./games/blockdoku/blockdoku.js";
-import { looseendsModule } from "./games/looseends/looseends.js";
+import { looseendsModule, looseendsSetup } from "./games/looseends/looseends.js";
 import { colorSortModule, colorSortSetup } from "./games/color-sort/color-sort.js";
 import { orchardDropModule, orchardSetup } from "./games/orchard-drop/orchard-drop.js";
 import { cribbageModule, cribbageSetup } from "./games/cribbage/cribbage.js";
@@ -156,7 +156,16 @@ export const SHIPPED: readonly GameEntry[] = [
     setup: blockdokuSetup,
     load: blockdokuModule,
   },
-  { id: "looseends", title: "Loose Ends", emoji: "🎯", status: "playable", icon: true, load: looseendsModule },
+  {
+    id: "looseends",
+    title: "Loose Ends",
+    emoji: "🎯",
+    status: "playable",
+    icon: true,
+    pitch: "Untangle the arrows: tap a free one to slip it off the board. A hundred levels in bands, and a daily with a streak.",
+    setup: looseendsSetup,
+    load: looseendsModule,
+  },
   {
     id: "color-sort",
     title: "Color Sort",

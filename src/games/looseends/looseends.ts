@@ -8,7 +8,10 @@
 //! campaign + a daily calendar); the module renders everything into its mount
 //! container as an internal home → levels/daily → game flow.
 
-import type { GameModule } from "../../contract.js";
+import type { GameModule, GameServices } from "../../contract.js";
+import type { GameFrame, GameFrameSpec } from "../../game-frame.js";
+import type { Progress } from "../../progress.js";
+import type { SettingRow } from "../../settings-sheet.js";
 import {
   dailySeedFor,
   LooseEnds,
@@ -244,6 +247,36 @@ function sampleAt(points: Pt[], cum: number[], d: number): Pt {
 
 // ---------- the game module ----------
 
+type Destination = "next" | "levels" | "daily";
+
+// The New game card's choice lives at module scope: the poster renders the card
+// before the module exists, and the module reads it when Play is pressed.
+let chosenDestination: Destination = "next";
+
+/** The New game card: the next unsolved level, the level grid, or the daily calendar. */
+export function looseendsSetupRows(): SettingRow[] {
+  return [
+    {
+      kind: "choice",
+      id: "mode",
+      label: "Play",
+      hint: "One hundred levels in bands, or a daily puzzle with a streak.",
+      value: chosenDestination,
+      options: [
+        { value: "next", label: "Next unsolved level" },
+        { value: "levels", label: "Choose a level" },
+        { value: "daily", label: "Daily puzzle" },
+      ],
+      onChange: (v) => {
+        chosenDestination = v === "levels" ? "levels" : v === "daily" ? "daily" : "next";
+      },
+    },
+  ];
+}
+
+/** The poster's setup card — the registry's `setup` factory. */
+export const looseendsSetup = (): SettingRow[] => looseendsSetupRows();
+
 /** Construct a fresh Loose Ends module (the registry `load`). */
 export function looseendsModule(): GameModule {
   let binding: LooseEnds | null = null;
@@ -252,8 +285,13 @@ export function looseendsModule(): GameModule {
   let disposed = false;
   const store = loadStore();
 
-  type View = "home" | "levels" | "daily" | "game" | "shared";
-  let view: View = "home";
+  type View = "levels" | "daily" | "game" | "shared";
+  let view: View = "game";
+  let gf: GameFrame | null = null;
+  let pendingResume: Progress | null = null;
+  let toasted = false;
+  /** Whether a level or daily has been started this mount — what "back" returns to. */
+  let started = false;
 
   // current game session
   type Mode = { kind: "level"; n: number } | { kind: "daily"; dateKey: string };
@@ -282,8 +320,38 @@ export function looseendsModule(): GameModule {
 
   // --- session lifecycle ---
 
+  // --- what the frame shows: the level and the tally; the card; one verb ---
+  const spec = (): GameFrameSpec => {
+    const solved = Object.keys(store.levels).length;
+    const m = mode;
+    return {
+      title: "Loose Ends",
+      mode: m.kind === "level" ? bandFor(m.n) : "Daily",
+      meters: [
+        { kind: "stat", id: "level", value: m.kind === "level" ? `Level ${m.n}` : m.dateKey, label: m.kind === "level" ? "level" : "daily" },
+        { kind: "stat", id: "solved", value: `${solved} / 100`, label: "solved" },
+      ],
+      verbs: [{ id: "new", label: "Levels", icon: "▦", onPress: (btn) => gf?.openSheet("setup", btn) }],
+      setup: looseendsSetupRows(),
+      preferences: [],
+      onStart: () => go(chosenDestination),
+    };
+  };
+  const declare = (): void => gf?.update(spec());
+
+  /** Route the New game card's choice (and Play on the poster). */
+  const go = (where: Destination): void => {
+    if (where === "levels" || where === "daily") {
+      view = where;
+      render();
+      return;
+    }
+    startGame({ kind: "level", n: firstUnsolved(store) });
+  };
+
   const startGame = (m: Mode): void => {
     mode = m;
+    started = true;
     mistakes = 0;
     hints = 0;
     finished = false;
@@ -295,6 +363,10 @@ export function looseendsModule(): GameModule {
     else binding!.newDaily(dailySeedFor(m.dateKey));
     view = "game";
     render();
+    if (!toasted) {
+      toasted = true;
+      gf?.toast("Untangle the arrows. Tap a free one to slip it off the board; a blocked one costs a droplet.", 6000);
+    }
   };
 
   // --- rendering: view router ---
@@ -303,9 +375,6 @@ export function looseendsModule(): GameModule {
     if (disposed || !container) return;
     stopLoop();
     switch (view) {
-      case "home":
-        container.replaceChildren(renderHome());
-        break;
       case "levels":
         container.replaceChildren(renderLevels());
         break;
@@ -321,35 +390,7 @@ export function looseendsModule(): GameModule {
         break;
     }
     exposeHook();
-  }
-
-  // --- home ---
-
-  function renderHome(): HTMLElement {
-    const next = firstUnsolved(store);
-    const solved = Object.keys(store.levels).length;
-    const play = el("button", { class: "le-btn le-btn-primary", type: "button" }, "Play");
-    play.addEventListener("click", () => startGame({ kind: "level", n: firstUnsolved(store) }));
-    const note = el("p", { class: "le-note" }, solved >= 100 ? "All 100 solved — replay any" : `Level ${next}`);
-
-    const daily = el("button", { class: "le-btn", type: "button" }, "Daily puzzle");
-    daily.addEventListener("click", () => {
-      view = "daily";
-      render();
-    });
-    const all = el("button", { class: "le-btn", type: "button" }, "All levels");
-    all.addEventListener("click", () => {
-      view = "levels";
-      render();
-    });
-
-    return el(
-      "section",
-      { class: "le-home", "data-view": "home" },
-      el("div", { class: "le-logo" }, "Loose Ends"),
-      el("p", { class: "le-tagline" }, "Untangle the arrows. Tap a free one to slip it off the board."),
-      el("div", { class: "le-home-actions" }, play, note, daily, all),
-    );
+    declare();
   }
 
   // --- level select ---
@@ -360,7 +401,7 @@ export function looseendsModule(): GameModule {
     const head = el(
       "div",
       { class: "le-select-head" },
-      backButton("home"),
+      backButton(),
       el("div", { class: "le-select-titles" }, el("h2", {}, "All levels"), el("p", { class: "le-sub" }, `${solved} / 100 solved`)),
     );
 
@@ -408,7 +449,7 @@ export function looseendsModule(): GameModule {
     const head = el(
       "div",
       { class: "le-select-head" },
-      backButton("home"),
+      backButton(),
       el("div", { class: "le-select-titles" }, el("h2", {}, "Daily puzzle")),
     );
 
@@ -464,11 +505,17 @@ export function looseendsModule(): GameModule {
 
   // --- shared back button ---
 
-  function backButton(to: View): HTMLElement {
+  // Back returns to the board — the frame's poster is the home now — or starts
+  // the next level if nothing has been played yet this visit.
+  function backButton(): HTMLElement {
     const b = el("button", { class: "le-back", type: "button", "aria-label": "Back" }, "‹ Back");
     b.addEventListener("click", () => {
-      view = to;
-      render();
+      if (started) {
+        view = "game";
+        render();
+      } else {
+        go("next");
+      }
     });
     return b;
   }
@@ -1047,8 +1094,7 @@ export function looseendsModule(): GameModule {
     const play = el("button", { class: "le-btn le-btn-primary", type: "button" }, "Play Loose Ends");
     play.addEventListener("click", () => {
       history.replaceState(null, "", location.pathname);
-      view = "home";
-      render();
+      go("next");
     });
     container.replaceChildren(
       el(
@@ -1061,6 +1107,13 @@ export function looseendsModule(): GameModule {
       ),
     );
   }
+
+  // --- the progress store: which level; "continue" reopens it (a level is a short run of taps) ---
+  const applyResume = (p: Progress): void => {
+    const rec = p.record as { kind?: unknown; n?: unknown; dateKey?: unknown };
+    if (rec.kind === "daily" && typeof rec.dateKey === "string") startGame({ kind: "daily", dateKey: rec.dateKey });
+    else startGame({ kind: "level", n: typeof rec.n === "number" ? rec.n : firstUnsolved(store) });
+  };
 
   // --- E2E hook ---
 
@@ -1076,9 +1129,11 @@ export function looseendsModule(): GameModule {
   }
 
   return {
-    mount(c: HTMLElement): void {
+    mount(c: HTMLElement, services?: GameServices): void {
       container = c;
+      gf = services?.frame ?? null;
       disposed = false;
+      declare();
       container.replaceChildren(el("div", { class: "le-loading" }, "Loading Loose Ends…"));
       void (async () => {
         try {
@@ -1096,8 +1151,13 @@ export function looseendsModule(): GameModule {
           exposeHook();
           return;
         }
-        view = "home";
-        render();
+        if (pendingResume) {
+          const p = pendingResume;
+          pendingResume = null;
+          applyResume(p);
+          return;
+        }
+        go(chosenDestination);
       })();
     },
     unmount(): void {
@@ -1106,10 +1166,29 @@ export function looseendsModule(): GameModule {
       delete window.__looseends;
       container?.replaceChildren();
       container = null;
+      gf = null;
       binding = null;
       verifier = null;
       canvas = null;
       ctx = null;
+    },
+    snapshot(): Progress {
+      const now = new Date().toISOString();
+      const m = mode;
+      const line = m.kind === "level" ? `Level ${m.n} · ${LIVES - mistakes} droplets` : `Daily ${m.dateKey} · ${LIVES - mistakes} droplets`;
+      return {
+        v: 1,
+        status: finished ? "finished" : "in-progress",
+        startedAt: now,
+        updatedAt: now,
+        setup: { mode: m.kind === "level" ? "free" : `daily:${m.dateKey}` },
+        record: m.kind === "level" ? { kind: "level", n: m.n } : { kind: "daily", dateKey: m.dateKey },
+        summary: { line: finished ? `${line} · solved` : line },
+      };
+    },
+    resume(p: Progress): void {
+      if (binding) applyResume(p);
+      else pendingResume = p;
     },
   };
 }

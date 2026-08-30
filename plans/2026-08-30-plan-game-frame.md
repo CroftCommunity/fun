@@ -8,7 +8,7 @@ parameters does once every bare URL opens on a start screen) gates Phase 5** and
 thing between this plan and execution: Phases 0–4 may start now. D5 was resolved during
 planning (read-only, see Verified Assumptions) and is struck from Phase 0. Phases 1, 2, 3
 and 5 carry sub-phases (1a/1b, 2a/2b, 3a/3b, 5a/5b) — each with its own Done-when and
-wiring test — because each touched four or more files. Phases 0–20 COMPLETE (2026-08-30). Mocks
+wiring test — because each touched four or more files. Phases 0–21 COMPLETE (2026-08-30). Mocks
 landed on `main` (`mocks/d-game-frame.html`, PR #45, `6c4dd9c`); owner decisions D1–D5
 recorded.
 
@@ -1104,6 +1104,37 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
    it changes one test case either way.*
 
 ## Review Log
+
+### Phase 21 — executed 2026-08-30 (Loose Ends)
+- Red first: 3 of 7 against the unmigrated page (chromium). The game's own home screen
+  (logo, tagline, Play / Daily / All levels) is deleted: the poster is the home, the pitch
+  is the tagline, and the New game card ("Levels", the dock's one verb) routes to the next
+  unsolved level, the level grid or the daily calendar (module-scope `chosenDestination`).
+  Two stats: the level (or the daily's date) and `solved / 100`; the chip is the band.
+  The overlay HUD stays on the board as the plan said. Back from the grid or calendar
+  returns to the board (or starts the next level if none was played this visit) — the
+  home it returned to no longer exists. `?play=1` opens the next unsolved level directly.
+- `snapshot()`/`resume()`: the record is WHICH level or daily; resume reopens it. The core
+  keeps no mid-level tap log to replay, and a level is a short run of taps that a fresh
+  start does not cost much — recorded plainly in the changelog rather than dressed as a
+  replay.
+- The stage now fills the frame's stage (it was a fixed `72vh` against a padded play
+  area, with a `-1.5rem` margin to eat that padding; the frame's padding is
+  `0.5rem 0.75rem`).
+- Green (`E2E_PORT=4182`): 28/28 with `--repeat-each=2` at 2 workers on both engines,
+  smoke, typecheck, lint, touched unit suites. Shots for Loose Ends only (the "home"
+  shot is the poster now). How-to alt text and changelog landed in-phase.
+
+### Phase 18 — addendum 2026-08-30 (Align on CI)
+- The `height: 100%` sizing passed locally on both engines and failed the same pad-tap
+  test twice on CI's mobile-webkit shard: "waiting for element to be visible, enabled and
+  stable" for 30 s. Playwright's WebKit is macOS WebKit here and Linux WebKit there, and
+  a percentage height of a replaced element inside a flexed row is exactly the kind of
+  rule two builds can settle differently — on CI it apparently never settled, so the pad
+  moved every frame. Replaced with a pixel height computed by the module from the room
+  the pad and the readouts leave (`fitBoard`, a ResizeObserver on the column; floor 14rem,
+  cap 616px). Measured again on both engines at three sizes: ratio 0.455, pad below the
+  board, desktop 474×215.
 
 ### Phase 20 — executed 2026-08-30 (Orchard Drop)
 - Red first: 3 of 11 against the unmigrated page (chromium). Three stats (score, best,

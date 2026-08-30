@@ -5,13 +5,24 @@ landing *is* releasing: sections are months, each entry dated by its landing. Pe
 `CroftC/.claude/CHANGELOGS.md`, the branch that changes something a player runs adds its
 entry here before it lands. Contexts are the shelf's chrome and the individual games.
 
-Contexts: shelf · color-sort · align · 2048 · bubble · checkers · wyrdle · trio-tumble · othello · cribbage · furrow · dots · drop4 · blockdoku · orchard · sinker · solitaire
+Contexts: shelf · looseends · color-sort · align · 2048 · bubble · checkers · wyrdle · trio-tumble · othello · cribbage · furrow · dots · drop4 · blockdoku · orchard · sinker · solitaire
 
 Started 2026-08-29; the August entries below are the landings of that month, and everything
 earlier is in `git log`.
 
 ## 2026-08
 
+- 2026-08-30 **looseends:** inside the frame. The poster is the home now — its own home
+  screen is gone — and the Levels card (the dock's one verb) offers the next unsolved
+  level, the level grid or the daily calendar; the level and the solved tally are the
+  meters; the overlay HUD (back, droplets, hint) stays on the board; the tagline is a
+  toast. Back from the grid or the calendar returns to the board. The continue card
+  reopens the level you were on (a level is a short run of taps; it restarts).
+  (`plans/2026-08-30-plan-game-frame.md` Phase 21)
+- 2026-08-30 **align:** the board's height is now set in pixels from the room the pad
+  leaves (a ResizeObserver), not by CSS percentage. `height: 100%` of the flexed row
+  never settled on CI's Linux WebKit — the pad moved every frame and no tap was
+  "stable" — while macOS WebKit and Chromium were fine. Same sizes as before on both.
 - 2026-08-30 **orchard-drop:** inside the frame. Score, best and the next fruit are the
   meters (told only when they change, not every frame); Daily or Free play is the New
   game card, and the chip says which; the rules sentence is a toast. A `?seed=` link is
