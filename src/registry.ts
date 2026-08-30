@@ -13,7 +13,7 @@ import { drop4Module, drop4Setup } from "./games/drop4/drop4.js";
 import { othelloModule, othelloSetup } from "./games/othello/othello.js";
 import { checkersModule, checkersSetup } from "./games/checkers/checkers.js";
 import { dotsModule, dotsSetup } from "./games/dots/dots.js";
-import { furrowModule } from "./games/furrow/furrow.js";
+import { furrowModule, furrowSetup } from "./games/furrow/furrow.js";
 import { alignModule } from "./games/align/align.js";
 import { blockdokuModule, blockdokuSetup } from "./games/blockdoku/blockdoku.js";
 import { looseendsModule } from "./games/looseends/looseends.js";
@@ -108,7 +108,17 @@ export const REGISTRY: readonly GameEntry[] = [
     setup: dotsSetup,
     load: dotsModule,
   },
-  { id: "furrow", title: "Furrow", emoji: "🌾", status: "playable", icon: true, group: "versus", load: furrowModule },
+  {
+    id: "furrow",
+    title: "Furrow",
+    emoji: "🌾",
+    status: "playable",
+    icon: true,
+    group: "versus",
+    pitch: "Sow a pit. Land your last seed in your store to go again; land in an empty pit of yours to capture. Most seeds wins.",
+    setup: furrowSetup,
+    load: furrowModule,
+  },
   { id: "align", title: "Align", emoji: "🟪", status: "playable", icon: true, load: alignModule },
   {
     id: "blockdoku",

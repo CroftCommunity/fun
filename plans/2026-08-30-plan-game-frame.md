@@ -8,7 +8,7 @@ parameters does once every bare URL opens on a start screen) gates Phase 5** and
 thing between this plan and execution: Phases 0–4 may start now. D5 was resolved during
 planning (read-only, see Verified Assumptions) and is struck from Phase 0. Phases 1, 2, 3
 and 5 carry sub-phases (1a/1b, 2a/2b, 3a/3b, 5a/5b) — each with its own Done-when and
-wiring test — because each touched four or more files. Phases 0–13 COMPLETE (2026-08-30). Mocks
+wiring test — because each touched four or more files. Phases 0–14 COMPLETE (2026-08-30). Mocks
 landed on `main` (`mocks/d-game-frame.html`, PR #45, `6c4dd9c`); owner decisions D1–D5
 recorded.
 
@@ -1104,6 +1104,23 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
    it changes one test case either way.*
 
 ## Review Log
+
+### Phase 14 — executed 2026-08-30 (Furrow)
+- Red first: 26 of 50 against the unmigrated page. Seats carry the stores and say "go
+  again" / "goes again…" as a sub-label when a seed lands in a store; Difficulty is
+  setup; the tutor and Millet (local AI, with the measured disclosure on the row) are
+  preferences; the rules sentence and the banter are toasts; the turn line stays below
+  the board and `.furrow-status` keeps a `min-height` so an empty status no longer
+  collapses the row. `snapshot()` is the seed and the pit sequence (logged at both
+  `game.play` sites); `resume()` replays and re-enters the loop if the engine is to move.
+- What the tests caught: the settings sheet's toggle input is visually hidden, so
+  Playwright's `check()` waits forever for visibility — the spec clicks it with
+  `force`, as the other sheet specs already did. That was all four failures (one case ×
+  two engines × two repeats).
+- Green (scoped gate, per the process decision above): 100/100 with `--repeat-each=2` at
+  2 workers on both engines, `npm run smoke` 65/65, typecheck, lint, unit (213). Shots for
+  Furrow only (4). How-to copy and changelog landed in-phase. CI runs the full gate on the
+  PR.
 
 ### Phase 13 — executed 2026-08-30 (Dots and Boxes)
 - Red first: 22 of 40 against the unmigrated page. Seats carry the box counts; "goes

@@ -4136,27 +4136,13 @@ body.fullscreen .le-stage {
   align-items: center;
 }
 
-.furrow-turnbar {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-.furrow-seat {
-  padding: 0.2rem 0.6rem;
-  border-radius: 999px;
-  border: 2px solid transparent;
-  font-variant-numeric: tabular-nums;
-}
-.furrow-seat.you.active { border-color: var(--fur-a); }
-.furrow-seat.them.active { border-color: var(--fur-b); }
 
-.furrow-banner,
 .furrow-turnline,
 .furrow-status {
   margin: 0;
   text-align: center;
   max-width: 32rem;
+  min-height: 1.55em; /* reserved: it sits below the board and used to collapse to 0 */
 }
 
 /* The board is fourteen cells wide and cannot reflow — a mancala row that
@@ -4286,13 +4272,6 @@ body.fullscreen .le-stage {
   font-weight: 700;
 }
 
-.furrow-controls {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-}
 
 .furrow-flash {
   margin: 0;
@@ -4330,15 +4309,6 @@ body.fullscreen .le-stage {
 /* Furrow assistance: the settings drawer, the hint control, and the opt-in
    tutor panel. All three reuse the shared `sol-settings` chrome; only the
    panel's own spacing is game-specific. */
-.furrow-field {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-.furrow-toggle {
-  display: block;
-  margin-block: 0.25rem;
-}
 .furrow-tutor {
   display: flex;
   flex-direction: column;
@@ -4359,17 +4329,6 @@ body.fullscreen .le-stage {
 
 /* The experimental local-AI opponent's spoken line and its up-front disclosure.
    The line is personality only — the engine's band decided the move. */
-.furrow-ai-say {
-  margin: 0;
-  text-align: center;
-  font-style: italic;
-  max-width: 32rem;
-}
-.furrow-ai-disclosure {
-  margin: 0.35rem 0 0;
-  max-width: 32rem;
-  font-size: 0.9rem;
-}
 
 /* ===========================================================================
    The home page (M3). Two layouts render the same ShelfModel; the layout id is
