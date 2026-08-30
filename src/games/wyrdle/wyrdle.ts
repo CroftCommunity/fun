@@ -6,7 +6,11 @@
 //! guesses run out) a verifiable `pond-outcome` record is shown, with a
 //! spoiler-free emoji-grid brag to copy and a self-verifying `?r=` share.
 
-import type { GameModule } from "../../contract.js";
+import type { GameModule, GameServices } from "../../contract.js";
+import type { GameFrame, GameFrameSpec } from "../../game-frame.js";
+import type { Progress } from "../../progress.js";
+import type { SettingRow } from "../../settings-sheet.js";
+import { today } from "../../shelf.js";
 import { Wyrdle, type BoardView, type Mark } from "./wyrdle-wasm.js";
 import {
   decodeRecord,
@@ -20,8 +24,6 @@ import { dayIndexUTC } from "../share.js";
 import {
   declareAssistanceEnabled,
   hintsEnabled,
-  setDeclareAssistance,
-  setHintsEnabled,
 } from "../../settings.js";
 
 declare global {
@@ -153,11 +155,38 @@ export function renderResultScreen(
 
 // ---------- the game module ----------
 
+/** Which word the next round is: today's (shared) or a fresh one. */
+let chosenMode: "daily" | "free" = "daily";
+
+/** The New word card — one builder for the poster and the sheet. */
+export function wyrdleSetupRows(): SettingRow[] {
+  return [
+    {
+      kind: "choice",
+      id: "word",
+      label: "Word",
+      value: chosenMode,
+      options: [
+        { value: "daily", label: "Today’s word", hint: "the same word everyone gets today" },
+        { value: "free", label: "New word", hint: "a fresh random word" },
+      ],
+      onChange: (v) => {
+        chosenMode = v === "free" ? "free" : "daily";
+      },
+    },
+  ];
+}
+
+/** The poster's setup card — the registry's `setup` factory. */
+export const wyrdleSetup = (): SettingRow[] => wyrdleSetupRows();
+
 /** Construct a fresh Wyrdle module (the registry `load`). */
 export function wyrdleModule(): GameModule {
   let game: Wyrdle | null = null;
   let verifier: Wyrdle | null = null;
   let container: HTMLElement | null = null;
+  let frame: GameFrame | null = null;
+  let pendingResume: Progress | null = null;
   let disposed = false;
 
   let mode: "daily" | "free" = "daily";
@@ -172,19 +201,12 @@ export function wyrdleModule(): GameModule {
     statusEl.textContent = msg;
   };
 
-  // A prominent, transient message above the board (a rejected guess, etc.) —
-  // the status line under the keyboard is easy to miss on a phone. role=alert so
-  // it is announced. Persists across re-renders (same element, re-appended).
-  const toastEl = el("div", { class: "wy-toast", role: "alert", "aria-live": "assertive" });
-  let toastTimer: ReturnType<typeof setTimeout> | undefined;
+  // A prominent, transient message (a rejected guess) — the frame's toast, over the
+  // stage. It used to be a `.wy-toast` in flow above the grid that grew from 0 to
+  // 1.5rem for 1.6s on every rejection and pushed the grid down (plan Phase 0).
   const showToast = (msg: string): void => {
-    toastEl.textContent = msg;
-    toastEl.classList.add("show");
-    if (toastTimer) clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => {
-      toastEl.classList.remove("show");
-      toastEl.textContent = "";
-    }, 1600);
+    frame?.toast(msg, 1600);
+    setStatus(msg);
   };
 
   const randomSeed = (): bigint => {
@@ -282,68 +304,25 @@ export function wyrdleModule(): GameModule {
 
   // --- rendering ---
 
-  const renderControls = (board: BoardView): HTMLElement => {
-    const bar = el("div", { class: "sol-controls" });
-
-    const modes = el("div", { class: "sol-modes", role: "group", "aria-label": "Puzzle" });
-    const daily = el(
-      "button",
-      { type: "button", class: "sol-mode-daily", "aria-pressed": String(mode === "daily") },
-      "Today’s word",
-    );
-    const fresh = el(
-      "button",
-      { type: "button", class: "sol-new", "aria-pressed": String(mode === "free") },
-      "New word",
-    );
-    daily.addEventListener("click", () => void startGame("daily"));
-    fresh.addEventListener("click", () => void startGame("free"));
-    modes.append(daily, fresh);
-
+  // --- what the frame shows: the word chip, one meter, the verbs, the New word card ---
+  const spec = (): GameFrameSpec => {
+    const board = game?.board();
     const hints = hintsEnabled();
-    const actionBtn = el(
-      "button",
-      { type: "button", class: hints ? "sol-hint" : "sol-stuck" },
-      hints ? "Hint" : "I’m done",
-    );
-    actionBtn.addEventListener("click", hints ? showHint : endNow);
-
-    const setting = (
-      checked: boolean,
-      label: string,
-      cls: string,
-      onChange: (on: boolean) => void,
-    ): HTMLElement => {
-      const wrap = el("label", { class: "sol-setting" });
-      const input = el("input", { type: "checkbox", class: cls });
-      (input as HTMLInputElement).checked = checked;
-      input.addEventListener("change", () => onChange((input as HTMLInputElement).checked));
-      wrap.append(input, document.createTextNode(` ${label}`));
-      return wrap;
+    return {
+      title: "Wyrdle",
+      mode: mode === "daily" ? "Today’s word" : "New word",
+      meters: [{ kind: "stat", id: "guesses", value: board?.guessesLeft ?? maxGuesses, label: "guesses left" }],
+      verbs: [
+        hints
+          ? { id: "hint", label: "Hint", icon: "✦", primary: true, onPress: showHint }
+          : { id: "done", label: "I’m done", icon: "⇥", onPress: endNow },
+        { id: "new", label: "New word", icon: "⟳", onPress: (btn) => frame?.openSheet("setup", btn) },
+      ],
+      setup: wyrdleSetupRows(),
+      onStart: () => void startGame(chosenMode),
     };
-    const settings = el("details", { class: "sol-settings" });
-    settings.append(
-      el("summary", {}, "Settings"),
-      setting(hints, "Enable hints", "sol-set-hints", (on) => {
-        setHintsEnabled(on);
-        render();
-      }),
-      setting(declareAssistanceEnabled(), "Declare assistance used", "sol-set-assist", (on) => {
-        setDeclareAssistance(on);
-      }),
-    );
-
-    const hud = el(
-      "div",
-      { class: "wy-hud" },
-      el("span", { class: "wy-guesses" }, `Guesses left ${board.guessesLeft}`),
-    );
-
-    bar.append(modes, actionBtn, settings);
-    const wrap = el("div");
-    wrap.append(bar, hud);
-    return wrap;
   };
+  const declare = (): void => frame?.update(spec());
 
   const tile = (letter: string, stateClass: string, ariaLabel: string): HTMLElement =>
     el("div", { class: `wy-tile ${stateClass}`, role: "img", "aria-label": ariaLabel }, letter);
@@ -439,18 +418,14 @@ export function wyrdleModule(): GameModule {
       return;
     }
     const board = game.board();
-    container.replaceChildren(
-      renderControls(board),
-      toastEl,
-      renderGrid(board),
-      renderKeyboard(board),
-      statusEl,
-    );
+    container.replaceChildren(renderGrid(board), renderKeyboard(board), statusEl);
+    declare();
   }
 
   async function startGame(nextMode: "daily" | "free", seedOverride?: bigint): Promise<void> {
     if (!game || disposed) return;
     mode = nextMode;
+    chosenMode = nextMode;
     seed =
       seedOverride ??
       (nextMode === "daily" ? BigInt(game.dailySeed(dayIndexUTC(new Date()))) : randomSeed());
@@ -495,6 +470,21 @@ export function wyrdleModule(): GameModule {
     container.replaceChildren(build());
   };
 
+  /** Replay a stored round: the seed and every guess, then the assistance flag. */
+  const applyResume = async (p: Progress): Promise<void> => {
+    if (!game || disposed) return;
+    const rec = p.record as { seed?: unknown; moves?: unknown; assistance?: unknown };
+    const nextMode = p.setup.mode.startsWith("daily:") ? "daily" : "free";
+    await startGame(nextMode, typeof rec.seed === "string" ? BigInt(rec.seed) : undefined);
+    if (!game || disposed) return;
+    for (const w of Array.isArray(rec.moves) ? (rec.moves as unknown[]) : []) {
+      if (typeof w !== "string") break;
+      game.guess(w);
+    }
+    if (rec.assistance === true) game.markAssistance();
+    render();
+  };
+
   const exposeHook = (): void => {
     if (!game) return;
     window.__wyrdle = {
@@ -509,9 +499,12 @@ export function wyrdleModule(): GameModule {
   };
 
   return {
-    mount(c: HTMLElement): void {
+    mount(c: HTMLElement, services?: GameServices): void {
       container = c;
+      frame = services?.frame ?? null;
       disposed = false;
+      frame?.onSettingsChange(() => render()); // Hints flips the verb
+      declare();
       container.replaceChildren(el("div", { class: "sol-loading" }, "Loading Wyrdle…"));
       document.addEventListener("keydown", onKeydown);
       void (async () => {
@@ -531,24 +524,56 @@ export function wyrdleModule(): GameModule {
           await showShared(shared);
           return;
         }
+        if (pendingResume) {
+          const p = pendingResume;
+          pendingResume = null;
+          await applyResume(p);
+          return;
+        }
         const seedParam = url.searchParams.get("seed");
         if (seedParam !== null) {
           await startGame("free", BigInt(seedParam));
           return;
         }
-        await startGame("daily");
+        await startGame(chosenMode);
       })();
     },
     unmount(): void {
       disposed = true;
       document.removeEventListener("keydown", onKeydown);
-      if (toastTimer) clearTimeout(toastTimer);
       delete window.__wyrdle;
       container?.replaceChildren();
       container = null;
+      frame = null;
       game = null;
       verifier = null;
       buffer = "";
+    },
+    // --- the progress store: the seed and the guesses (the record the core replays) ---
+    snapshot(): Progress {
+      const env = game ? (game.outcome(declareAssistanceEnabled()) as WyrdleEnvelope) : null;
+      const guesses = env?.payload.moves ?? [];
+      const done = gameOver();
+      const now = new Date().toISOString();
+      return {
+        v: 1,
+        status: done ? "finished" : "in-progress",
+        startedAt: now,
+        updatedAt: now,
+        setup: { mode: mode === "daily" ? `daily:${today(new Date())}` : "free", seed: seed.toString() },
+        record: { seed: seed.toString(), moves: guesses, assistance: env?.payload.assistance === true },
+        summary: {
+          line: done
+            ? game?.isWon()
+              ? `Solved in ${guesses.length}`
+              : "Not solved"
+            : `${guesses.length} guess${guesses.length === 1 ? "" : "es"} in · ${(game?.board().guessesLeft ?? maxGuesses)} left`,
+        },
+      };
+    },
+    resume(p: Progress): void {
+      if (game) void applyResume(p);
+      else pendingResume = p;
     },
   };
 }

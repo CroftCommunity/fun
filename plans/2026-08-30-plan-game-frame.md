@@ -8,7 +8,7 @@ parameters does once every bare URL opens on a start screen) gates Phase 5** and
 thing between this plan and execution: Phases 0–4 may start now. D5 was resolved during
 planning (read-only, see Verified Assumptions) and is struck from Phase 0. Phases 1, 2, 3
 and 5 carry sub-phases (1a/1b, 2a/2b, 3a/3b, 5a/5b) — each with its own Done-when and
-wiring test — because each touched four or more files. Phases 0–8 COMPLETE (2026-08-30). Mocks
+wiring test — because each touched four or more files. Phases 0–9 COMPLETE (2026-08-30). Mocks
 landed on `main` (`mocks/d-game-frame.html`, PR #45, `6c4dd9c`); owner decisions D1–D5
 recorded.
 
@@ -1104,6 +1104,17 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
    it changes one test case either way.*
 
 ## Review Log
+
+### Phase 9 — executed 2026-08-30 (Wyrdle)
+- Red first: 10 of 18 against the unmigrated page. `.wy-toast` — the in-flow bar that grew
+  0 → 1.5rem for 1.6s on every rejected word — is `frame.toast()` now; "guesses left" is
+  the one meter; Hint/I'm done and New word are the verbs; today's/new word is setup.
+  `snapshot()` is the seed plus the guesses the core's own record already replays, with
+  the assistance flag. Green: 36/36 with `--repeat-each=2` both engines (the grid stable
+  across a rejected word, a hint and the sheet), `npm run e2e` 669/669, typecheck, lint.
+- The guide-shot recipe for the win visited the bare `/wyrdle/` to warm the pack and
+  waited for the grid — a poster now; it deep-links (`?play=1`). Shots regenerated for
+  Wyrdle only.
 
 ### Phase 8 — executed 2026-08-30 (Trio Tumble, the campaign archetype — the worst case)
 - Red first: the rewritten `tests/trio-tumble.spec.ts` against the unmigrated page, 32 of
