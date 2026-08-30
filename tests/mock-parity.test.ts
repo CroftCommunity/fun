@@ -138,7 +138,13 @@ describe("every mock with a claims file", () => {
           files: { file: string; game: string }[];
         };
         const sha = manifest.baseline.replace(/^fun@/, "");
-        expect(() => execFileSync("git", ["cat-file", "-e", `${sha}^{commit}`])).not.toThrow();
+        expect(sha, "baseline must be fun@<short sha>").toMatch(/^[0-9a-f]{7,40}$/);
+        // The sha must resolve — but only a full clone can say so. CI's checkout is
+        // shallow (actions/checkout, depth 1) and holds no history to resolve
+        // against; there the local gate is the evidence. Measured 2026-08-30: this
+        // assertion reddened the first deploy after it landed, on exactly that.
+        const shallow = execFileSync("git", ["rev-parse", "--is-shallow-repository"]).toString().trim() === "true";
+        if (!shallow) expect(() => execFileSync("git", ["cat-file", "-e", `${sha}^{commit}`])).not.toThrow();
         const metaBaseline = mockHtml.match(/<meta name="mock-baseline" content="([^"]+)"/)?.[1];
         expect(metaBaseline, "the mock's mock-baseline must be the manifest's baseline").toBe(manifest.baseline);
         const game = doc.mock.replace(/^mocks\/[a-z]-/, "").replace(/\.html$/, "");
