@@ -1129,7 +1129,7 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
   (a sentence §10 had garbled in an earlier phase), `docs/STATE-OF-PLAY.md` (the
   2026-08-30 addendum: what the migration measured and what stays open), `mocks/README.md`
   (Direction D marked shipped, with the two places the shipped thing differs from the mock).
-- **Owed, and recorded as owed:** the broad device pass (Samsung + Pixel) across the
+- **Owed, and recorded as owed:** the broad device pass (Samsung + Pixel) across the [device: android x2, ios]
   migrated games and this phase's "fills the display on Android / says why not on iOS".
   The sampler and both engines stood in for every phase; the phones did not run today.
   Also open: Align's continue card (needs the core's input log).
@@ -1471,7 +1471,7 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
   seed 6 passes at ply 16 (4 @20, 8 @21); the test uses seed 6 and skips with a message if
   that ever changes. The "thinking" assertion watches the seat from inside the page (a
   `MutationObserver`), because the think beat is shorter than an outside retry.
-- Green: `tests/othello.spec.ts` 68/68 with `--repeat-each=2` on both engines (no skips),
+- Green: `tests/othello.spec.ts` 68/68 with `--repeat-each=2` on both engines (no skips), [device: android x2]
   the Othello unit suites + chrome + art + tokens 203, typecheck, lint; guide shots
   regenerated for Othello only (3 files). How-to copy, §4c worked example, §10 seats line,
   both checklists, RESPONSIVE lessons log, CHANGELOG (`othello:` entry, Contexts line)
@@ -1514,7 +1514,7 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
   open the ⋯ menu first; (6) the matrix's placeholder loop saw the continue card on the
   second skin (the `?play=1` visit had written the store) — it now scans `.gf-start`,
   which is either card, both surfaces.
-- Green: `npm run e2e` **639/639** (both engines, 1.3m), unit 223+, typecheck, lint, hex
+- Green: `npm run e2e` **639/639** (both engines, 1.3m), unit 223+, typecheck, lint, hex [device: android=samsung]
   scan. **Owed:** the Samsung check (Phases 2a and 5a) — no device session; see Phase 6.
 
 ### Phase 4 — executed 2026-08-30
@@ -1583,7 +1583,7 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
   `[hidden]` → `.gf-menu[hidden] { display:none }`; (3) the how-to page's "← Back to the
   game" reuses `.chrome-header .newtab`, which the header cleanup deleted — axe flagged
   the unstyled blue link on both dark skins; the rule is restored with a comment.
-- Green: `tests/game-frame.spec.ts` 10/10 both engines; `npm run smoke` 45/45; typecheck,
+- Green: `tests/game-frame.spec.ts` 10/10 both engines; `npm run smoke` 45/45; typecheck, [device: android=samsung]
   lint, hex scan. **Not done:** the Samsung check under Validation — no device session in
   this run; recorded as owed, to be done with Phase 5a's device check.
 
