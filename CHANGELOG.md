@@ -5,13 +5,21 @@ landing *is* releasing: sections are months, each entry dated by its landing. Pe
 `CroftC/.claude/CHANGELOGS.md`, the branch that changes something a player runs adds its
 entry here before it lands. Contexts are the shelf's chrome and the individual games.
 
-Contexts: shelf · 2048 · bubble · checkers · wyrdle · trio-tumble · othello · cribbage · furrow · dots · drop4 · blockdoku · orchard · sinker · solitaire
+Contexts: shelf · align · 2048 · bubble · checkers · wyrdle · trio-tumble · othello · cribbage · furrow · dots · drop4 · blockdoku · orchard · sinker · solitaire
 
 Started 2026-08-29; the August entries below are the landings of that month, and everything
 earlier is in `git log`.
 
 ## 2026-08
 
+- 2026-08-30 **align:** inside the frame. Score, level and lines are the meters (told only
+  when they change, not every frame); Marathon (daily), a new Marathon or Sprint 40 is the
+  New game card, and the chip says which; vibration and the left/right speed are in
+  Settings; the rules sentence is a toast. The board gives up height on a short phone so
+  the touch pad stays on screen — at 390×844 the column was 83px taller than the stage
+  and a tap on the pad scrolled the board 46px — and keeps its aspect on both engines
+  (WebKit squashed it under a plain max-height). No continue card yet: the core exposes
+  its input log only at the end of a run. (`plans/2026-08-30-plan-game-frame.md` Phase 18)
 - 2026-08-30 **2048:** inside the frame. Score and best tile are the meters; today's board
   or a fresh one is the New game card, and the chip says which; the rules sentence is a
   toast; the "+N" floats from the board's top edge. Leave mid-game and the continue card

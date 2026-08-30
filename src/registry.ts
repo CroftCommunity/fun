@@ -21,7 +21,7 @@ import { othelloModule, othelloSetup } from "./games/othello/othello.js";
 import { checkersModule, checkersSetup } from "./games/checkers/checkers.js";
 import { dotsModule, dotsSetup } from "./games/dots/dots.js";
 import { furrowModule, furrowSetup } from "./games/furrow/furrow.js";
-import { alignModule } from "./games/align/align.js";
+import { alignModule, alignSetup } from "./games/align/align.js";
 import { blockdokuModule, blockdokuSetup } from "./games/blockdoku/blockdoku.js";
 import { looseendsModule } from "./games/looseends/looseends.js";
 import { colorSortModule } from "./games/color-sort/color-sort.js";
@@ -136,7 +136,16 @@ export const SHIPPED: readonly GameEntry[] = [
     setup: furrowSetup,
     load: furrowModule,
   },
-  { id: "align", title: "Align", emoji: "🟪", status: "playable", icon: true, load: alignModule },
+  {
+    id: "align",
+    title: "Align",
+    emoji: "🟪",
+    status: "playable",
+    icon: true,
+    pitch: "Falling pieces, thumb-first. Marathon speeds up as you clear; Sprint races to forty lines — every run replays to a verifiable score.",
+    setup: alignSetup,
+    load: alignModule,
+  },
   {
     id: "blockdoku",
     title: "Blockdoku",

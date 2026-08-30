@@ -8,7 +8,7 @@ parameters does once every bare URL opens on a start screen) gates Phase 5** and
 thing between this plan and execution: Phases 0–4 may start now. D5 was resolved during
 planning (read-only, see Verified Assumptions) and is struck from Phase 0. Phases 1, 2, 3
 and 5 carry sub-phases (1a/1b, 2a/2b, 3a/3b, 5a/5b) — each with its own Done-when and
-wiring test — because each touched four or more files. Phases 0–17 COMPLETE (2026-08-30). Mocks
+wiring test — because each touched four or more files. Phases 0–18 COMPLETE (2026-08-30). Mocks
 landed on `main` (`mocks/d-game-frame.html`, PR #45, `6c4dd9c`); owner decisions D1–D5
 recorded.
 
@@ -1104,6 +1104,33 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
    it changes one test case either way.*
 
 ## Review Log
+
+### Phase 18 — executed 2026-08-30 (Align)
+- Red first: 7 of 18 against the unmigrated page (chromium). Three stats (score, level,
+  `lines / goal`); the fixed-timestep loop renders every frame, so the frame is told only
+  when the three numbers change. Marathon (daily) / New Marathon / Sprint 40 is setup
+  (module-scope `chosenMode`, kept in step with a URL start); haptics and the 1–10 speed
+  range are preferences (the range row formats `n/10`); Hold and Next stay in the side
+  panels; the rule sentence is a toast. The loop's rAF callback is already named
+  `frame`, so the frame handle is `gf` here.
+- **No `snapshot()`/`resume()`.** The core exposes its input log only through
+  `outcome()` at the end of a run, and a falling-block game has ticks interleaved with
+  inputs — resume is not "replay the moves" without the core's help. Recorded in
+  `TODO/align.md`-shaped terms in the changelog; the poster still shows, the continue
+  card never does. A follow-up for the core, not this plan.
+- **Re-measured (D4), and it failed first.** At 390×844 the stage is 604px and Align's
+  column was 687px (board 430 + pad 166 + callout + status), so Playwright's tap on Hard
+  drop scrolled the stage and the board moved 46px on every engine. First fix (the Bubble
+  shape: `max-height: 100%` on an auto-height canvas) held the aspect on Chromium and
+  NOT on WebKit — measured 196 wide at 331 tall, a squashed board on the real phone
+  engine — and the 14rem floor let the pad overlap the board at 360×720. Second fix:
+  the board's height is explicit (`height: 100%` of its flex row, the row capped at the
+  canvas's own 616px so it never upscales, floored at 14rem so the stage scrolls below
+  that). Verified on both engines at 390×844, 360×720 and 1280×800: ratio 0.455
+  everywhere, pad below the board, desktop unchanged (462×210).
+- Green (scoped gate, `E2E_PORT=4182`): 72/72 with `--repeat-each=2` at 2 workers on
+  both engines, smoke, typecheck, lint, touched unit suites (33). Shots for Align only
+  (2). Changelog landed in-phase; the how-to's Settings sentence still holds.
 
 ### Phase 17 — executed 2026-08-30 (2048)
 - Red first: 6 of 10 against the unmigrated page (chromium). Two stats (score, best
