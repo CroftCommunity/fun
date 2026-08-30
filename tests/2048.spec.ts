@@ -6,6 +6,7 @@
 
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { boardTopStable } from "./helpers/board-top.js";
 
 async function ready(page: Page): Promise<void> {
   await expect(page.locator(".t48-board")).toBeVisible();
@@ -22,10 +23,13 @@ test("the board, arrow pad, and HUD render", { tag: "@smoke" }, async ({ page })
   await ready(page);
   await expect(page.locator(".t48-board")).toBeVisible();
   await expect(page.locator(".t48-pad")).toBeVisible();
-  await expect(page.locator(".t48-hud")).toContainText(/score/i);
-  await expect(page.locator(".t48-hud")).toContainText(/best tile/i);
+  // Score and best tile are the frame's meters; the game's own bar and banner are gone.
+  await expect(page.locator('.gf-stat[data-meter="score"]')).toContainText(/score/i);
+  await expect(page.locator('.gf-stat[data-meter="best"]')).toContainText(/best tile/i);
+  await expect(page.locator(".t48-hud, .sol-controls, .sol-settings, .t48-banner")).toHaveCount(0);
   // A goal banner explains the game (matching numbers combine to reach 2048).
-  await expect(page.locator(".t48-banner")).toContainText(/combine.*2048/i);
+  // The rule sentence is a toast over the board, not a banner above it.
+  await expect(page.locator(".gf-toast")).toContainText(/combine.*2048/i);
   // A fresh board has exactly two spawned tiles.
   expect(await filled(page)).toBe(2);
 });
@@ -83,10 +87,11 @@ test("the fixture line replays to a verifiable result; share round-trips", async
   }, fixture.moves);
   // Not necessarily over — end via "I'm done" if still playing.
   if (!(await page.locator(".sol-result").isVisible())) {
-    const settings = page.locator(".sol-settings summary");
-    await settings.click();
-    await page.locator(".sol-set-hints").uncheck();
-    await page.locator(".sol-stuck").click();
+    await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
+    await page.locator('.gf-verb[data-verb="settings"]').click();
+    await page.locator('.gf-sheet [data-setting="hints"] .sheet-toggle-input').click({ force: true });
+    await page.keyboard.press("Escape");
+    await page.locator('.gf-verb[data-verb="done"]').click();
   }
   const result = page.locator(".sol-result");
   await expect(result).toBeVisible();
@@ -105,10 +110,58 @@ test("the fixture line replays to a verifiable result; share round-trips", async
 test("with hints off, 'I'm done' ends the round", async ({ page }) => {
   await page.goto("/2048/?seed=7");
   await ready(page);
-  await page.locator(".sol-settings summary").click();
-  await page.locator(".sol-set-hints").uncheck();
-  await page.locator(".sol-stuck").click();
+  await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await page.locator('.gf-sheet [data-setting="hints"] .sheet-toggle-input').click({ force: true });
+  await page.keyboard.press("Escape");
+  await expect(page.locator('.gf-verb[data-verb="hint"]')).toHaveCount(0);
+  await page.locator('.gf-verb[data-verb="done"]').click();
   await expect(page.locator(".sol-result")).toBeVisible();
+});
+
+test("the New game card chooses today's board or a fresh one, and the chip says which", async ({ page }) => {
+  await page.goto("/2048/?seed=7");
+  await ready(page);
+  await expect(page.locator(".gf-mode")).toHaveText(/free/i);
+  await page.locator('.gf-verb[data-verb="new"]').click();
+  const sheet = page.locator(".gf-sheet");
+  await expect(sheet.locator('[data-setting="board"] .sheet-choice-opt')).toHaveText(["Daily challenge", "New board"]);
+  await sheet.locator('[data-setting="board"] input[value="daily"]').check();
+  await sheet.locator(".gf-sheet-start").click();
+  await ready(page);
+  await expect(page.locator(".gf-mode")).toHaveText(/daily/i);
+});
+
+test("a slide does not move the board, and neither does the settings sheet", { tag: "@smoke" }, async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/2048/?seed=7");
+  await ready(page);
+  const v = await boardTopStable(page, ".t48-board", async () => {
+    await page.locator('.t48-arrow[data-dir="Left"]').click();
+    await page.locator('.t48-arrow[data-dir="Up"]').click();
+    await page.locator('.gf-verb[data-verb="settings"]').click();
+    await expect(page.locator(".gf-sheet")).toBeVisible();
+    await page.keyboard.press("Escape");
+  });
+  expect(v.frames).toBeGreaterThan(5);
+  expect(v, `board top moved ${v.delta}px over ${v.frames} frames`).toMatchObject({ stable: true });
+});
+
+test("leaving mid-game and returning to the bare URL resumes the same board", async ({ page }) => {
+  await page.goto("/2048/?seed=7");
+  await ready(page);
+  const board = (): Promise<string> => page.evaluate(() => JSON.stringify(window.__t2048!.game.board()));
+  const start = await board();
+  for (const dir of ["Left", "Up", "Right", "Down"]) await page.locator(`.t48-arrow[data-dir="${dir}"]`).click();
+  const after = await board();
+  expect(after).not.toBe(start);
+  await page.goto("/2048/");
+  const card = page.locator(".gf-continue");
+  await expect(card).toBeVisible();
+  await expect(card.locator(".gf-start-line")).toContainText(/score/i);
+  await card.locator(".gf-continue-btn").click();
+  await ready(page);
+  expect(await board()).toBe(after);
 });
 
 test("the board has no axe violations in light and dark", async ({ page }) => {

@@ -5,7 +5,11 @@
 //! A verifiable `pond-outcome` record (score + whether 2048 was reached) is
 //! shown, shareable via `?r=`.
 
-import type { GameModule } from "../../contract.js";
+import type { GameModule, GameServices } from "../../contract.js";
+import type { GameFrame, GameFrameSpec } from "../../game-frame.js";
+import type { Progress } from "../../progress.js";
+import type { SettingRow } from "../../settings-sheet.js";
+import { today } from "../../shelf.js";
 import { Twenty48, type BoardView, type Direction } from "./2048-wasm.js";
 import {
   decodeRecord,
@@ -15,12 +19,7 @@ import {
   type VerifyResult,
 } from "./2048-outcome.js";
 import { dayIndexUTC } from "../share.js";
-import {
-  declareAssistanceEnabled,
-  hintsEnabled,
-  setDeclareAssistance,
-  setHintsEnabled,
-} from "../../settings.js";
+import { declareAssistanceEnabled, hintsEnabled } from "../../settings.js";
 
 declare global {
   interface Window {
@@ -130,6 +129,36 @@ export function renderResultScreen(
 
 // ---------- the game module ----------
 
+type BoardSource = "daily" | "free";
+const MODE_LABEL: Record<BoardSource, string> = { daily: "Daily", free: "Free play" };
+
+// The New game card's choice lives at module scope: the poster renders the card
+// before the module exists, and the module reads it when a game starts.
+let chosenBoard: BoardSource = "daily";
+
+/** The New game card: today's board or a fresh one. */
+export function twenty48SetupRows(): SettingRow[] {
+  return [
+    {
+      kind: "choice",
+      id: "board",
+      label: "Board",
+      hint: "The daily challenge is the same board for everyone today; a new board is a fresh seed.",
+      value: chosenBoard,
+      options: [
+        { value: "daily", label: "Daily challenge" },
+        { value: "free", label: "New board" },
+      ],
+      onChange: (v) => {
+        chosenBoard = v === "free" ? "free" : "daily";
+      },
+    },
+  ];
+}
+
+/** The poster's setup card — the registry's `setup` factory. */
+export const twenty48Setup = (): SettingRow[] => twenty48SetupRows();
+
 /** Construct a fresh 2048 module (the registry `load`). */
 export function twenty48Module(): GameModule {
   let game: Twenty48 | null = null;
@@ -137,8 +166,13 @@ export function twenty48Module(): GameModule {
   let container: HTMLElement | null = null;
   let disposed = false;
 
-  let mode: "daily" | "free" = "daily";
+  let mode: BoardSource = "daily";
   let seed = 0n;
+  let frame: GameFrame | null = null;
+  let pendingResume: Progress | null = null;
+  /** Every slide applied this game, in order — the progress record; the outcome carries the same list. */
+  let moves: Direction[] = [];
+  let toasted = false;
 
   const statusEl = el("p", { class: "sol-status", role: "status", "aria-live": "polite" });
   const setStatus = (msg: string): void => {
@@ -167,6 +201,7 @@ export function twenty48Module(): GameModule {
     const before = game.board().score;
     const status = game.move(dir);
     if (status !== "applied") return; // the core decides; illegal = no-op
+    moves.push(dir);
     const gained = game.board().score - before;
     setStatus("");
     render();
@@ -177,7 +212,7 @@ export function twenty48Module(): GameModule {
   // without a full slide animation. Decorative + aria-hidden; reduced-motion safe.
   const showScoreFloat = (gained: number): void => {
     if (!container) return;
-    const host = container.querySelector<HTMLElement>(".t48-score");
+    const host = container.querySelector<HTMLElement>(".t48-board");
     if (!host) return;
     const float = el("span", { class: "t48-float", "aria-hidden": "true" }, `+${gained}`);
     host.append(float);
@@ -204,69 +239,29 @@ export function twenty48Module(): GameModule {
 
   // --- rendering ---
 
-  const renderControls = (board: BoardView): HTMLElement => {
-    const bar = el("div", { class: "sol-controls" });
-
-    const modes = el("div", { class: "sol-modes", role: "group", "aria-label": "Board" });
-    const daily = el(
-      "button",
-      { type: "button", class: "sol-mode-daily", "aria-pressed": String(mode === "daily") },
-      "Today’s board",
-    );
-    const fresh = el(
-      "button",
-      { type: "button", class: "sol-new", "aria-pressed": String(mode === "free") },
-      "New board",
-    );
-    daily.addEventListener("click", () => void startGame("daily"));
-    fresh.addEventListener("click", () => void startGame("free"));
-    modes.append(daily, fresh);
-
+  // --- what the frame shows: two stats, the board-source chip, verbs, the New game card ---
+  const spec = (): GameFrameSpec => {
+    const b = game?.board();
     const hints = hintsEnabled();
-    const actionBtn = el(
-      "button",
-      { type: "button", class: hints ? "sol-hint" : "sol-stuck" },
-      hints ? "Hint" : "I’m done",
-    );
-    actionBtn.addEventListener("click", hints ? showHint : endNow);
-
-    const setting = (
-      checked: boolean,
-      label: string,
-      cls: string,
-      onChange: (on: boolean) => void,
-    ): HTMLElement => {
-      const wrap = el("label", { class: "sol-setting" });
-      const input = el("input", { type: "checkbox", class: cls });
-      (input as HTMLInputElement).checked = checked;
-      input.addEventListener("change", () => onChange((input as HTMLInputElement).checked));
-      wrap.append(input, document.createTextNode(` ${label}`));
-      return wrap;
+    return {
+      title: "2048",
+      mode: MODE_LABEL[mode],
+      meters: [
+        { kind: "stat", id: "score", value: b?.score ?? 0, label: "score" },
+        { kind: "stat", id: "best", value: b?.maxTile ?? 0, label: "best tile" },
+      ],
+      verbs: [
+        hints
+          ? { id: "hint", label: "Hint", icon: "✦", primary: true, onPress: showHint }
+          : { id: "done", label: "I’m done", icon: "⇥", onPress: endNow },
+        { id: "new", label: "New game", icon: "⟳", onPress: (btn) => frame?.openSheet("setup", btn) },
+      ],
+      setup: twenty48SetupRows(),
+      preferences: [],
+      onStart: () => void startGame(chosenBoard),
     };
-    const settings = el("details", { class: "sol-settings" });
-    settings.append(
-      el("summary", {}, "Settings"),
-      setting(hints, "Enable hints", "sol-set-hints", (on) => {
-        setHintsEnabled(on);
-        render();
-      }),
-      setting(declareAssistanceEnabled(), "Declare assistance used", "sol-set-assist", (on) => {
-        setDeclareAssistance(on);
-      }),
-    );
-
-    const hud = el(
-      "div",
-      { class: "t48-hud" },
-      el("span", { class: "t48-score" }, `Score ${board.score}`),
-      el("span", { class: "t48-best" }, `Best tile ${board.maxTile}`),
-    );
-
-    bar.append(modes, actionBtn, settings);
-    const wrap = el("div");
-    wrap.append(bar, hud);
-    return wrap;
   };
+  const declare = (): void => frame?.update(spec());
 
   const renderBoard = (board: BoardView): HTMLElement => {
     const boardEl = el("div", {
@@ -371,6 +366,7 @@ export function twenty48Module(): GameModule {
         onPlayAgain: () => void startGame(mode),
       });
     container.replaceChildren(build());
+    declare();
   };
 
   function render(force = false): void {
@@ -380,37 +376,49 @@ export function twenty48Module(): GameModule {
       return;
     }
     const board = game.board();
-    const banner = el(
-      "p",
-      { class: "t48-banner" },
-      "Slide the board — matching numbers combine (2+2=4). Reach the 2048 tile.",
-    );
-    // A single centered column: controls, banner, board, and d-pad all share
-    // one vertical axis so the directional keys read as belonging to the board.
-    const game_ = el(
-      "div",
-      { class: "t48-game" },
-      renderControls(board),
-      banner,
-      renderBoard(board),
-      renderPad(),
-      statusEl,
-    );
+    // A single centered column: board and d-pad share one vertical axis so the
+    // directional keys read as belonging to the board.
+    const game_ = el("div", { class: "t48-game" }, renderBoard(board), renderPad(), statusEl);
     container.replaceChildren(game_);
+    if (!toasted) {
+      toasted = true;
+      frame?.toast("Slide the board — matching numbers combine (2+2=4). Reach the 2048 tile.", 6000);
+    }
+    declare();
   }
 
-  async function startGame(nextMode: "daily" | "free", seedOverride?: bigint): Promise<void> {
+  async function startGame(nextMode: BoardSource, seedOverride?: bigint): Promise<void> {
     if (!game || disposed) return;
     mode = nextMode;
     seed =
       seedOverride ??
       (nextMode === "daily" ? BigInt(game.dailySeed(dayIndexUTC(new Date()))) : randomSeed());
     game.newGame(seed);
+    moves = [];
     setStatus("");
     console.debug(`[2048] mount seed=${seed} mode=${mode}`);
     exposeHook();
     render();
   }
+
+  /** Resume is replay: the seed, then every slide. */
+  const applyResume = (p: Progress): void => {
+    if (!game || disposed) return;
+    const rec = p.record as { seed?: unknown; moves?: unknown };
+    mode = chosenBoard = typeof p.setup.mode === "string" && p.setup.mode.startsWith("daily:") ? "daily" : "free";
+    seed = typeof rec.seed === "string" ? BigInt(rec.seed) : randomSeed();
+    game.newGame(seed);
+    moves = [];
+    toasted = true;
+    for (const dir of Array.isArray(rec.moves) ? (rec.moves as unknown[]) : []) {
+      if (!(dir === "Up" || dir === "Down" || dir === "Left" || dir === "Right")) break;
+      if (game.move(dir) !== "applied") break;
+      moves.push(dir);
+    }
+    setStatus("");
+    exposeHook();
+    render();
+  };
 
   const showShared = async (payload: string): Promise<void> => {
     if (!container) return;
@@ -444,9 +452,12 @@ export function twenty48Module(): GameModule {
   };
 
   return {
-    mount(c: HTMLElement): void {
+    mount(c: HTMLElement, services?: GameServices): void {
       container = c;
+      frame = services?.frame ?? null;
       disposed = false;
+      frame?.onSettingsChange(() => render()); // Hints flips the verb
+      declare();
       container.replaceChildren(el("div", { class: "sol-loading" }, "Loading 2048…"));
       document.addEventListener("keydown", onKeydown);
       void (async () => {
@@ -466,12 +477,18 @@ export function twenty48Module(): GameModule {
           await showShared(shared);
           return;
         }
+        if (pendingResume) {
+          const p = pendingResume;
+          pendingResume = null;
+          applyResume(p);
+          return;
+        }
         const seedParam = url.searchParams.get("seed");
         if (seedParam !== null) {
           await startGame("free", BigInt(seedParam));
           return;
         }
-        await startGame("daily");
+        await startGame(chosenBoard);
       })();
     },
     unmount(): void {
@@ -480,8 +497,29 @@ export function twenty48Module(): GameModule {
       delete window.__t2048;
       container?.replaceChildren();
       container = null;
+      frame = null;
       game = null;
       verifier = null;
+    },
+    // --- the progress store: the seed and every slide; resume is replay ---
+    snapshot(): Progress {
+      const b = game?.board();
+      const now = new Date().toISOString();
+      const done = gameOver();
+      const line = `Score ${b?.score ?? 0} · best tile ${b?.maxTile ?? 0}`;
+      return {
+        v: 1,
+        status: done ? "finished" : "in-progress",
+        startedAt: now,
+        updatedAt: now,
+        setup: { mode: mode === "daily" ? `daily:${today(new Date())}` : "free", seed: seed.toString() },
+        record: { seed: seed.toString(), moves: [...moves] },
+        summary: { line: done ? `${line} · over` : line },
+      };
+    },
+    resume(p: Progress): void {
+      if (game) applyResume(p);
+      else pendingResume = p;
     },
   };
 }

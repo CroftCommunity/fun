@@ -19,8 +19,8 @@ export const TWENTY48_GUIDE: Guide = {
         {
           kind: "shot",
           name: "2048-board",
-          alt: "A 4x4 grid of numbered tiles in warm colours on a green felt board, with a score and best-tile bar above and an arrow pad below.",
-          caption: "The board, the score / best-tile bar, and the arrow pad you slide with.",
+          alt: "A 4x4 grid of numbered tiles in warm colours on a green felt board, with the score and best tile on the frame's meters above and an arrow pad below.",
+          caption: "The board, the score and best tile on the meters, and the arrow pad you slide with.",
         },
       ],
     },

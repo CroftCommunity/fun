@@ -5,13 +5,17 @@ landing *is* releasing: sections are months, each entry dated by its landing. Pe
 `CroftC/.claude/CHANGELOGS.md`, the branch that changes something a player runs adds its
 entry here before it lands. Contexts are the shelf's chrome and the individual games.
 
-Contexts: shelf · bubble · checkers · wyrdle · trio-tumble · othello · cribbage · furrow · dots · drop4 · blockdoku · orchard · sinker · solitaire
+Contexts: shelf · 2048 · bubble · checkers · wyrdle · trio-tumble · othello · cribbage · furrow · dots · drop4 · blockdoku · orchard · sinker · solitaire
 
 Started 2026-08-29; the August entries below are the landings of that month, and everything
 earlier is in `git log`.
 
 ## 2026-08
 
+- 2026-08-30 **2048:** inside the frame. Score and best tile are the meters; today's board
+  or a fresh one is the New game card, and the chip says which; the rules sentence is a
+  toast; the "+N" floats from the board's top edge. Leave mid-game and the continue card
+  replays every slide. (`plans/2026-08-30-plan-game-frame.md` Phase 17)
 - 2026-08-30 **bubble:** inside the frame. Three fixed meters — the level (or shots left),
   the score, and a clock slot that reads "—" until the practice timer is on (bubbles left,
   in Classic) — so toggling the timer moves nothing; Levels/Classic and Daily/New board
