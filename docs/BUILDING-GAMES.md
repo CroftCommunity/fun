@@ -318,6 +318,28 @@ bug).
   game opts into Continue by implementing `snapshot()` / `resume()` on its module (Phase 4).
   Each of those sections is written into this doc in the phase that ships it.
 
+#### Continue — the progress store
+
+`src/progress.ts` keeps one record per game (`fun-progress-<id>`); the newest wins, there
+is no history. A game opts in with two members on its module:
+
+```ts
+snapshot(): Progress;        // the frame asks after every move; you answer with seed + moves + a summary line
+resume(progress: Progress);  // replay
+```
+
+The record is `{ v: 1, status: "in-progress" | "finished", startedAt, updatedAt,
+setup: { mode: "daily:YYYY-MM-DD" | "free", … }, record: <yours, opaque>, summary: { line } }`.
+**`summary.line` is what the continue card and the rail print without loading your
+engine** — "Move 14 · you lead 9–4" — so write it for a reader, and never leave it
+blank (a record without one is rejected). A daily record dies at the local rollover after
+its last update, in progress or finished (so the card can say "won today" until then); a
+free record never expires. Undo state is part of your record. `?r=` never touches the
+store. Storage denied → no card, never an error. A stored record is validated on the way
+in and a rejected one is cleared with its reason at `debug` — a store written by a previous
+version is untrusted data. The placeholder (`src/games/placeholder.ts`) is the smallest
+possible client: its counter is its record.
+
 #### The test every migration ships
 
 `tests/<game>.spec.ts` records the board's `boundingBox().y` at move 1 and asserts it is

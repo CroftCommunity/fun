@@ -3,6 +3,7 @@
 //! standalone tab. Built once; every game implements this.
 
 import type { GameFrame } from "./game-frame.js";
+import type { Progress } from "./progress.js";
 
 /** How the game is currently presented. */
 export type PresentationMode = "drawer" | "fullscreen" | "standalone";
@@ -26,6 +27,15 @@ export interface GameModule {
   mount(container: HTMLElement, services: GameServices): void;
   /** Tear down and release resources. */
   unmount(): void;
+  /**
+   * The game in progress, for the progress store (`src/progress.ts`). The frame
+   * decides when to ask (after every move); the game decides what to say — for a
+   * Tier-1 game, the seed and the move list its outcome record already carries.
+   * Optional: a game without it gets the start screen but never a continue card.
+   */
+  snapshot?(): Progress;
+  /** Restore a game the store handed back. Replay, for a Tier-1 game. */
+  resume?(progress: Progress): void;
 }
 
 /** A catalog entry describing a game and how to load it. */
