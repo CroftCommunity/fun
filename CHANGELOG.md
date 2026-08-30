@@ -5,13 +5,19 @@ landing *is* releasing: sections are months, each entry dated by its landing. Pe
 `CroftC/.claude/CHANGELOGS.md`, the branch that changes something a player runs adds its
 entry here before it lands. Contexts are the shelf's chrome and the individual games.
 
-Contexts: shelf · othello · cribbage · furrow · dots · drop4 · blockdoku · orchard · sinker · solitaire
+Contexts: shelf · trio-tumble · othello · cribbage · furrow · dots · drop4 · blockdoku · orchard · sinker · solitaire
 
 Started 2026-08-29; the August entries below are the landings of that month, and everything
 earlier is in `git log`.
 
 ## 2026-08
 
+- 2026-08-30 **trio-tumble:** inside the frame — thirteen pills in four rows above the board
+  are now one chip ("Campaign · 3 of 6", "Clear jelly · Today’s"), three meters, and
+  Hint, Restart (in the campaign) and New board under the board. Board, objective and
+  level are chosen on the start screen or the New board card; locked levels show as
+  locked. Leave any board and come back to the bare URL to continue it.
+  (`plans/2026-08-30-plan-game-frame.md` Phase 8)
 - 2026-08-30 **solitaire:** inside the frame. Moves, cards in stock and cards home are the
   meters above the felt; Undo, Hint (or I’m stuck) and New deal are the buttons under it;
   Today’s deal versus a new deal is chosen on the start screen or the New deal sheet;

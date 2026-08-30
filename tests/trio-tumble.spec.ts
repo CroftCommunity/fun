@@ -6,6 +6,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
+import { boardTopStable } from "./helpers/board-top.js";
+
 type Cell = { r: number; c: number };
 
 async function ready(page: Page): Promise<void> {
@@ -13,12 +15,25 @@ async function ready(page: Page): Promise<void> {
   await page.waitForFunction(() => Boolean(window.__trioTumble));
 }
 
+/** The objective is setup (plan Phase 8): open the New board sheet, pick, Start. */
+async function chooseObjective(page: Page, objective: string): Promise<void> {
+  await page.locator('.gf-verb[data-verb="new"]').click();
+  const sheet = page.locator(".gf-sheet");
+  await expect(sheet).toBeVisible();
+  await sheet.locator('[data-setting="board"] input[value="free"]').check();
+  await sheet.locator(`[data-setting="objective"] input[value="${objective}"]`).check();
+  await sheet.locator(".gf-start").click();
+  await expect(sheet).toBeHidden();
+}
+
 test("the board renders an 8×8 deal with the HUD", { tag: "@smoke" }, async ({ page }) => {
   await page.goto("/trio-tumble/?seed=7");
   await ready(page);
   await expect(page.locator(".m3-gem")).toHaveCount(64);
-  await expect(page.locator(".m3-hud")).toContainText(/score/i);
-  await expect(page.locator(".m3-hud")).toContainText(/swaps left/i);
+  await expect(page.locator(".gf-meters")).toContainText(/score/i);
+  await expect(page.locator(".gf-meters")).toContainText(/swaps left/i);
+  // No pills above the board any more: the frame's verbs are the controls.
+  await expect(page.locator(".sol-controls, .m3-objectives, .m3-campaign-nav")).toHaveCount(0);
 });
 
 test("selecting a gem glows exactly the core's legal swaps", async ({ page }) => {
@@ -177,8 +192,7 @@ test("reduced-motion spawns no particles (FX skipped)", async ({ browser }) => {
 test("a fresh visitor lands in the campaign at Level 1 (with the intro + a11y clean)", async ({ page }) => {
   await page.goto("/trio-tumble/?play=1");
   await ready(page);
-  await expect(page.locator(".m3-campaign-hud")).toContainText(/level 1/i);
-  await expect(page.locator(".m3-mode-campaign")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".gf-mode")).toContainText(/campaign · 1 of/i);
   expect(await page.evaluate(() => window.__trioTumble!.level)).toBe(1);
   await expect(page.locator(".sol-status")).toContainText(/swipe/i);
   // The campaign HUD + level nav stay accessible.
@@ -188,7 +202,7 @@ test("a fresh visitor lands in the campaign at Level 1 (with the intro + a11y cl
 test("?level=2 opens campaign level 2 on its curated seed", async ({ page }) => {
   await page.goto("/trio-tumble/?level=2");
   await ready(page);
-  await expect(page.locator(".m3-campaign-hud")).toContainText(/level 2/i);
+  await expect(page.locator(".gf-mode")).toContainText(/campaign · 2 of/i);
   expect(await page.evaluate(() => window.__trioTumble!.level)).toBe(2);
 });
 
@@ -306,7 +320,7 @@ test("a swap animates the cascade, then settles to the core's board", async ({ p
   // The settled DOM matches the core's settled score (the wasm applied it at once).
   const score = await page.evaluate(() => window.__trioTumble!.game.board().score);
   expect(score).toBeGreaterThan(0);
-  await expect(page.locator(".m3-hud .m3-score")).toContainText(String(score));
+  await expect(page.locator('.gf-stat[data-meter="score"] .gf-stat-value')).toHaveText(String(score));
 });
 
 test("reduced-motion skips straight to the settled board (no animation)", async ({ browser }) => {
@@ -331,21 +345,23 @@ test("reduced-motion skips straight to the settled board (no animation)", async 
 test("with hints off, 'I'm done' ends the round", async ({ page }) => {
   await page.goto("/trio-tumble/?seed=7");
   await ready(page);
-  await page.locator(".sol-settings summary").click();
-  await page.locator(".sol-set-hints").uncheck();
-  await page.locator(".sol-stuck").click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await page.locator('.gf-sheet [data-setting="hints"] .sheet-toggle-input').click({ force: true });
+  await page.keyboard.press("Escape");
+  await page.locator('.gf-verb[data-verb="done"]').click();
   await expect(page.locator(".sol-result")).toBeVisible();
 });
 
 test("the Clear-blockers objective deals a blocker board with the blocker HUD", async ({ page }) => {
   await page.goto("/trio-tumble/?seed=7");
   await ready(page);
-  await expect(page.locator(".m3-obj-score")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".gf-mode")).toContainText(/target score/i);
 
   // Switch objective via the toggle — this fetches the winnable-daily pack.
-  await page.locator(".m3-obj-blockers").click();
-  await expect(page.locator(".m3-hud")).toContainText(/blockers left/i);
-  await expect(page.locator(".m3-obj-blockers")).toHaveAttribute("aria-pressed", "true");
+  await chooseObjective(page, "blockers");
+  await expect(page.locator(".gf-meters")).toContainText(/blockers left/i);
+  await expect(page.locator(".gf-mode")).toContainText(/blockers/i);
   // The deal carries the six fixed, non-swappable blocker tiles.
   await expect(page.locator(".m3-blocker")).toHaveCount(6);
   expect(await page.evaluate(() => window.__trioTumble!.objective)).toBe("blockers");
@@ -377,8 +393,8 @@ test("clearing every blocker is a verifiable win (blockers mode)", async ({ page
 test("the Clear-jelly objective deals a jelly board with the jelly HUD", async ({ page }) => {
   await page.goto("/trio-tumble/?mode=jelly&seed=317");
   await ready(page);
-  await expect(page.locator(".m3-obj-jelly")).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator(".m3-hud")).toContainText(/jelly left/i);
+  await expect(page.locator(".gf-mode")).toContainText(/jelly/i);
+  await expect(page.locator(".gf-meters")).toContainText(/jelly left/i);
   // Six jellied cells, and each is a still-swappable gem button (jelly sits under it).
   await expect(page.locator("button.m3-gem.m3-jellied")).toHaveCount(6);
   expect(await page.evaluate(() => window.__trioTumble!.objective)).toBe("jelly");
@@ -410,8 +426,8 @@ test("scrubbing every jelly is a verifiable win (jelly mode)", async ({ page }) 
 test("the Ingredients objective deals an ingredient board with the ingredient HUD", async ({ page }) => {
   await page.goto("/trio-tumble/?mode=ingredients&seed=144");
   await ready(page);
-  await expect(page.locator(".m3-obj-ingredients")).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator(".m3-hud")).toContainText(/ingredients left/i);
+  await expect(page.locator(".gf-mode")).toContainText(/ingredients/i);
+  await expect(page.locator(".gf-meters")).toContainText(/ingredients left/i);
   // Three ingredient tiles, all in the top row (fixed, non-swappable — not .m3-gem).
   await expect(page.locator(".m3-ingredient")).toHaveCount(3);
   expect(await page.evaluate(() => window.__trioTumble!.objective)).toBe("ingredients");
@@ -442,7 +458,7 @@ test("collecting every ingredient is a verifiable win (ingredients mode)", async
 test("the Orders (checklist) objective deals a plain board with the goal-tally HUD", async ({ page }) => {
   await page.goto("/trio-tumble/?mode=checklist&seed=3");
   await ready(page);
-  await expect(page.locator(".m3-obj-checklist")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".gf-mode")).toContainText(/orders/i);
   // A tally of three goals (clear a colour, make striped, make wrapped).
   await expect(page.locator(".m3-checklist-hud")).toContainText(/striped/i);
   await expect(page.locator(".m3-checklist-hud")).toContainText(/wrapped/i);
@@ -457,7 +473,7 @@ test("completing every order is a verifiable win (checklist mode)", async ({ pag
   // The committed pack fixture: seed 3 completes every order goal in two swaps.
   await page.goto("/trio-tumble/?mode=checklist&seed=3");
   await ready(page);
-  await expect(page.locator(".m3-obj-checklist")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".gf-mode")).toContainText(/orders/i);
 
   await page.evaluate(() => {
     const h = window.__trioTumble!;
@@ -476,8 +492,8 @@ test("completing every order is a verifiable win (checklist mode)", async ({ pag
 test("the Obstacles objective deals licorice + meringue tiles with the obstacles HUD", async ({ page }) => {
   await page.goto("/trio-tumble/?mode=obstacles&seed=72");
   await ready(page);
-  await expect(page.locator(".m3-obj-obstacles")).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator(".m3-hud")).toContainText(/obstacles left/i);
+  await expect(page.locator(".gf-mode")).toContainText(/obstacles/i);
+  await expect(page.locator(".gf-meters")).toContainText(/obstacles left/i);
   // Three licorice + three meringue tiles (the mode deal), distinct from plain blockers.
   await expect(page.locator(".m3-licorice")).toHaveCount(3);
   await expect(page.locator(".m3-meringue")).toHaveCount(3);
@@ -541,15 +557,15 @@ test("the play area (board) is centred in the play surface", async ({ page }) =>
 test("switching objective via the toggle re-deals and updates the HUD", async ({ page }) => {
   await page.goto("/trio-tumble/?seed=7"); // target-score
   await ready(page);
-  await expect(page.locator(".m3-hud")).toContainText(/score/i);
+  await expect(page.locator(".gf-meters")).toContainText(/score/i);
   await expect(page.locator(".m3-gem.m3-jellied")).toHaveCount(0);
 
-  await page.locator(".m3-obj-jelly").click();
-  await expect(page.locator(".m3-hud")).toContainText(/jelly left/i);
+  await chooseObjective(page, "jelly");
+  await expect(page.locator(".gf-meters")).toContainText(/jelly left/i);
   await expect(page.locator(".m3-gem.m3-jellied")).toHaveCount(6);
 
-  await page.locator(".m3-obj-score").click();
-  await expect(page.locator(".m3-hud")).toContainText(/score/i);
+  await chooseObjective(page, "target-score");
+  await expect(page.locator(".gf-meters")).toContainText(/score/i);
   await expect(page.locator(".m3-gem.m3-jellied")).toHaveCount(0);
 });
 
@@ -892,4 +908,68 @@ test("swapping a fish with a special fires a fish combo (reaches the UI)", async
   // A fish combo (school of fish, here each firing a line) clears well beyond a
   // lone fish's single-cell eat (~10).
   expect(info!.after - info!.before, "the fish combo's blast is large").toBeGreaterThanOrEqual(50);
+});
+
+// --- the frame (plan Phase 8): one chip, three meters, verbs; the board does not move ---
+
+test("the frame's verbs, the chip and the meters for a target-score board", { tag: "@smoke" }, async ({ page }) => {
+  await page.goto("/trio-tumble/?seed=7");
+  await ready(page);
+  const verbs = await page.locator(".gf-dock .gf-verb").evaluateAll((els) => els.map((e) => e.getAttribute("data-verb")));
+  expect(verbs).toEqual(["hint", "new", "settings"]);
+  await expect(page.locator(".gf-mode")).toContainText(/target score/i);
+  await expect(page.locator('.gf-stat[data-meter="score"] .gf-stat-value')).toHaveText("0");
+  await expect(page.locator('.gf-stat[data-meter="swaps"] .gf-stat-value')).toHaveText("20");
+  await expect(page.locator('.gf-stat[data-meter="stars"]')).toBeVisible();
+});
+
+test("in the campaign the chip says the level and Restart is a verb; the sheet offers the unlocked levels", async ({ page }) => {
+  await page.goto("/trio-tumble/?level=1");
+  await ready(page);
+  await expect(page.locator(".gf-mode")).toContainText(/campaign · 1 of/i);
+  const verbs = await page.locator(".gf-dock .gf-verb").evaluateAll((els) => els.map((e) => e.getAttribute("data-verb")));
+  expect(verbs).toEqual(["hint", "restart", "new", "settings"]);
+  await page.locator('.gf-verb[data-verb="new"]').click();
+  const levels = page.locator('.gf-sheet [data-setting="level"] .sheet-choice-opt');
+  expect(await levels.count()).toBeGreaterThanOrEqual(1);
+  // only Level 1 is unlocked on a first visit
+  await expect(page.locator('.gf-sheet [data-setting="level"] input:not([disabled])')).toHaveCount(1);
+});
+
+test("the board does not move across a swap, a hint, and the settings sheet", { tag: "@smoke" }, async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/trio-tumble/?seed=7");
+  await ready(page);
+  const v = await boardTopStable(page, ".m3-board", async () => {
+    const swap = await page.evaluate(() => window.__trioTumble!.game.legalMoves()[0]!);
+    await page.locator(`.m3-gem[data-r="${swap[0]}"][data-c="${swap[1]}"]`).click();
+    await page.locator(`.m3-gem[data-r="${swap[2]}"][data-c="${swap[3]}"]`).click();
+    await expect(page.locator(".m3-board:not(.m3-animating)")).toBeVisible();
+    await page.locator('.gf-verb[data-verb="hint"]').click();
+    await page.locator('.gf-verb[data-verb="settings"]').click();
+    await expect(page.locator(".gf-sheet")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".gf-sheet")).toBeHidden();
+  });
+  expect(v.frames).toBeGreaterThan(5);
+  expect(v, `board top moved ${v.delta}px over ${v.frames} frames`).toMatchObject({ stable: true });
+});
+
+test("leaving a free board mid-game and returning to the bare URL resumes it", async ({ page }) => {
+  await page.goto("/trio-tumble/?seed=7");
+  await ready(page);
+  const swap = await page.evaluate(() => window.__trioTumble!.game.legalMoves()[0]!);
+  await page.locator(`.m3-gem[data-r="${swap[0]}"][data-c="${swap[1]}"]`).click();
+  await page.locator(`.m3-gem[data-r="${swap[2]}"][data-c="${swap[3]}"]`).click();
+  await expect(page.locator(".m3-board:not(.m3-animating)")).toBeVisible();
+  const before = await page.evaluate(() => window.__trioTumble!.game.board());
+  await page.goto("/trio-tumble/");
+  const card = page.locator(".gf-continue");
+  await expect(card).toBeVisible();
+  await expect(card.locator(".gf-start-line")).toContainText(/swap/i);
+  await card.locator(".gf-continue-btn").click();
+  await ready(page);
+  const after = await page.evaluate(() => window.__trioTumble!.game.board());
+  expect(after.score).toBe(before.score);
+  expect(after.movesLeft).toBe(before.movesLeft);
 });

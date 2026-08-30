@@ -389,6 +389,20 @@ game's. The record is the core's own move list (`game.outcome(...).payload.moves
 the assistance flag; resume replays with `play()` and re-marks assistance. The status
 line stays below the felt, reserved-height, for hint and undo sentences.
 
+#### A worked example — the campaign archetype (Trio Tumble, `src/games/trio-tumble.ts`)
+
+The worst case: three board pills, six objective pills, a campaign nav row and four HUD
+shapes became one `mode` chip (`Campaign · 3 of 6` or `Clear jelly · Today’s`), **three
+fixed meter slots** whose ids and labels change per objective but never their count
+(score · swaps · stars for target-score and the campaign; `N of M` left · swaps · score for
+a clear objective; orders done · swaps · score for Orders), and verbs Hint / Restart
+(campaign only) / New board. Board, objective and level are one `setup` card whose rows
+write module-level `chosen*` variables that `onStart` reads; a locked level is a
+`disabled` choice option. The Orders tally (three goals) stays in the stage above the
+board — allowed, because it is fixed for the board's life and never changes height. The
+campaign's own deep-link autosave (`fun-trio-tumble-resume`) is untouched; the frame's
+store adds Continue for every board.
+
 #### The test every migration ships
 
 `tests/<game>.spec.ts` records the board's `boundingBox().y` at move 1 and asserts it is
