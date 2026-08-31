@@ -5,7 +5,7 @@ analysis) 2026-08-30; Pass 3 (quality gates) 2026-08-30. Every open question is
 owner-confirmed and none is BLOCKING-unresolved; the two PHASE-GATED items gate Phases 2
 and 9 and are already reflected in those phases. **Phase 0 executed 2026-08-30**
 (D1 / D2-desktop / D3-deferral / D4 / D6 closed; D2's Samsung half and D5's
-two-Android half owed, `[device: …]` tags on their task lines) — **Phase 1 executed 2026-08-30** (perft green at CI depth on all six positions; differential perft 200/0) — **Phase 2 executed 2026-08-30** (terminals, both trait impls, hash, SAN, vectors; gate green) — **Phase 3 executed 2026-08-30** (both chess cases green in wasm) — **Phase 4 executed 2026-08-30** (search green, deepen adopted ≥ d4, budgeted ladder 0/50 over 400 ms in Chromium; Samsung half owed) — **Phase 5 executed 2026-08-30** (band + tutor green; Expert v Easy 20/20, Easy v random 14/20) — **Phase 6 executed 2026-08-30** (core 674: 60→23 all equivalent; solver 422: 302→69, real gaps closed and hand-verified) — **Phase 7 executed 2026-08-30** (binding green, 205 KB wasm, 1.06 MiB memory) — **Phase 8 executed 2026-08-30** (wrapper + outcome, 6/6 over the real wasm) — **Phase 9 executed 2026-08-30** (playable /chess/, 30/30 both engines, a11y auto-enrolled) — **Phase 10 next.**
+two-Android half owed, `[device: …]` tags on their task lines) — **Phase 1 executed 2026-08-30** (perft green at CI depth on all six positions; differential perft 200/0) — **Phase 2 executed 2026-08-30** (terminals, both trait impls, hash, SAN, vectors; gate green) — **Phase 3 executed 2026-08-30** (both chess cases green in wasm) — **Phase 4 executed 2026-08-30** (search green, deepen adopted ≥ d4, budgeted ladder 0/50 over 400 ms in Chromium; Samsung half owed) — **Phase 5 executed 2026-08-30** (band + tutor green; Expert v Easy 20/20, Easy v random 14/20) — **Phase 6 executed 2026-08-30** (core 674: 60→23 all equivalent; solver 422: 302→69, real gaps closed and hand-verified) — **Phase 7 executed 2026-08-30** (binding green, 205 KB wasm, 1.06 MiB memory) — **Phase 8 executed 2026-08-30** (wrapper + outcome, 6/6 over the real wasm) — **Phase 9 executed 2026-08-30** (playable /chess/, 30/30 both engines, a11y auto-enrolled) — **Phase 10 executed 2026-08-30** (tutor + hybrid green, 38/38 both engines; the real-WebGPU run moves to Phase 11's `harness:trial`, the game-parameterised runner) — **Phase 11 next.**
 Worktree `worktrees/chess/fun`, branch `claude/chess`.
 **Standards anchor:** `docs/BUILDING-GAMES.md` §10 + both new-game checklists;
 `docs/AI-PLAYERS.md` (search cost, honesty gate); `docs/HARNESS.md` (adding a game).
@@ -1569,20 +1569,20 @@ the picker at 44px, the glyphs (fulfilled in Phase 13).
 **Goal:** Coaching without a model; a persona behind the WebGPU gate.
 
 **Changes:**
-- [ ] The tutor panel (opt-in preference, off by default): "Explain my options"
+- [x] The tutor panel (opt-in preference, off by default): "Explain my options"
   lists the band in SAN with `ideaFor` ("takes the knight", "gives check",
   "promotes", "castles", "mate in 2" when exact); blunder flag and hint reasons
   bound to `exact`; reading state painted **before** the deep call.
-- [ ] `ideaFor` set in **both** `chess.ts` and `chess-oracle.ts` (Phase 11) so the
+- [x] `ideaFor` set in **both** `chess.ts` and `chess-oracle.ts` (Phase 11) so the
   UI and the rig say the same thing.
-- [ ] The hybrid opponent: the WebGPU probe + "Experimental: local AI opponent"
+- [x] The hybrid opponent: the WebGPU probe + "Experimental: local AI opponent"
   toggle + download disclosure, reusing `hybrid-player.ts` / `ai-runtime.ts` /
   `banter.ts` **unchanged**; persona per Open Questions; canned lines; falls
   back to The Engine on any failure.
-- [ ] `tests/chess-tutor.test.ts` — `coachFor` both branches;
+- [x] `tests/chess-tutor.test.ts` — `coachFor` both branches;
   `tests/chess-hybrid.test.ts` — `MockRuntime` proves the plug-in on CI (an
   out-of-band pick falls back; a malformed reply falls back).
-- [ ] **The edges (Pass 3 — mutation resistance).** `coachFor` three branches
+- [x] **The edges (Pass 3 — mutation resistance).** `coachFor` three branches
   (threw / hedge / silent — the third is what checkers tests and Pass 1 omitted).
   `ideaFor` one case per idea: a capture names the piece taken; a check says so; a
   promotion; a castle; "mate in N" **only** when `exact`, and a quiet move's plain
@@ -1594,7 +1594,7 @@ the picker at 44px, the glyphs (fulfilled in Phase 13).
   that reads the DOM before awaiting). The canned banter lines all survive
   `banter.ts`'s filter — asserted in a unit test, every line, since a filtered line
   is silent in production.
-- [ ] **What the real run records (Pass 3 — observability).** The Report already
+- [x] **What the real run records (Pass 3 — observability).** The Report already
   counts `llmMoves` / `fallbackMoves` and prints the fallback rate
   (`tournament.ts:95-100`), so the `AI_TRIAL_MODE=hybrid npm run ai:trial` run goes
   in the Review Log with those two numbers, the model id, and the adapter string —
@@ -1852,6 +1852,50 @@ PR open; `workspace-audit.sh` clean.
 ---
 
 ## Review Log
+
+### Phase 10 execution — 2026-08-30
+
+**Green:** `bash tools/check.sh tutor npm run unit -- chess-tutor chess-hybrid`
+— **13 passed** with both file names in the log (`chess-tutor` 9: `coachFor`'s
+three branches threw / hedge / silent, `ideaFor` one case per idea with "mate
+in N" only when `exact`, every canned line through `acceptBanter`, the view
+over the real wasm; `chess-hybrid` 4: in-band → `llm`, malformed → fallback,
+**a legal move outside the band → fallback**, and the wiring test through
+`chessModule` with `MockRuntime` landing the model's pick on the board).
+`tests/chess.spec.ts` **38 passed** (19 × chromium + mobile-webkit): the
+tutor panel absent by default and appearing through the settings sheet's
+toggle, "Explain my options" listing ≥2 moves each `SAN — idea` with the
+"not yet certain" hedge, the local-AI toggle absent under a null adapter and
+present (with the download disclosure) under a real one. Typecheck and lint
+clean (`check.sh` exit 0 each).
+
+**What landed:** in `chess.ts` — the tutor panel behind `chessTutorEnabled`
+(reading state painted synchronously, then `Chess.tutor()` at the tutor
+budget, the band built with `ideaFor(m, report.depth)`), the coach line after
+the human's move bound to `exact` (`coachFor`), the WebGPU probe → the
+"Experimental: local AI opponent" setting row with the download hint, the
+hybrid opponent through `HybridPlayer`/`WebLLMRuntime`/`banter.ts`
+**unchanged** (`git diff --stat src/harness/` empty), persona **Ash 🌳**,
+the canned lines, fallback to The Engine on any failure with
+`window.__chess.lastAi` recording the source; `settings.ts` gained
+`chessTutorEnabled`/`setChessTutor` on the shared boolean helpers. The
+browser tests copy the shelf's mechanics rather than the storage format: the
+tutor is enabled through the sheet toggle (the first draft set
+`localStorage["fun-chess-tutor"]="true"` and got nothing — the helpers store
+`"on"`/`"off"`), and Settings is a sheet only at the phone viewport, so the
+spec resizes before pressing the verb.
+
+**The real WebGPU run — not run here, and why:** `npm run ai:trial` is the
+Drop 4 page driver (`tools/ai-trial.mjs` goes to `/drop4/` and clicks
+`.drop4-ai-toggle-input`; it takes no game). The game-parameterised runner is
+`HARNESS_TRIAL_GAME=<game> npm run harness:trial`, which needs Phase 11's
+adapter — so the `llmMoves` / `fallbackMoves` / model / adapter record this
+phase asked for is produced in Phase 11's entry (still validated-not-gated),
+and `docs/HARNESS.md`'s chess row is written from that.
+
+**One typing note for the record:** annotating a cached wasm buffer as
+`Buffer | null` widens it to `Buffer<ArrayBufferLike>`, which `BodyInit`
+refuses; `Buffer<ArrayBuffer> | null` is what `readFile` actually returns.
 
 ### Phase 9 execution — 2026-08-30
 
