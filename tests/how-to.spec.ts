@@ -32,6 +32,22 @@ test("the how-to page renders the solitaire guide with all screenshots loading",
   await expect(page.locator("#howto-move")).toContainText(/tap a source, then tap a destination/i);
 });
 
+test("the how-to page renders the chess guide with all screenshots loading", async ({ page }) => {
+  await page.goto("/how-to/?game=chess");
+  await expect(page.locator("h1")).toContainText(/how to play chess/i);
+  const shots = page.locator(".guide-shot img");
+  await expect(shots).toHaveCount(3);
+  await expect
+    .poll(async () =>
+      shots.evaluateAll((imgs) =>
+        imgs.every((i) => (i as HTMLImageElement).complete && (i as HTMLImageElement).naturalWidth > 0),
+      ),
+    )
+    .toBe(true);
+  await expect(page.locator("#howto-special")).toContainText(/en passant/i);
+  await expect(page.locator("#howto-draws")).toContainText(/stalemate/i);
+});
+
 test("the in-game 'How to play' link reaches the guide", async ({ page }) => {
   await page.goto("/solitaire/?seed=0");
   await expect(page.locator(".sol-board")).toBeVisible();

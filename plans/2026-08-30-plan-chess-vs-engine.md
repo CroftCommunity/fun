@@ -5,7 +5,7 @@ analysis) 2026-08-30; Pass 3 (quality gates) 2026-08-30. Every open question is
 owner-confirmed and none is BLOCKING-unresolved; the two PHASE-GATED items gate Phases 2
 and 9 and are already reflected in those phases. **Phase 0 executed 2026-08-30**
 (D1 / D2-desktop / D3-deferral / D4 / D6 closed; D2's Samsung half and D5's
-two-Android half owed, `[device: …]` tags on their task lines) — **Phase 1 executed 2026-08-30** (perft green at CI depth on all six positions; differential perft 200/0) — **Phase 2 executed 2026-08-30** (terminals, both trait impls, hash, SAN, vectors; gate green) — **Phase 3 executed 2026-08-30** (both chess cases green in wasm) — **Phase 4 executed 2026-08-30** (search green, deepen adopted ≥ d4, budgeted ladder 0/50 over 400 ms in Chromium; Samsung half owed) — **Phase 5 executed 2026-08-30** (band + tutor green; Expert v Easy 20/20, Easy v random 14/20) — **Phase 6 executed 2026-08-30** (core 674: 60→23 all equivalent; solver 422: 302→69, real gaps closed and hand-verified) — **Phase 7 executed 2026-08-30** (binding green, 205 KB wasm, 1.06 MiB memory) — **Phase 8 executed 2026-08-30** (wrapper + outcome, 6/6 over the real wasm) — **Phase 9 executed 2026-08-30** (playable /chess/, 30/30 both engines, a11y auto-enrolled) — **Phase 10 executed 2026-08-30** (tutor + hybrid green, 38/38 both engines; the real-WebGPU run moves to Phase 11's `harness:trial`, the game-parameterised runner) — **Phase 11 executed 2026-08-30** (adapter + anchor 6/163, rig diff empty; real WebGPU run 52 model moves / 0 fallbacks / 0 blunders) — **Phase 12 next.**
+two-Android half owed, `[device: …]` tags on their task lines) — **Phase 1 executed 2026-08-30** (perft green at CI depth on all six positions; differential perft 200/0) — **Phase 2 executed 2026-08-30** (terminals, both trait impls, hash, SAN, vectors; gate green) — **Phase 3 executed 2026-08-30** (both chess cases green in wasm) — **Phase 4 executed 2026-08-30** (search green, deepen adopted ≥ d4, budgeted ladder 0/50 over 400 ms in Chromium; Samsung half owed) — **Phase 5 executed 2026-08-30** (band + tutor green; Expert v Easy 20/20, Easy v random 14/20) — **Phase 6 executed 2026-08-30** (core 674: 60→23 all equivalent; solver 422: 302→69, real gaps closed and hand-verified) — **Phase 7 executed 2026-08-30** (binding green, 205 KB wasm, 1.06 MiB memory) — **Phase 8 executed 2026-08-30** (wrapper + outcome, 6/6 over the real wasm) — **Phase 9 executed 2026-08-30** (playable /chess/, 30/30 both engines, a11y auto-enrolled) — **Phase 10 executed 2026-08-30** (tutor + hybrid green, 38/38 both engines; the real-WebGPU run moves to Phase 11's `harness:trial`, the game-parameterised runner) — **Phase 11 executed 2026-08-30** (adapter + anchor 6/163, rig diff empty; real WebGPU run 52 model moves / 0 fallbacks / 0 blunders) — **Phase 12 executed 2026-08-30** (guide + three shots; the result shot caught a stretched final board, fixed) — **Phase 13 next.**
 Worktree `worktrees/chess/fun`, branch `claude/chess`.
 **Standards anchor:** `docs/BUILDING-GAMES.md` §10 + both new-game checklists;
 `docs/AI-PLAYERS.md` (search cost, honesty gate); `docs/HARNESS.md` (adding a game).
@@ -1670,13 +1670,13 @@ read from the Report — a 0 is the finding the Risk names.)*
 **Goal:** The guide, leading with what a new player gets wrong.
 
 **Changes:**
-- [ ] `src/games/chess/chess-howto.ts` (pure data): the goal; "tap a piece, then
+- [x] `src/games/chess/chess-howto.ts` (pure data): the goal; "tap a piece, then
   where it goes — you cannot leave your king in check, so the board only offers
   legal moves"; castling by moving the king two squares; en passant ("yes, that
   is a real move"); promotion and the picker; the draws (stalemate, threefold,
   50 moves, insufficient material) in one honest paragraph; the levels and the
   tutor; the verifiable record.
-- [ ] `src/how-to-registry.ts`; `tools/guide-shots.mjs` `SHOTS` (`chess-board`,
+- [x] `src/how-to-registry.ts`; `tools/guide-shots.mjs` `SHOTS` (`chess-board`,
   `chess-promotion`, `chess-result`); the sync tests — **`tests/how-to.test.ts`**
   ("every screenshot it references exists on disk", `:37-45`) is the one that goes
   RED by construction the moment the guide names three shots that do not exist yet,
@@ -1852,6 +1852,45 @@ PR open; `workspace-audit.sh` clean.
 ---
 
 ## Review Log
+
+### Phase 12 execution — 2026-08-30
+
+**RED → GREEN, as the plan named it:** registering `CHESS_GUIDE` in
+`how-to-registry.ts` made `tests/how-to.test.ts` fail on
+`missing screenshot assets/guide/chess-board.jpg` before any shot existed;
+`bash tools/check.sh shots npm run guide:shots` then wrote the three, and
+`bash tools/check.sh howto npx vitest run how-to` is **52 passed**;
+`tests/how-to.spec.ts` **12 passed** on both engines (a chess test added:
+`/how-to/?game=chess` renders with exactly three shots loaded, and the
+special-moves and draws entries say "en passant" and "stalemate");
+`tests/chess.spec.ts` + `how-to.spec.ts` on chromium 25 passed after the CSS
+change below. Typecheck and lint clean. `git status --porcelain assets/guide`
+was read in full after each run (nine other games' JPEGs re-encoded:
+2048-board, align-board, align-result, cribbage-show, drop4-result,
+drop4-tutor, orchard-crate, trio-tumble-board, trio-tumble-select) and only
+`chess-*.jpg` kept; the rest `git checkout --` per CLAUDE.md, after the read.
+
+**The shot recipe found a real defect.** `chess-result.jpg` showed the final
+board hugging the left edge with its felt stretched across the whole result
+panel: `.chess-board` is a grid with fixed columns, so as a block inside the
+result screen's plain-block parent it filled the width. Invisible inside the
+centred `.chess-game` flex column, obvious on the result screen — the exact
+defect checkers' `.checkers-board` comment records. Fixed the same way
+(`width: fit-content; margin-inline: auto`), rebuilt, re-shot. The guide
+shots are a check on the UI, not just illustrations; this is the number: 1.
+
+**One recipe detail worth keeping:** a game scripted to a terminal through
+the `__chess` hook and then `refresh()`ed does NOT reach the result screen —
+`finish()` runs only from the UI move path — so the result shot opens the
+game's own `?r=` link, like checkers', which also makes the shot show the
+self-verifying route rather than a synthetic one.
+
+**Alt text is honest to the clip.** Checkers' `checkers-board` alt describes
+seats and buttons that its `.checkers-game` clip does not contain; the chess
+alts describe what is in the frame (the board, the selected knight and its
+two dots; the picker over the dimmed board; the result panel) and the
+caption carries what sits around it. Not fixed for checkers here — noted for
+its owner.
 
 ### Phase 11 execution — 2026-08-30
 

@@ -5028,6 +5028,12 @@ dialog.signin-sheet::backdrop { background: rgba(0, 0, 0, 0.45); }
   display: grid;
   grid-template-columns: repeat(8, var(--chs-cell));
   grid-auto-rows: var(--chs-cell);
+  /* The grid's columns are fixed, so a block-level board stretches its felt to
+     the container width — invisible inside the centred game column, obvious on
+     the result screen, where the parent is a plain block (the guide's
+     chess-result shot caught it; checkers had the same defect). */
+  width: fit-content;
+  margin-inline: auto;
   border: 2px solid var(--chs-dark);
   border-radius: 4px;
   overflow: hidden;
