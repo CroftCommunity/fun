@@ -12,6 +12,13 @@ earlier is in `git log`.
 
 ## 2026-08
 
+- 2026-08-30 **shelf:** Sign in at Bluesky works again. The sheet's Bluesky row failed with
+  "Could not start sign-in: protected-resource failed: 404": `bsky.social` is an entryway —
+  the sign-in server for a fleet of data servers — and does not publish the document a
+  single-host provider (Blacksky, EuroSky, Northsky) does. Discovery now reads the entryway
+  as the sign-in server when that document is missing, the order the reference atproto
+  client uses. (signin-entryway)
+
 - 2026-08-30 **chess:** a new game. Chess against The Engine at four levels, with
   the rules built fresh and verified by perft: castling by tapping the king two
   squares, en passant, promotion through a picker, and the draws (stalemate,

@@ -64,16 +64,45 @@ export function isEntryway(target: string): boolean {
 }
 
 /**
+ * Discovery from a bare origin, which comes in two live shapes: a PDS host
+ * (Blacksky, EuroSky — one host is both PDS and issuer, and answers
+ * oauth-protected-resource naming itself) or an ENTRYWAY (`bsky.social` — the
+ * issuer for a fleet of PDS hosts, which does NOT serve oauth-protected-resource;
+ * only its `*.host.bsky.network` PDSes do). Protected-resource first, so a PDS is
+ * never mistaken for an issuer; when that fails, the origin is read as the issuer —
+ * the order `@atproto/oauth-client`'s `resolveFromService` uses. Both failing,
+ * both statuses are reported.
+ */
+async function discoverFromOrigin(
+  origin: string,
+  fetchImpl: typeof fetch,
+): Promise<{ authServer: string; meta: AuthServerMeta }> {
+  const asPds = await authServerFromPds(origin, fetchImpl).then(
+    (authServer) => ({ ok: true as const, authServer }),
+    (error: unknown) => ({ ok: false as const, error }),
+  );
+  if (asPds.ok) return { authServer: asPds.authServer, meta: await fetchAuthServerMeta(asPds.authServer, fetchImpl) };
+  try {
+    return { authServer: origin, meta: await fetchAuthServerMeta(origin, fetchImpl) };
+  } catch (asIssuer: unknown) {
+    throw new Error(`${messageOf(asPds.error)}; read as an issuer: ${messageOf(asIssuer)}`);
+  }
+}
+
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
  * A provider start: no handle, so no DID yet — the person picked a server, and
- * the identity arrives in the token's `sub`. Discovery runs from the entryway as
- * if it were the PDS (an entryway answers oauth-protected-resource for its whole
- * fleet), and `did` is left empty for completeAuthorization to fill.
+ * the identity arrives in the token's `sub`. `pds` is the origin chosen, a
+ * placeholder: completeAuthorization resolves the REAL PDS from `sub`, and fills
+ * `did`.
  */
 export async function resolveEntryway(entryway: string, deps: ResolveDeps = {}): Promise<ResolvedIdentity> {
   const fetchImpl = fetchOf(deps);
   const pds = entryway.replace(/\/+$/, "");
-  const authServer = await authServerFromPds(pds, fetchImpl);
-  const meta = await fetchAuthServerMeta(authServer, fetchImpl);
+  const { authServer, meta } = await discoverFromOrigin(pds, fetchImpl);
   return { did: "", pds, authServer, meta };
 }
 
