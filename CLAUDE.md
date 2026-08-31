@@ -241,13 +241,16 @@ rendering a control row):
   This tier is a decision, not a default — for Emoji Wars a deterministic path
   was measured, found to work, and declined on cost (see §11).
 
-**Adversarial (two-player) games + AI opponents.** Three shipped, in order:
+**Adversarial (two-player) games + AI opponents.** Six shipped, in order:
 Drop 4 (`/drop4/`, solvable), Othello (`/othello/`, heuristic Oracle with an exact
-endgame) and checkers (`/checkers/`, heuristic Oracle whose `exact` means *a
+endgame), checkers (`/checkers/`, heuristic Oracle whose `exact` means *a
 terminal was proven*, and whose move is a jump chain rather than a destination —
 the case that tested the shared trait, band, tutor and harness rather than
-repeating them). Drop 4 was the shelf's first, and all three are Tier-1 builds
-with a verifiable outcome. The engine is strength/difficulty, the LLM is UX
+repeating them), Dots and Boxes and Furrow (§10's variations), and **chess**
+(`/chess/`, 2026-08-30 — build-fresh rules verified by perft, checkers' `exact`
+with quiescence and a repetition history, and the first move code that carries a
+promotion piece; nothing shared changed). Drop 4 was the shelf's first, and all
+six are Tier-1 builds with a verifiable outcome. The engine is strength/difficulty, the LLM is UX
 (legality/personality/explanation/tutoring); the standard lives in
 `docs/BUILDING-GAMES.md` §10 and the full guide in `docs/AI-PLAYERS.md`.
 **Cribbage** (`/cribbage/`, 2026-08-29) is the first **hidden-information** game

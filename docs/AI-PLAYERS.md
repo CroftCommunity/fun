@@ -717,3 +717,15 @@ move be a compact number, and a packed path is one.
   stored (it is true for the search path that produced it and meaningless for
   a transposition). All three bind the tutor's wording to the flag, pinned by
   `coachFor`-shaped tests asserting the branches.
+- **Chess shipped 2026-08-30, and the reuse held.** `adversary-core`,
+  `adversary-solver`, `pond-outcome`, `hybrid-player.ts`, `ai-runtime.ts`,
+  `banter.ts`, the game frame and the rig all landed with an empty diff. What the
+  game added was inside its own crates: quiescence, a `(zobrist, halfmove)`
+  transposition key, the never-store-a-repetition rule, and a 15-bit move code
+  carrying a promotion piece. The numbers: the engine-vs-engine anchor grades
+  **6 of 169** plies (the thinnest fraction on the shelf, for the same reason as
+  checkers' 9 of 163 — `exact` is a proven terminal), 0 blunders, 1-0-1; the
+  first real hybrid run (Qwen2.5-0.5B on apple/metal-3) chose **52 moves, 0
+  fallbacks, 0 blunders**, median 1.2 s a move. The ladder's budgets were chosen
+  by the same `deepen` measurement Drop 4 introduced (`spike/chess-search/`), and
+  the budgeted Expert answers **0 of 50 moves over 400 ms** in Chromium.

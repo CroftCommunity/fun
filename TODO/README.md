@@ -49,6 +49,12 @@ files are the running, checkbox-level worklist.
   engine, and a Rust rig with a peek check instead. Open: the LLM-as-player
   trial, match play, P2P.
 - blockdoku, looseends — shipped; no open backlog file yet. color-sort: `color-sort.md`.
+- [chess.md](chess.md) — **adversarial** (the sixth versus game, the fifth on the
+  shared stack); shipped 2026-08-30. Build-fresh rules verified by perft, a
+  heuristic Oracle with quiescence whose `exact` is checkers' proof-of-terminal,
+  the first move code that carries a promotion piece, and no shared change. Open:
+  the device pass (no phone was attached), the ~74 s CI tournament test, the
+  thinnest graded fraction on the shelf.
 
 ## Shipped — Tier-2 wrapped (playable)
 
@@ -107,42 +113,22 @@ field:
    three result classes reachable, and dots' extra-turn rule **transferring** with
    no change to anything shared, which is what makes the dots result a property of
    the abstraction rather than luck.
-1. **Chess** — Tier-1 adversarial, **heavy**. IN BUILD (2026-08-30):
-   `plans/2026-08-30-plan-chess-vs-engine.md` — build-fresh `chess-core` verified
-   by perft against the six published reference positions, not a vetted library
-   (the licence, sourcing and verification reasoning is the plan's "Build-fresh"
-   section; this entry previously said a vetted generator was needed).
-   - **The "gated on larger-binary hosting" note was wrong, corrected 2026-08-07.**
-     It was written in a documentation pass (`2327dbc`) and attached chess to the
-     WebLLM weights thread by analogy; no binary was ever measured. Those are
-     different problems — that thread is ~1 GB of *model weights*, and a Stockfish
-     build is orders of magnitude smaller. The nearby real constraint is that
-     multi-threaded Stockfish-WASM needs `SharedArrayBuffer`, which needs COOP/COEP
-     response headers, which GitHub Pages will not serve; a single-threaded build
-     sidesteps that at a strength cost.
-   - **The better objection to a Stockfish Oracle is architectural.** Every game
-     here grades against its own solver, and the harness grades a move only when
-     the oracle reports `exact` — a proven win/draw/loss class. Stockfish reports
-     centipawns and has no `exact` to give, so a Stockfish-backed oracle would
-     report `scoredMoves == 0` forever and the tutor would have nothing honest to
-     bind its wording to. If chess ships, its Oracle is most likely ours, with the
-     shape `docs/AI-PLAYERS.md` already anticipates.
-2. **Digger** — [digger.md](digger.md). Tier-1 build-fresh (our own take on an
+1. **Digger** — [digger.md](digger.md). Tier-1 build-fresh (our own take on an
    LD29 digger; the original is all-rights-reserved, so not wrappable). Not
    adversarial — a single-player action/puzzle.
-3. **Logic puzzles** — [puzzles.md](puzzles.md). **A direction, not a queued
+2. **Logic puzzles** — [puzzles.md](puzzles.md). **A direction, not a queued
    item** — "maybe later", and that file says "not started" for a reason. What was
    actually decided (2026-08-03) is that the Tatham Tier-2 **embed** is out: it was
    tried and torn out as unreadable. The build-fresh family (Minesweeper /
    Nonograms / Sudoku / …) remains a plausible later direction, and note it is
    **single-player** — it reuses none of the adversarial trait / band / tutor /
    harness stack, so it is not an answer to "what else can that stack carry".
-4. **Cribbage — done.** Shipped 2026-08-29 against the engine
+3. **Cribbage — done.** Shipped 2026-08-29 against the engine
    (`TODO/cribbage.md`, `plans/2026-08-29-plan-cribbage-vs-engine.md`). The gate
    (P2P + fair-reveal) only ever applied to two *untrusted peers*; against a local
    engine the deck is a seed. The two-human version is a follow-on on the same
    core.
-5. **SuperTuxKart** — [supertuxkart.md](supertuxkart.md). Tier-2, **under owner
+4. **SuperTuxKart** — [supertuxkart.md](supertuxkart.md). Tier-2, **under owner
    review** — local preview built + served; the awesome-or-not call is pending
    (and the Emscripten + runtime-untar class is discouraged, `docs/BUILDING-GAMES.md`).
 

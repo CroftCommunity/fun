@@ -5,13 +5,24 @@ landing *is* releasing: sections are months, each entry dated by its landing. Pe
 `CroftC/.claude/CHANGELOGS.md`, the branch that changes something a player runs adds its
 entry here before it lands. Contexts are the shelf's chrome and the individual games.
 
-Contexts: shelf · mahjong · looseends · color-sort · align · 2048 · bubble · checkers · wyrdle · trio-tumble · othello · cribbage · furrow · dots · drop4 · blockdoku · orchard · sinker · solitaire
+Contexts: shelf · mahjong · looseends · color-sort · align · 2048 · bubble · checkers · chess · wyrdle · trio-tumble · othello · cribbage · furrow · dots · drop4 · blockdoku · orchard · sinker · solitaire
 
 Started 2026-08-29; the August entries below are the landings of that month, and everything
 earlier is in `git log`.
 
 ## 2026-08
 
+- 2026-08-30 **chess:** a new game. Chess against The Engine at four levels, with
+  the rules built fresh and verified by perft: castling by tapping the king two
+  squares, en passant, promotion through a picker, and the draws (stalemate,
+  threefold, fifty moves, insufficient material) applied by the game. Play White,
+  Black (the board turns) or random; the seats show captured material and the last
+  move in notation; Undo takes back a pair; a hint points at a move; a finished
+  game is a verifiable, shareable record. Settings → Tutor explains your options
+  in notation with an idea each and is honest about what it has proven; on a
+  WebGPU device the experimental local-AI opponent (Ash) is there too. A "How to
+  play" guide leads with what a new player gets wrong.
+  (`plans/2026-08-30-plan-chess-vs-engine.md`)
 - 2026-08-30 **mahjong:** a new game — Mahjong solitaire, tile matching. Tap a free tile
   (nothing on it, a long side open), then its match; flowers match any flower and seasons
   any season. Five boards on a ladder — Pond 36, Bridge 60, Fortress 88, Steps 112 and the

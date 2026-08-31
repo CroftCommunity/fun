@@ -5,7 +5,7 @@ analysis) 2026-08-30; Pass 3 (quality gates) 2026-08-30. Every open question is
 owner-confirmed and none is BLOCKING-unresolved; the two PHASE-GATED items gate Phases 2
 and 9 and are already reflected in those phases. **Phase 0 executed 2026-08-30**
 (D1 / D2-desktop / D3-deferral / D4 / D6 closed; D2's Samsung half and D5's
-two-Android half owed, `[device: …]` tags on their task lines) — **Phase 1 executed 2026-08-30** (perft green at CI depth on all six positions; differential perft 200/0) — **Phase 2 executed 2026-08-30** (terminals, both trait impls, hash, SAN, vectors; gate green) — **Phase 3 executed 2026-08-30** (both chess cases green in wasm) — **Phase 4 executed 2026-08-30** (search green, deepen adopted ≥ d4, budgeted ladder 0/50 over 400 ms in Chromium; Samsung half owed) — **Phase 5 executed 2026-08-30** (band + tutor green; Expert v Easy 20/20, Easy v random 14/20) — **Phase 6 executed 2026-08-30** (core 674: 60→23 all equivalent; solver 422: 302→69, real gaps closed and hand-verified) — **Phase 7 executed 2026-08-30** (binding green, 205 KB wasm, 1.06 MiB memory) — **Phase 8 executed 2026-08-30** (wrapper + outcome, 6/6 over the real wasm) — **Phase 9 executed 2026-08-30** (playable /chess/, 30/30 both engines, a11y auto-enrolled) — **Phase 10 executed 2026-08-30** (tutor + hybrid green, 38/38 both engines; the real-WebGPU run moves to Phase 11's `harness:trial`, the game-parameterised runner) — **Phase 11 executed 2026-08-30** (adapter + anchor 6/163, rig diff empty; real WebGPU run 52 model moves / 0 fallbacks / 0 blunders) — **Phase 12 executed 2026-08-30** (guide + three shots; the result shot caught a stretched final board, fixed) — **Phase 13 next.**
+two-Android half owed, `[device: …]` tags on their task lines) — **Phase 1 executed 2026-08-30** (perft green at CI depth on all six positions; differential perft 200/0) — **Phase 2 executed 2026-08-30** (terminals, both trait impls, hash, SAN, vectors; gate green) — **Phase 3 executed 2026-08-30** (both chess cases green in wasm) — **Phase 4 executed 2026-08-30** (search green, deepen adopted ≥ d4, budgeted ladder 0/50 over 400 ms in Chromium; Samsung half owed) — **Phase 5 executed 2026-08-30** (band + tutor green; Expert v Easy 20/20, Easy v random 14/20) — **Phase 6 executed 2026-08-30** (core 674: 60→23 all equivalent; solver 422: 302→69, real gaps closed and hand-verified) — **Phase 7 executed 2026-08-30** (binding green, 205 KB wasm, 1.06 MiB memory) — **Phase 8 executed 2026-08-30** (wrapper + outcome, 6/6 over the real wasm) — **Phase 9 executed 2026-08-30** (playable /chess/, 30/30 both engines, a11y auto-enrolled) — **Phase 10 executed 2026-08-30** (tutor + hybrid green, 38/38 both engines; the real-WebGPU run moves to Phase 11's `harness:trial`, the game-parameterised runner) — **Phase 11 executed 2026-08-30** (adapter + anchor 6/163, rig diff empty; real WebGPU run 52 model moves / 0 fallbacks / 0 blunders) — **Phase 12 executed 2026-08-30** (guide + three shots; the result shot caught a stretched final board, fixed) — **Phase 13 OWED 2026-08-30** (no physical phone attached; every `[device: …]` tag stays on its line, listed in `TODO/chess.md`) — **Phase 14 next.**
 Worktree `worktrees/chess/fun`, branch `claude/chess`.
 **Standards anchor:** `docs/BUILDING-GAMES.md` §10 + both new-game checklists;
 `docs/AI-PLAYERS.md` (search cost, honesty gate); `docs/HARNESS.md` (adding a game).
@@ -1852,6 +1852,26 @@ PR open; `workspace-audit.sh` clean.
 ---
 
 ## Review Log
+
+### Phase 13 — owed, 2026-08-30
+
+**Not executed: no phone was attached.** `adb devices -l` (the SDK's adb at
+`~/Library/Android/sdk/platform-tools/`, not on PATH) listed one device,
+`emulator-5554` (`sdk_gphone64_arm64`) — an emulator, which is not a
+TESTBED resource and fulfils no `[device: …]` token. No `testbed--samsung` /
+`testbed--pixel` claim was taken (nothing to claim them for); the claims
+directory held only its README. The six `[device: …]` tags in this plan
+(Phase 0's glyph rendering D5, Phase 4's Samsung half of the latency table,
+Phase 9's tap flow / picker at 44px / glyphs, and their echoes in the Review
+Log) stay as written, and `TODO/chess.md` lists them as the owed device pass
+so the queue script finds them from one place. Fulfilment is the
+`[device done YYYY-MM-DD: …]` edit on each line, per TESTBED.
+
+**What an emulator could still do, deliberately not done here:** the
+`spike/chess-latency/` wasm timing would run in the emulator's Chrome over
+`adb reverse`, but Phase 4's table is a laptop-Chromium column and the owed
+column is the Samsung's — an emulator number would be a third column that
+answers neither, so it was not spent on.
 
 ### Phase 12 execution — 2026-08-30
 
