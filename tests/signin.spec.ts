@@ -117,6 +117,9 @@ for (const skin of ["worlds-light", "worlds-dark"] as const) {
   });
 }
 
+/** Entryways that serve only the issuer document, never oauth-protected-resource. */
+const ISSUER_ONLY_ENTRYWAYS: ReadonlySet<string> = new Set(["https://bsky.social"]);
+
 /** Mock a provider's OAuth discovery and PAR at its own entryway; capture PAR bodies. */
 async function mockProvider(page: Page, entryway: string): Promise<{ par: () => URLSearchParams[]; state: () => string | null }> {
   await page.route("**/*", (route) => {
@@ -127,8 +130,13 @@ async function mockProvider(page: Page, entryway: string): Promise<{ par: () => 
     return route.abort();
   });
   const bodies: URLSearchParams[] = [];
+  // Mirrors the live shape (harvested 2026-08-30): an ENTRYWAY such as bsky.social is
+  // the issuer for a fleet of PDS hosts and answers 404 to oauth-protected-resource
+  // (only its PDSes serve it); a single-host provider names itself there.
   await page.route(`${entryway}/.well-known/oauth-protected-resource`, (route) =>
-    route.fulfill({ json: { resource: entryway, authorization_servers: [entryway] } }),
+    ISSUER_ONLY_ENTRYWAYS.has(entryway)
+      ? route.fulfill({ status: 404, contentType: "text/html", body: "Cannot GET /.well-known/oauth-protected-resource" })
+      : route.fulfill({ json: { resource: entryway, authorization_servers: [entryway] } }),
   );
   await page.route(`${entryway}/.well-known/oauth-authorization-server`, (route) =>
     route.fulfill({
