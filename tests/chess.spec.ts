@@ -282,3 +282,65 @@ test("leaving mid-game and returning to the bare URL resumes the same position",
   await ready(page);
   expect(await hash(page)).toBe(h);
 });
+
+/** Enable the tutor the way a player does: the settings sheet's toggle (a sheet on a phone). */
+async function enableTutor(page: Page): Promise<void> {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-input').click({ force: true });
+  await page.keyboard.press("Escape");
+}
+
+test("the tutor panel is off by default and appears when enabled in settings", async ({ page }) => {
+  await page.goto("/chess/?seed=7");
+  await ready(page);
+  await expect(page.locator(".chess-tutor")).toHaveCount(0);
+  await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-input').click({ force: true });
+  await expect(page.locator(".chess-tutor-explain")).toBeVisible();
+});
+
+test("'Explain my options' lists moves in SAN, each with an idea, and hedges the opening", async ({ page }) => {
+  await page.goto("/chess/?seed=7");
+  await ready(page);
+  await enableTutor(page);
+  await page.locator(".chess-tutor-explain").click();
+  const items = page.locator(".chess-tutor-options li");
+  await expect(items.first()).toBeVisible({ timeout: 15_000 });
+  const lines = await items.allTextContents();
+  expect(lines.length).toBeGreaterThanOrEqual(2);
+  for (const line of lines) expect(line).toMatch(/^[a-hNBRQKO][^—]* — .+/);
+  await expect(page.locator(".chess-tutor-note")).toContainText(/not yet certain/i);
+});
+
+test("the experimental local-AI opponent is hidden with no real WebGPU adapter", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "gpu", {
+      configurable: true,
+      value: { requestAdapter: async () => null },
+    });
+  });
+  await page.goto("/chess/?seed=7");
+  await ready(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await expect(page.locator('.gf-sheet [data-setting="tutor"]')).toHaveCount(1);
+  await expect(page.locator('.gf-sheet [data-setting="local-ai"]')).toHaveCount(0);
+});
+
+test("the experimental local-AI toggle appears with a real adapter and discloses the download", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "gpu", {
+      configurable: true,
+      value: { requestAdapter: async () => ({ isFallbackAdapter: false }) },
+    });
+  });
+  await page.goto("/chess/?seed=7");
+  await ready(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  const row = page.locator('.gf-sheet [data-setting="local-ai"]');
+  await expect(row).toHaveCount(1);
+  await expect(row.locator(".sheet-hint")).toContainText(/download|one[- ]time/i);
+});

@@ -14,13 +14,18 @@ import type { GameModule, GameServices } from "../../contract.js";
 import type { GameFrame, GameFrameSpec, Verb } from "../../game-frame.js";
 import type { Progress } from "../../progress.js";
 import type { SettingRow } from "../../settings-sheet.js";
+import { WebLLMRuntime, type AIRuntime } from "../../harness/ai-runtime.js";
+import { speak } from "../../harness/banter.js";
+import { buildBand, HybridPlayer, type BandMove, type HybridDecision } from "../../harness/hybrid-player.js";
 import { captureUiState, restoreUiState } from "../../ui-state.js";
 import {
   chessLevel,
   chessSide,
+  chessTutorEnabled,
   hintsEnabled,
   setChessLevel,
   setChessSide,
+  setChessTutor,
   type ChessLevel,
   type ChessSide,
 } from "../../settings.js";
@@ -31,7 +36,13 @@ import {
   type ChessEnvelope,
   type VerifyResult,
 } from "./chess-outcome.js";
-import { Chess, type BoardView, type LegalMove, type SideCode } from "./chess-wasm.js";
+import {
+  Chess,
+  type BoardView,
+  type LegalMove,
+  type MoveAssessment,
+  type SideCode,
+} from "./chess-wasm.js";
 
 declare global {
   interface Window {
@@ -40,12 +51,95 @@ declare global {
       game: Chess;
       refresh: () => void;
       seed: bigint;
+      /** Test seam: switch the opponent without the settings sheet. */
+      setOpponent: (kind: "engine" | "local-ai") => void;
+      /** The last hybrid decision's provenance, for the wiring test. */
+      lastAi: HybridDecision | null;
     };
+    /** Test seam: override the local-AI model id (a smaller/faster model). */
+    __CHESS_AI_MODEL?: string;
+    /** Test seam: supply the runtime (a `MockRuntime`) instead of WebLLM. */
+    __CHESS_AI_RUNTIME?: () => AIRuntime;
   }
 }
 
 /** The opponent's identity — honest: it is the shelf's engine. */
 const OPPONENT = { name: "The Engine", avatar: "🤖" } as const;
+
+const LOCAL_AI = "local-ai";
+/** A small, fast model — the local-AI opponent is UX (banter), not strength. */
+const LOCAL_AI_MODEL = "Qwen2.5-0.5B-Instruct-q4f16_1-MLC";
+/** The experimental local-AI opponent's persona (the Chip/Rowan/Alder line). */
+export const LOCAL_AI_PERSONA = { name: "Ash", avatar: "🌳" } as const;
+const HYBRID_SYSTEM = [
+  "You are Ash, a friendly but competitive chess opponent.",
+  "You always pick from the offered moves (they are safe by construction).",
+  "You add a short, in-character line of banter — never analysis, never move lists.",
+].join(" ");
+
+/** The magnitude a proven mate scores above — `chess_solver::MATE`. */
+const MATE = 1_000_000;
+
+/**
+ * A short, engine-grounded idea for why a move is reasonable (tutor copy).
+ * `depth` is the report's reached depth: a proven mate's value is
+ * `MATE + remaining depth`, so the plies to mate are `depth - (value - MATE)`.
+ * "Mate in N" is said **only** when the fact is exact.
+ */
+export const ideaFor = (m: MoveAssessment, depth: number): string => {
+  if (m.immediateWin) return "mate in 1";
+  if (m.exact && m.value > MATE / 2) {
+    const plies = depth - (m.value - MATE);
+    const n = Math.ceil(plies / 2);
+    return n >= 1 ? `mate in ${n}` : "forces mate";
+  }
+  if (m.captures > 0) return `takes the ${KIND_NAMES[m.captures] ?? "piece"}`;
+  if (m.promotes > 0) return "promotes";
+  if (m.castles) return "castles";
+  if (m.givesCheck) return "gives check";
+  return m.quality === "optimal" ? "your strongest line" : "stays safe";
+};
+
+/**
+ * Coaching for a just-tapped move, or null if it does not warrant a note.
+ *
+ * Honest about certainty: chess is not solved, and a move's value is `exact`
+ * only when its line reached a **proven terminal**. Only then may the tutor
+ * say the move *threw* the game. A horizon judgement cannot establish a class
+ * drop at all, so it softens to "looks risky" and fires only for a move the
+ * engine clearly dislikes (a piece or more of regret). Pinned by
+ * `tests/chess-tutor.test.ts` from all three sides.
+ */
+export const coachFor = (
+  verdict: MoveAssessment | null,
+  bestSan: string | null,
+  exact: boolean,
+): string | null => {
+  if (!verdict || bestSan === null) return null;
+  if (exact) {
+    return verdict.quality === "blunder" ? `That threw the game — ${bestSan} held it.` : null;
+  }
+  return verdict.regret >= 300 ? `That looks risky — ${bestSan} may be stronger.` : null;
+};
+
+/** What just happened, in one word — drives the persona prompt + the canned line. */
+export type Situation = "captured" | "mating" | "blundered" | "solid" | "neutral";
+export const SITUATION_HINT: Record<Situation, string> = {
+  captured: "A capture is on offer — take it with a little flourish.",
+  mating: "You can force the end — be gracious about it.",
+  blundered: "The player just slipped — tease taking advantage.",
+  solid: "The player made a solid move — give a little credit, stay competitive.",
+  neutral: "Nothing decisive yet — a light competitive jab.",
+};
+/** The canned lines. Every one must survive `banter.ts`'s filter (no digits,
+ *  no board nouns) — asserted line by line in `tests/chess-tutor.test.ts`. */
+export const FALLBACK_LINE: Record<Situation, string> = {
+  captured: "Thank you for the piece. I'll keep it warm.",
+  mating: "I believe this is the end of the road.",
+  blundered: "That looked shaky. I'm not complaining.",
+  solid: "Good move. I've seen better, but good.",
+  neutral: "Your turn. No rush, I have all day.",
+};
 
 /**
  * The beats: the engine's think and the fanfare before the result. `?fast=1`
@@ -232,10 +326,28 @@ export function chessModule(): GameModule {
   let pendingPromotion: { from: number; to: number; options: LegalMove[] } | null = null;
   // The Hint ring, until the next move.
   let hint: [number, number] | null = null;
+  // Engine-grounded coaching for the human's last move, surfaced after the
+  // engine replies (so it does not spoil the reply). Cleared each human turn.
+  let coachMsg: string | null = null;
+  let pendingCoach: string | null = null;
+  /** The tutor's last reading, held WITH the position it was computed for (furrow's lesson). */
+  let tutorReading: { note: string; items: string[]; at: string } | null = null;
+  let lastHumanQuality: "optimal" | "resultPreserving" | "blunder" | null = null;
+
+  // --- experimental local-AI opponent (hybrid: engine band + LLM in-band pick) ---
+  let localAiAvailable = false;
+  let opponentKind: "engine" | typeof LOCAL_AI = "engine";
+  let runtime: AIRuntime | null = null;
+  let hybrid: HybridPlayer | null = null;
+  let aiSay: string | null = null;
+  let toasted: string | null = null;
+  let lastAi: HybridDecision | null = null;
 
   /** The side value the human plays: 1 (white, opens) or 2 (black). */
   const humanSide = (): SideCode => (seat === "white" ? 1 : 2);
   const flipped = (): boolean => seat === "black";
+  const opponentIdentity = (): { name: string; avatar: string } =>
+    opponentKind === LOCAL_AI ? LOCAL_AI_PERSONA : OPPONENT;
 
   const statusEl = el("p", { class: "chess-status", role: "status", "aria-live": "polite" });
   const setStatus = (msg: string): void => {
@@ -282,11 +394,19 @@ export function chessModule(): GameModule {
     thinking = true;
     render();
     window.setTimeout(() => {
-      if (disposed || !game) return;
-      const mv = game.liveMove(level);
-      if (mv !== null) applyMove(mv);
-      thinking = false;
-      step();
+      void (async () => {
+        if (disposed || !game) return;
+        const mv = opponentKind === LOCAL_AI ? await hybridMove() : game.liveMove(level);
+        if (disposed || !game) return;
+        if (mv !== null) applyMove(mv);
+        thinking = false;
+        // Surface any coaching for the human's move now the reply is in.
+        if (pendingCoach !== null) {
+          coachMsg = pendingCoach;
+          pendingCoach = null;
+        }
+        step();
+      })();
     }, beats.think);
   };
 
@@ -297,10 +417,7 @@ export function chessModule(): GameModule {
     if (selected !== null) {
       const options = legal.filter((m) => m.from === selected && m.to === sq);
       if (options.length === 1) {
-        if (applyMove(options[0]!.code)) {
-          setStatus("");
-          step();
-        }
+        commitHuman(options[0]!.code);
         return;
       }
       if (options.length > 1) {
@@ -325,13 +442,35 @@ export function chessModule(): GameModule {
     render();
   };
 
+  /** Assess the human's move at the *current* position (the cheap coach budget —
+   *  this is the tap path), then play it and hand the turn to the engine. */
+  const commitHuman = (code: number): void => {
+    if (!game) return;
+    const report = game.coach();
+    const verdict = report.moves.find((m) => m.col === code) ?? null;
+    lastHumanQuality = verdict?.quality ?? null;
+    const bestSan = report.moves.find((m) => m.col === report.bestCol)?.san ?? null;
+    const pending = chessTutorEnabled() ? coachFor(verdict, bestSan, verdict?.exact ?? false) : null;
+    if (applyMove(code)) {
+      coachMsg = null; // clear last turn's coaching
+      setStatus("");
+      if (gameOver()) {
+        coachMsg = pending; // a game-ending blunder is still explained
+      } else {
+        pendingCoach = pending;
+      }
+      step();
+    } else {
+      render();
+    }
+  };
+
   const choosePromotion = (promo: number): void => {
     if (!pendingPromotion) return;
     const pick = pendingPromotion.options.find((m) => m.promo === promo);
     pendingPromotion = null;
-    if (pick && applyMove(pick.code)) {
-      setStatus("");
-      step();
+    if (pick) {
+      commitHuman(pick.code);
     } else {
       render();
     }
@@ -369,6 +508,111 @@ export function chessModule(): GameModule {
     game.markAssistance();
     frame?.toast(`Try ${game.san(report.bestCol)}`, 4000);
     render();
+  };
+
+  const readSituation = (band: readonly BandMove[]): Situation => {
+    if (band.some((m) => m.idea.startsWith("mate"))) return "mating";
+    if (band.some((m) => m.idea.startsWith("takes"))) return "captured";
+    if (lastHumanQuality === "blunder") return "blundered";
+    if (lastHumanQuality === "optimal") return "solid";
+    return "neutral";
+  };
+
+  const hybridPrompt = (g: Chess, band: readonly BandMove[], sit: Situation): string => {
+    const codes = band.map((m) => m.col).join(", ");
+    return [
+      `Board (you play the side to move):\n${g.renderText()}`,
+      SITUATION_HINT[sit],
+      `Play ONE of these move codes: ${codes}.`,
+      `Reply ONLY with JSON {"move": <one of ${codes}>, "reason": "<your one-line quip, under 12 words>"}.`,
+    ].join("\n");
+  };
+
+  // The hybrid opponent's move: the engine builds a never-throw band, the LLM
+  // picks within it and quips; any failure falls back to the engine. Reuses the
+  // shipped buildBand/HybridPlayer unchanged.
+  const hybridMove = async (): Promise<number | null> => {
+    if (!game) return null;
+    try {
+      if (!runtime || !hybrid) {
+        setStatus(`${LOCAL_AI_PERSONA.name}: warming up the model (one-time download)…`);
+        render();
+        runtime =
+          window.__CHESS_AI_RUNTIME?.() ??
+          new WebLLMRuntime({
+            model: window.__CHESS_AI_MODEL ?? LOCAL_AI_MODEL,
+            onProgress: (t) => setStatus(`${LOCAL_AI_PERSONA.name}: ${t}`),
+          });
+        hybrid = new HybridPlayer(runtime);
+      }
+      const report = game.tutor();
+      const band = buildBand(report.moves.map((m) => ({ ...m, idea: ideaFor(m, report.depth) })));
+      if (band.length === 0) return game.liveMove(level); // no band → classic safety
+      const sit = readSituation(band);
+      const decision = await hybrid.pick(band, { prompt: hybridPrompt(game, band, sit), system: HYBRID_SYSTEM });
+      lastAi = decision;
+      if (window.__chess) window.__chess.lastAi = decision;
+      // The shared filter decides whether the model's own words are fit to speak.
+      aiSay = speak(decision, FALLBACK_LINE[sit]).line;
+      return decision.move;
+    } catch {
+      aiSay = null;
+      return game.liveMove(level); // never break the game on an AI failure
+    }
+  };
+
+  // A real WebGPU adapter is required for the local-AI opponent; probe once on
+  // mount and offer the toggle only if it passes (classic engine otherwise).
+  const probeLocalAi = async (): Promise<void> => {
+    try {
+      const gpu = (
+        navigator as Navigator & {
+          gpu?: { requestAdapter(): Promise<{ isFallbackAdapter?: boolean } | null> };
+        }
+      ).gpu;
+      const adapter = gpu ? await gpu.requestAdapter() : null;
+      localAiAvailable = Boolean(adapter) && adapter?.isFallbackAdapter !== true;
+    } catch {
+      localAiAvailable = false;
+    }
+    if (!disposed && localAiAvailable) render();
+  };
+
+  // --- the tutor panel (engine-grounded coaching; opt-in, no GPU) ---
+  const renderTutorPanel = (): HTMLElement => {
+    const panel = el("section", { class: "chess-tutor checkers-tutor", "aria-label": "Tutor" });
+    const explain = el("button", { type: "button", class: "chess-tutor-explain checkers-tutor-explain" }, "Explain my options");
+    const note = el("p", { class: "chess-tutor-note checkers-tutor-note", "aria-live": "polite" });
+    const optionsEl = el("ul", { class: "chess-tutor-options checkers-tutor-options", "aria-label": "Reasonable moves" });
+    explain.addEventListener("click", () => {
+      if (!game || thinking || ending || gameOver() || !humanToMove()) return;
+      // The panel's search is deeper than any move-time search and blocks the
+      // main thread, so paint the reading state FIRST and search next frame.
+      explain.setAttribute("aria-busy", "true");
+      note.textContent = "Reading ahead…";
+      optionsEl.replaceChildren();
+      requestAnimationFrame(() => {
+        window.setTimeout(() => {
+          if (disposed || !game) return;
+          const report = game.tutor();
+          const band = report.moves.filter((m) => m.quality !== "blunder").sort((a, b) => b.value - a.value);
+          const heading = report.exact ? "" : "Reading ahead (not yet certain):";
+          const items = band.slice(0, 6).map((m) => `${m.san} — ${ideaFor(m, report.depth)}`);
+          note.textContent = heading;
+          optionsEl.replaceChildren(...items.map((line) => el("li", {}, line)));
+          tutorReading = { note: heading, items, at: game.currentHash() };
+          explain.removeAttribute("aria-busy");
+        }, 0);
+      });
+    });
+    if (game && tutorReading && tutorReading.at === game.currentHash()) {
+      note.textContent = tutorReading.note;
+      optionsEl.replaceChildren(...tutorReading.items.map((line) => el("li", {}, line)));
+    }
+    const coach = el("p", { class: "chess-tutor-coach checkers-tutor-coach", role: "status", "aria-live": "polite" });
+    if (coachMsg) coach.textContent = coachMsg;
+    panel.append(explain, note, optionsEl, coach);
+    return panel;
   };
 
   // ---------- rendering ----------
@@ -493,12 +737,39 @@ export function chessModule(): GameModule {
   // --- what the frame shows: seats, the level chip, the verbs, setup ---
   const spec = (): GameFrameSpec => {
     const b = game?.board();
-    const opp = OPPONENT;
+    const opp = opponentIdentity();
     const live = b !== undefined && b.result === -1;
     const humanTurn = live && b.toMove === humanSide();
     const engineThinking = live && !humanTurn && thinking;
     const youScore = b ? b.captured[humanSide() - 1]! : 0;
     const themScore = b ? b.captured[2 - humanSide()]! : 0;
+    const preferences: SettingRow[] = [
+      {
+        kind: "toggle",
+        id: "tutor",
+        label: "Tutor",
+        hint: "Explains your options with the engine's own read of the position.",
+        value: chessTutorEnabled(),
+        onChange: (on) => {
+          setChessTutor(on);
+          render();
+        },
+      },
+    ];
+    if (localAiAvailable) {
+      preferences.push({
+        kind: "toggle",
+        id: "local-ai",
+        label: "Experimental: local AI opponent",
+        hint: `An in-browser model (${LOCAL_AI_PERSONA.name}) picks within the engine's safe moves and adds banter — a one-time model download on first use; it never plays a losing move (the engine's band decides).`,
+        value: opponentKind === LOCAL_AI,
+        onChange: (on) => {
+          opponentKind = on ? LOCAL_AI : "engine";
+          aiSay = null;
+          render();
+        },
+      });
+    }
     const canUndo = live && humanTurn && !thinking && !ending && moves.length >= 2;
     const canHint = live && humanTurn && !thinking && !ending;
     const verbs: Verb[] = [
@@ -546,7 +817,7 @@ export function chessModule(): GameModule {
           side = sd;
         },
       }),
-      preferences: [],
+      preferences,
       onStart: () => void startGame(),
     };
   };
@@ -555,13 +826,22 @@ export function chessModule(): GameModule {
   function render(): void {
     if (disposed || !container || !game) return;
     const board = game.board();
-    const parts: (Node | string)[] = [buildBoard(board, true), statusEl];
+    const parts: (Node | string)[] = [
+      buildBoard(board, true),
+      ...(chessTutorEnabled() ? [renderTutorPanel()] : []),
+      statusEl,
+    ];
     if (pendingPromotion) parts.push(buildPicker());
     // The player owns the focus; the model does not.
     const ui = captureUiState(container);
     container.replaceChildren(el("div", { class: "chess-game" }, ...parts));
     restoreUiState(container, ui);
     declare();
+    // Transients overlay the stage — never a <p> in flow above the board (frame rule 1).
+    if (aiSay && opponentKind === LOCAL_AI && aiSay !== toasted) {
+      toasted = aiSay;
+      frame?.toast(`${LOCAL_AI_PERSONA.name}: ${aiSay}`, 6000);
+    }
     if (!hinted && moves.length <= 1 && humanToMove() && !thinking) {
       hinted = true;
       frame?.toast("Tap a piece, then tap where it goes — only legal moves light up.", 5000);
@@ -572,7 +852,7 @@ export function chessModule(): GameModule {
     const code = board.result;
     if (code === 0) return "A draw";
     if (code === -1) return "Ended early";
-    return code === humanSide() ? "You won" : `${OPPONENT.name} won`;
+    return code === humanSide() ? "You won" : `${opponentIdentity().name} won`;
   };
 
   const finish = (): void => {
@@ -624,6 +904,9 @@ export function chessModule(): GameModule {
     selected = null;
     pendingPromotion = null;
     hint = null;
+    coachMsg = null;
+    pendingCoach = null;
+    aiSay = null;
     seed = seedOverride ?? randomSeed();
     seat = resolveSeat(seed);
     game.newGame(seed);
@@ -646,6 +929,9 @@ export function chessModule(): GameModule {
     selected = null;
     pendingPromotion = null;
     hint = null;
+    coachMsg = null;
+    pendingCoach = null;
+    aiSay = null;
     hinted = true;
     seed = typeof rec.seed === "string" ? BigInt(rec.seed) : randomSeed();
     game.newGame(seed);
@@ -686,7 +972,15 @@ export function chessModule(): GameModule {
 
   const exposeHook = (): void => {
     if (!game) return;
-    window.__chess = { game, refresh: () => render(), seed };
+    window.__chess = {
+      game,
+      refresh: () => render(),
+      seed,
+      setOpponent: (kind) => {
+        opponentKind = kind;
+      },
+      lastAi,
+    };
   };
 
   return {
@@ -725,6 +1019,9 @@ export function chessModule(): GameModule {
           const seedParam = url.searchParams.get("seed");
           await startGame(seedParam !== null ? BigInt(seedParam) : undefined);
         }
+        // Probe WebGPU in the background; if present, the settings sheet offers
+        // the experimental local-AI opponent (classic engine otherwise).
+        void probeLocalAi();
       })();
     },
     unmount(): void {
@@ -735,6 +1032,8 @@ export function chessModule(): GameModule {
       frame = null;
       game = null;
       verifier = null;
+      runtime = null; // release the WebGPU engine (local-AI) if it was created
+      hybrid = null;
     },
     // --- the progress store: the seed and the move codes; resume is replay ---
     snapshot(): Progress {
