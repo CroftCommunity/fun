@@ -5,7 +5,7 @@ analysis) 2026-08-30; Pass 3 (quality gates) 2026-08-30. Every open question is
 owner-confirmed and none is BLOCKING-unresolved; the two PHASE-GATED items gate Phases 2
 and 9 and are already reflected in those phases. **Phase 0 executed 2026-08-30**
 (D1 / D2-desktop / D3-deferral / D4 / D6 closed; D2's Samsung half and D5's
-two-Android half owed, `[device: …]` tags on their task lines) — **Phase 1 executed 2026-08-30** (perft green at CI depth on all six positions; differential perft 200/0) — **Phase 2 executed 2026-08-30** (terminals, both trait impls, hash, SAN, vectors; gate green) — **Phase 3 executed 2026-08-30** (both chess cases green in wasm) — **Phase 4 executed 2026-08-30** (search green, deepen adopted ≥ d4, budgeted ladder 0/50 over 400 ms in Chromium; Samsung half owed) — **Phase 5 executed 2026-08-30** (band + tutor green; Expert v Easy 20/20, Easy v random 14/20) — **Phase 6 executed 2026-08-30** (core 674: 60→23 all equivalent; solver 422: 302→69, real gaps closed and hand-verified) — **Phase 7 executed 2026-08-30** (binding green, 205 KB wasm, 1.06 MiB memory) — **Phase 8 executed 2026-08-30** (wrapper + outcome, 6/6 over the real wasm) — **Phase 9 executed 2026-08-30** (playable /chess/, 30/30 both engines, a11y auto-enrolled) — **Phase 10 executed 2026-08-30** (tutor + hybrid green, 38/38 both engines; the real-WebGPU run moves to Phase 11's `harness:trial`, the game-parameterised runner) — **Phase 11 executed 2026-08-30** (adapter + anchor 6/163, rig diff empty; real WebGPU run 52 model moves / 0 fallbacks / 0 blunders) — **Phase 12 executed 2026-08-30** (guide + three shots; the result shot caught a stretched final board, fixed) — **Phase 13 OWED 2026-08-30** (no physical phone attached; every `[device: …]` tag stays on its line, listed in `TODO/chess.md`) — **Phase 14 next.**
+two-Android half owed, `[device: …]` tags on their task lines) — **Phase 1 executed 2026-08-30** (perft green at CI depth on all six positions; differential perft 200/0) — **Phase 2 executed 2026-08-30** (terminals, both trait impls, hash, SAN, vectors; gate green) — **Phase 3 executed 2026-08-30** (both chess cases green in wasm) — **Phase 4 executed 2026-08-30** (search green, deepen adopted ≥ d4, budgeted ladder 0/50 over 400 ms in Chromium; Samsung half owed) — **Phase 5 executed 2026-08-30** (band + tutor green; Expert v Easy 20/20, Easy v random 14/20) — **Phase 6 executed 2026-08-30** (core 674: 60→23 all equivalent; solver 422: 302→69, real gaps closed and hand-verified) — **Phase 7 executed 2026-08-30** (binding green, 205 KB wasm, 1.06 MiB memory) — **Phase 8 executed 2026-08-30** (wrapper + outcome, 6/6 over the real wasm) — **Phase 9 executed 2026-08-30** (playable /chess/, 30/30 both engines, a11y auto-enrolled) — **Phase 10 executed 2026-08-30** (tutor + hybrid green, 38/38 both engines; the real-WebGPU run moves to Phase 11's `harness:trial`, the game-parameterised runner) — **Phase 11 executed 2026-08-30** (adapter + anchor 6/163, rig diff empty; real WebGPU run 52 model moves / 0 fallbacks / 0 blunders) — **Phase 12 executed 2026-08-30** (guide + three shots; the result shot caught a stretched final board, fixed) — **Phase 13 OWED 2026-08-30** (no physical phone attached; every `[device: …]` tag stays on its line, listed in `TODO/chess.md`) — **Phase 14 executed 2026-08-30** (docs landed, rebased over mahjong, `npm run gate` green: unit 894, e2e 861, xbuild native == wasm; PR #76 open, **merge on the owner's word**). **All phases executed; Phase 13 owed.**
 Worktree `worktrees/chess/fun`, branch `claude/chess`.
 **Standards anchor:** `docs/BUILDING-GAMES.md` §10 + both new-game checklists;
 `docs/AI-PLAYERS.md` (search cost, honesty gate); `docs/HARNESS.md` (adding a game).
@@ -1726,7 +1726,7 @@ npx playwright test tests/how-to.spec.ts` green.
 **Goal:** Record what landed, and land it.
 
 **Changes:**
-- [ ] Everything in Documentation Impact still scheduled here after Pass 3's moves:
+- [x] Everything in Documentation Impact still scheduled here after Pass 3's moves:
   `TODO/README.md` (the entry's move to Shipped — its stale sentence went in Phase
   1), `TODO/chess.md` (new), the one-line pointer in
   `plans/2026-07-31-drop4-ai-harness.md`, `docs/AI-PLAYERS.md` (the generality
@@ -1738,15 +1738,15 @@ npx playwright test tests/how-to.spec.ts` green.
   lands; every claim this plan makes **false** earlier is fixed in the phase that
   breaks it, the checkers plan's Phase 17 reading of the "trailing docs phase"
   rule. `TODO/drop4.md` is no longer here.)*
-- [ ] Review Log entries for every phase, newest first, with the numbers.
-- [ ] `bash tools/check.sh gate npm run gate` (Rust + xbuild + binding + typecheck
+- [x] Review Log entries for every phase, newest first, with the numbers.
+- [x] `bash tools/check.sh gate npm run gate` (Rust + xbuild + binding + typecheck
   + lint + unit + build + e2e — `package.json` `test`); `bash
   /Users/cpettet/git/chasemp/CroftC/.claude/bin/workspace-audit.sh` (Pass 1 wrote
   `../.claude/…`, which from `worktrees/chess/fun` resolves to nothing).
-- [ ] `TODO/README.md:19` — the target heading is "Shipped — Tier-1 Croft-native
+- [x] `TODO/README.md:19` — the target heading is "Shipped — Tier-1 Croft-native
   (playable)"; the chess entry leaves "Next games" (`:82`) and the list below it
   renumbers.
-- [ ] Rebase onto `origin/main`, push, open the PR (`land: chess — …`) — **ask
+- [x] Rebase onto `origin/main`, push, open the PR (`land: chess — …`) — **ask
   before merging**, per COORDINATION; landing claims `landing-on-main` for the
   registry edit.
 
@@ -1852,6 +1852,63 @@ PR open; `workspace-audit.sh` clean.
 ---
 
 ## Review Log
+
+### Phase 14 execution — 2026-08-30
+
+**Gate, named and resolved:** `bash tools/check.sh gate npm run gate` — the
+repo's declared gate (`package.json` `gate` = `test` + `e2e`; Rust through
+`tools/rust-gate.sh` on the pinned 1.97.1 toolchain, xbuild, typecheck, lint,
+unit, build, then Playwright on chromium + mobile-webkit) — **exit 0** on the
+rebased tree: Rust green, xbuild **native == wasm** on every vector (chess's two
+among them), unit **894 passed** (6 skipped), browser **861 passed**.
+
+**The first gate run was red, and the rebase was the cause.** `origin/main`
+had moved by seven commits (mahjong landed) after the branch was cut, so the
+pre-rebase gate was stopped rather than read, and the branch rebased
+(`git rebase origin/main`, 24 commits). Four files conflicted, all resolved to
+carry **both** games — `crates/xbuild/{check.mjs,run.sh}` (mahjong's vectors dir
+and chess's, both exports), `tools/build-wasm.sh` (both crates in the one
+`cargo build`), `styles.css` (mahjong's block then chess's), plus
+`tests/chrome.test.ts`'s registry order (`… mahjong … cribbage, chess,
+placeholder`) and the changelog (both contexts, both entries). The gate then
+failed **2 of 861**: `chess.spec.ts` "the board fits a narrow phone viewport" on
+both engines, squares **24 px**, not ≥ 44. Diagnosed from the served page
+(`.chess-board` display `block`, `--chs-cell` empty): the stylesheet's one
+shared trailing `}` had sat outside git's conflict region, so the resolution
+closed the *chess* block with mahjong's `@media (prefers-reduced-motion)`
+brace and every chess rule was nested inside that query — 970 `{` against 969
+`}`. Fixed with the one brace; a unit test now counts them
+(`tests/dead-css.test.ts`, watched RED against the broken file: "970 '{' vs 969
+'}'"; GREEN after `git checkout HEAD -- styles.css` — HEAD held the fix, so the
+restore was a restore). The second full gate is the green one above.
+
+**Shared-code constraint, as output:** `git diff --stat origin/main --
+crates/adversary-core crates/adversary-solver src/harness/match-runner.ts
+src/harness/scorer.ts src/harness/tournament.ts src/game-frame.ts` printed
+nothing (`wc -l` = 0), before and after the rebase.
+
+**The sweep, read in full:** `grep -rn -i chess TODO CLAUDE.md README.md
+docs/*.md` and the six other plans that mention chess. Classified: this
+branch's own new lines (TODO/README, TODO/chess, CLAUDE, README, AI-PLAYERS,
+BUILDING-GAMES, HARNESS); historical records that stay true (TODO/README:28's
+"checkers/chess Later list", the checkers/othello/dots/cribbage/e2e-shards plans'
+July–August mentions, the drop4 plan's Phase 9 — which got its one-line
+pointer); and **two stale claims fixed**: `TODO/drop4.md:185` said chess was
+*planned* (now shipped, pointing at `TODO/chess.md`), and
+`docs/STATE-OF-PLAY.md:256` listed chess as a next-game candidate (annotated
+the way cribbage already was).
+
+**Workspace audit:** `workspace-audit.sh` reports **51 findings, none naming
+chess** — the fun mocks' missing version/baseline meta, forage/regift device
+tags, arecipe's sign-in noun — all pre-existing. One is downstream of this
+branch: "device queue register is stale" — the generated `DEVICE-QUEUE.md`
+will list chess's owed items only after this lands and `device-queue.sh
+--write` runs in CroftC (the script reads the `fun/` checkout, not a worktree).
+"Clean" was not reachable from this branch and is recorded as such.
+
+**Landing:** PR #76 (`CroftCommunity/fun`), rebased, pushed with
+`--force-with-lease`; body rewritten as the record of what landed. **Not
+merged** — per COORDINATION, the merge waits for the owner's word.
 
 ### Phase 13 — owed, 2026-08-30
 
