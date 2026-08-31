@@ -24,6 +24,8 @@ import { drop4Oracle } from "../src/games/drop4/drop4-oracle.js";
 import { Drop4 } from "../src/games/drop4/drop4-wasm.js";
 import { checkersOracle } from "../src/games/checkers/checkers-oracle.js";
 import { Checkers } from "../src/games/checkers/checkers-wasm.js";
+import { chessOracle } from "../src/games/chess/chess-oracle.js";
+import { Chess } from "../src/games/chess/chess-wasm.js";
 import { dotsOracle } from "../src/games/dots/dots-oracle.js";
 import { Dots } from "../src/games/dots/dots-wasm.js";
 import { furrowOracle } from "../src/games/furrow/furrow-oracle.js";
@@ -182,6 +184,46 @@ const ANCHORS: readonly Anchor[] = [
       preserving: 0,
       blunders: 0,
       skippedEarly: 154,
+      abortedGames: 0,
+      llmMoves: 0,
+      fallbackMoves: 0,
+    },
+  },
+  {
+    game: "chess",
+    load: async () =>
+      chessOracle(
+        await loadWasm("target/wasm32-unknown-unknown/release/chess_wasm.wasm", () =>
+          Chess.load(),
+        ),
+      ),
+    // Recorded 2026-08-30, when chess shipped (Phase 11).
+    //
+    // The thinnest graded fraction on the shelf, and expected: 6 of 169 plies.
+    // Chess is `exact` only where a line reached a **proven** terminal (a mate
+    // or a rule draw inside the analysis search), and two Expert-vs-Expert
+    // games spend almost every ply in positions no search proves. Checkers'
+    // 9 of 163 is the nearest shape. If `scoredMoves` ever reads 0 here the
+    // anchor has stopped measuring anything, and that is the finding.
+    //
+    // `preserving: 1` is worth reading correctly: one graded move kept its
+    // class without being the best proven move — the top-level engine plays
+    // at the ladder's Expert budget (d5 / 150k nodes) while the grader is
+    // the analysis budget (d6 / 600k), and the grader must outrank the player
+    // it grades, so a difference of opinion at the horizon is the grade
+    // working. `1-0-1` is a genuine split, not dots' one forced result twice:
+    // the position is not solved from the opening, so neither seat is known
+    // to win. Wall-clock is not asserted (~29 s of cost on this laptop).
+    recorded: {
+      games: 2,
+      wins: 1,
+      draws: 0,
+      losses: 1,
+      scoredMoves: 6,
+      optimal: 5,
+      preserving: 1,
+      blunders: 0,
+      skippedEarly: 163,
       abortedGames: 0,
       llmMoves: 0,
       fallbackMoves: 0,

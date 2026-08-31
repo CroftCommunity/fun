@@ -8,17 +8,20 @@ personality, not strength" and "the hybrid stays in-band (0 blunders)" into
 repeatable numbers measured against the *actual shipped browser players*.
 
 **It is game-agnostic** (P8 Phase 1–3). The rig drives a `GameOracle` — a
-ten-member port in `src/harness/game-oracle.ts` — so it grades any game that
-ships an adapter. Drop 4, Othello and checkers all do
+nine-member port in `src/harness/game-oracle.ts` (this doc said "ten" for
+three weeks; count them) — so it grades any game that ships an adapter. Drop
+4, Othello, checkers, dots, furrow and chess all do
 (`src/games/<game>/<game>-oracle.ts`), and **the rig itself never changes** —
 checkers proved that literally, landing with an empty `git diff` on
-`match-runner`/`scorer`/`tournament` (P8 Phase 15). Plugging a game in is four
+`match-runner`/`scorer`/`tournament` (P8 Phase 15), and chess repeated it
+2026-08-30 with the widest move code yet (15 bits). Plugging a game in is four
 files, none of them the rig; see "Adding your game to the rig" below.
 
 Two contracts every adapter meets:
 
 - **A move is the game's compact numeric wire code** — Drop 4 a column, Othello
-  `0..63` to place and `64` to pass, checkers a packed `(from, to, variant)`.
+  `0..63` to place and `64` to pass, checkers a packed `(from, to, variant)`,
+  chess a packed `from | to<<6 | promo<<12`.
   This is not a concession to the rig: it is already true of every shelf game,
   because it is what lets a `?r=` share be a plain JSON number array.
 - **A level is `0..3`**, Easy to *that game's* top. The games' own `Level` unions
@@ -43,12 +46,15 @@ own guide.
 Four files. The rig is not one of them — if you find yourself editing
 `match-runner`/`scorer`/`tournament`, the port is wrong and that is the finding.
 
-**1. The adapter — `src/games/<game>/<game>-oracle.ts`.** Implements the ten
+**1. The adapter — `src/games/<game>/<game>-oracle.ts`.** Implements the nine
 members of `GameOracle` over your typed wasm wrapper. Copy the closest of the two
 worked examples:
 
 - `checkers-oracle.ts` — a **pure pass-through**, and the shortest. Start here if
   your wrapper already returns numeric move codes and has no special move.
+  `chess-oracle.ts` is the same shape with one addition worth copying: the
+  `idea` phrasing lives **in the adapter** and the page imports it from there,
+  so the tutor panel and the rig cannot drift apart.
 - `othello-oracle.ts` — the one with **work to do**: a pass is a string sentinel
   from `liveMove`, a separate `pass()` method, and a wire code invented for it.
   Start here if your game has any move that is not "place/move a thing".
@@ -217,6 +223,7 @@ npm run harness:trial
 HARNESS_TRIAL_GAMES=4 HARNESS_TRIAL_MODEL=Qwen2.5-0.5B-Instruct-q4f16_1-MLC npm run harness:trial
 HARNESS_TRIAL_GAME=othello npm run harness:trial     # default: drop4
 HARNESS_TRIAL_GAME=checkers npm run harness:trial
+HARNESS_TRIAL_GAME=chess npm run harness:trial
 ```
 
 This is a standalone script (not a Playwright project): it serves the built app,
@@ -269,6 +276,11 @@ Engine(3) vs Engine(3)                                    [checkers]
   games 2 (0 aborted) | W-D-L 0-2-0 (win rate 0%)
   graded moves 9 (skipped 154 early) | optimal 9 · preserving 0 · blunders 0 (blunder rate 0.0%)
   cost 31900ms total (3544.4ms/graded move)
+
+Engine(3) vs Engine(3)                                       [chess]
+  games 2 (0 aborted) | W-D-L 1-0-1 (win rate 50%)
+  graded moves 6 (skipped 163 early) | optimal 5 · preserving 1 · blunders 0 (blunder rate 0.0%)
+  cost 28838ms total (4806.3ms/graded move)
 ```
 
 The three differ in the ways the *games* differ, which is the sanity check worth
@@ -293,6 +305,12 @@ making before trusting any number here:
   budget to the analysis budget — **the grader must outrank the player it
   grades**, or an engine picking the max at its own depth is "optimal" by
   construction and the grade says nothing.
+- **Chess is the thinnest of all** (163 of 169 skipped) and, for the first
+  time, records a `preserving` move: chess is `exact` only where the analysis
+  search (d6 / 600k nodes) reaches a proven terminal, and its Expert plays at
+  a smaller budget (d5 / 150k), so one graded move kept its class without
+  being the grader's best — the outranking rule above, visible in a number.
+  The `1-0-1` is a genuine split (chess is not solved from the opening).
 
 ### All three games, side by side
 
@@ -305,10 +323,20 @@ a sanity check that the Reports differ in the ways the games do:
 | drop4 | 0-1-1 | 8 | 20 | 0 | 820 | 0 |
 | othello | 0-0-1 | 5 | 40 | 0 | 3619 | **1** |
 | checkers | 0-0-2 | 5 | 46 | 0 | 3400 | 0 |
+| chess (2026-08-30) | 0-0-2 | 3 | 49 | 0 | 23243 | 0 |
 
 Checkers skips the most by far — 99 of 105 plies. That is the honesty gate, not a
 defect: checkers is `exact` only where the search **proves** a terminal, and these
 games ended before the endgame where proofs concentrate.
+
+The chess row was recorded 2026-08-30 on the same laptop (apple/metal-3, the same
+`Qwen2.5-0.5B`): 52 moves chosen by the model, 0 fallbacks (`runtime 0 ·
+malformed 0 · out-of-band 0`), a median hybrid move of 1192 ms (worst 9861 ms),
+and — for the first time in this table — two `preserving` grades among its three
+graded moves: the model picked an in-band move that kept its class without
+being the grader's best, which is exactly what the band promises and nothing
+more. Its per-graded-move cost is the largest here because the grader is the
+d6 / 600k analysis search and almost nothing it grades is cheap.
 
 Since 2026-08-06 a hybrid Report also carries **where its moves came from**:
 

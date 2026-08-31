@@ -5,7 +5,7 @@ analysis) 2026-08-30; Pass 3 (quality gates) 2026-08-30. Every open question is
 owner-confirmed and none is BLOCKING-unresolved; the two PHASE-GATED items gate Phases 2
 and 9 and are already reflected in those phases. **Phase 0 executed 2026-08-30**
 (D1 / D2-desktop / D3-deferral / D4 / D6 closed; D2's Samsung half and D5's
-two-Android half owed, `[device: …]` tags on their task lines) — **Phase 1 executed 2026-08-30** (perft green at CI depth on all six positions; differential perft 200/0) — **Phase 2 executed 2026-08-30** (terminals, both trait impls, hash, SAN, vectors; gate green) — **Phase 3 executed 2026-08-30** (both chess cases green in wasm) — **Phase 4 executed 2026-08-30** (search green, deepen adopted ≥ d4, budgeted ladder 0/50 over 400 ms in Chromium; Samsung half owed) — **Phase 5 executed 2026-08-30** (band + tutor green; Expert v Easy 20/20, Easy v random 14/20) — **Phase 6 executed 2026-08-30** (core 674: 60→23 all equivalent; solver 422: 302→69, real gaps closed and hand-verified) — **Phase 7 executed 2026-08-30** (binding green, 205 KB wasm, 1.06 MiB memory) — **Phase 8 executed 2026-08-30** (wrapper + outcome, 6/6 over the real wasm) — **Phase 9 executed 2026-08-30** (playable /chess/, 30/30 both engines, a11y auto-enrolled) — **Phase 10 executed 2026-08-30** (tutor + hybrid green, 38/38 both engines; the real-WebGPU run moves to Phase 11's `harness:trial`, the game-parameterised runner) — **Phase 11 next.**
+two-Android half owed, `[device: …]` tags on their task lines) — **Phase 1 executed 2026-08-30** (perft green at CI depth on all six positions; differential perft 200/0) — **Phase 2 executed 2026-08-30** (terminals, both trait impls, hash, SAN, vectors; gate green) — **Phase 3 executed 2026-08-30** (both chess cases green in wasm) — **Phase 4 executed 2026-08-30** (search green, deepen adopted ≥ d4, budgeted ladder 0/50 over 400 ms in Chromium; Samsung half owed) — **Phase 5 executed 2026-08-30** (band + tutor green; Expert v Easy 20/20, Easy v random 14/20) — **Phase 6 executed 2026-08-30** (core 674: 60→23 all equivalent; solver 422: 302→69, real gaps closed and hand-verified) — **Phase 7 executed 2026-08-30** (binding green, 205 KB wasm, 1.06 MiB memory) — **Phase 8 executed 2026-08-30** (wrapper + outcome, 6/6 over the real wasm) — **Phase 9 executed 2026-08-30** (playable /chess/, 30/30 both engines, a11y auto-enrolled) — **Phase 10 executed 2026-08-30** (tutor + hybrid green, 38/38 both engines; the real-WebGPU run moves to Phase 11's `harness:trial`, the game-parameterised runner) — **Phase 11 executed 2026-08-30** (adapter + anchor 6/163, rig diff empty; real WebGPU run 52 model moves / 0 fallbacks / 0 blunders) — **Phase 12 next.**
 Worktree `worktrees/chess/fun`, branch `claude/chess`.
 **Standards anchor:** `docs/BUILDING-GAMES.md` §10 + both new-game checklists;
 `docs/AI-PLAYERS.md` (search cost, honesty gate); `docs/HARNESS.md` (adding a game).
@@ -1626,17 +1626,17 @@ validated-not-gated, with its `llmMoves` / `fallbackMoves`.
 **Goal:** "The Engine never blunders" as a number.
 
 **Changes:**
-- [ ] `src/games/chess/chess-oracle.ts` — the pass-through adapter (nine members;
+- [x] `src/games/chess/chess-oracle.ts` — the pass-through adapter (nine members;
   level `0..3` → `Level`); `idea` on tutor moves.
-- [ ] `src/harness/harness-trial-entry.ts` — `"chess"` added to the `TrialGame`
+- [x] `src/harness/harness-trial-entry.ts` — `"chess"` added to the `TrialGame`
   union (`:26`; `GAMES` is `Record<TrialGame, …>`, so the union is the type
   error that forces the entry) and `GAMES.chess` with a prompt that describes
   chess and the UCI move form.
-- [ ] `tests/chess-harness.test.ts` — self-play tournament over the real wasm with
+- [x] `tests/chess-harness.test.ts` — self-play tournament over the real wasm with
   the three non-vacuity assertions (`blunders === 0`, `scoredMoves > 0`,
   `abortedGames === 0`).
-- [ ] `tests/baselines.test.ts` `ANCHORS.chess` — the Report recorded with the date.
-- [ ] `docs/HARNESS.md` — the adapter list, the "ten members" → nine correction,
+- [x] `tests/baselines.test.ts` `ANCHORS.chess` — the Report recorded with the date.
+- [x] `docs/HARNESS.md` — the adapter list, the "ten members" → nine correction,
   and the side-by-side table's chess row **from Phase 10's real WebGPU run**
   (the table is a hybrid-vs-engine record, not a baseline — if Phase 10's run
   was skipped, the row is omitted and the omission is said in the Review Log).
@@ -1852,6 +1852,56 @@ PR open; `workspace-audit.sh` clean.
 ---
 
 ## Review Log
+
+### Phase 11 execution — 2026-08-30
+
+**Green:** `bash tools/check.sh green npx vitest run chess-harness chess-tutor
+chess-hybrid` — **18 passed**, `chess-harness` 5 of them: the 15-bit codes
+through the port untruncated (every opening code > 255), `liveMove` null only
+at a terminal, the self-play tournament with all three non-vacuity assertions
+(`blunders === 0`, `scoredMoves > 0`, `abortedGames === 0`), a capture
+reaching the band as "takes the <piece>" over the real wasm, and
+`page.ideaFor === oracle.ideaFor` — one definition, two importers. RED was
+watched: the file failed to resolve `chess-oracle.js` before the adapter
+existed. `git diff --stat origin/main -- src/harness/match-runner.ts
+src/harness/scorer.ts src/harness/tournament.ts` printed **nothing** (read as
+output, `wc -l` = 0). Typecheck and lint clean.
+
+**The anchor:** `HARNESS_BASELINES=1 vitest run tests/baselines.test.ts -t
+chess` first ran against a zeroed placeholder and reported the real numbers
+(RED), then reproduced them exactly on the second run (GREEN, 174 s):
+`Engine(3) vs Engine(3)` · games 2 (0 aborted) · W-D-L **1-0-1** · graded
+**6** (skipped 163) · optimal 5 · **preserving 1** · blunders 0 · cost 28.8 s.
+`scoredMoves` = 6 is the Risk's number read from the Report — not 0, and the
+thinnest fraction on the shelf (checkers' 9/163 is the nearest); the
+`preserving 1` is the grader (d6 / 600k) outranking the Expert it grades
+(d5 / 150k), recorded next to the numbers.
+
+**The real WebGPU run (validated, not gated)** —
+`HARNESS_TRIAL_GAME=chess npm run harness:trial`, system Chrome, adapter
+`apple/metal-3`, model `Qwen2.5-0.5B-Instruct-q4f16_1-MLC` (266 MB fetched
+once into `.webllm-cache`), 2 games: `Hybrid vs Engine(3)` · W-D-L 0-0-2 ·
+graded 3 (skipped 49) · optimal 1 · preserving 2 · blunders 0 · **chosen by
+model 52 · by engine fallback 0** (runtime 0 · malformed 0 · out-of-band 0 ·
+rescued by retry 0) · hybrid latency median 1192 ms, mean 1341 ms, worst
+9861 ms · PASS. These are the `llmMoves` / `fallbackMoves` Phase 10 asked
+for; `docs/HARNESS.md`'s side-by-side table carries the row with its date.
+
+**What landed:** `chess-oracle.ts` (a pure pass-through like checkers', with
+`ideaFor` and `KIND_NAMES` moved INTO it — `chess.ts` imports and re-exports
+`ideaFor`, so the tutor panel and the band cannot drift; the checkers plan's
+"phrased in both places" became one place); `harness-trial-entry.ts` gained
+`"chess"` in `TrialGame` and `GAMES.chess` with a prompt naming the game and
+the opaque-code form; `tests/baselines.test.ts` `ANCHORS` chess entry;
+`docs/HARNESS.md` — the port is **nine** members (the doc said ten in two
+places since P8; counted and corrected), chess in the adapter and wire-code
+lists, the trial command, the engine-vs-engine block, the reading note on the
+thin fraction and the first `preserving`, and the hybrid row.
+
+**Cost worth recording:** the CI tournament test (Engine(1) v Engine(1), 2
+games) runs **74 s** in `npm run unit`; checkers' is the precedent and its
+range is similar. If the unit gate's wall-clock becomes the complaint, this
+test and checkers' are the two to look at first.
 
 ### Phase 10 execution — 2026-08-30
 

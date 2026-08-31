@@ -29,6 +29,7 @@ import {
   type ChessLevel,
   type ChessSide,
 } from "../../settings.js";
+import { ideaFor, KIND_NAMES } from "./chess-oracle.js";
 import {
   decodeRecord,
   encodeRecord,
@@ -77,28 +78,10 @@ const HYBRID_SYSTEM = [
   "You add a short, in-character line of banter — never analysis, never move lists.",
 ].join(" ");
 
-/** The magnitude a proven mate scores above — `chess_solver::MATE`. */
-const MATE = 1_000_000;
-
-/**
- * A short, engine-grounded idea for why a move is reasonable (tutor copy).
- * `depth` is the report's reached depth: a proven mate's value is
- * `MATE + remaining depth`, so the plies to mate are `depth - (value - MATE)`.
- * "Mate in N" is said **only** when the fact is exact.
- */
-export const ideaFor = (m: MoveAssessment, depth: number): string => {
-  if (m.immediateWin) return "mate in 1";
-  if (m.exact && m.value > MATE / 2) {
-    const plies = depth - (m.value - MATE);
-    const n = Math.ceil(plies / 2);
-    return n >= 1 ? `mate in ${n}` : "forces mate";
-  }
-  if (m.captures > 0) return `takes the ${KIND_NAMES[m.captures] ?? "piece"}`;
-  if (m.promotes > 0) return "promotes";
-  if (m.castles) return "castles";
-  if (m.givesCheck) return "gives check";
-  return m.quality === "optimal" ? "your strongest line" : "stays safe";
-};
+// `ideaFor` (and the constants it reads) live in `chess-oracle.ts` so the tutor
+// panel here and the harness's band say the same thing by construction; it is
+// re-exported so the tutor tests keep one import site for the page's copy.
+export { ideaFor };
 
 /**
  * Coaching for a just-tapped move, or null if it does not warrant a note.
@@ -171,7 +154,6 @@ export const squareName = (sq: number): string =>
 /** The `(from, to)` a packed move code names — the UI reads codes, never builds them. */
 const fromTo = (code: number): [number, number] => [code & 63, (code >> 6) & 63];
 
-const KIND_NAMES = ["", "pawn", "knight", "bishop", "rook", "queen", "king"] as const;
 /** One glyph per kind (the filled shapes, coloured by CSS for both sides). */
 const GLYPHS = ["", "♟", "♞", "♝", "♜", "♛", "♚"] as const;
 const PROMO_KINDS: readonly { promo: number; glyph: string; name: string }[] = [
