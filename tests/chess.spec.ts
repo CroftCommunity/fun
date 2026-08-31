@@ -123,9 +123,22 @@ test("en passant is offered where it is legal, and takes the pawn beside", async
   expect(ep, "the core offers exd6 e.p.").toBeTruthy();
   await cell(page, sqOf("e5")).click();
   await cell(page, sqOf("d6")).click();
-  const cells = await page.evaluate(() => window.__chess!.game.board().cells);
-  expect(cells[sqOf("d5")]).toBe(0);
-  expect(cells[sqOf("d6")]).toBe(1);
+  // Under `fast=1` the engine's reply lands a frame later, and on a slow
+  // runner it can land before this read (CI's WebKit saw Black recapture
+  // e7xd6 first — `d6` held a black pawn). So assert on what no reply can
+  // change: the record's fifth ply is the e.p. code, and White's captured
+  // material is one pawn — the pawn beside, not the empty square ahead.
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const rec = window.__chess!.game.outcome(false) as { payload: { moves: number[] } };
+        return rec.payload.moves[4] ?? null;
+      }),
+    )
+    .toBe(ep!.code);
+  const b = await page.evaluate(() => window.__chess!.game.board());
+  expect(b.captured[0]).toBe(1);
+  expect(b.cells[sqOf("d5")]).toBe(0);
 });
 
 test("a promotion goes through the picker; Escape cancels it", async ({ page }) => {
