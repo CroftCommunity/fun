@@ -36,3 +36,18 @@ describe("the retired control-surface classes", () => {
     expect(css).not.toMatch(/\.[a-z0-9-]+-banner\b/);
   });
 });
+
+describe("the stylesheet's braces balance", () => {
+  // A rebase on 2026-08-30 kept two games' appended blocks but lost the one
+  // shared closing brace between them, so every chess rule sat inside mahjong's
+  // reduced-motion media query and applied nowhere. The browser suite caught it
+  // (24px squares); this catches it in the unit stage, a stage earlier.
+  it("styles.css opens exactly as many blocks as it closes (outside comments and strings)", () => {
+    const css = readFileSync("styles.css", "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, "");
+    const open = (css.match(/\{/g) ?? []).length;
+    const close = (css.match(/\}/g) ?? []).length;
+    expect(close, `styles.css: ${open} '{' vs ${close} '}'`).toBe(open);
+  });
+});
