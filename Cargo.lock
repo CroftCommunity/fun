@@ -151,6 +151,43 @@ dependencies = [
 ]
 
 [[package]]
+name = "chess-core"
+version = "0.0.0"
+dependencies = [
+ "adversary-core",
+ "hex",
+ "pond-outcome",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+]
+
+[[package]]
+name = "chess-solver"
+version = "0.0.0"
+dependencies = [
+ "adversary-core",
+ "adversary-solver",
+ "chess-core",
+ "rand",
+ "rand_chacha",
+]
+
+[[package]]
+name = "chess-wasm"
+version = "0.0.0"
+dependencies = [
+ "adversary-core",
+ "chess-core",
+ "chess-solver",
+ "pond-outcome",
+ "rand_chacha",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "color-sort-core"
 version = "0.0.0"
 dependencies = [
@@ -829,11 +866,13 @@ dependencies = [
 name = "xbuild"
 version = "0.0.0"
 dependencies = [
+ "chess-core",
  "cribbage-core",
  "dots-core",
  "furrow-core",
  "mahjong-core",
  "orchard-core",
+ "pond-outcome",
  "solitaire-core",
 ]
 

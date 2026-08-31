@@ -1,0 +1,6 @@
+Chromium (playwright-core), chess-solver search_root
+level   depth  cap      median  p95   worst  over400  nps
+Easy    2      10000       6.1   15.3   15.9  0/50     727035
+Medium  3      40000      39.8   63.5   66.3  0/50     696124
+Hard    4      100000    132.1  158.8    170  0/50     727268
+Expert  5      150000    204.2  242.2  257.9  0/50     732865

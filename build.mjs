@@ -165,6 +165,9 @@ else missingArtifact("note: cribbage.wasm not built yet — run `npm run build:w
 const ckwasm = join(root, "target/wasm32-unknown-unknown/release/checkers_wasm.wasm");
 if (await exists(ckwasm)) await cp(ckwasm, join(dist, "checkers.wasm"));
 else missingArtifact("note: checkers.wasm not built yet — run `npm run build:wasm` (checkers needs it)");
+const chwasm = join(root, "target/wasm32-unknown-unknown/release/chess_wasm.wasm");
+if (await exists(chwasm)) await cp(chwasm, join(dist, "chess.wasm"));
+else missingArtifact("note: chess.wasm not built yet — run `npm run build:wasm` (chess needs it)");
 
 const alwasm = join(root, "target/wasm32-unknown-unknown/release/align_wasm.wasm");
 if (await exists(alwasm)) await cp(alwasm, join(dist, "align.wasm"));

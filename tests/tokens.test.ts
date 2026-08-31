@@ -121,6 +121,18 @@ const PAIRS: ReadonlyArray<readonly [string, string, number]> = [
   ["chk-a", "chk-dark", 3], // checkers men must read on the playable dark square
   ["chk-b", "chk-dark", 3],
   ["chk-legal", "chk-dark", 3], // the tap-target hint is a UI indicator
+  // Chess: pieces stand on both square colours. A white piece reads by its
+  // outline, a black piece by its fill; the three markers are UI indicators.
+  ["chs-a-ink", "chs-light", 3],
+  ["chs-a-ink", "chs-dark", 3],
+  ["chs-b", "chs-light", 3],
+  ["chs-b", "chs-dark", 3],
+  ["chs-legal", "chs-light", 3],
+  ["chs-legal", "chs-dark", 3],
+  ["chs-check", "chs-light", 3],
+  ["chs-check", "chs-dark", 3],
+  ["chs-last", "chs-light", 3],
+  ["chs-last", "chs-dark", 3],
   // Dots and Boxes: the two sides' edges and box fills read against the paper,
   // and the box mark reads against the fill. The mark is painted in the paper
   // colour, which inverts with the theme, so one pair per side covers both.

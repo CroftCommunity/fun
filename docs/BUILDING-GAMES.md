@@ -411,7 +411,11 @@ store adds Continue for every board.
 unchanged after the game's own triggers — the engine's reply, a hint, a rejected word, a
 selection, the settings sheet opening. Run it against the pre-migration page first and
 record the movement it finds (Othello moved 24.8px on WebKit; plan Phase 0 D4). A
-stability spec that was never red proves nothing.
+stability spec that was never red proves nothing. For a **new** game there is no
+pre-migration page to be red against: the first mount puts the turn text in flow above
+the board, the sampler records the jump on the engine's reply, the line moves into the
+seat's `sub`, and the delta is written in the plan (chess did this in its Phase 9;
+the number is in its Review Log).
 
 ## 5. Identity + tokens
 
@@ -613,7 +617,11 @@ two assumptions nobody had written down (landed 2026-08-07,
 `plans/2026-08-07-dots-and-boxes.md`), and **Furrow** (`src/games/furrow/`,
 `crates/furrow-*`) is the fifth — mancala, the first game built to *inherit* the
 abstraction rather than to prove or to stress it (landed 2026-08-10,
-`plans/2026-08-07-mancala.md`).
+`plans/2026-08-07-mancala.md`) — and **chess** (`src/games/chess/`,
+`crates/chess-*`) is the sixth: build-fresh rules verified by perft, the first
+move code that carries a *promotion piece*, and a state that carries *history*
+(castling rights, en passant, the halfmove clock, repetitions) — none of which
+reached a shared file (landed 2026-08-30, `plans/2026-08-30-plan-chess-vs-engine.md`).
 
 **Variation — a move that does not pass the turn (Dots and Boxes).** Closing the
 fourth side of a box claims it and the mover **moves again**. So `side_to_move` is
@@ -660,6 +668,24 @@ are easy to get wrong:
   wrong winner, and that caller exists: the scorer replays records.
 - **Tell the player.** A score that jumps at the final move reads as a bug unless
   the UI says the sweep happened.
+
+**Variation — a move that changes the piece, and a state that carries history
+(chess).** A pawn reaching the last rank *becomes* another piece, so the move
+code has a third field (`from | to<<6 | promo<<12`, 15 bits) and one tap pair
+can name four legal moves — the UI resolves it with a picker, and cancelling
+must leave the piece un-selected (a real bug, caught in the browser suite). And
+the position is not the placement: castling rights, the en passant square, the
+halfmove clock and the **repetition history** all decide what is legal and when
+the game ends, so `(seed, moves)` replay must rebuild all of them exactly, and
+the hash must cover them (an ep square is keyed only when a capture is actually
+possible, or two identical positions hash differently). Two search consequences
+worth copying if your game has history: key the transposition table on the
+history that changes the future (chess: the halfmove clock — the same placement
+at clock 10 and 98 is two positions), and **never store a value that came from a
+repetition** — it is true for the path that produced it and meaningless for a
+transposition. Chess's draws are also *automatic* (threefold, 50-move), so a
+terminal can arrive with the board full; `verifyRecord` counts applied moves
+rather than trusting a length.
 
 **Variation — a band value that is a margin (Dots and Boxes).** Drop 4, Othello
 and checkers all produce a value the band buckets into three classes. Here the
@@ -874,7 +900,8 @@ it"; the parts you cannot afford to rediscover:
   when a budget can cut the search short.
 
 **Honesty gate (non-negotiable):** if your game is **not solved from the opening**
-(Othello, chess), the Oracle is *heuristic early, exact only in the deep endgame*.
+(Othello, checkers, chess — all shipped this way), the Oracle is *heuristic early,
+exact only where it proves something*.
 Carry an `exact` flag on every tutor fact and **bind the wording to it**: claim a
 win/draw/loss class (and word a blunder as "threw the game") only when `exact`;
 hedge ("looks risky") otherwise. Never fake an exact verdict from a heuristic.
@@ -904,7 +931,10 @@ Pin it with a `coachFor`-style unit test.
 
 For a two-player game vs a computer opponent, add these to the Tier-1 checklist.
 Reference implementations: **Drop 4** (solvable), **Othello** (heuristic Oracle),
-**checkers** (heuristic Oracle, `exact` only where a terminal is *proven*).
+**checkers** (heuristic Oracle, `exact` only where a terminal is *proven*),
+**chess** (the same `exact`, with quiescence and a repetition history — the
+transposition key carries the halfmove clock, a repetition-derived value is never
+stored).
 
 - [ ] Core implements `adversary_core::Adversary` (rules) **and**
   `pond_outcome::Game` (replay/verify); moves — passes included — serialize so

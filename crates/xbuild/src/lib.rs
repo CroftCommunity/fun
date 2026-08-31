@@ -10,6 +10,7 @@
 //! static 64-byte buffer; the host reads 64 bytes at that pointer. `hash_len`
 //! reports the length.
 
+use chess_core::{Chess, Move as ChessMove};
 use cribbage_core::{
     replay as cribbage_replay, state_hash as cribbage_state_hash, Move as CribMove,
 };
@@ -134,6 +135,55 @@ pub extern "C" fn cribbage_replay_hash(seed_lo: u32, seed_hi: u32, len: u32) -> 
         .collect();
     write_hash(&cribbage_state_hash(&cribbage_replay(seed, &moves)))
 }
+
+/// Chess: the state hash after replaying the first `len` u16 move codes of
+/// [`CHESS_IN`] from `seed` (vectors `chess-core/vectors/*.json`).
+///
+/// The first core enrolled whose move code is wider than a byte (a 15-bit
+/// `(from, to, promo)` pack), so it has its own u16 input buffer. Replay goes
+/// through `pond_outcome::Game`, whose chess impl POISONS on an inapplicable
+/// move rather than skipping it; a poisoned result is shorter than a hash, so
+/// it is padded to the 64-byte buffer and can only ever FAIL a comparison —
+/// visibly, never silently.
+#[no_mangle]
+pub extern "C" fn chess_replay_hash(seed_lo: u32, seed_hi: u32, len: u32) -> *const u8 {
+    let seed = (u64::from(seed_hi) << 32) | u64::from(seed_lo);
+    let n = (len as usize).min(CHESS_IN_CAP);
+    // SAFETY: single-threaded wasm; the host fills CHESS_IN before this call
+    // and does not touch it during. Raw pointers avoid the `static_mut_refs`
+    // lint.
+    let codes: [u16; CHESS_IN_CAP] = unsafe { *core::ptr::addr_of!(CHESS_IN) };
+    // A structurally invalid code cannot even name a move; dropping it leaves
+    // a list the replay then judges (and poisons) on legality.
+    let moves: Vec<ChessMove> = codes[..n]
+        .iter()
+        .filter_map(|&c| ChessMove::from_code(c))
+        .collect();
+    let h = <Chess as pond_outcome::Game>::replay(seed, &moves).final_hash;
+    if h.len() == 64 {
+        write_hash(&h)
+    } else {
+        let padded = format!("{h:-<64}");
+        write_hash(&padded[..64])
+    }
+}
+
+/// Pointer to the chess u16 move-input buffer.
+#[no_mangle]
+pub extern "C" fn chess_in_ptr() -> *const u16 {
+    core::ptr::addr_of!(CHESS_IN).cast::<u16>()
+}
+
+/// Capacity of the chess move-input buffer, in u16 code units. 512: the
+/// longest possible game under the automatic draws is far below it, and a
+/// repetition game (the 02 vector's family) fits with room.
+#[no_mangle]
+pub extern "C" fn chess_in_cap() -> u32 {
+    CHESS_IN_CAP as u32
+}
+
+const CHESS_IN_CAP: usize = 512;
+static mut CHESS_IN: [u16; CHESS_IN_CAP] = [0; CHESS_IN_CAP];
 
 /// Pointer to the shared move-input buffer, under its game-neutral name.
 ///

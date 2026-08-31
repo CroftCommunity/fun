@@ -244,12 +244,12 @@ bigger cost sat on top of it.
 `adversary_solver::deepen` searches `1..=max_depth` and keeps the last iteration
 that **finished**. It is not free, and whether it pays is a property of the game:
 
-| | checkers | Othello | dots | furrow |
-|---|---|---|---|---|
-| deepening vs direct search | **+14% nodes (tax)** | **−41% nodes (win)** | **not applicable** | **not applicable** |
-| existing move ordering | capture length — and capture is *mandatory*, so it is already near-optimal | a static corner/edge weight table — a weak guess | captures first, and no capture is possible where the capped path runs | extra-turn moves first, then by pit descending |
-| budget bite rate | 0% of moves | 28–38% of moves | 0% of moves | **0 of 960 plies** |
-| outcome | **reverted, ships nothing** | shipped, free speed | **rejected — every iteration returns the same values** | **rejected — the budget never truncates a search** |
+| | checkers | Othello | dots | furrow | chess |
+|---|---|---|---|---|---|
+| deepening vs direct search | **+14% nodes (tax)** | **−41% nodes (win)** | **not applicable** | **not applicable** | **by depth: +46% at d2, −18% at d4, −37% at d5** |
+| existing move ordering | capture length — and capture is *mandatory*, so it is already near-optimal | a static corner/edge weight table — a weak guess | captures first, and no capture is possible where the capped path runs | extra-turn moves first, then by pit descending | MVV-LVA + the table's best move — which only exists once a shallower pass stored it |
+| budget bite rate | 0% of moves | 28–38% of moves | 0% of moves | **0 of 960 plies** | Expert's 150k cap bites the p95 tail |
+| outcome | **reverted, ships nothing** | shipped, free speed | **rejected — every iteration returns the same values** | **rejected — the budget never truncates a search** | **shipped — the first verdict that differs by depth** (measured 2026-08-30, 50 positions: deepened/fixed nodes 1.465 / 1.125 / 0.818 / 0.628 at d2–d5) |
 
 Dots is the third answer, and a different kind of one. Its capped search only ever
 runs in the first four plies, where no box can reach three sides — so measured at
@@ -707,8 +707,25 @@ move be a compact number, and a packed path is one.
   the horizon. That is the same guarantee the flag always licensed (a provable
   win/draw/loss class), and it keeps the game gradeable — a never-exact game
   reports `scoredMoves == 0` forever and the harness measures nothing.
-- **The honest Oracle shape now has two unsolved-game precedents**, not one. When
-  a future game (chess is the obvious one) needs an Oracle that cannot solve from
-  the opening, Othello shows the endgame-solve variant and checkers shows the
-  proof-of-terminal variant; both bind the tutor's wording to the flag, and both
-  are pinned by a `coachFor` unit test that asserts *both* branches.
+- **The honest Oracle shape now has three unsolved-game precedents.** Othello
+  shows the endgame-solve variant, checkers the proof-of-terminal variant, and
+  **chess** (2026-08-30, `plans/2026-08-30-plan-chess-vs-engine.md`) inherits
+  checkers' shape wholesale — exactness per move, a `Blunder` only on two
+  proofs — and adds two soundness refinements its search forced: the
+  transposition key carries the halfmove clock (identical placements at clock
+  10 and 98 have different futures), and a repetition-derived value is never
+  stored (it is true for the search path that produced it and meaningless for
+  a transposition). All three bind the tutor's wording to the flag, pinned by
+  `coachFor`-shaped tests asserting the branches.
+- **Chess shipped 2026-08-30, and the reuse held.** `adversary-core`,
+  `adversary-solver`, `pond-outcome`, `hybrid-player.ts`, `ai-runtime.ts`,
+  `banter.ts`, the game frame and the rig all landed with an empty diff. What the
+  game added was inside its own crates: quiescence, a `(zobrist, halfmove)`
+  transposition key, the never-store-a-repetition rule, and a 15-bit move code
+  carrying a promotion piece. The numbers: the engine-vs-engine anchor grades
+  **6 of 169** plies (the thinnest fraction on the shelf, for the same reason as
+  checkers' 9 of 163 — `exact` is a proven terminal), 0 blunders, 1-0-1; the
+  first real hybrid run (Qwen2.5-0.5B on apple/metal-3) chose **52 moves, 0
+  fallbacks, 0 blunders**, median 1.2 s a move. The ladder's budgets were chosen
+  by the same `deepen` measurement Drop 4 introduced (`spike/chess-search/`), and
+  the budgeted Expert answers **0 of 50 moves over 400 ms** in Chromium.

@@ -331,6 +331,37 @@ follow-on: the only thing it changes in the core is where the seed comes from.
 
 Plan: `plans/2026-08-29-plan-cribbage-vs-engine.md`. Rules: `crates/cribbage-core/RULES.md`.
 
+## Chess (playable — build-fresh rules, the engine, and a move that changes the piece)
+
+`/chess/` is chess against the shelf's engine. Tap a piece, then where it goes;
+the board offers only legal moves, so a king is never left in check. Castling is
+the king's two-square tap, en passant is offered on the one move it exists,
+promotion goes through a picker, and the draws — stalemate, threefold, fifty
+moves, insufficient material — apply themselves. You pick your side (White,
+Black or random — Black turns the board) and the level (Easy to Expert); the
+seats show captured material and the last move in notation; a finished game is a
+verifiable `?r=` record.
+
+The rules are **build-fresh** — `crates/chess-core`, with its rules table in
+`RULES.md` — and verified the way chess cores are: perft against the six
+published reference positions, plus a differential perft against a vetted crate
+that lives in `spike/` and never ships. The engine (`crates/chess-solver`) is
+negamax with quiescence and a transposition table, deepening under a node
+budget; the four levels were chosen by measurement (`spike/chess-search/`) and
+Expert answers inside 400 ms on every one of 50 measured moves in Chromium. The
+Oracle is checkers' honest shape — `exact` only where a line reached a proven
+terminal — with two refinements the search forced: the table key carries the
+halfmove clock, and a value that came from a repetition is never stored.
+
+Nothing shared changed. `adversary-core`, `adversary-solver`, `pond-outcome`, the
+band, the tutor, the hybrid opponent (persona Ash, WebGPU-gated) and the harness
+all took chess with an empty diff; the adapter is a pass-through, and the
+15-bit move code — the widest the rig has graded, the first with a promotion
+piece — went through the port untruncated.
+
+Plan: `plans/2026-08-30-plan-chess-vs-engine.md`. Rules: `crates/chess-core/RULES.md`.
+Backlog: `TODO/chess.md`.
+
 ## Align (playable — falling-block stacker)
 
 `/align/` is a real-time falling-block stacker (build-fresh; original name,

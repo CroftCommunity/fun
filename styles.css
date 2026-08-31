@@ -5014,3 +5014,145 @@ dialog.signin-sheet::backdrop { background: rgba(0, 0, 0, 0.45); }
 @media (prefers-reduced-motion: reduce) {
   .mj-tile.hint .mj-face, .mj-tile.mj-shake { animation: none; }
 }
+
+/* ---------- Chess ---------- */
+.chess-game {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+.chess-board {
+  /* 44px is the tap floor; eight of these fit a 390px phone with room for the edge labels. */
+  --chs-cell: clamp(2.75rem, 11vw, 3.6rem);
+  display: grid;
+  grid-template-columns: repeat(8, var(--chs-cell));
+  grid-auto-rows: var(--chs-cell);
+  /* The grid's columns are fixed, so a block-level board stretches its felt to
+     the container width — invisible inside the centred game column, obvious on
+     the result screen, where the parent is a plain block (the guide's
+     chess-result shot caught it; checkers had the same defect). */
+  width: fit-content;
+  margin-inline: auto;
+  border: 2px solid var(--chs-dark);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.chess-square {
+  position: relative;
+  width: var(--chs-cell);
+  height: var(--chs-cell);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  cursor: default;
+}
+.chess-square.light { background: var(--chs-light); }
+.chess-square.dark { background: var(--chs-dark); }
+/* The edge labels ride on the squares themselves, so a flipped board labels itself. */
+.chess-square[data-file]::before,
+.chess-square[data-rank]::after {
+  position: absolute;
+  font-size: calc(var(--chs-cell) * 0.24);
+  line-height: 1;
+  opacity: 0.85;
+  pointer-events: none;
+}
+.chess-square[data-file]::before { content: attr(data-file); right: 2px; bottom: 1px; }
+.chess-square[data-rank]::after { content: attr(data-rank); left: 2px; top: 1px; }
+.chess-square.light[data-file]::before, .chess-square.light[data-rank]::after { color: var(--chs-dark); }
+.chess-square.dark[data-file]::before, .chess-square.dark[data-rank]::after { color: var(--chs-light); }
+.chess-piece {
+  font-size: calc(var(--chs-cell) * 0.78);
+  line-height: 1;
+  font-variant-emoji: text;
+  user-select: none;
+}
+.chess-piece.a {
+  color: var(--chs-a);
+  text-shadow:
+    -1px -1px 0 var(--chs-a-ink), 1px -1px 0 var(--chs-a-ink),
+    -1px 1px 0 var(--chs-a-ink), 1px 1px 0 var(--chs-a-ink),
+    0 0 2px var(--chs-a-ink);
+}
+.chess-piece.b {
+  color: var(--chs-b);
+  text-shadow:
+    -1px -1px 0 var(--chs-b-ink), 1px -1px 0 var(--chs-b-ink),
+    -1px 1px 0 var(--chs-b-ink), 1px 1px 0 var(--chs-b-ink);
+}
+.chess-square.selectable { cursor: pointer; }
+.chess-square.target { cursor: pointer; }
+.chess-square.target::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: calc(var(--chs-cell) * 0.3);
+  height: calc(var(--chs-cell) * 0.3);
+  border-radius: 50%;
+  background: var(--chs-legal);
+  opacity: 0.85;
+}
+.chess-square.target.occupied::after {
+  width: calc(var(--chs-cell) * 0.9);
+  height: calc(var(--chs-cell) * 0.9);
+  background: transparent;
+  border: 3px solid var(--chs-legal);
+  opacity: 0.9;
+}
+.chess-square.selected { box-shadow: inset 0 0 0 3px var(--chs-legal); }
+.chess-square.just-played { box-shadow: inset 0 0 0 3px var(--chs-last); }
+.chess-square.hint { box-shadow: inset 0 0 0 3px var(--chs-legal); }
+.chess-square.check { box-shadow: inset 0 0 0 4px var(--chs-check); }
+.chess-square:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: -3px;
+}
+.chess-status {
+  min-height: 1.5rem; /* rule 1: a status line that comes and goes keeps its room */
+  margin: 0;
+}
+.chess-turn { margin: 0; }
+.chess-picker {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 35%);
+  z-index: 2;
+}
+.chess-picker-card {
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 10px;
+  padding: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 30%);
+}
+.chess-picker-card button {
+  min-width: 3rem;
+  min-height: 3rem;
+  font-size: 1.8rem;
+  border-radius: 8px;
+  border: 1px solid var(--ink-muted);
+  background: var(--surface);
+  color: var(--ink);
+}
+.chess-flash {
+  margin: 0.25rem 0 0;
+  font-weight: 700;
+  text-align: center;
+}
+.chess-flash.win { color: var(--active); }
+.chess-board.chess-final {
+  --chs-cell: clamp(1.4rem, 7vw, 2.2rem);
+}

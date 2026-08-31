@@ -5,15 +5,15 @@
 // solitaire-core/vectors/. Byte-identical hashes across targets = the Rust->wasm
 // determinism property. Exits non-zero on any mismatch.
 //
-// Usage: node check.mjs <xbuild.wasm> <solitaire-vectors> <dots-vectors> <furrow-vectors> <orchard-vectors> <cribbage-vectors>
+// Usage: node check.mjs <xbuild.wasm> <solitaire-vectors> <dots-vectors> <furrow-vectors> <orchard-vectors> <cribbage-vectors> <mahjong-vectors> <chess-vectors>
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-const [wasmPath, vectorsDir, dotsVectorsDir, furrowVectorsDir, orchardVectorsDir, cribbageVectorsDir, mahjongVectorsDir] =
+const [wasmPath, vectorsDir, dotsVectorsDir, furrowVectorsDir, orchardVectorsDir, cribbageVectorsDir, mahjongVectorsDir, chessVectorsDir] =
   process.argv.slice(2);
-if (!wasmPath || !vectorsDir || !dotsVectorsDir || !furrowVectorsDir || !orchardVectorsDir || !cribbageVectorsDir || !mahjongVectorsDir) {
+if (!wasmPath || !vectorsDir || !dotsVectorsDir || !furrowVectorsDir || !orchardVectorsDir || !cribbageVectorsDir || !mahjongVectorsDir || !chessVectorsDir) {
   console.error(
-    "usage: node check.mjs <xbuild.wasm> <solitaire-vectors-dir> <dots-vectors-dir> <furrow-vectors-dir> <orchard-vectors-dir> <cribbage-vectors-dir> <mahjong-vectors-dir>",
+    "usage: node check.mjs <xbuild.wasm> <solitaire-vectors-dir> <dots-vectors-dir> <furrow-vectors-dir> <orchard-vectors-dir> <cribbage-vectors-dir> <mahjong-vectors-dir> <chess-vectors-dir>",
   );
   process.exit(2);
 }
@@ -38,6 +38,9 @@ const {
   orchard_scenario_hash,
   mahjong_scenario_count,
   mahjong_scenario_hash,
+  chess_replay_hash,
+  chess_in_ptr,
+  chess_in_cap,
 } = instance.exports;
 const len = hash_len();
 
@@ -128,6 +131,35 @@ for (const file of [
     },
     goldenValue: v.final_state_hash,
   });
+}
+
+// Chess: the first core whose move code is wider than a byte (15 bits), so it
+// has its own u16 input buffer. The seed crosses as two u32 halves. The loop
+// discovers the directory rather than naming files — and FAILS on an empty
+// one (VERIFICATION.md shape 3): an empty or misnamed vectors directory must
+// be a red run, not a green run that graded nothing.
+{
+  const files = (await readdir(chessVectorsDir)).filter((f) => f.endsWith(".json")).sort();
+  if (files.length === 0) {
+    console.error(`chess: no vector files in ${chessVectorsDir} — nothing graded is a FAIL`);
+    process.exit(1);
+  }
+  for (const file of files) {
+    const v = await vectorFrom(chessVectorsDir, file);
+    const seed = BigInt(v.seed);
+    const lo = Number(seed & 0xffffffffn);
+    const hi = Number(seed >> 32n);
+    cases.push({
+      name: `chess ${v.name}`,
+      wasm: () => {
+        if (v.moves.length > chess_in_cap())
+          throw new Error("move list exceeds the chess input buffer");
+        new Uint16Array(memory.buffer, chess_in_ptr(), v.moves.length).set(v.moves);
+        return readHash(chess_replay_hash(lo, hi, v.moves.length));
+      },
+      goldenValue: v.final_state_hash,
+    });
+  }
 }
 
 let ok = true;

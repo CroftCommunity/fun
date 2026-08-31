@@ -458,6 +458,78 @@ const SHOTS = [
     },
   },
   {
+    name: "chess-board",
+    clip: ".chess-game",
+    async run(page) {
+      await page.goto(`${origin}/chess/?seed=7`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".chess-board");
+      await page.waitForFunction(() => Boolean(window.__chess));
+      // White (the human) opens, so this is the untouched position; select the
+      // king's knight so its two squares are marked, which is what the caption
+      // claims.
+      await page.click('.chess-square[data-sq="6"]');
+      await page.waitForSelector(".chess-square.target");
+    },
+  },
+  {
+    name: "chess-promotion",
+    clip: ".chess-game",
+    async run(page) {
+      await page.goto(`${origin}/chess/?seed=7&fast=1`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".chess-board");
+      await page.waitForFunction(() => Boolean(window.__chess));
+      // Script both sides through the hook (no engine reply) to a position
+      // where the a-pawn, now on b7, can take the rook on a8 and promote —
+      // the same line tests/chess.spec.ts uses.
+      await page.evaluate(() => {
+        const g = window.__chess.game;
+        const sq = (s) => "abcdefgh".indexOf(s[0]) + (Number(s[1]) - 1) * 8;
+        for (const uci of ["a2a4", "h7h5", "a4a5", "h5h4", "a5a6", "h4h3", "a6b7", "h3g2"]) {
+          const mv = g.board().legal.find((m) => m.from === sq(uci.slice(0, 2)) && m.to === sq(uci.slice(2, 4)) && m.promo === 0);
+          if (!mv || g.play(mv.code) !== "applied") throw new Error(`guide-shots: chess-promotion script refused ${uci}`);
+        }
+        window.__chess.refresh();
+      });
+      await page.click('.chess-square[data-sq="49"]'); // b7
+      await page.click('.chess-square[data-sq="56"]'); // a8
+      await page.waitForSelector(".chess-picker-card button");
+    },
+  },
+  {
+    name: "chess-result",
+    clip: ".sol-result",
+    async run(page) {
+      await page.goto(`${origin}/chess/?seed=3&fast=1`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".chess-board");
+      await page.waitForFunction(() => Boolean(window.__chess));
+      // Play a full first-legal game to a terminal through the hook (chess's
+      // automatic draws guarantee one; the result screen is reached only
+      // through a UI move, so — like checkers — open the game's own
+      // self-verifying ?r= link instead, which shows the final board).
+      const share = await page.evaluate(async () => {
+        const h = window.__chess;
+        for (let i = 0; i < 1000; i += 1) {
+          const b = h.game.board();
+          if (b.result !== -1 || b.legal.length === 0) break;
+          h.game.play(b.legal[0].code);
+        }
+        if (h.game.board().result === -1) throw new Error("guide-shots: chess-result never reached a terminal");
+        const env = h.game.outcome(false);
+        const json = new TextEncoder().encode(JSON.stringify(env));
+        const cs = new CompressionStream("deflate-raw");
+        const w = cs.writable.getWriter();
+        void w.write(json);
+        void w.close();
+        const buf = new Uint8Array(await new Response(cs.readable).arrayBuffer());
+        let bin = "";
+        for (const b2 of buf) bin += String.fromCharCode(b2);
+        return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      });
+      await page.goto(`${origin}/chess/?r=${share}`, { waitUntil: "networkidle" });
+      await page.waitForSelector(".sol-result .chess-board.chess-final");
+    },
+  },
+  {
     name: "furrow-board",
     clip: ".furrow-game",
     async run(page) {

@@ -1,0 +1,29 @@
+# Phase 0 discovery spike for plans/2026-08-30-plan-chess-vs-engine.md (D2, D4).
+#
+# Deliberately NOT a workspace member: throwaway measurement code that must not
+# enter the Rust gate. The empty [workspace] table detaches it from the parent.
+# cozy-chess (MIT) is used here for MOVE GENERATION ONLY, to calibrate search
+# budgets before chess-core exists and to validate the D4 draw fixtures; it is
+# never a dependency of the workspace (see the plan's D1/D2).
+[package]
+name = "chess-search-spike"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+cozy-chess = "=0.3.4"
+# The differential-perft oracle target (plan Phase 1 → Risks): the spike checks
+# chess-core's move generation against cozy-chess on random positions, once.
+chess-core = { path = "../../crates/chess-core" }
+rand = { version = "=0.8.6", default-features = false }
+rand_chacha = { version = "=0.3.1", default-features = false }
+
+[profile.release]
+opt-level = 3
+debug = false

@@ -19,6 +19,7 @@ import { MAHJONG_GUIDE } from "./games/mahjong/mahjong-howto.js";
 import { COLOR_SORT_GUIDE } from "./games/color-sort/color-sort-howto.js";
 import { ORCHARD_DROP_GUIDE } from "./games/orchard-drop/orchard-drop-howto.js";
 import { CRIBBAGE_GUIDE } from "./games/cribbage/cribbage-howto.js";
+import { CHESS_GUIDE } from "./games/chess/chess-howto.js";
 
 export const GUIDES: Readonly<Record<string, Guide>> = {
   solitaire: SOLITAIRE_GUIDE,
@@ -38,6 +39,7 @@ export const GUIDES: Readonly<Record<string, Guide>> = {
   "color-sort": COLOR_SORT_GUIDE,
   "orchard-drop": ORCHARD_DROP_GUIDE,
   cribbage: CRIBBAGE_GUIDE,
+  chess: CHESS_GUIDE,
 };
 
 /** The guide for a game id, or undefined if none is written yet. */

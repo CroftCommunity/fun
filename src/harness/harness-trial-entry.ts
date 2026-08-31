@@ -8,6 +8,8 @@
 
 import { checkersOracle } from "../games/checkers/checkers-oracle.js";
 import { Checkers } from "../games/checkers/checkers-wasm.js";
+import { chessOracle } from "../games/chess/chess-oracle.js";
+import { Chess } from "../games/chess/chess-wasm.js";
 import { dotsOracle } from "../games/dots/dots-oracle.js";
 import { Dots } from "../games/dots/dots-wasm.js";
 import { furrowOracle } from "../games/furrow/furrow-oracle.js";
@@ -23,7 +25,7 @@ import { EnginePlayer, HybridAiPlayer, type HybridPromptBuilder } from "./match-
 import { renderReport, runTournament, type Report } from "./tournament.js";
 
 /** Which shelf game the trial grades. */
-export type TrialGame = "drop4" | "othello" | "checkers" | "dots" | "furrow";
+export type TrialGame = "drop4" | "othello" | "checkers" | "dots" | "furrow" | "chess";
 
 /**
  * Per-game wiring for the trial: how to load the game as a `GameOracle`, and a
@@ -79,6 +81,19 @@ const GAMES: Record<TrialGame, {
       prompt: `Board (free edges show their number):\n${game.renderText()}\nOffered edges: ${band
         .map((b) => `${b.col} (${b.idea})`)
         .join(", ")}\nPick one edge number and say why in one short sentence.`,
+    }),
+  },
+  chess: {
+    load: async () => chessOracle(await Chess.load("/chess.wasm")),
+    prompt: (game, band) => ({
+      system:
+        "You are a chess opponent. Choose exactly one of the offered move codes and reply as JSON {move, reason}.",
+      // The offered codes are packed `from | to<<6 | promo<<12` integers, like
+      // checkers' opaque codes: the model is never asked to decode them, it
+      // picks one of the numbers it is given, and each carries its idea.
+      prompt: `Board (rank 8 first, White capitals):\n${game.renderText()}\nOffered moves (opaque codes): ${band
+        .map((b) => `${b.col} (${b.idea})`)
+        .join(", ")}\nPick one code and say why in one short sentence.`,
     }),
   },
   furrow: {

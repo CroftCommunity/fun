@@ -626,6 +626,9 @@ rule and warrants its own three-pass plan once the harness is proven):
   move-gen — see Open Questions), **Stockfish WASM** as the oracle (D5),
   centipawn-loss scoring, `src/games/chess/`. Flagged as a deliberate deviation
   from build-fresh because chess rules are not "simpler than an integration."
+  → **Shipped 2026-08-30 as a build-fresh core with our own Oracle**
+  (`plans/2026-08-30-plan-chess-vs-engine.md`); the vetted-library and Stockfish
+  recommendations above stay as the record of what was thought in July.
 
 ## Open Questions
 
