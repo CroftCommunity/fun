@@ -5013,6 +5013,7 @@ dialog.signin-sheet::backdrop { background: rgba(0, 0, 0, 0.45); }
 .mj-shared { width: 100%; }
 @media (prefers-reduced-motion: reduce) {
   .mj-tile.hint .mj-face, .mj-tile.mj-shake { animation: none; }
+}
 
 /* ---------- Chess ---------- */
 .chess-game {
