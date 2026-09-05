@@ -1,7 +1,7 @@
 # Plan — the play surface: the board fills the stage, the door opens, one shape for hand controls
 
 **Status:** **DRAFT — Pass 1, 2026-09-04.** Phases 1–3 are BUILT on `claude/play-surface` and
-captured as mock F's Proposed frames (`fun@4418f19`); phases 4–12 wait on decisions Q1–Q11 in
+captured as mock F's Proposed frames (`fun@eb509fc`); phases 4–12 wait on decisions Q1–Q11 in
 `mocks/f-play-surface.html` and on Passes 2–3 of this plan. Not yet landed. Review Log at the
 foot. Plan filename carries no ordinal per `CroftC/.claude/TRACKING.md` § "Plan files".
 
@@ -219,3 +219,8 @@ Q1–Q11 are in the mock's decisions table with a recommendation each; the plan 
   (`tests/play-surface.spec.ts`, 8 specs × 2 engines); the conflict marker found by the
   Orchard probe and refused by `tests/dead-css.test.ts`.
 - Mock F v1 drawn; seven sketches; eleven decisions asked.
+- Gate: unit 899 passed; full browser suite 876/877 on both engines — the one red was REAL
+  (mobile-webkit, Blockdoku's drag): the wrapped toast at `left: 50%` could only be half the
+  stage wide, stacked five lines and covered the tray. Fixed (`eb509fc`: auto-margin
+  centring), the affected specs re-run green on both engines, Proposed re-captured. Rust gate
+  green (no Rust changed; run anyway).

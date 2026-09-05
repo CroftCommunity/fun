@@ -177,28 +177,6 @@
       "tag": "current"
     },
     {
-      "file": "proposed.2048.board.phone.png",
-      "game": "2048",
-      "route": "board",
-      "url": "/2048/?seed=7",
-      "viewport": "phone",
-      "width": 390,
-      "height": 844,
-      "baseline": "fun@4418f19",
-      "tag": "proposed"
-    },
-    {
-      "file": "proposed.color-sort.board.desktop.png",
-      "game": "color-sort",
-      "route": "board",
-      "url": "/color-sort/?seed=4242",
-      "viewport": "desktop",
-      "width": 1280,
-      "height": 900,
-      "baseline": "fun@4418f19",
-      "tag": "proposed"
-    },
-    {
       "file": "proposed.trio-tumble.poster.phone.png",
       "game": "trio-tumble",
       "route": "poster",
@@ -206,40 +184,7 @@
       "viewport": "phone",
       "width": 390,
       "height": 844,
-      "baseline": "fun@4418f19",
-      "tag": "proposed"
-    },
-    {
-      "file": "proposed.wyrdle.board.desktop.png",
-      "game": "wyrdle",
-      "route": "board",
-      "url": "/wyrdle/?seed=7",
-      "viewport": "desktop",
-      "width": 1280,
-      "height": 900,
-      "baseline": "fun@4418f19",
-      "tag": "proposed"
-    },
-    {
-      "file": "proposed.drop4.board.desktop.png",
-      "game": "drop4",
-      "route": "board",
-      "url": "/drop4/?seed=7",
-      "viewport": "desktop",
-      "width": 1280,
-      "height": 900,
-      "baseline": "fun@4418f19",
-      "tag": "proposed"
-    },
-    {
-      "file": "proposed.othello.board.desktop.png",
-      "game": "othello",
-      "route": "board",
-      "url": "/othello/?seed=7",
-      "viewport": "desktop",
-      "width": 1280,
-      "height": 900,
-      "baseline": "fun@4418f19",
+      "baseline": "fun@eb509fc",
       "tag": "proposed"
     },
     {
@@ -250,7 +195,7 @@
       "viewport": "phone",
       "width": 390,
       "height": 844,
-      "baseline": "fun@4418f19",
+      "baseline": "fun@eb509fc",
       "tag": "proposed"
     },
     {
@@ -261,18 +206,40 @@
       "viewport": "desktop",
       "width": 1280,
       "height": 900,
-      "baseline": "fun@4418f19",
+      "baseline": "fun@eb509fc",
       "tag": "proposed"
     },
     {
-      "file": "proposed.blockdoku.board.phone.png",
-      "game": "blockdoku",
+      "file": "proposed.othello.board.desktop.png",
+      "game": "othello",
       "route": "board",
-      "url": "/blockdoku/?seed=7",
-      "viewport": "phone",
-      "width": 390,
-      "height": 844,
-      "baseline": "fun@4418f19",
+      "url": "/othello/?seed=7",
+      "viewport": "desktop",
+      "width": 1280,
+      "height": 900,
+      "baseline": "fun@eb509fc",
+      "tag": "proposed"
+    },
+    {
+      "file": "proposed.drop4.board.desktop.png",
+      "game": "drop4",
+      "route": "board",
+      "url": "/drop4/?seed=7",
+      "viewport": "desktop",
+      "width": 1280,
+      "height": 900,
+      "baseline": "fun@eb509fc",
+      "tag": "proposed"
+    },
+    {
+      "file": "proposed.color-sort.board.desktop.png",
+      "game": "color-sort",
+      "route": "board",
+      "url": "/color-sort/?seed=4242",
+      "viewport": "desktop",
+      "width": 1280,
+      "height": 900,
+      "baseline": "fun@eb509fc",
       "tag": "proposed"
     },
     {
@@ -283,11 +250,44 @@
       "viewport": "desktop",
       "width": 1280,
       "height": 900,
-      "baseline": "fun@4418f19",
+      "baseline": "fun@eb509fc",
+      "tag": "proposed"
+    },
+    {
+      "file": "proposed.2048.board.phone.png",
+      "game": "2048",
+      "route": "board",
+      "url": "/2048/?seed=7",
+      "viewport": "phone",
+      "width": 390,
+      "height": 844,
+      "baseline": "fun@eb509fc",
+      "tag": "proposed"
+    },
+    {
+      "file": "proposed.blockdoku.board.phone.png",
+      "game": "blockdoku",
+      "route": "board",
+      "url": "/blockdoku/?seed=7",
+      "viewport": "phone",
+      "width": 390,
+      "height": 844,
+      "baseline": "fun@eb509fc",
+      "tag": "proposed"
+    },
+    {
+      "file": "proposed.wyrdle.board.desktop.png",
+      "game": "wyrdle",
+      "route": "board",
+      "url": "/wyrdle/?seed=7",
+      "viewport": "desktop",
+      "width": 1280,
+      "height": 900,
+      "baseline": "fun@eb509fc",
       "tag": "proposed"
     }
   ],
-  "baseline": "fun@4418f19",
+  "baseline": "fun@eb509fc",
   "capturedAt": "2026-09-04",
   "population": "deep link, fixed seed (hermetic); the poster is the bare land in a fresh context",
   "note": "Pruned to the captures the mock page shows (a full all-games set is 39MB); re-run tools/mock-snaps.mjs <game> --out f-play-surface --tag current|proposed to add one."
