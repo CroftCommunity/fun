@@ -2144,6 +2144,10 @@ body:has(> .play-area > .gf) {
   border-radius: 50%;
   background: var(--surface);
   box-shadow: inset 0 -2px 4px rgb(0 0 0 / 18%), 0 1px 2px rgb(0 0 0 / 25%);
+  /* The piece is a fruit emoji (mock F phase 10): its own colours, so the chip's
+     `color` only ever paints the fallback glyph. */
+  font-variant-emoji: emoji;
+  font-size: 1.05em;
 }
 /* The on-deck ("next") colour — smaller + dimmer than the loaded chip, sitting
    just after it so it reads as the shot after this one. */
@@ -2159,6 +2163,7 @@ body:has(> .play-area > .gf) {
   box-shadow: inset 0 -1px 3px rgb(0 0 0 / 15%), 0 1px 2px rgb(0 0 0 / 18%);
   font-size: 0.85em;
   opacity: 0.78;
+  font-variant-emoji: emoji;
 }
 .bub-hud {
   display: flex;

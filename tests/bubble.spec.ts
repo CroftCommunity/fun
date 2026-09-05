@@ -22,6 +22,11 @@ test("the board renders a canvas, a launcher chip, an aim control and the HUD", 
   await ready(page);
   await expect(page.locator(".bub-canvas")).toHaveAttribute("aria-label", /bubbles left/i);
   await expect(page.locator(".bub-loaded")).toBeVisible();
+  // Mock F phase 10 (owner Q7, 2026-09-05): the pieces are fruit. The launcher chip
+  // names the loaded fruit for a screen reader and shows its emoji.
+  await expect(page.locator(".bub-loaded")).toHaveAttribute("aria-label", /^Launcher loaded: (apple|blueberries|kiwi|grapes|orange|lemon)$/);
+  await expect(page.locator(".bub-loaded")).toHaveText(/^[🍎🫐🥝🍇🍊🍋]$/u);
+  await expect(page.locator(".bub-next")).toHaveAttribute("aria-label", /^Next up: (apple|blueberries|kiwi|grapes|orange|lemon)$/);
   await expect(page.locator(".bub-aim")).toBeVisible();
   await expect(page.locator(".bub-fire")).toBeVisible();
   // Score and shots are the frame's meters; the game's own control bar and
