@@ -523,7 +523,7 @@ export function dotsModule(): GameModule {
       class: `dots-board${interactive ? "" : " dots-final"}`,
       role: "group",
       "aria-label": interactive ? "Dots and Boxes board" : "Final board",
-      style: `grid-template-columns: var(--dots-node) repeat(${board.cols}, var(--dots-span) var(--dots-node)); grid-template-rows: var(--dots-node) repeat(${board.rows}, var(--dots-span) var(--dots-node));`,
+      style: `--dots-n: ${Math.max(board.rows, board.cols)}; grid-template-columns: var(--dots-node) repeat(${board.cols}, var(--dots-span) var(--dots-node)); grid-template-rows: var(--dots-node) repeat(${board.rows}, var(--dots-span) var(--dots-node));`,
     });
     const canPlay = interactive && !thinking && !ending && !gameOver() && humanToMove();
     for (const cell of latticeCells(board.rows, board.cols)) {

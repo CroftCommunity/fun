@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="mock-version" content="2" />
+<meta name="mock-baseline" content="fun@aafe332" />
+<meta name="mock-proposal" content="fun@eb509fc" />
+<title>The play surface — the board fills the stage, the door opens, one shape for hand controls · v2 · fun.croft.ing mocks</title>
+<link rel="stylesheet" href="harness.css" />
+<style>
+/* =========================================================================
+   F — THE PLAY SURFACE (2026-09-04). Not a look and not a new frame: what
+   happens INSIDE the frame's stage, on every game page, once the frame (D) is
+   shipped. Two kinds of frame on this page, and the caption says which:
+
+     CAPTURED  — real pixels from tools/mock-snaps.mjs. "Current" is fun@aafe332
+                 (UI-identical to main@c4db11a; aafe332 added only the tool),
+                 "Proposed" is the branch, fun@eb509fc. Worlds night skin, both.
+     SKETCH    — a drawing in this page's own CSS, labelled, never approved as
+                 pixels (MOCKS.md P1). A sketch says what to build; a capture
+                 says what was built.
+   ========================================================================= */
+.dir-f .screen {
+  --bg: #0c0e11; --raise: #15191e; --raise2: #1e242b;
+  --ink: #f3f5f7; --dim: #98a2ad; --line: #262d35;
+  --acc: #d9b53c; --acc-ink: #14110a; --ok: #5ec98a;
+  background: var(--bg); color: var(--ink);
+  font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.dir-f .dsp { font-family: "Fredoka", "Baloo 2", system-ui, sans-serif; letter-spacing: -0.01em; }
+.dir-f .h-wrap { max-width: 1540px; }
+.dir-f .sketch-tag { position: absolute; top: 10px; right: 10px; z-index: 5; font-size: 0.66rem; letter-spacing: 0.12em; padding: 3px 8px; border-radius: 999px; background: #d9534f; color: #fff; font-weight: 700; }
+.dir-f .h-pair { display: flex; gap: 1.5rem; overflow-x: auto; padding: 1.25rem 0 1.5rem; scroll-snap-type: x proximity; align-items: flex-start; }
+.dir-f .snap { width: 390px; height: 844px; border-radius: 22px; border: 1px solid var(--h-rule); object-fit: cover; object-position: top; display: block; }
+.dir-f .snap.desk { width: 1180px; height: 740px; border-radius: 10px; object-fit: cover; }
+.dir-f .h-pair-title { margin: 2.2rem 0 0.3rem; }
+.dir-f .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--h-rule); font-size: 0.78rem; color: var(--h-ink-dim); white-space: nowrap; }
+.dir-f .pill.rec { border-color: var(--h-accent); color: var(--h-accent); }
+.dir-f .pill.built { border-color: #5ec98a; color: #5ec98a; }
+.dir-f .pill.sketch { border-color: #d9534f; color: #d9534f; }
+.dir-f .measure { font-variant-numeric: tabular-nums; }
+.dir-f .vignettes { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1rem 0; }
+.dir-f .vig { position: relative; width: 300px; height: 220px; border-radius: 14px; overflow: hidden; border: 1px solid var(--h-rule); background: #0c0e11; color: #f3f5f7; display: grid; place-items: center; font: 14px system-ui, sans-serif; }
+.dir-f .vig figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 6px 10px; font-size: 0.74rem; color: #98a2ad; background: rgb(0 0 0 / .55); }
+
+/* --- the frame's bands, as shipped (56 / 48 / 56 / stage / 72) ------------ */
+.app { position: absolute; inset: 0; display: flex; flex-direction: column; }
+.shelfbar { flex: 0 0 56px; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: var(--raise); border-bottom: 1px solid var(--line); }
+.ib { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--ink); font: inherit; font-size: 17px; display: inline-grid; place-items: center; }
+.sp { flex: 1; }
+.gamebar { flex: 0 0 48px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border-bottom: 1px solid var(--line); }
+.gamebar .title { font-size: 1.1rem; font-weight: 600; }
+.gamebar .mode { font-size: 0.78rem; color: var(--dim); padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; }
+.meter { flex: 0 0 56px; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 0 12px; }
+.stat { display: flex; flex-direction: column; align-items: center; min-width: 76px; }
+.stat b { font-size: 1.15rem; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.stat span { font-size: 0.68rem; color: var(--dim); letter-spacing: 0.06em; text-transform: uppercase; }
+.seat { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border: 1.5px solid var(--line); border-radius: 999px; font-weight: 600; min-width: 150px; }
+.seat.on { border-color: var(--acc); box-shadow: 0 0 0 3px rgb(217 181 60 / .22); }
+.seat small { display: block; font-size: 0.7rem; color: var(--dim); font-weight: 500; }
+.seat b { margin-left: auto; }
+.stage { flex: 1; position: relative; display: flex; flex-direction: column; align-items: center; padding: 8px 12px; min-height: 0; }
+.toast { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); background: var(--raise2); color: var(--ink); border: 1px solid var(--line); padding: 8px 14px; border-radius: 999px; font-size: 0.85rem; max-width: calc(100% - 24px); text-align: center; box-shadow: 0 6px 20px rgb(0 0 0 / .35); }
+.dock { flex: 0 0 72px; display: flex; align-items: stretch; justify-content: space-around; padding: 6px 8px; border-top: 1px solid var(--line); background: var(--raise); }
+.verb { flex: 1; max-width: 96px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: 0.72rem; border-radius: 12px; }
+.verb i { font-style: normal; font-size: 1.35rem; line-height: 1; }
+.verb.primary { color: var(--ok); }
+
+/* --- P3: a ground per game (the stage is tinted from the board's own colour) --- */
+.stage.ground-wy { background: radial-gradient(120% 80% at 50% 30%, rgb(94 201 138 / .13), transparent 60%), linear-gradient(180deg, #0f1418, #0c0e11); }
+.stage.ground-t48 { background: radial-gradient(110% 70% at 50% 40%, rgb(60 120 80 / .22), transparent 62%), #0c0e11; }
+.stage.ground-al { background: radial-gradient(100% 60% at 50% 45%, rgb(120 90 220 / .16), transparent 62%), #0c0e11; }
+.stage.ground-fur { background: radial-gradient(110% 70% at 50% 45%, rgb(150 95 55 / .22), transparent 62%), #0c0e11; }
+.stage.ground-d4 { background: radial-gradient(110% 70% at 50% 45%, rgb(30 110 70 / .22), transparent 62%), #0c0e11; }
+.stage.ground-bub { background: radial-gradient(110% 70% at 50% 35%, rgb(40 120 150 / .18), transparent 62%), #0c0e11; }
+.stage.ground-chs { background: radial-gradient(110% 70% at 50% 45%, rgb(150 110 60 / .2), transparent 62%), #0c0e11; }
+.stage.ground-le { background: #1a2433; }
+
+/* --- Wyrdle sketch ---------------------------------------------------------- */
+.wy { display: grid; grid-template-columns: repeat(5, 62px); gap: 7px; margin-top: 10px; }
+.wy i { width: 62px; height: 62px; border: 2px solid #2a3139; border-radius: 8px; display: grid; place-items: center; font: 700 30px "Fredoka", system-ui, sans-serif; font-style: normal; }
+.wy i.g { background: #3f8a5b; border-color: #3f8a5b; }
+.wy i.y { background: #b8962e; border-color: #b8962e; }
+.wy i.x { background: #2a3139; }
+.kb { display: flex; flex-direction: column; gap: 6px; align-items: center; margin-top: auto; margin-bottom: 8px; width: 100%; }
+.kb div { display: flex; gap: 5px; }
+.kb b { min-width: 31px; height: 46px; border-radius: 6px; background: var(--raise2); display: grid; place-items: center; font-size: 0.95rem; }
+.kb b.w { min-width: 50px; font-size: 0.8rem; }
+.kb b.g { background: #3f8a5b; } .kb b.y { background: #b8962e; } .kb b.x { background: #14171b; color: #5a636d; }
+
+/* --- 2048 sketch -------------------------------------------------------------- */
+.t48 { display: grid; grid-template-columns: repeat(4, 80px); gap: 8px; padding: 8px; background: #1d4d2c; border-radius: 12px; margin-top: 12px; box-shadow: 0 10px 30px rgb(0 0 0 / .4); }
+.t48 i { width: 80px; height: 80px; border-radius: 6px; background: #2b2a22; display: grid; place-items: center; font: 700 32px "Fredoka", system-ui, sans-serif; font-style: normal; color: #f3e9c8; }
+.t48 i.n2 { background: #6b5a2c; } .t48 i.n4 { background: #8a6f2c; } .t48 i.n8 { background: #c4852a; color: #fff; } .t48 i.n16 { background: #d9672a; color: #fff; }
+.swipe { margin-top: 18px; color: var(--dim); font-size: 0.85rem; display: flex; gap: 8px; align-items: center; }
+.swipe span { font-size: 1.4rem; }
+
+/* --- Align sketch --------------------------------------------------------------- */
+.al-well { width: 230px; height: 380px; margin-top: 4px; border-radius: 10px; background: linear-gradient(180deg, #121420, #0f1119); border: 1px solid #262a3a; box-shadow: 0 10px 30px rgb(0 0 0 / .45); position: relative; background-image: linear-gradient(#1a1d2a 1px, transparent 1px), linear-gradient(90deg, #1a1d2a 1px, transparent 1px); background-size: 23px 23px; }
+.al-well .pc { position: absolute; width: 23px; height: 23px; border-radius: 3px; }
+.al-well .ghost { position: absolute; width: 23px; height: 23px; border: 1px dashed #6a6f8a; border-radius: 3px; }
+.al-side { position: absolute; top: 120px; display: flex; flex-direction: column; gap: 4px; align-items: center; font-size: 0.62rem; letter-spacing: 0.08em; color: var(--dim); }
+.al-side .box { width: 54px; height: 54px; border-radius: 10px; background: rgb(255 255 255 / .05); border: 1px solid var(--line); display: grid; place-items: center; }
+.thumb { position: absolute; bottom: 10px; display: grid; gap: 8px; }
+.thumb.l { left: 14px; grid-template-columns: 64px 64px; }
+.thumb.r { right: 14px; grid-template-columns: 64px 64px; }
+.thumb b { height: 64px; border-radius: 18px; background: rgb(120 90 220 / .22); border: 1.5px solid rgb(160 130 255 / .55); display: grid; place-items: center; font-size: 1.6rem; backdrop-filter: blur(6px); }
+.thumb b.wide { grid-column: span 2; height: 48px; font-size: 1.1rem; }
+.thumb small { grid-column: span 2; text-align: center; font-size: 0.62rem; letter-spacing: 0.1em; color: var(--dim); }
+
+/* --- Furrow upright sketch --------------------------------------------------------- */
+.fur { position: relative; display: grid; grid-template-rows: 78px 1fr 78px; gap: 10px; padding: 12px 40px; border-radius: 26px; background: #3a2a1c; margin-top: 8px; width: 340px; height: 600px; box-shadow: 0 10px 30px rgb(0 0 0 / .45); }
+.fur .store { border-radius: 40px; border: 2px solid; display: grid; place-items: center; font: 700 26px system-ui, sans-serif; background: #1d140c; }
+.fur .store.them { border-color: #e2895f; color: #f3d3c1; } .fur .store.me { border-color: #8aa0ff; color: #dbe1ff; }
+.fur .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.fur .col { display: grid; grid-template-rows: repeat(6, 1fr); gap: 8px; }
+.fur .pit { width: 58px; height: 58px; justify-self: center; border-radius: 50%; border: 2px solid; display: grid; place-items: center; font: 600 22px system-ui, sans-serif; background: #1d140c; }
+.fur .col.them .pit { border-color: #e2895f; color: #f3d3c1; } .fur .col.me .pit { border-color: #8aa0ff; color: #dbe1ff; }
+.fur .col.me .pit.legal { box-shadow: inset 0 0 0 3px #d9b53c; }
+.fur .arrow { position: absolute; top: 50%; transform: translateY(-50%); font-size: 1.5rem; color: #c9a98a; }
+
+/* --- Drop 4 beat sketch ------------------------------------------------------------- */
+.d4 { display: grid; grid-template-columns: repeat(7, 46px); gap: 6px; padding: 10px; background: #1d4d2c; border-radius: 12px; margin-top: 10px; position: relative; }
+.d4 i { width: 46px; height: 46px; border-radius: 50%; background: #16371f; box-shadow: inset 0 2px 4px rgb(0 0 0 / .5); }
+.d4 i.x { background: radial-gradient(circle at 35% 30%, #ff9b7a, #d9534f 60%, #9e2f2b); box-shadow: 0 2px 4px rgb(0 0 0 / .5); }
+.d4 i.o { background: radial-gradient(circle at 35% 30%, #ffe9a0, #d9b53c 60%, #8f7420); box-shadow: 0 2px 4px rgb(0 0 0 / .5); }
+.d4 i.win { outline: 3px solid #fff; outline-offset: 2px; animation: pulse 0.9s ease-in-out infinite alternate; }
+.d4 .fall { position: absolute; left: 218px; top: -60px; width: 46px; height: 46px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ff9b7a, #d9534f 60%, #9e2f2b); box-shadow: 0 0 0 0 rgb(217 83 79 / .5); animation: drop 0.9s cubic-bezier(.3,1.4,.6,1) infinite; }
+.d4 .trail { position: absolute; left: 226px; top: -50px; width: 30px; height: 130px; border-radius: 15px; background: linear-gradient(180deg, transparent, rgb(217 83 79 / .35)); animation: drop 0.9s cubic-bezier(.3,1.4,.6,1) infinite; }
+@keyframes drop { 0% { transform: translateY(0); } 70% { transform: translateY(300px); } 85% { transform: translateY(288px); } 100% { transform: translateY(300px); } }
+@keyframes pulse { from { outline-color: #fff; } to { outline-color: #d9b53c; } }
+.d4line { position: absolute; left: 12px; top: 176px; width: 210px; height: 6px; background: linear-gradient(90deg, transparent, #fff, transparent); border-radius: 3px; animation: pulse 0.9s ease-in-out infinite alternate; }
+.cheer { position: absolute; left: 50%; top: 40%; transform: translateX(-50%); font: 700 34px "Fredoka", system-ui, sans-serif; color: #fff; text-shadow: 0 4px 24px rgb(0 0 0 / .6); animation: pop 1.2s ease-out infinite; }
+@keyframes pop { 0% { transform: translateX(-50%) scale(.6); opacity: 0; } 20% { transform: translateX(-50%) scale(1.1); opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
+.tick { font-variant-numeric: tabular-nums; animation: tickup 1.2s steps(1) infinite; }
+@keyframes tickup { 0%, 50% { content: "3"; } }
+
+/* --- Bubble emoji sketch ------------------------------------------------------------- */
+.bub { width: 340px; height: 520px; margin-top: 6px; border-radius: 14px; background: linear-gradient(180deg, #0e2a3a, #0a1b26); position: relative; overflow: hidden; box-shadow: 0 10px 30px rgb(0 0 0 / .45); }
+.bub .row { position: absolute; left: 6px; display: flex; gap: 2px; }
+.bub .row.odd { left: 26px; }
+.bub .row i { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-size: 26px; font-style: normal; background: radial-gradient(circle at 35% 30%, rgb(255 255 255 / .35), rgb(255 255 255 / 0) 55%), rgb(255 255 255 / .08); box-shadow: inset 0 -3px 6px rgb(0 0 0 / .35); }
+.bub .aim { position: absolute; left: 170px; bottom: 60px; width: 3px; height: 330px; transform-origin: bottom; transform: rotate(-28deg); background: repeating-linear-gradient(180deg, rgb(255 255 255 / .55) 0 10px, transparent 10px 20px); }
+.bub .cannon { position: absolute; left: 132px; bottom: 6px; width: 76px; height: 76px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #2a4a5e, #12242f); border: 2px solid #3c5f75; display: grid; place-items: center; font-size: 40px; }
+.bub .next { position: absolute; right: 12px; bottom: 16px; width: 54px; height: 54px; border-radius: 50%; border: 1.5px dashed #3c5f75; display: grid; place-items: center; font-size: 26px; }
+.bub .next small { position: absolute; top: -16px; font-size: 0.6rem; letter-spacing: 0.1em; color: var(--dim); }
+.bub .line { position: absolute; left: 0; right: 0; bottom: 100px; border-top: 1px dashed rgb(255 255 255 / .25); }
+.bub .swipe { position: absolute; left: 12px; bottom: 16px; font-size: 0.72rem; color: var(--dim); max-width: 110px; }
+
+/* --- Chess presence sketch ---------------------------------------------------------- */
+.chs { margin-top: 8px; padding: 16px; border-radius: 10px; background: linear-gradient(135deg, #5a3b22, #3a2414); box-shadow: 0 14px 34px rgb(0 0 0 / .55), inset 0 1px 0 rgb(255 255 255 / .12); position: relative; }
+.chs .grid { display: grid; grid-template-columns: repeat(8, 41px); border: 2px solid #2a170c; }
+.chs .grid i { width: 41px; height: 41px; display: grid; place-items: center; font-size: 30px; font-style: normal; position: relative; }
+.chs .grid i.l { background: #e8d3ad; } .chs .grid i.d { background: #a5703f; }
+.chs .grid i.last { box-shadow: inset 0 0 0 3px rgb(217 181 60 / .8); }
+.chs .grid i.legal::after { content: ""; position: absolute; width: 12px; height: 12px; border-radius: 50%; background: rgb(0 0 0 / .35); }
+.chs .co { position: absolute; font-size: 0.62rem; color: #d9c2a0; font-weight: 600; }
+.chs .files { position: absolute; left: 18px; right: 18px; bottom: 2px; display: flex; justify-content: space-around; font-size: 0.62rem; color: #d9c2a0; font-weight: 600; }
+.chs .ranks { position: absolute; top: 18px; bottom: 18px; left: 3px; display: flex; flex-direction: column; justify-content: space-around; font-size: 0.62rem; color: #d9c2a0; font-weight: 600; }
+.pack { display: flex; gap: 8px; margin-top: 12px; }
+.pack span { padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line); font-size: 0.78rem; }
+.pack span.on { border-color: var(--acc); color: var(--acc); }
+
+/* --- Loose Ends sketch: arrows as the game draws them (looseends.ts paints a
+   rounded shaft with a wide head on a dotted lattice); built by the script at
+   the foot from a small list, so the shapes are one path, not five classes. --- */
+.le { position: relative; width: 340px; height: 470px; margin-top: 8px; background-image: radial-gradient(#3a4a5e 1.6px, transparent 1.6px); background-size: 48px 48px; background-position: 24px 24px; }
+.le svg { position: absolute; overflow: visible; }
+.le svg .body { fill: #b9c6d6; stroke: #b9c6d6; stroke-width: 10; stroke-linejoin: round; paint-order: stroke; }
+.le svg.free .body { fill: #d9b53c; stroke: #d9b53c; }
+.hud { position: absolute; top: 10px; left: 12px; right: 12px; display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--dim); }
+.hud b { color: var(--ink); }
+
+/* --- Checkers vignette --------------------------------------------------------------- */
+.ck { display: grid; grid-template-columns: repeat(4, 52px); }
+.ck i { width: 52px; height: 52px; display: grid; place-items: center; }
+.ck i.l { background: #d9c3a0; } .ck i.d { background: #8a5a3a; }
+.ck .pc { width: 40px; height: 40px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #444, #111 65%); box-shadow: 0 3px 0 #000, 0 5px 8px rgb(0 0 0 / .5), inset 0 0 0 3px rgb(255 255 255 / .12); }
+.ck .pc.w { background: radial-gradient(circle at 40% 35%, #fff, #cfc6b3 65%); box-shadow: 0 3px 0 #8f8570, 0 5px 8px rgb(0 0 0 / .5), inset 0 0 0 3px rgb(0 0 0 / .08); }
+.ck .pc.k::after { content: "♛"; color: #d9b53c; font-size: 22px; display: grid; place-items: center; height: 100%; }
+.ck .pc.gone { animation: shrink 1s ease-in infinite; }
+@keyframes shrink { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(0); opacity: 0; } }
+.ck .pc.jump { animation: jump 1s ease-in-out infinite; }
+@keyframes jump { 0% { transform: translate(0,0); } 50% { transform: translate(52px,-52px) scale(1.15); } 100% { transform: translate(104px,-104px); } }
+</style>
+</head>
+<body class="dir-f">
+<div class="h-wrap">
+  <a class="h-back" href="index.html">← All directions</a>
+  <p class="h-kicker">Mock F · The play surface · <b>v2</b> · baseline <code>fun@aafe332</code> · proposal <code>fun@eb509fc</code></p>
+  <h1>The play surface — the board fills the stage, the door opens, one shape for hand controls</h1>
+  <p class="h-lede">Ten proposals for every game page, to be talked through before the plan is phased: the two systemic defects the owner's 2026-09-04 screenshots showed (Play off the bottom of a poster; a tiny board in an empty stage) are <b>built on the branch and captured</b>, so Proposed is pixels for those; the rest — a ground per game, one vocabulary for hand controls, Furrow standing upright, life on the versus boards, pieces with character, Loose Ends' curve, two music picks — are <b>sketches</b>, labelled, for choosing a direction. Plan: <code>plans/2026-09-04-plan-play-surface.md</code> (draft; phases follow the decisions below).</p>
+  <p class="h-note">Compare in one skin: every capture and sketch here is the default Worlds night skin. Captures are true size — 390×844 as-is, 1280×900 shown in an 1180×740 window, top-aligned — from <code>tools/mock-snaps.mjs all --out f-play-surface --tag current|proposed</code>, hermetic: fixed seeds, and the poster is the bare land in a fresh context.</p>
+
+  <h2>Revisions</h2>
+  <p class="rev"><b>v2</b> — owner review 2026-09-05: the Align sketch's thumb pads overlapped the well on a phone (the well is now 380px and the pads sit clear beneath it); the Loose Ends sketch's arrows were stubby bars with triangles — redrawn as the game's own shape, a rounded shaft with a wide head, in SVG. Built proposals unchanged; approved to land.</p>
+  <p class="rev"><b>v1</b> — first draft, branch <code>claude/play-surface</code>. Proposals 1, 2 and 3 are built and captured (<code>fun@eb509fc</code>); 4–10 are sketches. Current captures: <code>snaps/f-play-surface/current.*</code> from <code>fun@aafe332</code>; Proposed: <code>snaps/f-play-surface/proposed.*</code>.</p>
+
+  <h2>What the screenshots measured (2026-09-04, <code>fun@c4db11a</code>)</h2>
+  <table class="h-table">
+    <tr><th>Symptom (owner's words)</th><th>Measured</th><th>Cause</th></tr>
+    <tr><td>"no play button, too far off bottom"</td><td class="measure">Trio Tumble at 390×844: Play's bottom at <b>881px</b> on an 844px frame; Dots and chess the same on a phone, Trio Tumble also at 1280×900</td><td>The poster's body is a flex child of a box with <code>overflow: hidden</code>; nine setup options are taller than the frame, and nothing scrolls.</td></tr>
+    <tr><td>"small game play board" — Othello, Drop 4, checkers, Dots, 2048, Blockdoku, Color Sort, Wyrdle's "negative space"</td><td class="measure">Othello at 1280×900: a <b>363×363</b> board in a <b>960×796</b> stage (46%). Color Sort tube <b>46px</b> wide on a desktop — the phone's size. Checkers at 390: 309 of 366px. Dots at desktop: 554px.</td><td>Every grid sizes its cell from the <i>viewport width</i>: <code>clamp(1.7rem, 9.5vw, 2.6rem)</code> caps at 2.6rem whatever the stage. The stage's height was never an input.</td></tr>
+    <tr><td>"orchard drop, small offcenter"</td><td class="measure">Crate centre at <b>237px</b> in a stage centred at 500; 630 of 796px tall</td><td>A stray <code>=======</code> conflict marker above <code>.orch-surface</code> (a 2026-08-30 rebase) made the selector invalid — the centring rule never applied. The brace-balance test cannot see a marker with no braces.</td></tr>
+    <tr><td>"furrow tiny game play … horizontally oriented when it would make more sense to be vertical"</td><td class="measure">A 14-cell row at 2.75rem pits scrolls inside a 366px stage (the stores clip); the board is 190px tall in a 572px stage</td><td>The board cannot reflow (a row that wraps is not a row) and has no upright layout.</td></tr>
+    <tr><td>"2048 … make the arrows optional and fill the mobile screen and expect swipes"</td><td class="measure">Tile 57.6px on a phone, board 256px wide of 366; the pad is always shown; swipes already work</td><td>Fixed cell sizes in three media queries; no preference for the pad.</td></tr>
+    <tr><td>"loose ends … just too easy to start"</td><td class="measure">Level 1: <b>3 arrows</b> on a 5×6 grid, snakes of 2–4; Easy ends (level 15) at 12 arrows on 7×9; level 100 is 68 on 18×26</td><td><code>target = 3 + 65·t</code> is linear from three; the first ten levels have nothing to read.</td></tr>
+    <tr><td>"the first-move hint" (found on the way)</td><td class="measure">2048's toast ran from −60 to 450px on a 390px phone</td><td><code>white-space: nowrap</code>; and once a board fills the stage, the toast covered its bottom row (Othello, Dots).</td></tr>
+  </table>
+
+  <h2>Open decisions</h2>
+  <table class="h-table">
+    <tr><th>#</th><th>Question</th><th>This draft shows</th><th>Standing</th></tr>
+    <tr><td>Q1</td><td>The fill rule's ceilings — an 8×8 board stops at 6rem cells (768px). Big enough on a 27" monitor, or let it run?</td><td>6rem for 8×8, 6.5rem Drop 4, 8.5rem 2048, 5rem Wyrdle, 14rem a Dots span</td><td><span class="pill rec">as drawn</span> a disc stays a disc; raise per game if a capture says so</td></tr>
+    <tr><td>Q2</td><td>A ground per game (proposal 4): the stage takes a low-alpha tint and vignette from the game's own board colour, or stays gallery black?</td><td>tinted, 12–22% of the board colour, in four sketches</td><td><span class="pill rec">tint</span> — the stage is chrome, so the hook is the frame's (<code>--stage-ground</code>, set by the game); ADR-0002 successor</td></tr>
+    <tr><td>Q3</td><td>On-screen pads (2048's arrows, Align's buttons): a preference <i>Auto / On / Off</i>, Auto meaning "coarse pointer only"? Or On by default everywhere?</td><td>Auto; 2048 sketched with the pad off and a swipe hint</td><td><span class="pill rec">Auto</span> the first-move toast teaches the swipe</td></tr>
+    <tr><td>Q4</td><td>Align: two thumb clusters in the stage's bottom corners, over the ground (move left; rotate + drop right), instead of three rows under the well?</td><td>the split, translucent, 64px targets, the well 380px tall and clear of them</td><td><span class="pill rec">split</span> frees ~150px of well height on a phone</td></tr>
+    <tr><td>Q5</td><td>Furrow upright on a portrait stage by default, with a preference <i>Board: Auto / Across / Upright</i>?</td><td>upright at 390: two columns of six, stores top and bottom, your column on the right sowing upward</td><td><span class="pill rec">Auto + preference</span></td></tr>
+    <tr><td>Q6</td><td>Compact setup rows — a choice with three or fewer options becomes a segmented control (chess "You play", Trio Tumble "Board"), so most posters fit a phone without scrolling?</td><td>not drawn; the built fix (scroll + sticky Play) covers every case first</td><td><span class="pill">open</span> phase 3 if yes</td></tr>
+    <tr><td>Q7</td><td>Bubble's pieces as emoji — which set? Fruit (🍎🍋🫐🍇🍊🥝), faces, gems. Each colour keeps a distinct shape either way.</td><td>fruit, with a launcher and a Next slot</td><td><span class="pill">owner picks the set</span></td></tr>
+    <tr><td>Q8</td><td>Chess piece packs — which two ship first: Classic glyphs (today), Bold flat, Emoji?</td><td>Classic on a wood-framed board with coordinates; the pack row in Settings</td><td><span class="pill rec">Classic + Bold</span></td></tr>
+    <tr><td>Q9</td><td>Music: Mahjong plays the shelf bed (Morning Miles — "country") because it names no track; Cribbage names Morning Miles too. Which of the airier pieces? Candidates by title: Porch Light Nocturne, Lower Cavern Bloom, Tuesday Night Rainfall, Gravity Glass.</td><td>not drawn — a one-line change in <code>src/music.ts</code> once picked</td><td><span class="pill">owner picks</span> (I cannot listen)</td></tr>
+    <tr><td>Q10</td><td>Loose Ends: rebase the curve so level 1 is a puzzle (10 arrows on 6×8, snakes 3–5; Easy ends at ~24 on 8×11) now, and park the second mechanic (colour bands, locks, a par with stars) for a research pass?</td><td>a level-1 sketch at the proposed density</td><td><span class="pill rec">curve now, mechanic after research</span></td></tr>
+    <tr><td>Q11</td><td>Versus beats — which events earn a flourish: a capture, a king, a flip of four or more, a Drop 4 line, a Dots chain, a cribbage 15/pair/run? Nothing on an ordinary move.</td><td>Drop 4 mid-drop and its win line; a checkers jump; the score ticking</td><td><span class="pill rec">that list, no confetti on ordinary moves</span></td></tr>
+  </table>
+
+  <!-- ===================================================================== -->
+  <h2>The proposals, Current beside Proposed</h2>
+
+  <h3 class="h-pair-title">1 · The door opens — Play is reachable on every poster <span class="pill built">built · F1.1, F1.2</span></h3>
+  <p class="h-note">The poster's body becomes the scroller and Play sticks to its foot. A setup card taller than the frame scrolls under a Play that never leaves the screen; keyboard focus lands an option above it (scroll-padding). Every game gets this; nothing else on the poster changes.</p>
+  <div class="h-pair">
+    <figure class="h-frame"><figcaption><b>Current</b> — captured <code>fun@aafe332</code>, Trio Tumble, bare land at 390×844: Play is 37px below the frame</figcaption><img class="snap" src="snaps/f-play-surface/current.trio-tumble.poster.phone.png" alt="Current: the Trio Tumble poster with nine setup options; a sliver of the Play button's top edge shows at the very bottom of the frame." /></figure>
+    <figure class="h-frame"><figcaption><b>Proposed</b> — captured <code>fun@eb509fc</code>: Play sticky, the card scrolls behind it</figcaption><img class="snap" src="snaps/f-play-surface/proposed.trio-tumble.poster.phone.png" alt="Proposed: the same poster; the Play button sits fully on screen at the bottom and the last option is scrolling behind it." /></figure>
+    <figure class="h-frame"><figcaption><b>Current</b> — Dots and Boxes at 390×844</figcaption><img class="snap" src="snaps/f-play-surface/current.dots.poster.phone.png" alt="Current: the Dots and Boxes poster; the Play button is off the bottom." /></figure>
+    <figure class="h-frame"><figcaption><b>Proposed</b> — Dots and Boxes at 390×844</figcaption><img class="snap" src="snaps/f-play-surface/proposed.dots.poster.phone.png" alt="Proposed: the Dots and Boxes poster with Play on screen." /></figure>
+  </div>
+
+  <h3 class="h-pair-title">2 · The board fills the stage <span class="pill built">built · F2.1–F2.5</span></h3>
+  <p class="h-note">The stage becomes a size container and declares the room a board may fill — its width, and its height less a 3rem lane at the foot for the toast. Each grid takes its cell from the stage's short side instead of the viewport's width: Othello, checkers, chess, Drop 4, Dots, 2048, Wyrdle, Blockdoku; Color Sort's tubes grow with the stage's height on a desktop and keep mock E's 48px on a phone; the Orchard crate caps against the stage and — with the conflict marker gone — sits in the middle. Floors keep every 360px rule; ceilings keep a disc a disc. The spec asserts ≥80% of one axis on a desktop, ≥85% of the width on a phone, and never past the stage.</p>
+  <div class="h-pair">
+    <figure class="h-frame"><figcaption><b>Current</b> — Othello, <code>?seed=7</code>, 1280×900: a 363px board in a 960×796 stage</figcaption><img class="snap desk" src="snaps/f-play-surface/current.othello.board.desktop.png" alt="Current: a small green Othello board top-centre of a large empty stage, the rail on the right." /></figure>
+    <figure class="h-frame"><figcaption><b>Proposed</b> — Othello, same seed: 782px, the toast in its lane below</figcaption><img class="snap desk" src="snaps/f-play-surface/proposed.othello.board.desktop.png" alt="Proposed: the Othello board fills the stage's height; the first-move toast sits under its bottom edge." /></figure>
+  </div>
+  <div class="h-pair">
+    <figure class="h-frame"><figcaption><b>Current</b> — Dots and Boxes, 1280×900</figcaption><img class="snap desk" src="snaps/f-play-surface/current.dots.board.desktop.png" alt="Current: a small dots lattice in a large stage." /></figure>
+    <figure class="h-frame"><figcaption><b>Proposed</b> — Dots and Boxes: the lattice scales with the box count (<code>--dots-n</code>)</figcaption><img class="snap desk" src="snaps/f-play-surface/proposed.dots.board.desktop.png" alt="Proposed: the lattice fills the stage's height." /></figure>
+  </div>
+  <div class="h-pair">
+    <figure class="h-frame"><figcaption><b>Current</b> — Drop 4, 1280×900</figcaption><img class="snap desk" src="snaps/f-play-surface/current.drop4.board.desktop.png" alt="Current: a small Drop 4 board." /></figure>
+    <figure class="h-frame"><figcaption><b>Proposed</b> — Drop 4: seven across the width or six down the height, whichever binds</figcaption><img class="snap desk" src="snaps/f-play-surface/proposed.drop4.board.desktop.png" alt="Proposed: the Drop 4 board fills most of the stage." /></figure>
+  </div>
+  <div class="h-pair">
+    <figure class="h-frame"><figcaption><b>Current</b> — Color Sort, <code>?seed=4242</code>, 1280×900: 46px tubes</figcaption><img class="snap desk" src="snaps/f-play-surface/current.color-sort.board.desktop.png" alt="Current: twelve small tubes in one row." /></figure>
+    <figure class="h-frame"><figcaption><b>Proposed</b> — Color Sort: the unit from the stage's height</figcaption><img class="snap desk" src="snaps/f-play-surface/proposed.color-sort.board.desktop.png" alt="Proposed: twelve large tubes in two rows." /></figure>
+    <figure class="h-frame"><figcaption><b>Current</b> — Orchard Drop, 1280×900: the crate at the left edge</figcaption><img class="snap desk" src="snaps/f-play-surface/current.orchard-drop.board.desktop.png" alt="Current: the crate hugs the left edge of the stage." /></figure>
+    <figure class="h-frame"><figcaption><b>Proposed</b> — Orchard Drop: centred, the stage's height</figcaption><img class="snap desk" src="snaps/f-play-surface/proposed.orchard-drop.board.desktop.png" alt="Proposed: the crate centred and taller." /></figure>
+  </div>
+  <div class="h-pair">
+    <figure class="h-frame"><figcaption><b>Current</b> — 2048 at 390×844: 57px tiles</figcaption><img class="snap" src="snaps/f-play-surface/current.2048.board.phone.png" alt="Current: a small 2048 board with the arrow pad below and a long empty area; the hint toast runs off both edges." /></figure>
+    <figure class="h-frame"><figcaption><b>Proposed</b> — 2048: 79px tiles, the toast wraps (F3.1)</figcaption><img class="snap" src="snaps/f-play-surface/proposed.2048.board.phone.png" alt="Proposed: the 2048 board spans the stage's width; the hint toast fits on two lines." /></figure>
+    <figure class="h-frame"><figcaption><b>Current</b> — Blockdoku at 390×844</figcaption><img class="snap" src="snaps/f-play-surface/current.blockdoku.board.phone.png" alt="Current: a Blockdoku board narrower than the stage." /></figure>
+    <figure class="h-frame"><figcaption><b>Proposed</b> — Blockdoku: nine cells across the stage</figcaption><img class="snap" src="snaps/f-play-surface/proposed.blockdoku.board.phone.png" alt="Proposed: the Blockdoku board spans the stage's width." /></figure>
+    <figure class="h-frame"><figcaption><b>Current</b> — Wyrdle, 1280×900</figcaption><img class="snap desk" src="snaps/f-play-surface/current.wyrdle.board.desktop.png" alt="Current: small Wyrdle tiles and a small keyboard." /></figure>
+    <figure class="h-frame"><figcaption><b>Proposed</b> — Wyrdle: tiles to 5rem, the keyboard under them</figcaption><img class="snap desk" src="snaps/f-play-surface/proposed.wyrdle.board.desktop.png" alt="Proposed: larger Wyrdle tiles and keyboard." /></figure>
+  </div>
+  <p class="h-note">Not yet on the rule, and each a phase of its own with the same spec shape: Furrow (proposal 6 first), Bubble (its canvas already flexes; the tap floor is the check), Align's well, cribbage's table, Mahjong's layout, Loose Ends (its canvas already fills), solitaire and Trio Tumble. The checkers and chess captures are the same shape as Othello's and are in <code>snaps/f-play-surface/</code>.</p>
+
+  <h3 class="h-pair-title">3 · The stage's transients stay out of the way <span class="pill built">built · F2.5, F3.1</span></h3>
+  <p class="h-note">A toast wraps inside the stage instead of running off a phone, and a full-height board leaves it a lane — the two captures under proposal 2 (Othello desktop, 2048 phone) show both. Nothing to decide; recorded because it fell out of the fill.</p>
+
+  <h3 class="h-pair-title">4 · A ground per game <span class="pill sketch">sketch · Q2</span></h3>
+  <p class="h-note">Wyrdle's "so much negative space and it's just blah". The frame keeps its gallery black; each game sets one hook — a low-alpha radial tint of its own board colour with a vignette — so the room around the board reads as that game's room, not a void. Chrome roles stay skinnable; the tint is game-owned, like the board (ADR-0001). Drawn on Wyrdle and 2048 (the 2048 sketch also shows Q3's pad off).</p>
+  <div class="h-pair">
+    <figure class="h-frame"><figcaption><b>Current</b> — Wyrdle at 390×844</figcaption><img class="snap" src="snaps/f-play-surface/current.wyrdle.board.phone.png" alt="Current: Wyrdle's empty grid and keyboard on a black stage." /></figure>
+    <figure class="h-frame"><figcaption><b>Proposed</b> — SKETCH: the same layout on a Wyrdle-green ground, mid-game</figcaption><div class="screen" data-theme="dark"><span class="sketch-tag">SKETCH</span><div class="app">
+      <div class="shelfbar"><button class="ib">☰</button><button class="ib">⤢</button><button class="ib">▶</button><button class="ib">♪</button><span class="sp"></span><button class="ib">☀</button><button class="ib">⚙</button><button class="ib">◎</button></div>
+      <div class="gamebar"><button class="ib">‹</button><span class="title dsp">Wyrdle</span><span class="mode">Today's word</span><span class="sp"></span><button class="ib">⋯</button></div>
+      <div class="meter"><div class="stat"><b>4</b><span>guesses left</span></div></div>
+      <div class="stage ground-wy">
+        <div class="wy">
+          <i class="x">C</i><i class="y">R</i><i class="x">A</i><i class="g">N</i><i class="x">E</i>
+          <i class="g">S</i><i class="x">T</i><i class="x">O</i><i class="g">N</i><i class="y">Y</i>
+          <i></i><i></i><i></i><i></i><i></i>
+          <i></i><i></i><i></i><i></i><i></i>
+          <i></i><i></i><i></i><i></i><i></i>
+          <i></i><i></i><i></i><i></i><i></i>
+        </div>
+        <div class="kb">
+          <div><b>Q</b><b>W</b><b class="x">E</b><b class="y">R</b><b class="x">T</b><b class="y">Y</b><b>U</b><b>I</b><b class="x">O</b><b>P</b></div>
+          <div><b class="x">A</b><b class="g">S</b><b>D</b><b>F</b><b>G</b><b>H</b><b>J</b><b>K</b><b>L</b></div>
+          <div><b class="w">Enter</b><b>Z</b><b>X</b><b class="x">C</b><b>V</b><b>B</b><b class="g">N</b><b>M</b><b class="w">⌫</b></div>
+        </div>
+      </div>
+      <div class="dock"><button class="verb primary"><i>✦</i>Hint</button><button class="verb"><i>⟳</i>New word</button><button class="verb"><i>☰</i>Settings</button></div>
+    </div></div></figure>
+    <figure class="h-frame"><figcaption><b>Proposed</b> — SKETCH: 2048 on its felt-green ground, the pad off (Q3), a swipe hint once</figcaption><div class="screen" data-theme="dark"><span class="sketch-tag">SKETCH</span><div class="app">
+      <div class="shelfbar"><button class="ib">☰</button><button class="ib">⤢</button><button class="ib">▶</button><button class="ib">♪</button><span class="sp"></span><button class="ib">☀</button><button class="ib">⚙</button><button class="ib">◎</button></div>
+      <div class="gamebar"><button class="ib">‹</button><span class="title dsp">2048</span><span class="mode">Free play</span><span class="sp"></span><button class="ib">⋯</button></div>
+      <div class="meter"><div class="stat"><b>128</b><span>score</span></div><div class="stat"><b>16</b><span>best tile</span></div></div>
+      <div class="stage ground-t48">
+        <div class="t48">
+          <i></i><i class="n2">2</i><i></i><i></i>
+          <i></i><i></i><i class="n4">4</i><i></i>
+          <i class="n2">2</i><i></i><i class="n8">8</i><i class="n4">4</i>
+          <i class="n4">4</i><i class="n8">8</i><i class="n16">16</i><i class="n2">2</i>
+        </div>
+        <div class="swipe"><span>☝</span> swipe anywhere on the board · arrows in Settings</div>
+        <div class="toast">Slide the board — matching numbers combine. Reach the 2048 tile.</div>
+      </div>
+      <div class="dock"><button class="verb primary"><i>✦</i>Hint</button><button class="verb"><i>⟳</i>New game</button><button class="verb"><i>☰</i>Settings</button></div>
+    </div></div></figure>
+  </div>
+
+  <h3 class="h-pair-title">5 · One shape for hand controls — gestures first, one pad, Align split <span class="pill sketch">sketch · Q3, Q4</span></h3>
+  <p class="h-note">Today: 2048 has a d-pad of four 48px buttons that is always there; Align has seven buttons in three rows under the well, each a different width, none branded. Proposed: one shared pad component the frame draws over the stage's ground — rounded 64px targets tinted with the game's colour, translucent, haptic on press — in two layouts: a d-pad (2048) and a <b>two-thumb split</b> (Align: move under the left thumb, rotate and drop under the right, Hold and Next beside the well). A preference, <i>On-screen controls: Auto / On / Off</i>, governs both games; Auto shows the pad on a coarse pointer only. Swipes stay: 2048's board already reads them; Align gains swipe-down for hard drop and tap-to-rotate on the well.</p>
+  <div class="h-pair">
+    <figure class="h-frame"><figcaption><b>Current</b> — Align at 390×844</figcaption><img class="snap" src="snaps/f-play-surface/current.align.board.phone.png" alt="Current: the Align well with Hold and Next beside it and three rows of buttons below." /></figure>
+    <figure class="h-frame"><figcaption><b>Proposed</b> — SKETCH: the split pad in the corners under a 380px well, Hold/Next beside it</figcaption><div class="screen" data-theme="dark"><span class="sketch-tag">SKETCH</span><div class="app">
+      <div class="shelfbar"><button class="ib">☰</button><button class="ib">⤢</button><button class="ib">▶</button><button class="ib">♪</button><span class="sp"></span><button class="ib">☀</button><button class="ib">⚙</button><button class="ib">◎</button></div>
+      <div class="gamebar"><button class="ib">‹</button><span class="title dsp">Align</span><span class="mode">Marathon (daily)</span><span class="sp"></span><button class="ib">⋯</button></div>
+      <div class="meter"><div class="stat"><b>1 240</b><span>score</span></div><div class="stat"><b>2</b><span>level</span></div><div class="stat"><b>12 / 150</b><span>lines</span></div></div>
+      <div class="stage ground-al">
+        <div class="al-well">
+          <span class="pc" style="left:69px;top:92px;background:#a78bfa"></span><span class="pc" style="left:92px;top:92px;background:#a78bfa"></span><span class="pc" style="left:115px;top:92px;background:#a78bfa"></span><span class="pc" style="left:138px;top:92px;background:#a78bfa"></span>
+          <span class="ghost" style="left:69px;top:311px"></span><span class="ghost" style="left:92px;top:311px"></span><span class="ghost" style="left:115px;top:311px"></span><span class="ghost" style="left:138px;top:311px"></span>
+          <span class="pc" style="left:0;top:334px;background:#f87171"></span><span class="pc" style="left:23px;top:334px;background:#f87171"></span><span class="pc" style="left:23px;top:357px;background:#f87171"></span><span class="pc" style="left:46px;top:357px;background:#f87171"></span>
+          <span class="pc" style="left:161px;top:357px;background:#60a5fa"></span><span class="pc" style="left:184px;top:357px;background:#60a5fa"></span><span class="pc" style="left:207px;top:357px;background:#60a5fa"></span><span class="pc" style="left:207px;top:334px;background:#60a5fa"></span>
+          <span class="pc" style="left:92px;top:357px;background:#fbbf24"></span><span class="pc" style="left:115px;top:357px;background:#fbbf24"></span><span class="pc" style="left:92px;top:334px;background:#fbbf24"></span><span class="pc" style="left:115px;top:334px;background:#fbbf24"></span>
+        </div>
+        <div class="al-side" style="left:14px">HOLD<div class="box"><span style="color:#fbbf24;font-size:22px">▪▪<br>▪▪</span></div></div>
+        <div class="al-side" style="right:14px">NEXT<div class="box"><span style="color:#34d399;font-size:22px">&nbsp;▪▪<br>▪▪</span></div><div class="box" style="width:44px;height:44px"><span style="color:#f472b6;font-size:16px">▪<br>▪▪▪</span></div></div>
+        <div class="thumb l"><b>◀</b><b>▶</b><b class="wide">▼ soft</b><small>MOVE</small></div>
+        <div class="thumb r"><b>↺</b><b>↻</b><b class="wide">⤓ drop</b><small>TURN</small></div>
+      </div>
+      <div class="dock"><button class="verb primary"><i>✦</i>Hint</button><button class="verb"><i>⟳</i>New game</button><button class="verb"><i>☰</i>Settings</button></div>
+    </div></div></figure>
+  </div>
+
+  <h3 class="h-pair-title">6 · Furrow stands up on a phone <span class="pill sketch">sketch · Q5</span></h3>
+  <p class="h-note">A mancala row cannot wrap, so across a phone it scrolls and the stores clip. Upright, the same fourteen cells are two columns of six with a store at each end — the engine's column on the left sowing downward, yours on the right sowing upward, the same counter-clockwise circuit turned a quarter. The pits grow to 44px+ from 2.75rem. <i>Board: Auto / Across / Upright</i> in Settings; Auto follows the stage's aspect, so a desktop stays across.</p>
+  <div class="h-pair">
+    <figure class="h-frame"><figcaption><b>Current</b> — Furrow at 390×844, the row scrolls</figcaption><img class="snap" src="snaps/f-play-surface/current.furrow.board.phone.png" alt="Current: a horizontal mancala board clipped at both ends, small in a tall empty stage." /></figure>
+    <figure class="h-frame"><figcaption><b>Proposed</b> — SKETCH: upright, your column right, legal pits ringed</figcaption><div class="screen" data-theme="dark"><span class="sketch-tag">SKETCH</span><div class="app">
+      <div class="shelfbar"><button class="ib">☰</button><button class="ib">⤢</button><button class="ib">▶</button><button class="ib">♪</button><span class="sp"></span><button class="ib">☀</button><button class="ib">⚙</button><button class="ib">◎</button></div>
+      <div class="gamebar"><button class="ib">‹</button><span class="title dsp">Furrow</span><span class="mode">Medium</span><span class="sp"></span><button class="ib">⋯</button></div>
+      <div class="meter"><div class="seat on">▲ You<small>your move</small><b>0</b></div><div class="seat">🤖 The Engine<b>0</b></div></div>
+      <div class="stage ground-fur">
+        <div class="fur">
+          <div class="store them">● 0</div>
+          <div class="cols">
+            <div class="col them"><div class="pit">4</div><div class="pit">4</div><div class="pit">4</div><div class="pit">4</div><div class="pit">4</div><div class="pit">4</div></div>
+            <div class="col me"><div class="pit legal">4</div><div class="pit legal">4</div><div class="pit legal">4</div><div class="pit legal">4</div><div class="pit legal">4</div><div class="pit legal">4</div></div>
+          </div>
+          <div class="store me">▲ 0</div>
+          <span class="arrow" style="left:12px">↓</span><span class="arrow" style="right:12px">↑</span>
+        </div>
+      </div>
+      <div class="dock"><button class="verb primary"><i>✦</i>Hint</button><button class="verb"><i>⟳</i>New game</button><button class="verb"><i>☰</i>Settings</button></div>
+    </div></div></figure>
+  </div>
+
+  <h3 class="h-pair-title">7 · Life on the versus boards <span class="pill sketch">sketch · Q11</span></h3>
+  <p class="h-note">"Drop 4 … lackluster gameplay", "checkers gameplay could use some pick me up", "cribbage needs more animations and life". One vocabulary of <b>beats</b>, shared by the six versus games and cribbage, each a Web Animations API call the game triggers from the move the core already resolved (the same rule as Color Sort's pour): the <b>drop</b> (Drop 4's disc falls with a trail and settles with a bounce; Othello's flips run outward in sequence; a checkers piece slides its chain and a captured piece shrinks out; a chess piece slides), the <b>reply mark</b> (the engine's move ringed for a beat — exists), the <b>line</b> (a winning four, a closed box, a flipped run pulses), the <b>flourish</b> (the score in the seat ticks up; one word in the game's display face — "Four!", "King!", "Fifteen two" — that fades), and the result screen's fanfare (exists). Sound has a voice per beat under the Sound toggle; reduced motion collapses each beat to its last frame. Nothing fires on an ordinary move.</p>
+  <div class="vignettes">
+    <figure class="vig"><div class="d4" style="transform:scale(.72);transform-origin:top left;margin:0;position:absolute;left:16px;top:10px">
+      <div class="trail"></div><div class="fall"></div>
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      <i class="o win"></i><i class="o win"></i><i class="o win"></i><i class="o win"></i><i class="x"></i><i></i><i></i>
+      <i class="x"></i><i class="x"></i><i class="o"></i><i class="x"></i><i class="o"></i><i></i><i></i>
+      <i class="o"></i><i class="x"></i><i class="x"></i><i class="o"></i><i class="x"></i><i class="o"></i><i></i>
+      <div class="d4line"></div>
+    </div><div class="cheer" style="top:auto;bottom:44px">Four!</div><figcaption>Drop 4 — SKETCH: the drop with a trail and a bounce; the line pulses; the word</figcaption></figure>
+    <figure class="vig"><div class="ck" style="position:absolute;left:46px;top:6px">
+      <i class="l"></i><i class="d"></i><i class="l"></i><i class="d"><span class="pc k"></span></i>
+      <i class="d"></i><i class="l"></i><i class="d"><span class="pc w gone"></span></i><i class="l"></i>
+      <i class="l"></i><i class="d"><span class="pc jump"></span></i><i class="l"></i><i class="d"></i>
+      <i class="d"><span class="pc w"></span></i><i class="l"></i><i class="d"><span class="pc w"></span></i><i class="l"></i>
+    </div><figcaption>Checkers — SKETCH: pieces with a rim and a shadow; the jump arcs, the captured piece shrinks out; a king wears the crown</figcaption></figure>
+    <figure class="vig"><div style="display:flex;flex-direction:column;gap:10px;align-items:center"><div class="seat on" style="width:230px">🙂 You<small>fifteen two, a pair</small><b class="tick">4</b></div><div class="cheer" style="position:static;transform:none;font-size:26px;animation:none">Fifteen two, fifteen four</div><div style="font-size:0.78rem;color:#98a2ad">the peg hops the holes one at a time</div></div><figcaption>Cribbage — SKETCH: the count is spoken as it is pegged; the score ticks; the peg hops</figcaption></figure>
+  </div>
+
+  <h3 class="h-pair-title">8 · Pieces with character — Bubble as emoji, chess with presence <span class="pill sketch">sketch · Q7, Q8</span></h3>
+  <p class="h-note">"Bubbles looks pretty cheesy … maybe we use emojis as pieces." Six colours become six fruit — each still a distinct shape, so the colour-blind pairing the tokens test grades is kept — inside glassy bubbles, fired from a launcher that shows the loaded and the next piece; the aim line is a dotted arc. Chess: the pieces stay glyphs but get a <b>pack</b> row in Settings (Classic, Bold; Emoji later), and the board gets a wooden frame, coordinates outside the squares, a shadow on the ground, and a last-move ring — the "life and presence" of a real set.</p>
+  <div class="h-pair">
+    <figure class="h-frame"><figcaption><b>Current</b> — Bubble at 390×844</figcaption><img class="snap" src="snaps/f-play-surface/current.bubble.board.phone.png" alt="Current: flat coloured shapes in dark circles on a green board; an aim slider and a Fire button below." /></figure>
+    <figure class="h-frame"><figcaption><b>Proposed</b> — SKETCH: fruit in glass, a launcher, drag to aim and release to fire</figcaption><div class="screen" data-theme="dark"><span class="sketch-tag">SKETCH</span><div class="app">
+      <div class="shelfbar"><button class="ib">☰</button><button class="ib">⤢</button><button class="ib">▶</button><button class="ib">♪</button><span class="sp"></span><button class="ib">☀</button><button class="ib">⚙</button><button class="ib">◎</button></div>
+      <div class="gamebar"><button class="ib">‹</button><span class="title dsp">Bubble</span><span class="mode">Levels</span><span class="sp"></span><button class="ib">⋯</button></div>
+      <div class="meter"><div class="stat"><b>Level 1</b><span>0 / 1500</span></div><div class="stat"><b>0</b><span>score</span></div><div class="stat"><b>6</b><span>to drop</span></div></div>
+      <div class="stage ground-bub">
+        <div class="bub">
+          <div class="row" style="top:6px"><i>🍎</i><i>🍎</i><i>🍋</i><i>🍋</i><i>🫐</i><i>🫐</i><i>🍇</i><i>🍊</i></div>
+          <div class="row odd" style="top:42px"><i>🍊</i><i>🍎</i><i>🍋</i><i>🥝</i><i>🫐</i><i>🍇</i><i>🍇</i></div>
+          <div class="row" style="top:78px"><i>🍎</i><i>🍎</i><i>🍎</i><i>🥝</i><i>🍋</i><i>🍋</i><i>🍊</i><i>🍊</i></div>
+          <div class="row odd" style="top:114px"><i>🥝</i><i>🍇</i><i>🫐</i><i>🍎</i><i>🍋</i><i>🍊</i><i>🥝</i></div>
+          <div class="aim"></div>
+          <div class="line"></div>
+          <div class="cannon">🍎</div>
+          <div class="next"><small>NEXT</small>🍋</div>
+          <div class="swipe">drag to aim · let go to fire · tap the launcher to swap</div>
+        </div>
+      </div>
+      <div class="dock"><button class="verb primary"><i>✦</i>Hint</button><button class="verb"><i>⟳</i>New game</button><button class="verb"><i>☰</i>Settings</button></div>
+    </div></div></figure>
+    <figure class="h-frame"><figcaption><b>Current</b> — chess at 390×844</figcaption><img class="snap" src="snaps/f-play-surface/current.chess.board.phone.png" alt="Current: the chess board with glyph pieces, labels on the edge squares, no frame." /></figure>
+    <figure class="h-frame"><figcaption><b>Proposed</b> — SKETCH: a wooden frame, coordinates outside, a shadow, the last move ringed, the pack row</figcaption><div class="screen" data-theme="dark"><span class="sketch-tag">SKETCH</span><div class="app">
+      <div class="shelfbar"><button class="ib">☰</button><button class="ib">⤢</button><button class="ib">▶</button><button class="ib">♪</button><span class="sp"></span><button class="ib">☀</button><button class="ib">⚙</button><button class="ib">◎</button></div>
+      <div class="gamebar"><button class="ib">‹</button><span class="title dsp">Chess</span><span class="mode">Medium</span><span class="sp"></span><button class="ib">⋯</button></div>
+      <div class="meter"><div class="seat on">♙ You<small>your move · e4</small><b>+0</b></div><div class="seat">♟ The Engine<small>e5</small><b>+0</b></div></div>
+      <div class="stage ground-chs">
+        <div class="chs">
+          <div class="ranks"><span>8</span><span>7</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span></div>
+          <div class="grid">
+            <i class="l">♜</i><i class="d">♞</i><i class="l">♝</i><i class="d">♛</i><i class="l">♚</i><i class="d">♝</i><i class="l">♞</i><i class="d">♜</i>
+            <i class="d">♟</i><i class="l">♟</i><i class="d">♟</i><i class="l">♟</i><i class="d"></i><i class="l">♟</i><i class="d">♟</i><i class="l">♟</i>
+            <i class="l"></i><i class="d"></i><i class="l"></i><i class="d"></i><i class="l"></i><i class="d"></i><i class="l"></i><i class="d"></i>
+            <i class="d"></i><i class="l"></i><i class="d"></i><i class="l"></i><i class="d last">♟</i><i class="l"></i><i class="d"></i><i class="l"></i>
+            <i class="l"></i><i class="d"></i><i class="l"></i><i class="d"></i><i class="l last">♙</i><i class="d legal"></i><i class="l"></i><i class="d"></i>
+            <i class="d"></i><i class="l"></i><i class="d legal"></i><i class="l"></i><i class="d"></i><i class="l legal"></i><i class="d"></i><i class="l"></i>
+            <i class="l">♙</i><i class="d">♙</i><i class="l">♙</i><i class="d">♙</i><i class="l"></i><i class="d">♙</i><i class="l">♙</i><i class="d">♙</i>
+            <i class="d">♖</i><i class="l">♘</i><i class="d">♗</i><i class="l">♕</i><i class="d">♔</i><i class="l">♗</i><i class="d">♘</i><i class="l">♖</i>
+          </div>
+          <div class="files"><span>a</span><span>b</span><span>c</span><span>d</span><span>e</span><span>f</span><span>g</span><span>h</span></div>
+        </div>
+        <div class="pack"><span class="on">Classic</span><span>Bold</span><span style="opacity:.5">Emoji · later</span></div>
+      </div>
+      <div class="dock"><button class="verb"><i>↶</i>Undo</button><button class="verb primary"><i>✦</i>Hint</button><button class="verb"><i>⟳</i>New game</button><button class="verb"><i>☰</i>Settings</button></div>
+    </div></div></figure>
+  </div>
+
+  <h3 class="h-pair-title">9 · Loose Ends starts as a puzzle <span class="pill sketch">sketch · Q10</span></h3>
+  <p class="h-note">What the genre's players say they enjoy is <b>reading the knot</b>: a board that looks impossible until the order reveals itself, difficulty rising through density and interleaving, never through a clock (the sources are in the plan). Level 1 today has three arrows and nothing to read. Proposed curve: level 1 = <b>10 arrows on 6×8</b>, snakes of 3–5; Easy ends (level 15) at ~24 arrows on 8×11; the top of the curve stays where it is (68 on 18×26). The core's generator already places arrows in reverse solution order, so density is a config change with golden vectors re-recorded; a level's <b>star</b> already rewards a clean solve. Parked for a research pass: a second mechanic — colour bands that hide the flow, locked arrows that need a neighbour freed first, a par with three stars.</p>
+  <div class="h-pair">
+    <figure class="h-frame"><figcaption><b>Current</b> — Loose Ends level 1 at 390×844: three arrows</figcaption><img class="snap" src="snaps/f-play-surface/current.looseends.board.phone.png" alt="Current: a dark blue board with three large pale arrows." /></figure>
+    <figure class="h-frame"><figcaption><b>Proposed</b> — SKETCH: level 1 at ten interleaved arrows; the two free ones are gold</figcaption><div class="screen" data-theme="dark"><span class="sketch-tag">SKETCH</span><div class="app">
+      <div class="shelfbar"><button class="ib">☰</button><button class="ib">⤢</button><button class="ib">▶</button><button class="ib">♪</button><span class="sp"></span><button class="ib">☀</button><button class="ib">⚙</button><button class="ib">◎</button></div>
+      <div class="gamebar"><button class="ib">‹</button><span class="title dsp">Loose Ends</span><span class="mode">Easy · Level 1</span><span class="sp"></span><button class="ib">⋯</button></div>
+      <div class="meter"><div class="stat"><b>Level 1</b><span>level</span></div><div class="stat"><b>💧💧💧</b><span>droplets</span></div><div class="stat"><b>0 / 10</b><span>released</span></div></div>
+      <div class="stage ground-le">
+        <div class="le" data-arrows='[[0,0,3,"r",1],[6,1,4,"d",0],[5,2,3,"l",0],[1,5,4,"u",0],[2,3,4,"r",0],[3,4,3,"d",0],[5,5,2,"l",0],[0,7,4,"r",0],[6,6,3,"d",1],[5,8,3,"u",0]]'></div>
+        </div>
+        <div class="toast">Tap an arrow whose way out is clear. A blocked tap costs a droplet.</div>
+      </div>
+      <div class="dock"><button class="verb primary"><i>✦</i>Hint</button><button class="verb"><i>▦</i>Levels</button><button class="verb"><i>☰</i>Settings</button></div>
+    </div></div></figure>
+  </div>
+
+  <h3 class="h-pair-title">10 · Two music picks <span class="pill">decision · Q9</span></h3>
+  <p class="h-note">Mahjong names no track in <code>src/music.ts</code>, so it plays the shelf's bed, Morning Miles; Cribbage names Morning Miles outright. Both are one line each once the owner picks from the airier pieces. Nothing to draw.</p>
+
+  <!-- ===================================================================== -->
+  <h2>Does the build match the mock?</h2>
+  <p class="h-note">Proposals 1–3 are already held by <code>tests/play-surface.spec.ts</code> — F1.1, F1.2 (the door), F2.1–F2.5 (the fill, the tube, the crate, the lane), F3.1 (the toast) — titled the way a claims file names them, on both engines. The claims file (<code>f-play-surface.claims.json</code>) and the plan's phase gating (<code>tests/mock-parity.test.ts</code>) come with the plan's Pass 3, once Q1–Q11 are answered and the sketches become promises. A sketch carries no claim.</p>
+
+  <h2>Mapping to code</h2>
+  <table class="h-table">
+    <tr><th>Proposal</th><th>Where</th></tr>
+    <tr><td>1 · the door</td><td><code>styles.css</code> <code>.gf-poster .gf-start-body</code> (scroller, scroll-padding) and <code>.gf-poster .gf-play</code> (sticky). No TypeScript.</td></tr>
+    <tr><td>2 · the fill</td><td><code>.gf-stage { container: stage / size; --room-w; --room-h }</code>; per game the cell rule reads <code>min(var(--room-w), var(--room-h))</code>: <code>.othello-board</code>, <code>.checkers-board</code>, <code>.chess-board</code>, <code>.drop4-board</code>, <code>.dots-board</code> (+ <code>--dots-n</code> inline from <code>dots.ts</code>), <code>.t48-tile</code>, <code>.wy-tile</code>, <code>.bdk-board</code>, <code>.cs-board</code>, <code>.orch-surface</code>/<code>.orch-canvas</code>. Three phone media-query overrides retired (their floors cover them). <code>tests/dead-css.test.ts</code> refuses conflict markers.</td></tr>
+    <tr><td>3 · transients</td><td><code>.gf-toast</code> wraps; the lane is <code>--room-h</code>.</td></tr>
+    <tr><td>4 · the ground</td><td>A frame hook (<code>GameFrameSpec.ground?</code> → <code>--stage-ground</code> on <code>.gf-stage</code>), game-owned tokens in <code>tokens.css</code>'s GAME-OWNED region; ADR-0002 successor.</td></tr>
+    <tr><td>5 · controls</td><td>A shared <code>src/pad.ts</code> (layouts: d-pad, split) rendered by the frame over the stage; a common preference row <i>On-screen controls</i> in <code>settings.ts</code>; 2048 and Align consume it; Align gains gestures on the well.</td></tr>
+    <tr><td>6 · Furrow upright</td><td><code>.furrow-board[data-orient="upright"]</code> (grid rows, the columns' order), a preference row, the aspect rule in <code>furrow.ts</code>; the sowing direction is the core's and does not change.</td></tr>
+    <tr><td>7 · beats</td><td><code>src/beats.ts</code> (WAAPI, reduced-motion aware, a voice per beat in the synth); each versus game calls it from the move the core resolved.</td></tr>
+    <tr><td>8 · pieces</td><td>Bubble: the piece glyph table in <code>bubble.ts</code> + a launcher in the canvas renderer; chess: a <code>pack</code> preference and <code>.chess-board[data-pack]</code>, frame + coordinates in CSS.</td></tr>
+    <tr><td>9 · Loose Ends</td><td><code>crates/looseends-core/src/config.rs</code> <code>level_config</code> — the constants; golden vectors and the solvability test re-recorded.</td></tr>
+    <tr><td>10 · music</td><td><code>src/music.ts</code> <code>BY_GAME</code>: two entries.</td></tr>
+  </table>
+</div>
+<script>
+// Loose Ends arrows on the 48px lattice: [col, row, cells, direction, free] —
+// the tail cell, how many cells the snake covers, which way it points. Ten
+// arrows on disjoint cells; the two whose exit ray reaches the edge are gold.
+// One path each: a 22px shaft with a 46px head, drawn along +x and rotated
+// about the tail cell's centre.
+for (const board of document.querySelectorAll(".le[data-arrows]")) {
+  for (const [c, r, cells, dir, free] of JSON.parse(board.dataset.arrows)) {
+    const cell = 48, w = 22, hw = 46, head = 30;
+    const tx = 24 + c * cell, ty = 24 + r * cell;
+    const len = (cells - 1) * cell + 40; // from 20px behind the tail centre to 20px past the head cell's centre
+    const shaft = len - head;
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", `-20 0 ${len} ${hw}`);
+    svg.setAttribute("width", String(len));
+    svg.setAttribute("height", String(hw));
+    svg.classList.toggle("free", free === 1);
+    svg.style.left = `${tx}px`;
+    svg.style.top = `${ty - hw / 2}px`;
+    svg.style.transformOrigin = `0 ${hw / 2}px`;
+    svg.style.transform = `translateX(-20px) translateX(20px) rotate(${{ r: 0, d: 90, l: 180, u: 270 }[dir]}deg)`;
+    const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    p.setAttribute("class", "body");
+    p.setAttribute("d", `M-20 ${hw / 2 - w / 2} h${shaft} v${-(hw - w) / 2} L${len - 20} ${hw / 2} L${shaft - 20} ${hw} v${-(hw - w) / 2} H-20 z`);
+    svg.append(p);
+    board.append(svg);
+  }
+}
+</script>
+</body>
+</html>

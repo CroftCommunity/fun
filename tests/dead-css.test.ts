@@ -50,4 +50,17 @@ describe("the stylesheet's braces balance", () => {
     const close = (css.match(/\}/g) ?? []).length;
     expect(close, `styles.css: ${open} '{' vs ${close} '}'`).toBe(open);
   });
+
+  // The same rebase left a bare `=======` line above Orchard Drop's rules. A
+  // marker has no braces, so the test above passed; the browser parsed
+  // `======= /* … */ .orch-surface` as one invalid selector and dropped the
+  // whole rule — the crate sat at the left edge of every desktop stage for five
+  // days (mock F2.4 measured it: crate centre 237 in a stage centred at 500).
+  it("styles.css and tokens.css carry no merge-conflict markers", () => {
+    for (const file of ["styles.css", "tokens.css"]) {
+      const lines = readFileSync(file, "utf8").split("\n");
+      const markers = lines.map((l, i) => (/^(<{7}|={7}|>{7})(\s|$)/.test(l) ? i + 1 : 0)).filter(Boolean);
+      expect(markers, `${file}: conflict markers at lines ${markers.join(", ")}`).toEqual([]);
+    }
+  });
 });

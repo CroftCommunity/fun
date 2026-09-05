@@ -159,9 +159,21 @@ test("a promotion goes through the picker; Escape cancels it", async ({ page }) 
   await cell(page, sqOf("b7")).click();
   await cell(page, sqOf("a8")).click();
   await page.locator('.chess-picker-card button[data-promo="3"]').click();
+  // The same race as en passant above: under `fast=1` the engine's reply can
+  // land before this read (CI's chromium shard saw `lastSan` = "gxh1=Q", Black's
+  // own promotion, 2026-09-05). Assert on what no reply changes: the record's
+  // ninth ply is the rook-promotion code, and a8 holds a white rook.
+  const rook = promos.find((m) => m.promo === 3)!;
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const rec = window.__chess!.game.outcome(false) as { payload: { moves: number[] } };
+        return rec.payload.moves[8] ?? null;
+      }),
+    )
+    .toBe(rook.code);
   const b = await page.evaluate(() => window.__chess!.game.board());
   expect(b.cells[sqOf("a8")]).toBe(4);
-  expect(b.lastSan).toBe("bxa8=R");
 });
 
 test("the checked king is marked when in check and not otherwise", async ({ page }) => {
