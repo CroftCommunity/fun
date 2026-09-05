@@ -120,6 +120,9 @@ describe("music selection", () => {
   it("gives a game the track it names", () => {
     expect(trackFor("trio-tumble")).toBe("gateway-to-the-spire");
     expect(trackFor("solitaire")).toBe("sunset-at-the-harbor");
+    // Owner, 2026-09-05 (mock F, Q9): Mahjong had named nothing and played the
+    // shelf's bed, Morning Miles — "not country". It names the nocturne.
+    expect(trackFor("mahjong")).toBe("porch-light-nocturne");
   });
 
   it("falls back to the shelf bed for a game that names nothing", () => {

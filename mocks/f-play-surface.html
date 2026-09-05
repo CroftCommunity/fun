@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="mock-version" content="2" />
+<meta name="mock-version" content="3" />
 <meta name="mock-baseline" content="fun@aafe332" />
 <meta name="mock-proposal" content="fun@eb509fc" />
-<title>The play surface — the board fills the stage, the door opens, one shape for hand controls · v2 · fun.croft.ing mocks</title>
+<title>The play surface — the board fills the stage, the door opens, one shape for hand controls · v3 · fun.croft.ing mocks</title>
 <link rel="stylesheet" href="harness.css" />
 <style>
 /* =========================================================================
@@ -188,12 +188,13 @@
 <body class="dir-f">
 <div class="h-wrap">
   <a class="h-back" href="index.html">← All directions</a>
-  <p class="h-kicker">Mock F · The play surface · <b>v2</b> · baseline <code>fun@aafe332</code> · proposal <code>fun@eb509fc</code></p>
+  <p class="h-kicker">Mock F · The play surface · <b>v3</b> · baseline <code>fun@aafe332</code> · proposal <code>fun@eb509fc</code></p>
   <h1>The play surface — the board fills the stage, the door opens, one shape for hand controls</h1>
   <p class="h-lede">Ten proposals for every game page, to be talked through before the plan is phased: the two systemic defects the owner's 2026-09-04 screenshots showed (Play off the bottom of a poster; a tiny board in an empty stage) are <b>built on the branch and captured</b>, so Proposed is pixels for those; the rest — a ground per game, one vocabulary for hand controls, Furrow standing upright, life on the versus boards, pieces with character, Loose Ends' curve, two music picks — are <b>sketches</b>, labelled, for choosing a direction. Plan: <code>plans/2026-09-04-plan-play-surface.md</code> (draft; phases follow the decisions below).</p>
   <p class="h-note">Compare in one skin: every capture and sketch here is the default Worlds night skin. Captures are true size — 390×844 as-is, 1280×900 shown in an 1180×740 window, top-aligned — from <code>tools/mock-snaps.mjs all --out f-play-surface --tag current|proposed</code>, hermetic: fixed seeds, and the poster is the bare land in a fresh context.</p>
 
   <h2>Revisions</h2>
+  <p class="rev"><b>v3</b> — owner decisions 2026-09-05: <b>Q7 fruit</b> (Bubble's pieces are the fruit set), <b>Q9 Mahjong → Porch Light Nocturne</b> (landed the same day in <code>src/music.ts</code>; Cribbage's pick stays open). Proposals 1–3 landed on main as <code>fun@0b98217</code> (PR #79).</p>
   <p class="rev"><b>v2</b> — owner review 2026-09-05: the Align sketch's thumb pads overlapped the well on a phone (the well is now 380px and the pads sit clear beneath it); the Loose Ends sketch's arrows were stubby bars with triangles — redrawn as the game's own shape, a rounded shaft with a wide head, in SVG. Built proposals unchanged; approved to land.</p>
   <p class="rev"><b>v1</b> — first draft, branch <code>claude/play-surface</code>. Proposals 1, 2 and 3 are built and captured (<code>fun@eb509fc</code>); 4–10 are sketches. Current captures: <code>snaps/f-play-surface/current.*</code> from <code>fun@aafe332</code>; Proposed: <code>snaps/f-play-surface/proposed.*</code>.</p>
 
@@ -218,9 +219,9 @@
     <tr><td>Q4</td><td>Align: two thumb clusters in the stage's bottom corners, over the ground (move left; rotate + drop right), instead of three rows under the well?</td><td>the split, translucent, 64px targets, the well 380px tall and clear of them</td><td><span class="pill rec">split</span> frees ~150px of well height on a phone</td></tr>
     <tr><td>Q5</td><td>Furrow upright on a portrait stage by default, with a preference <i>Board: Auto / Across / Upright</i>?</td><td>upright at 390: two columns of six, stores top and bottom, your column on the right sowing upward</td><td><span class="pill rec">Auto + preference</span></td></tr>
     <tr><td>Q6</td><td>Compact setup rows — a choice with three or fewer options becomes a segmented control (chess "You play", Trio Tumble "Board"), so most posters fit a phone without scrolling?</td><td>not drawn; the built fix (scroll + sticky Play) covers every case first</td><td><span class="pill">open</span> phase 3 if yes</td></tr>
-    <tr><td>Q7</td><td>Bubble's pieces as emoji — which set? Fruit (🍎🍋🫐🍇🍊🥝), faces, gems. Each colour keeps a distinct shape either way.</td><td>fruit, with a launcher and a Next slot</td><td><span class="pill">owner picks the set</span></td></tr>
+    <tr><td>Q7</td><td>Bubble's pieces as emoji — which set? Fruit (🍎🍋🫐🍇🍊🥝), faces, gems. Each colour keeps a distinct shape either way.</td><td>fruit, with a launcher and a Next slot</td><td><span class="pill rec">DECIDED 2026-09-05: fruit</span> phase 10</td></tr>
     <tr><td>Q8</td><td>Chess piece packs — which two ship first: Classic glyphs (today), Bold flat, Emoji?</td><td>Classic on a wood-framed board with coordinates; the pack row in Settings</td><td><span class="pill rec">Classic + Bold</span></td></tr>
-    <tr><td>Q9</td><td>Music: Mahjong plays the shelf bed (Morning Miles — "country") because it names no track; Cribbage names Morning Miles too. Which of the airier pieces? Candidates by title: Porch Light Nocturne, Lower Cavern Bloom, Tuesday Night Rainfall, Gravity Glass.</td><td>not drawn — a one-line change in <code>src/music.ts</code> once picked</td><td><span class="pill">owner picks</span> (I cannot listen)</td></tr>
+    <tr><td>Q9</td><td>Music: Mahjong plays the shelf bed (Morning Miles — "country") because it names no track; Cribbage names Morning Miles too. Which of the airier pieces? Candidates by title: Porch Light Nocturne, Lower Cavern Bloom, Tuesday Night Rainfall, Gravity Glass.</td><td>not drawn — a one-line change in <code>src/music.ts</code> once picked</td><td><span class="pill rec">DECIDED 2026-09-05: Mahjong → Porch Light Nocturne</span> (landed); Cribbage <span class="pill">open</span></td></tr>
     <tr><td>Q10</td><td>Loose Ends: rebase the curve so level 1 is a puzzle (10 arrows on 6×8, snakes 3–5; Easy ends at ~24 on 8×11) now, and park the second mechanic (colour bands, locks, a par with stars) for a research pass?</td><td>a level-1 sketch at the proposed density</td><td><span class="pill rec">curve now, mechanic after research</span></td></tr>
     <tr><td>Q11</td><td>Versus beats — which events earn a flourish: a capture, a king, a flip of four or more, a Drop 4 line, a Dots chain, a cribbage 15/pair/run? Nothing on an ordinary move.</td><td>Drop 4 mid-drop and its win line; a checkers jump; the score ticking</td><td><span class="pill rec">that list, no confetti on ordinary moves</span></td></tr>
   </table>
@@ -450,7 +451,7 @@
   </div>
 
   <h3 class="h-pair-title">10 · Two music picks <span class="pill">decision · Q9</span></h3>
-  <p class="h-note">Mahjong names no track in <code>src/music.ts</code>, so it plays the shelf's bed, Morning Miles; Cribbage names Morning Miles outright. Both are one line each once the owner picks from the airier pieces. Nothing to draw.</p>
+  <p class="h-note">Mahjong named no track in <code>src/music.ts</code>, so it played the shelf's bed, Morning Miles; it now names <b>Porch Light Nocturne</b> (owner, 2026-09-05). Cribbage still names Morning Miles and waits on a pick. Nothing to draw.</p>
 
   <!-- ===================================================================== -->
   <h2>Does the build match the mock?</h2>
