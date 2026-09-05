@@ -285,10 +285,32 @@
       "height": 900,
       "baseline": "fun@eb509fc",
       "tag": "proposed"
+    },
+    {
+      "file": "shipped.bubble.board.phone.png",
+      "game": "bubble",
+      "route": "board",
+      "url": "/bubble/?seed=7",
+      "viewport": "phone",
+      "width": 390,
+      "height": 844,
+      "baseline": "fun@98b88a0",
+      "tag": "shipped"
+    },
+    {
+      "file": "shipped.bubble.board.desktop.png",
+      "game": "bubble",
+      "route": "board",
+      "url": "/bubble/?seed=7",
+      "viewport": "desktop",
+      "width": 1280,
+      "height": 900,
+      "baseline": "fun@98b88a0",
+      "tag": "shipped"
     }
   ],
-  "baseline": "fun@eb509fc",
-  "capturedAt": "2026-09-04",
+  "baseline": "fun@98b88a0",
+  "capturedAt": "2026-09-05",
   "population": "deep link, fixed seed (hermetic); the poster is the bare land in a fresh context",
   "note": "Pruned to the captures the mock page shows (a full all-games set is 39MB); re-run tools/mock-snaps.mjs <game> --out f-play-surface --tag current|proposed to add one."
 }

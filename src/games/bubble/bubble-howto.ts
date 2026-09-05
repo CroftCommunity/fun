@@ -20,7 +20,7 @@ export const BUBBLE_GUIDE: Guide = {
         {
           kind: "shot",
           name: "bubble-board",
-          alt: "A staggered honeycomb of coloured, shaped bubbles on a green felt table, with a launcher at the bottom holding the loaded colour and a smaller on-deck colour beside it, a dotted aim line and landing ring, the frame's meters above showing the level, the score and the clock slot, and a HUD beside the board with a progress bar toward the next level and how many shots until the stack drops.",
+          alt: "A staggered honeycomb of glass bubbles, each holding a fruit, on a green felt table, with a launcher ring at the bottom holding the loaded fruit and a smaller on-deck fruit in a dashed ring beside it, a dotted aim line and landing ring, the frame's meters above showing the level, the score and the clock slot, and a HUD beside the board with a progress bar toward the next level and how many shots until the stack drops.",
           caption: "The board and launcher, the dotted aim guide, the level and score on the frame's meters, and the HUD: progress to the next level and shots until the next row drops in.",
         },
       ],
@@ -32,7 +32,7 @@ export const BUBBLE_GUIDE: Guide = {
       blocks: [
         {
           kind: "prose",
-          text: "Each bubble has both a colour and a shape (circle, triangle, square, diamond, star, plus), so they stay distinct however you see colour. The launcher shows two colours — the one loaded now and the next one on deck — so you can plan two shots ahead. Higher levels add more colours, so matches get harder to line up.",
+          text: "Each bubble holds a fruit — apple, blueberries, kiwi, grapes, orange, lemon — and a fruit has its own shape as well as its own colour, so they stay distinct however you see colour. The launcher shows two — the one loaded now and the next one on deck — so you can plan two shots ahead. Higher levels add more fruit, so matches get harder to line up.",
         },
       ],
     },
