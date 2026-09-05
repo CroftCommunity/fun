@@ -247,6 +247,17 @@ test("a full game plays to a terminal result; the final board shows; share re-ve
 }) => {
   await page.goto("/chess/?seed=3&fast=1");
   await ready(page);
+  // Play at Easy. The test asserts the record and the wiring, not the engine's
+  // strength: at Medium each reply is a real search, and CI's WebKit runner
+  // (two workers, ~5× a laptop) ran a full game past the 30s test timeout twice
+  // on 2026-09-05 (5.7s locally). The level is a stored preference the New game
+  // sheet writes, so pick it there and reload the same deep link.
+  await page.locator('.gf-verb[data-verb="new"]').click();
+  await page.locator('.gf-sheet [data-setting="level"] input[value="Easy"]').check();
+  await page.keyboard.press("Escape");
+  await page.reload();
+  await ready(page);
+  await expect(page.locator(".gf-mode")).toHaveText("Easy");
   for (let ply = 0; ply < 400; ply++) {
     await waitHumanOrOver(page);
     const b = await page.evaluate(() => window.__chess!.game.board());
