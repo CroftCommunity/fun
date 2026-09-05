@@ -391,9 +391,15 @@ body:has(> .play-area > .gf) {
 }
 .gf-toast {
   position: absolute;
-  left: 50%;
+  /* centred by auto margins, not left: 50% + translate: an absolutely positioned
+     box's shrink-to-fit width is measured from its `left`, so at 50% the toast
+     could only ever be half the stage wide — five lines tall on an iPhone 13,
+     over Blockdoku's tray (mobile-webkit caught it, 2026-09-04). */
+  left: 0;
+  right: 0;
+  width: fit-content;
+  margin-inline: auto;
   bottom: 14px;
-  transform: translateX(-50%);
   padding: 0.5rem 0.9rem;
   border: 1px solid var(--border);
   border-radius: 999px;
