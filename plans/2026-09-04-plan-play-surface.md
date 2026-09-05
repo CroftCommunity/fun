@@ -200,8 +200,11 @@ selectors. Done-when: every game on the rule, `docs/BUILDING-GAMES.md` §4b upda
 ### Phase 8: Furrow upright (Q5)
 ### Phase 9: Beats on the versus boards (Q11) — `src/beats.ts`, then one game per commit
 ### Phase 10: Pieces (Q7, Q8) — Bubble emoji + launcher; chess packs + presence
+Q7 DECIDED 2026-09-05: the fruit set (🍎🍋🫐🍇🍊🥝). Q8 open. Ready for its Done-when in Pass 2.
 ### Phase 11: Loose Ends' curve (Q10)
 ### Phase 12: Music (Q9)
+Mahjong → Porch Light Nocturne DECIDED and landed 2026-09-05 (`tests/appearance.test.ts` pins
+it). Cribbage's pick still open; the phase closes when it lands.
 
 Phases 5–12 get their Done-when, wiring test and claims in Pass 2, after the decisions.
 
@@ -210,6 +213,11 @@ Phases 5–12 get their Done-when, wiring test and claims in Pass 2, after the d
 Q1–Q11 are in the mock's decisions table with a recommendation each; the plan repeats none.
 
 ## Review Log
+
+### Decisions — 2026-09-05 (owner)
+- Mock F v2 approved ("I like most everything"); phases 1–3 landed, PR #79, `0b98217`.
+- Q7: Bubble's pieces are the **fruit** emoji set. Q9: **Mahjong → Porch Light Nocturne**
+  (one line in `BY_GAME`, landed with this entry); Cribbage's track still to pick.
 
 ### Pass 1 — 2026-09-04
 - Reconstructed: `main@c4db11a`, clean; two peer worktrees (feature-manifest, mocks-handoff)

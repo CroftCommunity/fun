@@ -12,6 +12,9 @@ earlier is in `git log`.
 
 ## 2026-09
 
+- 2026-09-05 **mahjong:** the music is Porch Light Nocturne. Mahjong named no track of
+  its own and played the shelf's bed. (mock F Q9, play-surface)
+
 - 2026-09-04 **shelf:** the board fills the stage. Every grid board — Othello, checkers,
   chess, Drop 4, Dots and Boxes, 2048, Wyrdle, Blockdoku — now sizes from the room it has
   rather than the width of the window, so a desktop shows a board as tall as the stage and a
