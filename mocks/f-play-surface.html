@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="mock-version" content="1" />
+<meta name="mock-version" content="2" />
 <meta name="mock-baseline" content="fun@aafe332" />
 <meta name="mock-proposal" content="fun@eb509fc" />
-<title>The play surface — the board fills the stage, the door opens, one shape for hand controls · v1 · fun.croft.ing mocks</title>
+<title>The play surface — the board fills the stage, the door opens, one shape for hand controls · v2 · fun.croft.ing mocks</title>
 <link rel="stylesheet" href="harness.css" />
 <style>
 /* =========================================================================
@@ -97,12 +97,12 @@
 .swipe span { font-size: 1.4rem; }
 
 /* --- Align sketch --------------------------------------------------------------- */
-.al-well { width: 230px; height: 460px; margin-top: 4px; border-radius: 10px; background: linear-gradient(180deg, #121420, #0f1119); border: 1px solid #262a3a; box-shadow: 0 10px 30px rgb(0 0 0 / .45); position: relative; background-image: linear-gradient(#1a1d2a 1px, transparent 1px), linear-gradient(90deg, #1a1d2a 1px, transparent 1px); background-size: 23px 23px; }
+.al-well { width: 230px; height: 380px; margin-top: 4px; border-radius: 10px; background: linear-gradient(180deg, #121420, #0f1119); border: 1px solid #262a3a; box-shadow: 0 10px 30px rgb(0 0 0 / .45); position: relative; background-image: linear-gradient(#1a1d2a 1px, transparent 1px), linear-gradient(90deg, #1a1d2a 1px, transparent 1px); background-size: 23px 23px; }
 .al-well .pc { position: absolute; width: 23px; height: 23px; border-radius: 3px; }
 .al-well .ghost { position: absolute; width: 23px; height: 23px; border: 1px dashed #6a6f8a; border-radius: 3px; }
 .al-side { position: absolute; top: 120px; display: flex; flex-direction: column; gap: 4px; align-items: center; font-size: 0.62rem; letter-spacing: 0.08em; color: var(--dim); }
 .al-side .box { width: 54px; height: 54px; border-radius: 10px; background: rgb(255 255 255 / .05); border: 1px solid var(--line); display: grid; place-items: center; }
-.thumb { position: absolute; bottom: 14px; display: grid; gap: 8px; }
+.thumb { position: absolute; bottom: 10px; display: grid; gap: 8px; }
 .thumb.l { left: 14px; grid-template-columns: 64px 64px; }
 .thumb.r { right: 14px; grid-template-columns: 64px 64px; }
 .thumb b { height: 64px; border-radius: 18px; background: rgb(120 90 220 / .22); border: 1.5px solid rgb(160 130 255 / .55); display: grid; place-items: center; font-size: 1.6rem; backdrop-filter: blur(6px); }
@@ -162,21 +162,13 @@
 .pack span { padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line); font-size: 0.78rem; }
 .pack span.on { border-color: var(--acc); color: var(--acc); }
 
-/* --- Loose Ends sketch ---------------------------------------------------------- */
+/* --- Loose Ends sketch: arrows as the game draws them (looseends.ts paints a
+   rounded shaft with a wide head on a dotted lattice); built by the script at
+   the foot from a small list, so the shapes are one path, not five classes. --- */
 .le { position: relative; width: 340px; height: 470px; margin-top: 8px; background-image: radial-gradient(#3a4a5e 1.6px, transparent 1.6px); background-size: 48px 48px; background-position: 24px 24px; }
-.le .a { position: absolute; height: 18px; border-radius: 9px; background: #a7b6c8; }
-.le .a::after { content: ""; position: absolute; width: 0; height: 0; border: 12px solid transparent; }
-.le .a.r::after { right: -22px; top: -3px; border-left-color: #a7b6c8; }
-.le .a.l::after { left: -22px; top: -3px; border-right-color: #a7b6c8; }
-.le .v { position: absolute; width: 18px; border-radius: 9px; background: #a7b6c8; }
-.le .v::after { content: ""; position: absolute; width: 0; height: 0; border: 12px solid transparent; }
-.le .v.u::after { top: -22px; left: -3px; border-bottom-color: #a7b6c8; }
-.le .v.d::after { bottom: -22px; left: -3px; border-top-color: #a7b6c8; }
-.le .free { background: #d9b53c; } .le .free::after { border-left-color: #d9b53c !important; border-right-color: #d9b53c !important; border-top-color: #d9b53c !important; border-bottom-color: #d9b53c !important; }
-.le .free.r::after { border-left-color: #d9b53c; border-right-color: transparent !important; border-top-color: transparent !important; border-bottom-color: transparent !important; }
-.le .free.u::after { border-bottom-color: #d9b53c; border-left-color: transparent !important; border-right-color: transparent !important; border-top-color: transparent !important; }
-.le .free.d::after { border-top-color: #d9b53c; border-left-color: transparent !important; border-right-color: transparent !important; border-bottom-color: transparent !important; }
-.le .free.l::after { border-right-color: #d9b53c; border-left-color: transparent !important; border-top-color: transparent !important; border-bottom-color: transparent !important; }
+.le svg { position: absolute; overflow: visible; }
+.le svg .body { fill: #b9c6d6; stroke: #b9c6d6; stroke-width: 10; stroke-linejoin: round; paint-order: stroke; }
+.le svg.free .body { fill: #d9b53c; stroke: #d9b53c; }
 .hud { position: absolute; top: 10px; left: 12px; right: 12px; display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--dim); }
 .hud b { color: var(--ink); }
 
@@ -196,12 +188,13 @@
 <body class="dir-f">
 <div class="h-wrap">
   <a class="h-back" href="index.html">← All directions</a>
-  <p class="h-kicker">Mock F · The play surface · <b>v1</b> · baseline <code>fun@aafe332</code> · proposal <code>fun@eb509fc</code></p>
+  <p class="h-kicker">Mock F · The play surface · <b>v2</b> · baseline <code>fun@aafe332</code> · proposal <code>fun@eb509fc</code></p>
   <h1>The play surface — the board fills the stage, the door opens, one shape for hand controls</h1>
   <p class="h-lede">Ten proposals for every game page, to be talked through before the plan is phased: the two systemic defects the owner's 2026-09-04 screenshots showed (Play off the bottom of a poster; a tiny board in an empty stage) are <b>built on the branch and captured</b>, so Proposed is pixels for those; the rest — a ground per game, one vocabulary for hand controls, Furrow standing upright, life on the versus boards, pieces with character, Loose Ends' curve, two music picks — are <b>sketches</b>, labelled, for choosing a direction. Plan: <code>plans/2026-09-04-plan-play-surface.md</code> (draft; phases follow the decisions below).</p>
   <p class="h-note">Compare in one skin: every capture and sketch here is the default Worlds night skin. Captures are true size — 390×844 as-is, 1280×900 shown in an 1180×740 window, top-aligned — from <code>tools/mock-snaps.mjs all --out f-play-surface --tag current|proposed</code>, hermetic: fixed seeds, and the poster is the bare land in a fresh context.</p>
 
   <h2>Revisions</h2>
+  <p class="rev"><b>v2</b> — owner review 2026-09-05: the Align sketch's thumb pads overlapped the well on a phone (the well is now 380px and the pads sit clear beneath it); the Loose Ends sketch's arrows were stubby bars with triangles — redrawn as the game's own shape, a rounded shaft with a wide head, in SVG. Built proposals unchanged; approved to land.</p>
   <p class="rev"><b>v1</b> — first draft, branch <code>claude/play-surface</code>. Proposals 1, 2 and 3 are built and captured (<code>fun@eb509fc</code>); 4–10 are sketches. Current captures: <code>snaps/f-play-surface/current.*</code> from <code>fun@aafe332</code>; Proposed: <code>snaps/f-play-surface/proposed.*</code>.</p>
 
   <h2>What the screenshots measured (2026-09-04, <code>fun@c4db11a</code>)</h2>
@@ -222,7 +215,7 @@
     <tr><td>Q1</td><td>The fill rule's ceilings — an 8×8 board stops at 6rem cells (768px). Big enough on a 27" monitor, or let it run?</td><td>6rem for 8×8, 6.5rem Drop 4, 8.5rem 2048, 5rem Wyrdle, 14rem a Dots span</td><td><span class="pill rec">as drawn</span> a disc stays a disc; raise per game if a capture says so</td></tr>
     <tr><td>Q2</td><td>A ground per game (proposal 4): the stage takes a low-alpha tint and vignette from the game's own board colour, or stays gallery black?</td><td>tinted, 12–22% of the board colour, in four sketches</td><td><span class="pill rec">tint</span> — the stage is chrome, so the hook is the frame's (<code>--stage-ground</code>, set by the game); ADR-0002 successor</td></tr>
     <tr><td>Q3</td><td>On-screen pads (2048's arrows, Align's buttons): a preference <i>Auto / On / Off</i>, Auto meaning "coarse pointer only"? Or On by default everywhere?</td><td>Auto; 2048 sketched with the pad off and a swipe hint</td><td><span class="pill rec">Auto</span> the first-move toast teaches the swipe</td></tr>
-    <tr><td>Q4</td><td>Align: two thumb clusters in the stage's bottom corners, over the ground (move left; rotate + drop right), instead of three rows under the well?</td><td>the split, translucent, 64px targets, the well 460px tall</td><td><span class="pill rec">split</span> frees ~150px of well height on a phone</td></tr>
+    <tr><td>Q4</td><td>Align: two thumb clusters in the stage's bottom corners, over the ground (move left; rotate + drop right), instead of three rows under the well?</td><td>the split, translucent, 64px targets, the well 380px tall and clear of them</td><td><span class="pill rec">split</span> frees ~150px of well height on a phone</td></tr>
     <tr><td>Q5</td><td>Furrow upright on a portrait stage by default, with a preference <i>Board: Auto / Across / Upright</i>?</td><td>upright at 390: two columns of six, stores top and bottom, your column on the right sowing upward</td><td><span class="pill rec">Auto + preference</span></td></tr>
     <tr><td>Q6</td><td>Compact setup rows — a choice with three or fewer options becomes a segmented control (chess "You play", Trio Tumble "Board"), so most posters fit a phone without scrolling?</td><td>not drawn; the built fix (scroll + sticky Play) covers every case first</td><td><span class="pill">open</span> phase 3 if yes</td></tr>
     <tr><td>Q7</td><td>Bubble's pieces as emoji — which set? Fruit (🍎🍋🫐🍇🍊🥝), faces, gems. Each colour keeps a distinct shape either way.</td><td>fruit, with a launcher and a Next slot</td><td><span class="pill">owner picks the set</span></td></tr>
@@ -324,17 +317,17 @@
   <p class="h-note">Today: 2048 has a d-pad of four 48px buttons that is always there; Align has seven buttons in three rows under the well, each a different width, none branded. Proposed: one shared pad component the frame draws over the stage's ground — rounded 64px targets tinted with the game's colour, translucent, haptic on press — in two layouts: a d-pad (2048) and a <b>two-thumb split</b> (Align: move under the left thumb, rotate and drop under the right, Hold and Next beside the well). A preference, <i>On-screen controls: Auto / On / Off</i>, governs both games; Auto shows the pad on a coarse pointer only. Swipes stay: 2048's board already reads them; Align gains swipe-down for hard drop and tap-to-rotate on the well.</p>
   <div class="h-pair">
     <figure class="h-frame"><figcaption><b>Current</b> — Align at 390×844</figcaption><img class="snap" src="snaps/f-play-surface/current.align.board.phone.png" alt="Current: the Align well with Hold and Next beside it and three rows of buttons below." /></figure>
-    <figure class="h-frame"><figcaption><b>Proposed</b> — SKETCH: the split pad in the corners, the well 460px, Hold/Next beside it</figcaption><div class="screen" data-theme="dark"><span class="sketch-tag">SKETCH</span><div class="app">
+    <figure class="h-frame"><figcaption><b>Proposed</b> — SKETCH: the split pad in the corners under a 380px well, Hold/Next beside it</figcaption><div class="screen" data-theme="dark"><span class="sketch-tag">SKETCH</span><div class="app">
       <div class="shelfbar"><button class="ib">☰</button><button class="ib">⤢</button><button class="ib">▶</button><button class="ib">♪</button><span class="sp"></span><button class="ib">☀</button><button class="ib">⚙</button><button class="ib">◎</button></div>
       <div class="gamebar"><button class="ib">‹</button><span class="title dsp">Align</span><span class="mode">Marathon (daily)</span><span class="sp"></span><button class="ib">⋯</button></div>
       <div class="meter"><div class="stat"><b>1 240</b><span>score</span></div><div class="stat"><b>2</b><span>level</span></div><div class="stat"><b>12 / 150</b><span>lines</span></div></div>
       <div class="stage ground-al">
         <div class="al-well">
           <span class="pc" style="left:69px;top:92px;background:#a78bfa"></span><span class="pc" style="left:92px;top:92px;background:#a78bfa"></span><span class="pc" style="left:115px;top:92px;background:#a78bfa"></span><span class="pc" style="left:138px;top:92px;background:#a78bfa"></span>
-          <span class="ghost" style="left:69px;top:391px"></span><span class="ghost" style="left:92px;top:391px"></span><span class="ghost" style="left:115px;top:391px"></span><span class="ghost" style="left:138px;top:391px"></span>
-          <span class="pc" style="left:0;top:414px;background:#f87171"></span><span class="pc" style="left:23px;top:414px;background:#f87171"></span><span class="pc" style="left:23px;top:437px;background:#f87171"></span><span class="pc" style="left:46px;top:437px;background:#f87171"></span>
-          <span class="pc" style="left:161px;top:437px;background:#60a5fa"></span><span class="pc" style="left:184px;top:437px;background:#60a5fa"></span><span class="pc" style="left:207px;top:437px;background:#60a5fa"></span><span class="pc" style="left:207px;top:414px;background:#60a5fa"></span>
-          <span class="pc" style="left:92px;top:437px;background:#fbbf24"></span><span class="pc" style="left:115px;top:437px;background:#fbbf24"></span><span class="pc" style="left:92px;top:414px;background:#fbbf24"></span><span class="pc" style="left:115px;top:414px;background:#fbbf24"></span>
+          <span class="ghost" style="left:69px;top:311px"></span><span class="ghost" style="left:92px;top:311px"></span><span class="ghost" style="left:115px;top:311px"></span><span class="ghost" style="left:138px;top:311px"></span>
+          <span class="pc" style="left:0;top:334px;background:#f87171"></span><span class="pc" style="left:23px;top:334px;background:#f87171"></span><span class="pc" style="left:23px;top:357px;background:#f87171"></span><span class="pc" style="left:46px;top:357px;background:#f87171"></span>
+          <span class="pc" style="left:161px;top:357px;background:#60a5fa"></span><span class="pc" style="left:184px;top:357px;background:#60a5fa"></span><span class="pc" style="left:207px;top:357px;background:#60a5fa"></span><span class="pc" style="left:207px;top:334px;background:#60a5fa"></span>
+          <span class="pc" style="left:92px;top:357px;background:#fbbf24"></span><span class="pc" style="left:115px;top:357px;background:#fbbf24"></span><span class="pc" style="left:92px;top:334px;background:#fbbf24"></span><span class="pc" style="left:115px;top:334px;background:#fbbf24"></span>
         </div>
         <div class="al-side" style="left:14px">HOLD<div class="box"><span style="color:#fbbf24;font-size:22px">▪▪<br>▪▪</span></div></div>
         <div class="al-side" style="right:14px">NEXT<div class="box"><span style="color:#34d399;font-size:22px">&nbsp;▪▪<br>▪▪</span></div><div class="box" style="width:44px;height:44px"><span style="color:#f472b6;font-size:16px">▪<br>▪▪▪</span></div></div>
@@ -448,17 +441,7 @@
       <div class="gamebar"><button class="ib">‹</button><span class="title dsp">Loose Ends</span><span class="mode">Easy · Level 1</span><span class="sp"></span><button class="ib">⋯</button></div>
       <div class="meter"><div class="stat"><b>Level 1</b><span>level</span></div><div class="stat"><b>💧💧💧</b><span>droplets</span></div><div class="stat"><b>0 / 10</b><span>released</span></div></div>
       <div class="stage ground-le">
-        <div class="le">
-          <div class="a r free" style="left:24px;top:63px;width:130px"></div>
-          <div class="v d" style="left:207px;top:24px;height:130px"></div>
-          <div class="a l" style="left:100px;top:111px;width:90px"></div>
-          <div class="v u" style="left:63px;top:120px;height:180px"></div>
-          <div class="a r" style="left:120px;top:159px;width:130px"></div>
-          <div class="v d free" style="left:303px;top:80px;height:150px"></div>
-          <div class="a l" style="left:120px;top:255px;width:150px"></div>
-          <div class="v u" style="left:159px;top:290px;height:130px"></div>
-          <div class="a r" style="left:60px;top:351px;width:80px"></div>
-          <div class="v d" style="left:255px;top:290px;height:120px"></div>
+        <div class="le" data-arrows='[[0,0,3,"r",1],[6,1,4,"d",0],[5,2,3,"l",0],[1,5,4,"u",0],[2,3,4,"r",0],[3,4,3,"d",0],[5,5,2,"l",0],[0,7,4,"r",0],[6,6,3,"d",1],[5,8,3,"u",0]]'></div>
         </div>
         <div class="toast">Tap an arrow whose way out is clear. A blocked tap costs a droplet.</div>
       </div>
@@ -488,5 +471,34 @@
     <tr><td>10 · music</td><td><code>src/music.ts</code> <code>BY_GAME</code>: two entries.</td></tr>
   </table>
 </div>
+<script>
+// Loose Ends arrows on the 48px lattice: [col, row, cells, direction, free] —
+// the tail cell, how many cells the snake covers, which way it points. Ten
+// arrows on disjoint cells; the two whose exit ray reaches the edge are gold.
+// One path each: a 22px shaft with a 46px head, drawn along +x and rotated
+// about the tail cell's centre.
+for (const board of document.querySelectorAll(".le[data-arrows]")) {
+  for (const [c, r, cells, dir, free] of JSON.parse(board.dataset.arrows)) {
+    const cell = 48, w = 22, hw = 46, head = 30;
+    const tx = 24 + c * cell, ty = 24 + r * cell;
+    const len = (cells - 1) * cell + 40; // from 20px behind the tail centre to 20px past the head cell's centre
+    const shaft = len - head;
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", `-20 0 ${len} ${hw}`);
+    svg.setAttribute("width", String(len));
+    svg.setAttribute("height", String(hw));
+    svg.classList.toggle("free", free === 1);
+    svg.style.left = `${tx}px`;
+    svg.style.top = `${ty - hw / 2}px`;
+    svg.style.transformOrigin = `0 ${hw / 2}px`;
+    svg.style.transform = `translateX(-20px) translateX(20px) rotate(${{ r: 0, d: 90, l: 180, u: 270 }[dir]}deg)`;
+    const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    p.setAttribute("class", "body");
+    p.setAttribute("d", `M-20 ${hw / 2 - w / 2} h${shaft} v${-(hw - w) / 2} L${len - 20} ${hw / 2} L${shaft - 20} ${hw} v${-(hw - w) / 2} H-20 z`);
+    svg.append(p);
+    board.append(svg);
+  }
+}
+</script>
 </body>
 </html>

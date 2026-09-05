@@ -2,8 +2,9 @@
 
 **Status:** **DRAFT — Pass 1, 2026-09-04.** Phases 1–3 are BUILT on `claude/play-surface` and
 captured as mock F's Proposed frames (`fun@eb509fc`); phases 4–12 wait on decisions Q1–Q11 in
-`mocks/f-play-surface.html` and on Passes 2–3 of this plan. Not yet landed. Review Log at the
-foot. Plan filename carries no ordinal per `CroftC/.claude/TRACKING.md` § "Plan files".
+`mocks/f-play-surface.html` and on Passes 2–3 of this plan. **Phases 1–3 LANDED 2026-09-05**
+(PR #79, owner: "I like most everything"; the Align and Loose Ends sketches revised to v2 on review).
+Review Log at the foot. Plan filename carries no ordinal per `CroftC/.claude/TRACKING.md` § "Plan files".
 
 Branch `claude/play-surface` (from `main@c4db11a`); worktree
 `CroftC/worktrees/play-surface/fun`. Mock: `mocks/f-play-surface.html` v1, its captures in
