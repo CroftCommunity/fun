@@ -374,8 +374,14 @@ body:has(> .play-area > .gf) {
      every grid clamped its cell against the viewport width (`9.5vw`, capped at
      2.6rem), which is why a 960×796 desktop stage held a 363px Othello board
      (measured 2026-09-04, mock F). The stage's own size comes from the frame's
-     flex/grid, never from its content, so containment changes nothing above it. */
+     flex/grid, never from its content, so containment changes nothing above it.
+     `--room-w` / `--room-h` are what a board may fill: the stage, less a 3rem
+     lane at the foot for the toast — a full-height board put the first-move
+     hint over its bottom row (measured on Othello and Dots, mock F2.5). The cq
+     units resolve where the variable is USED, so the lane is one declaration. */
   container: stage / size;
+  --room-w: 100cqw;
+  --room-h: calc(100cqh - 3rem);
 }
 .gf-mount {
   flex: 1;
@@ -394,7 +400,12 @@ body:has(> .play-area > .gf) {
   background: var(--surface);
   color: var(--ink);
   font-size: 0.85rem;
-  white-space: nowrap;
+  /* A sentence longer than the stage wraps to a second line, centred; nowrap
+     ran 2048's hint off both edges of a 390px phone (mock F3.1). It overlays,
+     so a second line moves nothing. */
+  max-width: calc(100% - 1.5rem);
+  box-sizing: border-box;
+  text-align: center;
   box-shadow: 0 6px 20px rgb(0 0 0 / 0.3);
 }
 
@@ -2214,7 +2225,7 @@ body:has(> .play-area > .gf) {
 .wy-tile {
   /* mock F2: five across the stage's width, or six down what the keyboard
      (~10rem) leaves of its height. The letter scales with the tile. */
-  --wy-tile: clamp(2.6rem, min(calc((100cqw - 3rem) / 5), calc((100cqh - 12.5rem) / 6)), 5rem);
+  --wy-tile: clamp(2.6rem, min(calc((var(--room-w) - 3rem) / 5), calc((var(--room-h) - 12.5rem) / 6)), 5rem);
   width: var(--wy-tile);
   height: var(--wy-tile);
   display: flex;
@@ -2349,7 +2360,7 @@ body:has(> .play-area > .gf) {
 .t48-tile {
   /* mock F2: four across the stage's width, or four down what the pad leaves
      of its height. The type scales with the cell. */
-  --t48-cell: clamp(3.2rem, min(calc((100cqw - 3rem) / 4), calc((100cqh - 11rem) / 4)), 8.5rem);
+  --t48-cell: clamp(3.2rem, min(calc((var(--room-w) - 3rem) / 4), calc((var(--room-h) - 11rem) / 4)), 8.5rem);
   width: var(--t48-cell);
   height: var(--t48-cell);
   display: flex;
@@ -2501,7 +2512,7 @@ body:has(> .play-area > .gf) {
 .drop4-board {
   /* mock F2: seven across the stage's width or six down its height, whichever
      binds; 4.5rem / 5.5rem cover the gaps, padding and the drop row. */
-  --d4-cell: clamp(1.9rem, min(calc((100cqw - 4.5rem) / 7), calc((100cqh - 5.5rem) / 6)), 6.5rem);
+  --d4-cell: clamp(1.9rem, min(calc((var(--room-w) - 4.5rem) / 7), calc((var(--room-h) - 5.5rem) / 6)), 6.5rem);
   --d4-gap: 0.4rem;
   padding: 0.5rem;
   margin: 0;
@@ -2627,7 +2638,7 @@ body:has(> .play-area > .gf) {
   /* Eight cells from the stage's short side (mock F2): 2.5rem covers the
      board's own padding and gaps. The floor keeps a 360px phone; the ceiling
      keeps a disc a disc on a 4K monitor. */
-  --oth-cell: clamp(1.7rem, calc((min(100cqw, 100cqh) - 2.5rem) / 8), 6rem);
+  --oth-cell: clamp(1.7rem, calc((min(var(--room-w), var(--room-h)) - 2.5rem) / 8), 6rem);
   display: grid;
   grid-template-columns: repeat(8, var(--oth-cell));
   gap: 2px;
@@ -2739,7 +2750,7 @@ body:has(> .play-area > .gf) {
   gap: 0.5rem;
 }
 .checkers-board {
-  --chk-cell: clamp(1.7rem, calc((min(100cqw, 100cqh) - 2.5rem) / 8), 6rem); /* mock F2: from the stage */
+  --chk-cell: clamp(1.7rem, calc((min(var(--room-w), var(--room-h)) - 2.5rem) / 8), 6rem); /* mock F2: from the stage */
   display: grid;
   grid-template-columns: repeat(8, var(--chk-cell));
   /* The grid's columns are fixed, so a block-level board stretches its felt to
@@ -3060,7 +3071,7 @@ body:has(> .play-area > .gf) {
 
 .bdk-board {
   /* mock F2: nine across the stage's width, or nine down what the tray leaves. */
-  --bdk-cell: clamp(1.9rem, min(calc((100cqw - 1.5rem) / 9), calc((100cqh - 8rem) / 9)), 4.4rem);
+  --bdk-cell: clamp(1.9rem, min(calc((var(--room-w) - 1.5rem) / 9), calc((var(--room-h) - 8rem) / 9)), 4.4rem);
   display: grid;
   grid-template-columns: repeat(9, var(--bdk-cell));
   grid-template-rows: repeat(9, var(--bdk-cell));
@@ -3183,7 +3194,7 @@ body:has(> .play-area > .gf) {
   padding-top: 5.5rem;
   /* mock F2: the unit grows with the stage's height on a desktop (a 46px tube
      in a 796px stage); the phone rules below keep mock E's 48px tubes. */
-  --cs-uh: clamp(1.7rem, calc((100cqh - 14rem) / 5), 3.2rem);      /* unit height */
+  --cs-uh: clamp(1.7rem, calc((var(--room-h) - 11rem) / 5), 3.2rem);   /* unit height */
   --cs-tw: calc(var(--cs-uh) * 1.7);                                 /* tube width  */
   --cs-cols: 12;        /* max tubes per row */
   max-width: calc(var(--cs-cols) * (var(--cs-tw) + 0.85rem));
@@ -3820,7 +3831,7 @@ a.le-btn {
   /* mock F2: the module sets --dots-n (the larger of rows/cols) inline; the
      span is what is left of the stage's short side after the nodes. */
   --dots-n: 3;
-  --dots-span: clamp(2.2rem, calc((min(100cqw, 100cqh) - (var(--dots-n) + 1) * var(--dots-node) - 3rem) / var(--dots-n)), 14rem);
+  --dots-span: clamp(2.2rem, calc((min(var(--room-w), var(--room-h)) - (var(--dots-n) + 1) * var(--dots-node) - 3rem) / var(--dots-n)), 14rem);
   display: grid;
   padding: 0.55rem;
   background: var(--dots-paper);
@@ -4845,13 +4856,16 @@ a.le-btn {
      Until 2026-09-04 this whole rule was dead: a stray `=======` conflict marker
      above it made the selector invalid, so the crate sat at the left edge on a
      desktop — the block-balance test could not see a marker with no braces. */
-  max-height: calc(100cqh - 3.5rem);
+  max-height: calc(var(--room-h) - 3.5rem);
 }
 .orch-surface:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+/* The status line under the crate is solitaire's shared `.sol-status`; here it
+   sits in the frame's stretched column, so centre it under the crate. */
+.orch-surface ~ .sol-status { text-align: center; }
 .orch-canvas {
   display: block;
   max-width: 100%;
-  max-height: calc(100cqh - 3.5rem);
+  max-height: calc(var(--room-h) - 3.5rem);
   width: auto;
   height: auto;
   border-radius: 6px;
@@ -5048,7 +5062,7 @@ dialog.signin-sheet::backdrop { background: rgba(0, 0, 0, 0.45); }
 }
 .chess-board {
   /* 44px is the tap floor; eight of these fit a 390px phone with room for the edge labels. */
-  --chs-cell: clamp(2.75rem, calc((min(100cqw, 100cqh) - 1.5rem) / 8), 6rem); /* mock F2: from the stage */
+  --chs-cell: clamp(2.75rem, calc((min(var(--room-w), var(--room-h)) - 1.5rem) / 8), 6rem); /* mock F2: from the stage */
   display: grid;
   grid-template-columns: repeat(8, var(--chs-cell));
   grid-auto-rows: var(--chs-cell);

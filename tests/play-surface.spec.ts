@@ -153,3 +153,30 @@ test("mock F2.4: at 1280×900 the Orchard Drop crate is centred in the stage and
   expect(Math.abs(stageCentre - crateCentre), `crate centre ${Math.round(crateCentre)} vs stage centre ${Math.round(stageCentre)}`).toBeLessThan(24);
   expect(crate.h / stage.h, `crate ${Math.round(crate.h)} tall in a stage ${Math.round(stage.h)}`).toBeGreaterThanOrEqual(0.8);
 });
+
+test("mock F2.5: at 1280×900 the first-move toast sits below the board, never over its bottom row (Othello, Dots)", async ({ page }) => {
+  await page.setViewportSize(DESKTOP);
+  for (const g of GRIDS.filter((x) => x.id === "othello" || x.id === "dots")) {
+    await page.goto(g.url);
+    await mounted(page);
+    const toast = page.locator(".gf-toast");
+    await expect(toast).toBeVisible();
+    const board = await union(page, g.surface);
+    const t = await toast.boundingBox();
+    expect(t!.y, `${g.id}: toast top ${Math.round(t!.y)} vs board bottom ${Math.round(board.y + board.h)}`).toBeGreaterThanOrEqual(board.y + board.h - 1);
+  }
+});
+
+// --- F3: the stage's transients -------------------------------------------------
+
+test("mock F3.1: at 390×844 a long toast wraps inside the stage instead of running off both edges (2048)", async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  await page.goto("/2048/?seed=7");
+  await mounted(page);
+  const toast = page.locator(".gf-toast");
+  await expect(toast).toBeVisible();
+  const stage = await stageContent(page);
+  const t = await toast.boundingBox();
+  expect(t!.x, "left edge inside the stage").toBeGreaterThanOrEqual(stage.x - 1);
+  expect(t!.x + t!.width, "right edge inside the stage").toBeLessThanOrEqual(stage.x + stage.w + 1);
+});
