@@ -258,17 +258,26 @@ test("a full game plays to a terminal result; the final board shows; share re-ve
   await page.reload();
   await ready(page);
   await expect(page.locator(".gf-mode")).toHaveText("Easy");
+  // Each ply is two round trips, not five: the reads and the clicks happen in the
+  // page (real DOM clicks through the board's own handlers, the picker included),
+  // then one wait for the engine. A first-legal-move game runs to a hundred-odd
+  // plies, and per-ply round trips were what CI's WebKit runner could not afford.
   for (let ply = 0; ply < 400; ply++) {
     await waitHumanOrOver(page);
-    const b = await page.evaluate(() => window.__chess!.game.board());
-    if (b.result !== -1) break;
-    // The first legal move — through the UI, promotions via the picker.
-    const mv = b.legal[0]!;
-    await cell(page, mv.from).click();
-    await cell(page, mv.to).click();
-    if (b.legal.filter((m) => m.from === mv.from && m.to === mv.to).length > 1) {
-      await page.locator('.chess-picker-card button[data-promo="4"]').click();
-    }
+    const over = await page.evaluate(() => {
+      const b = window.__chess!.game.board();
+      if (b.result !== -1) return true;
+      // The first legal move — through the UI, promotions via the picker.
+      const mv = b.legal[0]!;
+      const sq = (n: number): HTMLElement => document.querySelector<HTMLElement>(`.chess-square[data-sq="${n}"]`)!;
+      sq(mv.from).click();
+      sq(mv.to).click();
+      if (b.legal.filter((m) => m.from === mv.from && m.to === mv.to).length > 1) {
+        document.querySelector<HTMLElement>('.chess-picker-card button[data-promo="4"]')!.click();
+      }
+      return false;
+    });
+    if (over) break;
   }
   await expect(page.locator(".sol-result")).toBeVisible({ timeout: 15_000 });
   await expect(page.locator(".sol-verify-badge.ok")).toBeVisible();
