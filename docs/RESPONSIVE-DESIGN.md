@@ -57,6 +57,30 @@ for the life of the frame; anything transient — a toast, the AI's banter — i
 move to the last, and each game's browser spec asserts it. A status line that must sit
 below the board keeps a `min-height`, or it is a jump waiting to happen.
 
+### 1c. A board sizes from the stage, not the viewport
+
+The stage is a **size container** (`.gf-stage { container: stage / size }`) and declares the
+room a board may fill: `--room-w` (its width) and `--room-h` (its height less a 3rem lane at
+the foot for the toast). A grid takes its cell from the stage's **short side**, with a floor
+that keeps the 360px rule and a ceiling that keeps a piece a piece:
+
+```css
+.othello-board {
+  --oth-cell: clamp(1.7rem, calc((min(var(--room-w), var(--room-h)) - 2.5rem) / 8), 6rem);
+}
+/* a board with controls beneath reserves their height from --room-h */
+.t48-tile {
+  --t48-cell: clamp(3.2rem, min(calc((var(--room-w) - 3rem) / 4), calc((var(--room-h) - 11rem) / 4)), 8.5rem);
+}
+```
+
+The `cq` units resolve on the element that *uses* the variable, against its nearest size
+container, so the one declaration on the stage serves every board. Never `vw`: the viewport
+is not the room — a 390×844 phone's stage is 366×572, a 1280×900 desktop's is 960×796, and a
+`clamp(…, 9.5vw, 2.6rem)` cell gave the second a 363px board (measured 2026-09-04, mock F).
+Assert it: at 1280×900 the play surface uses ≥80% of one axis of the stage, at 390×844 ≥85%
+of its width, and never more than the stage (`tests/play-surface.spec.ts` F2.1, F2.2).
+
 ### 2. On-screen control keys must sit on the board's centreline
 
 A directional d-pad or an on-screen keyboard only reads as belonging to the
@@ -136,6 +160,25 @@ vitest. Assert them with Playwright `boundingBox()` across **both** projects
   a moved control can introduce a contrast or landmark regression.
 
 ## Lessons log
+
+### 2026-09-04 — every board was small in a big stage; a dead rule left the Orchard crate at the edge
+
+- **Symptom:** the owner's screenshots of thirteen games at desktop and phone: "small game
+  play board", "itty-bitty board inside of it", Orchard "small offcenter", Play "too far off
+  bottom" on three posters.
+- **Cause, three of them:** (1) every grid sized its cell from the viewport's width
+  (`clamp(…, 9.5vw, 2.6rem)`), never from the stage — a 960×796 stage held a 363px Othello
+  board; (2) the poster's body could not scroll and its parent clipped, so nine setup
+  options pushed Play to 881px on an 844px frame; (3) a stray `=======` conflict marker
+  above `.orch-surface` from a rebase made the selector invalid, so the crate's centring
+  rule never applied — for five days, on every desktop, and the brace-balance test cannot
+  see a marker with no braces.
+- **Rule:** Principle 1c (the stage is the room; a board sizes from its short side); the
+  poster's body is the scroller with Play sticky at its foot; `tests/dead-css.test.ts`
+  refuses conflict markers in the stylesheets. And a toast that overlays a full board needs
+  a lane — the 3rem in `--room-h`.
+- **Measured after:** Othello 782px in the same stage; Play at 778–824 with the card
+  scrolling behind it; the crate centred at 500. `tests/play-surface.spec.ts` holds all of it.
 
 ### 2026-08-30 — the header wrapped, and the board jumped, on every phone
 

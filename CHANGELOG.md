@@ -10,6 +10,25 @@ Contexts: shelf · mahjong · looseends · color-sort · align · 2048 · bubble
 Started 2026-08-29; the August entries below are the landings of that month, and everything
 earlier is in `git log`.
 
+## 2026-09
+
+- 2026-09-04 **shelf:** the board fills the stage. Every grid board — Othello, checkers,
+  chess, Drop 4, Dots and Boxes, 2048, Wyrdle, Blockdoku — now sizes from the room it has
+  rather than the width of the window, so a desktop shows a board as tall as the stage and a
+  phone a board as wide as it (Othello on a desktop went from 363px to 782px; 2048's tiles on
+  a phone from 58px to 79px). Color Sort's tubes grow on a desktop and keep their phone size.
+  The first-move hint sits in its own lane under the board instead of over its bottom row,
+  and wraps instead of running off a phone. (mock F, play-surface)
+
+- 2026-09-04 **shelf:** Play is always reachable on the front door. A game whose New game
+  card is taller than the screen (Trio Tumble's nine options, Dots, chess on a phone) hid
+  Play under the bottom edge; the card now scrolls behind a Play button that stays put.
+  (mock F, play-surface)
+
+- 2026-09-04 **orchard:** the crate is centred on a desktop and as tall as the stage. It had
+  sat at the left edge since 2026-08-30 — a merge-conflict marker left in the stylesheet
+  had disabled its layout rule; the stylesheet now refuses such markers. (mock F, play-surface)
+
 ## 2026-08
 
 - 2026-08-30 **shelf:** Sign in at Bluesky works again. The sheet's Bluesky row failed with
