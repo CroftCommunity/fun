@@ -674,7 +674,8 @@ export function othelloModule(): GameModule {
     container.replaceChildren(el("div", { class: "othello-game" }, ...parts));
     restoreUiState(container, ui);
     // Beat (phase 9): the discs the move turned flip over, outward from the play.
-    if (prevCells && lastMove !== null && prevCells.length === board.cells.length) {
+    // `?fast=1` collapses every beat to a frame — these too.
+    if (beats !== FAST_BEATS && prevCells && lastMove !== null && prevCells.length === board.cells.length) {
       const n = board.size;
       const cellsEl = container.querySelector(".othello-cell")?.parentElement;
       const lr = Math.floor(lastMove / n);

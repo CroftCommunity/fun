@@ -126,7 +126,7 @@ test("the optional timer is presentational — it never changes the outcome", as
   await expect(clock).toHaveText("—");
   await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
   await page.locator('.gf-verb[data-verb="settings"]').click();
-  await page.locator('.gf-sheet [data-setting="timer"] .sheet-toggle-input').click({ force: true });
+  await page.locator('.gf-sheet [data-setting="timer"] .sheet-toggle-track').click();
   await page.keyboard.press("Escape");
   await expect(clock).toHaveText(/^\d+:\d\d$/);
 

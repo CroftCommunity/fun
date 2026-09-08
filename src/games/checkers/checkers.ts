@@ -795,7 +795,8 @@ export function checkersModule(): GameModule {
     container.replaceChildren(el("div", { class: "checkers-game" }, ...parts));
     restoreUiState(container, ui);
     // Beat (phase 9): a taken man shrinks out where it stood; a crowning gets its word.
-    const stage = frame?.stage;
+    // `?fast=1` collapses every beat to a frame — these too.
+    const stage = beats === FAST_BEATS ? null : frame?.stage;
     if (prevCells && lastTo !== null && stage && prevCells.length === board.cells.length) {
       const boardEl = container.querySelector(".checkers-board");
       let taken = 0;

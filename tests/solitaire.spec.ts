@@ -179,7 +179,7 @@ test("with hints off, 'I'm stuck' ends the game and reports whether a move exist
   // Disable hints in the settings sheet's "Every game" section — the verb flips to "I'm stuck".
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator('.gf-verb[data-verb="settings"]').click();
-  await page.locator('.gf-sheet [data-setting="hints"] .sheet-toggle-input').click({ force: true });
+  await page.locator('.gf-sheet [data-setting="hints"] .sheet-toggle-track').click();
   await page.keyboard.press("Escape");
   const stuck = page.locator('.gf-verb[data-verb="stuck"]');
   await expect(stuck).toBeVisible();
@@ -218,7 +218,7 @@ test("auto-play (opt-in) sends safe cards to the foundations", async ({ page }) 
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator('.gf-verb[data-verb="settings"]').click();
-  await page.locator('.gf-sheet [data-setting="autoplay"] .sheet-toggle-input').click({ force: true });
+  await page.locator('.gf-sheet [data-setting="autoplay"] .sheet-toggle-track').click();
   await page.keyboard.press("Escape");
   await page.locator(".sol-stock").click(); // seed 0: draws the Ace of Hearts
 

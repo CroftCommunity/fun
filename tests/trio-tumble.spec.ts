@@ -350,7 +350,7 @@ test("with hints off, 'I'm done' ends the round", async ({ page }) => {
   await ready(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator('.gf-verb[data-verb="settings"]').click();
-  await page.locator('.gf-sheet [data-setting="hints"] .sheet-toggle-input').click({ force: true });
+  await page.locator('.gf-sheet [data-setting="hints"] .sheet-toggle-track').click();
   await page.keyboard.press("Escape");
   await page.locator('.gf-verb[data-verb="done"]').click();
   await expect(page.locator(".sol-result")).toBeVisible();

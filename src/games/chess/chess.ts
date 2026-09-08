@@ -860,7 +860,8 @@ export function chessModule(): GameModule {
     restoreUiState(container, ui);
     // Beat (phase 9): a taken piece shrinks out on the square it stood; check gets its word.
     // Ply 1 is skipped: a fresh game's first render would diff against the last game's board.
-    const stage = frame?.stage;
+    // `?fast=1` collapses every beat to a frame — these too (a full-game spec plays ~80 plies on CI's WebKit).
+    const stage = beats === FAST_BEATS ? null : frame?.stage;
     if (prevCells && stage && board.lastMove !== null && moves.length > 1 && moves.length !== beatenPly) {
       beatenPly = moves.length;
       const [, to] = fromTo(board.lastMove);

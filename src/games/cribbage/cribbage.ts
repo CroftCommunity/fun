@@ -875,7 +875,7 @@ export function cribbageModule(): GameModule {
     if (line) setStatus(line);
     // Beat (phase 9): a pegged fifteen, thirty-one, pair or run gets its call over the table.
     const last = v.last;
-    if (last.kind === "peg" && last.points > 0 && frame) {
+    if (last.kind === "peg" && last.points > 0 && frame && beats !== FAST_BEATS) {
       const call = last.fifteen
         ? "Fifteen two"
         : last.thirtyOne
