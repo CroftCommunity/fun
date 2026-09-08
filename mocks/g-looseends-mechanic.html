@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="mock-version" content="1" />
+<meta name="mock-baseline" content="fun@5fcb81f" />
+<title>Loose Ends — the knot has a key · v1 · fun.croft.ing mocks</title>
+<link rel="stylesheet" href="harness.css" />
+<style>
+/* =========================================================================
+   G — LOOSE ENDS' SECOND MECHANIC (2026-09-08). Mock F's proposal 9 shipped the
+   curve (Q10) and parked "colour bands, locks, a par with three stars" for a
+   research pass. This page is that pass drawn: one sketch, five decisions.
+
+     CAPTURED  — real pixels from tools/mock-snaps.mjs: Current is fun@5fcb81f
+                 (main, the curve as shipped). Worlds night skin.
+     SKETCH    — a drawing in this page's own CSS (the .le renderer from mock F,
+                 with a lock), labelled, never approved as pixels (MOCKS.md P1).
+   ========================================================================= */
+.dir-g .screen {
+  --bg: #0c0e11; --raise: #15191e; --raise2: #1e242b;
+  --ink: #f3f5f7; --dim: #98a2ad; --line: #262d35;
+  --acc: #d9b53c; --acc-ink: #14110a; --ok: #5ec98a;
+  background: var(--bg); color: var(--ink);
+  font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.dir-g .dsp { font-family: "Fredoka", "Baloo 2", system-ui, sans-serif; letter-spacing: -0.01em; }
+.dir-g .h-wrap { max-width: 1540px; }
+.dir-g .sketch-tag { position: absolute; top: 10px; right: 10px; z-index: 5; font-size: 0.66rem; letter-spacing: 0.12em; padding: 3px 8px; border-radius: 999px; background: #d9534f; color: #fff; font-weight: 700; }
+.dir-g .h-pair { display: flex; gap: 1.5rem; overflow-x: auto; padding: 1.25rem 0 1.5rem; scroll-snap-type: x proximity; align-items: flex-start; }
+.dir-g .snap { width: 390px; height: 844px; border-radius: 22px; border: 1px solid var(--h-rule); object-fit: cover; object-position: top; display: block; }
+.dir-g .h-pair-title { margin: 2.2rem 0 0.3rem; }
+.dir-g .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--h-rule); font-size: 0.78rem; color: var(--h-ink-dim); white-space: nowrap; }
+.dir-g .pill.rec { border-color: var(--h-accent); color: var(--h-accent); }
+.dir-g .pill.sketch { border-color: #d9534f; color: #d9534f; }
+.dir-g .pill.park { border-color: #98a2ad; color: #98a2ad; }
+
+/* --- the frame's bands, as shipped (56 / 48 / 56 / stage / 72) ------------ */
+.app { position: absolute; inset: 0; display: flex; flex-direction: column; }
+.shelfbar { flex: 0 0 56px; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: var(--raise); border-bottom: 1px solid var(--line); }
+.ib { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--ink); font: inherit; font-size: 17px; display: inline-grid; place-items: center; }
+.sp { flex: 1; }
+.gamebar { flex: 0 0 48px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border-bottom: 1px solid var(--line); }
+.gamebar .title { font-size: 1.1rem; font-weight: 600; }
+.gamebar .mode { font-size: 0.78rem; color: var(--dim); padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; }
+.meter { flex: 0 0 56px; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 0 12px; }
+.stat { display: flex; flex-direction: column; align-items: center; min-width: 76px; }
+.stat b { font-size: 1.15rem; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.stat span { font-size: 0.68rem; color: var(--dim); letter-spacing: 0.06em; text-transform: uppercase; }
+.stage { flex: 1; position: relative; display: grid; place-items: center; padding: 12px; }
+.stage.ground-le { background: radial-gradient(ellipse at 50% 40%, #1c2a3d 0%, #0c0e11 70%); }
+.toast { position: absolute; left: 12px; right: 12px; bottom: 10px; padding: 10px 14px; border-radius: 999px; background: var(--raise); border: 1px solid var(--line); text-align: center; font-size: 0.86rem; }
+.dock { flex: 0 0 72px; display: flex; align-items: center; justify-content: space-around; border-top: 1px solid var(--line); background: var(--raise); }
+.verb { display: flex; flex-direction: column; align-items: center; gap: 2px; font: inherit; font-size: 0.8rem; color: var(--ink); background: none; border: 0; }
+.verb i { font-style: normal; font-size: 1.2rem; }
+.verb.primary i { color: var(--acc); }
+
+/* --- Loose Ends sketch: mock F's renderer, plus a lock. A locked arrow is drawn
+   dim with a badge at its head; a dashed tie joins the two touching cells. --- */
+.le { position: relative; width: 340px; height: 440px; margin-top: 4px; background-image: radial-gradient(#3a4a5e 1.6px, transparent 1.6px); background-size: 48px 48px; background-position: 24px 24px; }
+.le svg { position: absolute; overflow: visible; }
+.le svg .body { fill: #b9c6d6; stroke: #b9c6d6; stroke-width: 10; stroke-linejoin: round; paint-order: stroke; }
+.le svg.free .body { fill: #d9b53c; stroke: #d9b53c; }
+.le svg.locked .body { fill: #6d7c90; stroke: #6d7c90; }
+.le .badge { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; background: #0c0e11; border: 2px solid #f2a541; color: #f2a541; display: grid; place-items: center; font-size: 13px; z-index: 3; }
+.le .tie { position: absolute; z-index: 2; }
+.le .tie line { stroke: #f2a541; stroke-width: 3; stroke-dasharray: 4 5; stroke-linecap: round; }
+.hud { position: absolute; top: 10px; left: 12px; right: 12px; display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--dim); }
+.hud b { color: var(--ink); }
+.legend { display: flex; gap: 14px; margin: 6px 0 0; font-size: 0.78rem; color: var(--h-ink-dim); flex-wrap: wrap; }
+.legend i { display: inline-block; width: 14px; height: 8px; border-radius: 4px; vertical-align: middle; margin-right: 4px; }
+</style>
+</head>
+<body class="dir-g">
+<div class="h-wrap">
+  <a class="h-back" href="index.html">← All directions</a>
+  <p class="h-kicker">Mock G · Loose Ends — the knot has a key · <b>v1</b> · baseline <code>fun@5fcb81f</code></p>
+  <h1>Loose Ends — the knot has a key</h1>
+  <p class="h-lede">Mock F's proposal 9 shipped the curve (Q10, 2026-09-08 — level 1 is ten arrows on 6×8) and parked the second mechanic for a research pass: "colour bands that hide the flow, locked arrows that need a neighbour freed first, a par with three stars". The pass is done (the plan, <code>plans/2026-09-08-plan-looseends-mechanic.md</code>, carries the sources) and it sorts the three by what they add to <b>reading the knot</b>, which is the fun the genre's players name. One survives as a mechanic: <b>a lock</b> — an arrow that stays put, ray clear or not, until the arrow tied to it has slid off. This page draws it once and asks five decisions. <b>Nothing is built.</b></p>
+  <p class="h-note">Compare in one skin: the capture and the sketch are the default Worlds night skin. The capture is true size, 390×844, from <code>tools/mock-snaps.mjs looseends --out g-looseends-mechanic --tag current</code>, hermetic (level 1 is the same board for everyone).</p>
+
+  <h2>Revisions</h2>
+  <p class="rev"><b>v1</b> — 2026-09-08: the research pass and one sketch; five decisions asked; nothing built.</p>
+
+  <h2>What the research said</h2>
+  <table class="h-table">
+    <tr><th>Parked idea</th><th>Precedent in the genre</th><th>What it adds to the read</th><th>Verdict</th></tr>
+    <tr><td><b>Locked arrows</b> — a neighbour must go first</td><td>Unpuzzle 2's hooked and connected squares; the stock "Count Down Blocks (Locked)" in Tap Away 3D templates; UnpuzzleX's countdown locks (unverified)</td><td>A second dependency graph on top of the ray graph: find the key before the path. New reasoning, not slower reasoning. Compatible with reverse-order construction if the key is placed <i>after</i> its lock (released before it).</td><td><span class="pill rec">build — this mock</span></td></tr>
+    <tr><td><b>Colour bands</b> that hide the flow</td><td>None as camouflage. Colour in the genre <i>means</i> something (Arrow Unjam's match-3 tray, a snake's identity). The one datapoint on colour-as-obscurity is a 1★: "almost impossible to see the arrows".</td><td>The same reasoning made slower; a legibility and colour-vision regression on a 390px phone.</td><td><span class="pill park">park</span></td></tr>
+    <tr><td><b>A par with three stars</b></td><td>Flow Free's fewest-moves star; arrowpuzzle.org's move-count board. No 2D arrow app surveyed uses a three-star par.</td><td>In a tap-away game the only wasted move is a blocked tap, so par collapses to the clean solve <code>score.rs</code> already grades 3★. A second axis would be a clock or a hint count; every 2D arrow game markets "no timer", and the one post-solve penalty found drew a 3★.</td><td><span class="pill park">already the rule</span></td></tr>
+  </table>
+  <p class="h-note">What players say they enjoy: "you can't just play it on autopilot, you need to consider the next step"; a board that makes them feel "like a genius and an idiot at the same time"; a solve that takes thirty minutes. What they hate: interruptions that break the read (ads, rank pop-ups, special blocks that must be tapped), boosters gating a level, and a lives system that punishes a fat finger as if it were a wrong read. So a tap on a lock here is <b>information, not a trap</b> — the key flashes, no droplet.</p>
+
+  <h2>Decisions</h2>
+  <table class="h-table">
+    <tr><th></th><th>Question</th><th>Recommendation</th><th></th></tr>
+    <tr><td>Q1</td><td>Where do locks start, and how many? Easy is levels 1–15.</td><td>Level 8, one lock; then <code>1 + floor((n − 8) · 7 / 92)</code> — eight at level 100 (of 68 arrows). Seven levels of the ray rule alone before the knot gets a key; levels 1–7 unchanged to the byte.</td><td><span class="pill rec">recommended</span></td></tr>
+    <tr><td>Q2</td><td>What does a tap on a locked arrow cost?</td><td>Nothing. The key flashes and the toast says "Tied — free the key first." A mistake stays a tap on an arrow whose ray is blocked; the star rule is untouched.</td><td><span class="pill rec">recommended</span></td></tr>
+    <tr><td>Q3</td><td>Do daily boards get locks?</td><td>Not this pass. The daily's sizes are drawn from its seed before the generator runs, so a lock count is a fourth draw and re-records every daily's golden; and the campaign should teach the rule first. Revisit when Q1's band has shipped.</td><td><span class="pill rec">recommended</span></td></tr>
+    <tr><td>Q4</td><td>Colour bands — park or drop?</td><td>Park indefinitely, with the reason recorded (the table above). Colour would come back only if it <i>meant</i> something — a tray, a group — which is a different game.</td><td><span class="pill rec">recommended</span></td></tr>
+    <tr><td>Q5</td><td>How is a lock drawn?</td><td>The locked arrow dim, a badge at its head, a dashed tie between the two touching cells (the sketch). A chain along the shared edge was the alternative; it reads as a border on a 44px cell.</td><td><span class="pill rec">recommended</span></td></tr>
+  </table>
+
+  <h3 class="h-pair-title">1 · A level-8 board with one lock <span class="pill sketch">sketch · Q1, Q2, Q5</span></h3>
+  <p class="h-note">Level 8 on the shipped curve is 14 arrows on 7×9, snakes of 3–5; the sketch draws thirteen. Three are free by their ray (gold). One more — the long one across the middle — has a clear ray to the right edge and is <b>locked</b>: the short arrow under it is its key, and that key's own ray is blocked by the arrow along the bottom. So the read is three deep: free the bottom, then the key, then the lock. Tapping the lock first flashes the key and costs nothing (Q2).</p>
+  <div class="legend"><span><i style="background:#d9b53c"></i>free</span><span><i style="background:#b9c6d6"></i>blocked by its ray</span><span><i style="background:#6d7c90"></i>locked — ray clear, key on the board</span><span><i style="background:#f2a541;height:3px"></i>the tie to its key</span></div>
+  <div class="h-pair">
+    <figure class="h-frame"><figcaption><b>Current</b> — captured <code>fun@5fcb81f</code>, 390×844: level 1 on the shipped curve, ten arrows, one read</figcaption><img class="snap" src="snaps/g-looseends-mechanic/current.looseends.board.phone.png" alt="Current, phone: Loose Ends level 1 — ten pale arrows interleaved on a dark slate board." /></figure>
+    <figure class="h-frame"><figcaption><b>Proposed</b> — SKETCH: level 8, thirteen arrows, one lock with its key</figcaption><div class="screen" data-theme="dark"><span class="sketch-tag">SKETCH</span><div class="app">
+      <div class="shelfbar"><button class="ib">☰</button><button class="ib">⤢</button><button class="ib">▶</button><button class="ib">♪</button><span class="sp"></span><button class="ib">☀</button><button class="ib">⚙</button><button class="ib">◎</button></div>
+      <div class="gamebar"><button class="ib">‹</button><span class="title dsp">Loose Ends</span><span class="mode">Easy</span><span class="sp"></span><button class="ib">⋯</button></div>
+      <div class="meter"><div class="stat"><b>Level 8</b><span>level</span></div><div class="stat"><b>💧💧💧</b><span>droplets</span></div><div class="stat"><b>0 / 14</b><span>released</span></div></div>
+      <div class="stage ground-le">
+        <div class="le"
+          data-arrows='[[0,0,4,"r",0],[6,0,3,"d",0],[5,1,3,"l",1],[0,2,3,"r",0],[1,6,3,"u",0],[3,3,3,"r",2],[4,4,2,"d",0],[6,4,4,"d",1],[0,7,4,"r",0],[3,5,2,"l",0],[5,8,4,"l",1],[0,6,3,"u",0],[5,5,2,"d",0]]'
+          data-ties='[[4,3,4,4]]'></div>
+        <div class="toast">Tied — free the key first.</div>
+      </div>
+      <div class="dock"><button class="verb primary"><i>✦</i>Hint</button><button class="verb"><i>▦</i>Levels</button><button class="verb"><i>☰</i>Settings</button></div>
+    </div></div></figure>
+  </div>
+
+  <h2>What it costs in the core</h2>
+  <p class="h-note">One predicate: <code>Board::is_free</code> is the only place the ray rule lives (<code>release</code>, <code>free_arrows</code>, <code>greedy_solve</code> and the hint all go through it), so a lock is a second clause there, not four. The generator places arrows in reverse solution order; the lock pairs are drawn <i>after</i> the retry wrapper picks its attempt, from the same RNG stream, with the key always an arrow placed later than its lock — released earlier — so releasing in reverse placement order still clears the board and the acceptance suite's greedy solver stays the proof. Every existing golden (level 1, level 50, the hundred counts) is unchanged to the byte; the new goldens are the pairs. The record needs no new bits: a lock count is a function of the level number the record already carries. The hash is over occupancy, and a lock's state is a function of its key's presence, so nothing there moves either. The phases, their RED tests and the mutation-audit gate are in the plan.</p>
+</div>
+<script>
+// Loose Ends arrows on the 48px lattice: [col, row, cells, direction, state] —
+// the tail cell, how many cells the snake covers, which way it points; state 0
+// blocked, 1 free (gold), 2 locked (dim, a badge at the head). data-ties lists
+// [x1, y1, x2, y2] cell pairs to join with a dashed tie. Mock F's renderer.
+for (const board of document.querySelectorAll(".le[data-arrows]")) {
+  const cell = 48, w = 22, hw = 46, head = 30;
+  const step = { r: [1, 0], d: [0, 1], l: [-1, 0], u: [0, -1] };
+  for (const [c, r, cells, dir, state] of JSON.parse(board.dataset.arrows)) {
+    const tx = 24 + c * cell, ty = 24 + r * cell;
+    const len = (cells - 1) * cell + 40;
+    const shaft = len - head;
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", `-20 0 ${len} ${hw}`);
+    svg.setAttribute("width", String(len));
+    svg.setAttribute("height", String(hw));
+    svg.classList.toggle("free", state === 1);
+    svg.classList.toggle("locked", state === 2);
+    svg.style.left = `${tx}px`;
+    svg.style.top = `${ty - hw / 2}px`;
+    svg.style.transformOrigin = `0 ${hw / 2}px`;
+    svg.style.transform = `rotate(${{ r: 0, d: 90, l: 180, u: 270 }[dir]}deg)`;
+    const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    p.setAttribute("class", "body");
+    p.setAttribute("d", `M-20 ${hw / 2 - w / 2} h${shaft} v${-(hw - w) / 2} L${len - 20} ${hw / 2} L${shaft - 20} ${hw} v${-(hw - w) / 2} H-20 z`);
+    svg.append(p);
+    board.append(svg);
+    if (state === 2) {
+      const [dx, dy] = step[dir];
+      const hx = 24 + (c + dx * (cells - 1)) * cell, hy = 24 + (r + dy * (cells - 1)) * cell;
+      const b = document.createElement("span");
+      b.className = "badge";
+      b.textContent = "🔒";
+      b.style.left = `${hx}px`;
+      b.style.top = `${hy}px`;
+      board.append(b);
+    }
+  }
+  for (const [x1, y1, x2, y2] of JSON.parse(board.dataset.ties ?? "[]")) {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("class", "tie");
+    svg.style.left = "0"; svg.style.top = "0";
+    svg.setAttribute("width", "340"); svg.setAttribute("height", "440");
+    const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    l.setAttribute("x1", String(24 + x1 * cell)); l.setAttribute("y1", String(24 + y1 * cell));
+    l.setAttribute("x2", String(24 + x2 * cell)); l.setAttribute("y2", String(24 + y2 * cell));
+    svg.append(l);
+    board.append(svg);
+  }
+}
+</script>
+</body>
+</html>
