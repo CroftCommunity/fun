@@ -993,9 +993,10 @@ body:has(> .play-area > .gf) {
 }
 
 .sol-board {
-  /* Card footprint — shrinks on narrow screens (see the media query below). */
-  --sol-cw: 3.2rem;
-  --sol-ch: 4.6rem;
+  /* Card footprint (mock F2, phase 4): seven columns across the stage's width,
+     floored at the phone's size, capped at a real card. */
+  --sol-cw: clamp(2.4rem, calc((var(--room-w) - 4rem) / 7), 7rem);
+  --sol-ch: calc(var(--sol-cw) * 1.44);
   background: var(--felt);
   border-radius: var(--radius);
   padding: 1rem;
@@ -1252,7 +1253,9 @@ body:has(> .play-area > .gf) {
   padding-inline: 0.75rem;
 }
 .m3-board {
-  --m3-gem: 2.85rem;
+  /* mock F2 (phase 4): eight gems across the stage's short side, floored at the
+     phone's comfortable target and capped so a candy stays a candy. */
+  --m3-gem: clamp(2.2rem, calc((min(var(--room-w), var(--room-h)) - 4rem) / 8), 4.75rem);
   display: inline-flex;
   flex-direction: column;
   gap: 0.28rem;
@@ -1508,13 +1511,6 @@ body:has(> .play-area > .gf) {
 }
 .m3-gem.m3-special-fish::after {
   content: "❋";
-}
-@media (max-width: 32rem) {
-  .m3-board {
-    /* Bigger, more comfortable touch targets on phones — still fits a 360px
-       viewport (8 gems + gaps + padding), guarded by the narrow-phone e2e. */
-    --m3-gem: 2.2rem;
-  }
 }
 /* Score bump when a swap scores. */
 .m3-hud .m3-score.bump {
@@ -1853,8 +1849,6 @@ body:has(> .play-area > .gf) {
    horizontal overflow. */
 @media (max-width: 32rem) {
   .sol-board {
-    --sol-cw: 2.4rem;
-    --sol-ch: 3.5rem;
     padding: 0.5rem;
   }
   .sol-top {
@@ -1892,9 +1886,11 @@ body:has(> .play-area > .gf) {
   min-height: 0;
   align-self: center;
   width: auto;
-  max-width: min(100%, 22rem);
+  /* mock F2 (phase 4): the room, less the launcher chips — no 22rem cap; the
+     canvas keeps its own aspect, so the height binds on a desktop, the width on a phone */
+  max-width: 100%;
   height: auto;
-  max-height: 100%;
+  max-height: calc(var(--room-h) - 5rem);
   /* the floor of the shrink: below this the stage scrolls instead, because a
      smaller board puts its bubbles under the tap floor (360×720 gave 189px) */
   min-height: 16rem;
@@ -4069,6 +4065,10 @@ a.le-btn {
 }
 
 .furrow-board {
+  /* Across (phase 4, mock F2): a row of six pits between two stores (a store is
+     1.1 pits wide) from the stage's width, floored at the tap size and capped so
+     a pit stays a pit; upright (below) sizes from the height instead. */
+  --fur-pit: clamp(2.75rem, calc((var(--room-w) - 8rem) / 8.5), 6rem);
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
@@ -4165,8 +4165,8 @@ a.le-btn {
 }
 
 .furrow-store {
-  inline-size: 3rem;
-  block-size: 6rem;
+  inline-size: calc(var(--fur-pit, 2.75rem) * 1.1);
+  block-size: calc(var(--fur-pit, 2.75rem) * 2.2);
   border-radius: 1.5rem;
   gap: 0.15rem;
 }
@@ -4232,20 +4232,13 @@ a.le-btn {
    the 24px touch-target floor. Narrower than this, the wrapper scrolls rather
    than clipping. */
 @media (max-width: 24rem) {
-  .furrow-board {
+  .furrow-board[data-orient="across"] {
+    --fur-pit: 1.9rem;
     gap: 0.25rem;
     padding: 0.4rem;
   }
-  .furrow-row { gap: 0.25rem; }
-  .furrow-pit {
-    inline-size: 1.9rem;
-    block-size: 1.9rem;
-  }
-  .furrow-store {
-    inline-size: 2.1rem;
-    block-size: 4.05rem;
-  }
-  .furrow-rowmark {
+  .furrow-board[data-orient="across"] .furrow-row { gap: 0.25rem; }
+  .furrow-board[data-orient="across"] .furrow-rowmark {
     inline-size: 0.8rem;
     font-size: 0.95rem;
   }
@@ -4841,7 +4834,9 @@ a.le-btn {
 
 /* The table: engine / board / the middle / your hand, top to bottom. */
 .crib-table {
-  inline-size: min(100%, 40rem);
+  /* mock F2 (phase 4): the table and its cards grow with the stage's width. */
+  --crib-cw: clamp(2.8rem, calc(var(--room-w) / 16), 4rem);
+  inline-size: min(100%, 52rem);
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
@@ -4882,8 +4877,8 @@ a.le-btn {
 
 /* A card: the solitaire card, sized for a hand of six on a phone. */
 .crib-card {
-  inline-size: 2.8rem;
-  block-size: 3.9rem;
+  inline-size: var(--crib-cw, 2.8rem);
+  block-size: calc(var(--crib-cw, 2.8rem) * 1.4);
   border-radius: var(--r-card);
   background: var(--card);
   border: 1px solid var(--border);
@@ -4968,7 +4963,7 @@ a.le-btn {
 .crib-tutor-options { margin: 0; padding-inline-start: 1.1rem; text-align: start; }
 
 @media (max-width: 24rem) {
-  .crib-card { inline-size: 2.5rem; block-size: 3.5rem; }
+  .crib-table { --crib-cw: 2.5rem; }
   .crib-opp .crib-card { inline-size: 1.6rem; block-size: 2.3rem; }
   .crib-table { padding: 0.4rem; }
 }

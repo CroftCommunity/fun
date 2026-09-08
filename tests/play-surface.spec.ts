@@ -386,3 +386,55 @@ test("mock F7.3: under reduced motion a beat collapses to its last frame — not
   await expect(page.locator(".gf-stage")).toHaveAttribute("data-beat", "drop");
   expect(running).toBe(0);
 });
+
+// --- F2 (phase 4): the rest of the fill ----------------------------------------
+
+/** The surfaces phase 4 puts on the stage rule, with what each may reach. */
+const FILL_REST: readonly { id: string; url: string; surface: string; desktop: { w?: number; h?: number }; phone: { w?: number; h?: number } }[] = [
+  // A mancala across is one row deep: it fills the width on a desktop, and stands up on a phone (F6).
+  { id: "furrow", url: "/furrow/?seed=7", surface: ".furrow-board", desktop: { w: 0.85 }, phone: { h: 0.7 } },
+  // Eight gems across: the short side of the stage, like the eight-square boards.
+  { id: "trio-tumble", url: "/trio-tumble/?seed=7", surface: ".m3-board", desktop: { h: 0.8 }, phone: { w: 0.85 } },
+  // Seven columns of cards: the width, on both.
+  { id: "solitaire", url: "/solitaire/?seed=7", surface: ".sol-board", desktop: { w: 0.85 }, phone: { w: 0.9 } },
+  // A tall shooter: the height, on both — the chips and the aim bar take the rest (a phone
+  // leaves it 62%: 588 less 62 + 93 + 22 for them); no 22rem cap on a desktop any more.
+  { id: "bubble", url: "/bubble/?seed=7", surface: ".bub-canvas", desktop: { h: 0.7 }, phone: { h: 0.6 } },
+  // The card table: cards grow with the room on a desktop.
+  { id: "cribbage", url: "/cribbage/?seed=7", surface: ".crib-table", desktop: { w: 0.7 }, phone: { w: 0.95 } },
+];
+
+test("mock F2.6 (phase 4): Furrow, Trio Tumble, solitaire, Bubble and cribbage size from the stage — each reaches its share of the room on a desktop and a phone", async ({ page }) => {
+  test.setTimeout(90_000); // ten page loads
+  for (const [vp, key] of [[DESKTOP, "desktop"], [PHONE, "phone"]] as const) {
+    await page.setViewportSize(vp);
+    for (const g of FILL_REST) {
+      await page.goto(g.url); // a seeded URL mounts the board straight away — no poster
+      const el = page.locator(g.surface).first();
+      await expect(el).toBeVisible();
+      await page.waitForTimeout(300);
+      const stage = await stageContent(page);
+      const box = (await el.boundingBox())!;
+      const want = g[key];
+      const tag = `${g.id} @ ${vp.width}: ${Math.round(box.width)}×${Math.round(box.height)} in ${Math.round(stage.w)}×${Math.round(stage.h)}`;
+      // Soft, so one game's miss still reports the others.
+      if (want.w !== undefined) expect.soft(box.width / stage.w, tag).toBeGreaterThanOrEqual(want.w);
+      if (want.h !== undefined) expect.soft(box.height / stage.h, tag).toBeGreaterThanOrEqual(want.h);
+      expect.soft(box.width, `${tag}: never wider than the stage`).toBeLessThanOrEqual(stage.w + 1);
+    }
+  }
+});
+
+test("mock F2.7 (phase 4): Loose Ends' canvas is the stage's whole box — edge to edge by design (its wrapper cancels the stage padding) and never past it", async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  await page.goto("/looseends/");
+  await page.locator(".gf-poster .gf-play").click();
+  const canvas = page.locator(".le-canvas");
+  await expect(canvas).toBeVisible();
+  await page.waitForTimeout(300);
+  const stage = (await page.locator(".gf-stage").boundingBox())!;
+  const box = (await canvas.boundingBox())!;
+  expect(box.width, `canvas ${Math.round(box.width)} in a stage ${Math.round(stage.width)}`).toBeLessThanOrEqual(stage.width + 1);
+  expect(box.height, `canvas ${Math.round(box.height)} in a stage ${Math.round(stage.height)}`).toBeLessThanOrEqual(stage.height + 1);
+  expect(box.width / stage.width).toBeGreaterThanOrEqual(0.98);
+});
