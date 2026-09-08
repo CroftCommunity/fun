@@ -218,19 +218,23 @@ mod tests {
             cells: cells.to_vec(),
             dir,
         };
-        let a = arrow(&[[0, 0], [1, 0]], [1, 0]);
+        // The key is id 0 and the lock id 1, so the hint (the lowest FREE id)
+        // is the key only because the lock is not free.
         let k = arrow(&[[0, 1], [1, 1]], [1, 0]);
-        let board = Board::with_locks(5, 2, vec![a, k], vec![(0, 1)]);
+        let a = arrow(&[[0, 0], [1, 0]], [1, 0]);
+        let board = Board::with_locks(5, 2, vec![k, a], vec![(1, 0)]);
         let mut g = Game::with_board(Origin::Level(1), board);
+        assert!(!g.is_won(), "two arrows on the board");
         assert_eq!(
-            g.tap(0),
-            Tap::Locked(1),
+            g.tap(1),
+            Tap::Locked(0),
             "the key is named so the UI can flash it"
         );
         assert_eq!(g.moves(), &[] as &[u32], "a locked tap is not a move");
-        assert_eq!(g.hint(), Some(1), "the hint is the key, never the lock");
-        assert_eq!(g.tap(1), Tap::Released);
-        assert_eq!(g.tap(0), Tap::Released, "unlocked with its key gone");
+        assert_eq!(g.hint(), Some(0), "the hint is the key, never the lock");
+        assert_eq!(g.tap(0), Tap::Released);
+        assert!(!g.is_won(), "the lock is still on the board");
+        assert_eq!(g.tap(1), Tap::Released, "unlocked with its key gone");
         assert!(g.is_won());
     }
 
@@ -267,6 +271,33 @@ mod tests {
         assert!(
             !v.ok || bad.moves == record.moves,
             "a tampered order fails to verify"
+        );
+    }
+
+    #[test]
+    fn origin_packing_round_trips_and_stays_js_safe() {
+        for o in [
+            Origin::Level(1),
+            Origin::Level(100),
+            Origin::Daily(2_028_026_207),
+            Origin::Daily(u32::MAX),
+        ] {
+            let packed = o.to_packed();
+            assert_eq!(Origin::from_packed(packed), o, "{o:?} round-trips");
+            assert!(
+                packed < (1u64 << 33),
+                "{o:?} packs under 2^33 (an exact JS integer)"
+            );
+        }
+        assert_eq!(
+            Origin::Level(1).to_packed(),
+            2,
+            "a level is its number shifted up one"
+        );
+        assert_eq!(
+            Origin::Daily(1).to_packed(),
+            3,
+            "a daily: seed shifted up one, mode bit set"
         );
     }
 
