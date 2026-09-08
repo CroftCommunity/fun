@@ -24,6 +24,7 @@ const CS_SKIN_KEY = "fun-color-sort-skin";
 const CS_ICONS_KEY = "fun-color-sort-icons";
 const CS_STRICT_KEY = "fun-color-sort-strict";
 const CONTROLS_LEFT_KEY = "fun-controls-left";
+const CHESS_PACK_KEY = "fun-chess-pack";
 
 /** Pure resolver: an explicit stored "on"/"off" wins; otherwise the default. */
 export function resolveBool(stored: string | null, fallback: boolean): boolean {
@@ -779,4 +780,36 @@ export function mahjongDimBlocked(): boolean {
 }
 export function setMahjongDimBlocked(on: boolean): void {
   write(MJ_DIM_KEY, on);
+}
+
+// ---------- Chess (the piece pack — mock F Q8, phase 10b) ----------
+
+/** The packs that ship: Classic (outlined glyphs) and Bold (heavier, flat, shadowed). Emoji is later. */
+export type ChessPack = "classic" | "bold";
+
+/** The pack list as Settings shows it — Classic first, because it is the default. */
+export const CHESS_PACKS: ReadonlyArray<{ readonly value: ChessPack; readonly label: string; readonly hint: string }> = [
+  { value: "classic", label: "Classic", hint: "The outlined set." },
+  { value: "bold", label: "Bold", hint: "Heavier pieces, flat, with a shadow." },
+];
+
+/** Pure resolver: a stored pack that ships wins, else Classic. */
+export function resolveChessPack(stored: string | null): ChessPack {
+  return stored === "bold" || stored === "classic" ? stored : "classic";
+}
+
+/** The chosen piece pack — **Classic by default**. */
+export function chessPack(): ChessPack {
+  try {
+    return resolveChessPack(localStorage.getItem(CHESS_PACK_KEY));
+  } catch {
+    return "classic";
+  }
+}
+export function setChessPack(pack: ChessPack): void {
+  try {
+    localStorage.setItem(CHESS_PACK_KEY, pack);
+  } catch {
+    // Storage denied (private mode): the setting still applies for the session.
+  }
 }

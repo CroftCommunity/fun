@@ -19,14 +19,18 @@ import { speak } from "../../harness/banter.js";
 import { buildBand, HybridPlayer, type BandMove, type HybridDecision } from "../../harness/hybrid-player.js";
 import { captureUiState, restoreUiState } from "../../ui-state.js";
 import {
+  CHESS_PACKS,
   chessLevel,
+  chessPack,
   chessSide,
   chessTutorEnabled,
   hintsEnabled,
   setChessLevel,
+  setChessPack,
   setChessSide,
   setChessTutor,
   type ChessLevel,
+  type ChessPack,
   type ChessSide,
 } from "../../settings.js";
 import { ideaFor, KIND_NAMES } from "./chess-oracle.js";
@@ -300,6 +304,7 @@ export function chessModule(): GameModule {
   let ending = false;
   let seed = 0n;
   let level: ChessLevel = chessLevel();
+  let pack: ChessPack = chessPack();
   let side: ChessSide = chessSide();
   let seat: Seat = side === "black" ? "black" : "white";
   // The in-progress tap: the piece picked up.
@@ -612,11 +617,32 @@ export function chessModule(): GameModule {
   const kingSquare = (board: BoardView, who: SideCode): number =>
     board.cells.findIndex((v) => ownerOf(v) === who && kindOf(v) === 6);
 
+  /**
+   * The set (phase 10b, mock F Q8): a wooden frame around the board with the
+   * ranks down its left and the files under it — outside the squares, the way a
+   * printed board labels itself — turned with the board when Black is at the
+   * bottom. The labels are decoration for a sighted player; every square already
+   * names itself to a screen reader.
+   */
+  const buildSet = (board: BoardView, interactive: boolean): HTMLElement => {
+    const flip = flipped();
+    const ranks = [8, 7, 6, 5, 4, 3, 2, 1].map((r) => (flip ? 9 - r : r));
+    const files = [..."abcdefgh"].map((_, i) => "abcdefgh"[flip ? 7 - i : i]!);
+    return el(
+      "div",
+      { class: `chess-set${interactive ? "" : " chess-set-final"}`, "data-pack": pack },
+      el("div", { class: "chess-ranks", "aria-hidden": "true" }, ...ranks.map((r) => el("span", {}, String(r)))),
+      buildBoard(board, interactive),
+      el("div", { class: "chess-files", "aria-hidden": "true" }, ...files.map((f) => el("span", {}, f))),
+    );
+  };
+
   const buildBoard = (board: BoardView, interactive: boolean): HTMLElement => {
     const boardEl = el("div", {
       class: `chess-board${interactive ? "" : " chess-final"}`,
       role: "group",
       "aria-label": interactive ? "Chess board" : "Final board",
+      "data-pack": pack,
     });
     const canPlay =
       interactive && !thinking && !ending && !gameOver() && humanToMove() && !pendingPromotion;
@@ -657,9 +683,6 @@ export function chessModule(): GameModule {
             ? `Move to ${squareName(sq)}`
             : `${squareName(sq)}, ${describe(v)}${checked === sq ? ", in check" : ""}`,
         };
-        // The edge labels ride on the outer view row/column, so a flipped board labels itself.
-        if (vr === 0) attrs["data-file"] = "abcdefgh"[file]!;
-        if (vf === 0) attrs["data-rank"] = String(rank + 1);
         boardEl.append(el("button", attrs, v ? pieceNode(v) : ""));
       }
     }
@@ -726,6 +749,19 @@ export function chessModule(): GameModule {
     const youScore = b ? b.captured[humanSide() - 1]! : 0;
     const themScore = b ? b.captured[2 - humanSide()]! : 0;
     const preferences: SettingRow[] = [
+      {
+        kind: "choice",
+        id: "pack",
+        label: "Pieces",
+        hint: "The set on the board. Changes at once and never changes the game.",
+        value: pack,
+        options: CHESS_PACKS,
+        onChange: (v) => {
+          pack = v === "bold" ? "bold" : "classic";
+          setChessPack(pack);
+          render();
+        },
+      },
       {
         kind: "toggle",
         id: "tutor",
@@ -809,7 +845,7 @@ export function chessModule(): GameModule {
     if (disposed || !container || !game) return;
     const board = game.board();
     const parts: (Node | string)[] = [
-      buildBoard(board, true),
+      buildSet(board, true),
       ...(chessTutorEnabled() ? [renderTutorPanel()] : []),
       statusEl,
     ];
@@ -849,7 +885,7 @@ export function chessModule(): GameModule {
       decisive ? `Checkmate — ${label}` : "Draw",
     );
     // The fanfare sits BELOW the final board; rule 1 holds to the end.
-    container.replaceChildren(el("div", { class: "chess-game" }, buildBoard(board, false), flash));
+    container.replaceChildren(el("div", { class: "chess-game" }, buildSet(board, false), flash));
     declare();
     window.setTimeout(() => {
       if (disposed) return;
@@ -868,7 +904,7 @@ export function chessModule(): GameModule {
     const build = (): HTMLElement =>
       renderResultScreen(env, verify(env), {
         label,
-        finalBoard: buildBoard(board, false),
+        finalBoard: buildSet(board, false),
         shareUrl,
         onReverify: () => container!.replaceChildren(build()),
         onPlayAgain: () => void startGame(),
@@ -942,7 +978,7 @@ export function chessModule(): GameModule {
     const build = (): HTMLElement =>
       renderResultScreen(env, verification, {
         label,
-        finalBoard: buildBoard(board, false),
+        finalBoard: buildSet(board, false),
         shared: true,
         onReverify: () => container!.replaceChildren(build()),
         onPlayAgain: () => {

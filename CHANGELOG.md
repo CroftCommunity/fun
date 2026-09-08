@@ -12,6 +12,12 @@ earlier is in `git log`.
 
 ## 2026-09
 
+- 2026-09-08 **chess:** the board is a set. A wooden frame with the ranks down its left and the
+  files under it — outside the squares, turned with the board when you play Black — a shadow on
+  the ground, and the last move ringed rather than boxed. Settings gains **Pieces**: Classic
+  (the outlined set) or Bold (heavier, flat, with a shadow); the choice is remembered and never
+  changes the game. On a phone the frame is a hairline gutter so the 44px squares still fit.
+  (mock F Q8, phase 10b, play-surface)
 - 2026-09-08 **cribbage:** the table plays Tuesday Night Rainfall. It had named nothing and
   so played the shelf's bed; of the four airier candidates it takes the one no other game
   names. (mock F Q9, phase 12, play-surface)

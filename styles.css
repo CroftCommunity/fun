@@ -5071,9 +5071,65 @@ dialog.signin-sheet::backdrop { background: rgba(0, 0, 0, 0.45); }
   align-items: center;
   gap: 0.5rem;
 }
+/* The set (phase 10b, mock F Q8): a wooden frame with the ranks down its left
+   and the files under the board, OUTSIDE the squares; the cell is sized here so
+   the frame is part of what fills the stage. */
+.chess-set {
+  /* 44px is the tap floor; eight of these fit a 390px phone once the frame slims (below). */
+  --chs-frame-room: 3.25rem;
+  --chs-label: 1rem;
+  --chs-cell: clamp(2.75rem, calc((min(var(--room-w), var(--room-h)) - var(--chs-frame-room)) / 8), 6rem); /* mock F2: from the stage */
+  display: grid;
+  grid-template-columns: var(--chs-label) max-content;
+  grid-template-rows: max-content var(--chs-label);
+  width: fit-content;
+  margin-inline: auto;
+  padding: 0.5rem 0.5rem 0.125rem 0.125rem;
+  border-radius: 10px;
+  background:
+    linear-gradient(160deg, rgb(255 255 255 / 10%), transparent 40%, rgb(0 0 0 / 18%)),
+    linear-gradient(90deg, var(--chs-frame-deep), var(--chs-frame) 18%, var(--chs-frame) 82%, var(--chs-frame-deep));
+  color: var(--chs-frame-ink);
+  box-shadow:
+    0 14px 28px -10px rgb(0 0 0 / 60%),
+    0 2px 4px rgb(0 0 0 / 30%),
+    inset 0 1px 0 rgb(255 255 255 / 12%);
+}
+.chess-ranks,
+.chess-files {
+  display: grid;
+  font-size: max(0.6rem, calc(var(--chs-cell) * 0.24));
+  font-weight: 600;
+  line-height: 1;
+  opacity: 0.9;
+  user-select: none;
+  pointer-events: none;
+}
+.chess-ranks {
+  grid-auto-rows: var(--chs-cell);
+  align-items: center;
+  justify-items: center;
+  border-top: 2px solid transparent; /* the board's border, so the rows line up */
+}
+.chess-files {
+  grid-column: 2;
+  grid-template-columns: repeat(8, var(--chs-cell));
+  justify-items: center;
+  align-items: center;
+  margin-left: 2px; /* the board's border */
+}
+@media (max-width: 480px) {
+  .chess-set {
+    /* A phone has no room for a frame: the labels sit in a hairline gutter and
+       the set borrows the stage's inline padding, so the 44px floor still fits 390. */
+    --chs-frame-room: 1.25rem;
+    --chs-label: 0.75rem;
+    padding: 0.125rem 0.125rem 0 0;
+    margin-inline: -0.5rem;
+    border-radius: 6px;
+  }
+}
 .chess-board {
-  /* 44px is the tap floor; eight of these fit a 390px phone with room for the edge labels. */
-  --chs-cell: clamp(2.75rem, calc((min(var(--room-w), var(--room-h)) - 1.5rem) / 8), 6rem); /* mock F2: from the stage */
   display: grid;
   grid-template-columns: repeat(8, var(--chs-cell));
   grid-auto-rows: var(--chs-cell);
@@ -5082,7 +5138,6 @@ dialog.signin-sheet::backdrop { background: rgba(0, 0, 0, 0.45); }
      the result screen, where the parent is a plain block (the guide's
      chess-result shot caught it; checkers had the same defect). */
   width: fit-content;
-  margin-inline: auto;
   border: 2px solid var(--chs-dark);
   border-radius: 4px;
   overflow: hidden;
@@ -5103,19 +5158,6 @@ dialog.signin-sheet::backdrop { background: rgba(0, 0, 0, 0.45); }
 }
 .chess-square.light { background: var(--chs-light); }
 .chess-square.dark { background: var(--chs-dark); }
-/* The edge labels ride on the squares themselves, so a flipped board labels itself. */
-.chess-square[data-file]::before,
-.chess-square[data-rank]::after {
-  position: absolute;
-  font-size: calc(var(--chs-cell) * 0.24);
-  line-height: 1;
-  opacity: 0.85;
-  pointer-events: none;
-}
-.chess-square[data-file]::before { content: attr(data-file); right: 2px; bottom: 1px; }
-.chess-square[data-rank]::after { content: attr(data-rank); left: 2px; top: 1px; }
-.chess-square.light[data-file]::before, .chess-square.light[data-rank]::after { color: var(--chs-dark); }
-.chess-square.dark[data-file]::before, .chess-square.dark[data-rank]::after { color: var(--chs-light); }
 .chess-piece {
   font-size: calc(var(--chs-cell) * 0.78);
   line-height: 1;
@@ -5135,6 +5177,17 @@ dialog.signin-sheet::backdrop { background: rgba(0, 0, 0, 0.45); }
     -1px -1px 0 var(--chs-b-ink), 1px -1px 0 var(--chs-b-ink),
     -1px 1px 0 var(--chs-b-ink), 1px 1px 0 var(--chs-b-ink);
 }
+/* The Bold pack: the same glyphs, larger and flat, an even stroke instead of a
+   ghosted outline, standing on a shadow. */
+.chess-board[data-pack="bold"] .chess-piece {
+  font-size: calc(var(--chs-cell) * 0.88);
+  font-weight: 700;
+  text-shadow: none;
+  paint-order: stroke fill;
+  filter: drop-shadow(0 2px 1px rgb(0 0 0 / 45%));
+}
+.chess-board[data-pack="bold"] .chess-piece.a { -webkit-text-stroke: 0.05em var(--chs-a-ink); }
+.chess-board[data-pack="bold"] .chess-piece.b { -webkit-text-stroke: 0.05em var(--chs-b-ink); }
 .chess-square.selectable { cursor: pointer; }
 .chess-square.target { cursor: pointer; }
 .chess-square.target::after {
@@ -5156,7 +5209,15 @@ dialog.signin-sheet::backdrop { background: rgba(0, 0, 0, 0.45); }
   opacity: 0.9;
 }
 .chess-square.selected { box-shadow: inset 0 0 0 3px var(--chs-legal); }
-.chess-square.just-played { box-shadow: inset 0 0 0 3px var(--chs-last); }
+.chess-square.just-played::before {
+  /* the last move's ring — a ring, not a filled square, so the piece reads through it */
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border: 3px solid var(--chs-last);
+  border-radius: 18%;
+  pointer-events: none;
+}
 .chess-square.hint { box-shadow: inset 0 0 0 3px var(--chs-legal); }
 .chess-square.check { box-shadow: inset 0 0 0 4px var(--chs-check); }
 .chess-square:focus-visible {
@@ -5201,6 +5262,9 @@ dialog.signin-sheet::backdrop { background: rgba(0, 0, 0, 0.45); }
   text-align: center;
 }
 .chess-flash.win { color: var(--active); }
-.chess-board.chess-final {
+.chess-set-final {
   --chs-cell: clamp(1.4rem, 7vw, 2.2rem);
+  --chs-label: 0.75rem;
+  margin-inline: auto;
+  padding: 0.25rem 0.25rem 0 0;
 }

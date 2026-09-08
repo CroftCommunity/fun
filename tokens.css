@@ -135,6 +135,9 @@
   --chs-legal: #1e3a5f;       /* tap-target hint (navy)                 */
   --chs-check: #7a1712;       /* the checked king's ring                */
   --chs-last: #1f3f21;        /* the last move's ring                   */
+  --chs-frame: #5c3d24;       /* the set's wooden frame (phase 10b)     */
+  --chs-frame-deep: #3a2515;  /* the frame's shaded edge                */
+  --chs-frame-ink: #e6d2a8;   /* the coordinates on the frame  (7.1:1)  */
 
   /* Dots and Boxes — the "graph paper" identity: a warm paper surface with an
      ink lattice, and one saturated colour per side used for both that side's
