@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="mock-version" content="1" />
+<meta name="mock-version" content="1.1" />
 <meta name="mock-baseline" content="fun@5fcb81f" />
 <title>Loose Ends — the knot has a key · v1 · fun.croft.ing mocks</title>
 <link rel="stylesheet" href="harness.css" />
@@ -75,12 +75,13 @@
 <body class="dir-g">
 <div class="h-wrap">
   <a class="h-back" href="index.html">← All directions</a>
-  <p class="h-kicker">Mock G · Loose Ends — the knot has a key · <b>v1</b> · baseline <code>fun@5fcb81f</code></p>
+  <p class="h-kicker">Mock G · Loose Ends — the knot has a key · <b>v1.1</b> · baseline <code>fun@5fcb81f</code></p>
   <h1>Loose Ends — the knot has a key</h1>
   <p class="h-lede">Mock F's proposal 9 shipped the curve (Q10, 2026-09-08 — level 1 is ten arrows on 6×8) and parked the second mechanic for a research pass: "colour bands that hide the flow, locked arrows that need a neighbour freed first, a par with three stars". The pass is done (the plan, <code>plans/2026-09-08-plan-looseends-mechanic.md</code>, carries the sources) and it sorts the three by what they add to <b>reading the knot</b>, which is the fun the genre's players name. One survives as a mechanic: <b>a lock</b> — an arrow that stays put, ray clear or not, until the arrow tied to it has slid off. This page draws it once and asks five decisions. <b>Nothing is built.</b></p>
   <p class="h-note">Compare in one skin: the capture and the sketch are the default Worlds night skin. The capture is true size, 390×844, from <code>tools/mock-snaps.mjs looseends --out g-looseends-mechanic --tag current</code>, hermetic (level 1 is the same board for everyone).</p>
 
   <h2>Revisions</h2>
+  <p class="rev"><b>v1.1</b> — 2026-09-08, owner: "go with the recommendations, build phase 1". Q1–Q5 decided at their recommendations; phase 1 (the rule in the core: <code>Board::with_locks</code>, <code>Tap::Locked(key)</code>, a blocked ray reported before a lock) built on <code>claude/looseends-locks</code> with its mutation audit. Nothing on the board yet — the generator is phase 2, the drawing phase 3; a Shipped capture beside the sketch comes with phase 4.</p>
   <p class="rev"><b>v1</b> — 2026-09-08: the research pass and one sketch; five decisions asked; nothing built.</p>
 
   <h2>What the research said</h2>
@@ -95,11 +96,11 @@
   <h2>Decisions</h2>
   <table class="h-table">
     <tr><th></th><th>Question</th><th>Recommendation</th><th></th></tr>
-    <tr><td>Q1</td><td>Where do locks start, and how many? Easy is levels 1–15.</td><td>Level 8, one lock; then <code>1 + floor((n − 8) · 7 / 92)</code> — eight at level 100 (of 68 arrows). Seven levels of the ray rule alone before the knot gets a key; levels 1–7 unchanged to the byte.</td><td><span class="pill rec">recommended</span></td></tr>
-    <tr><td>Q2</td><td>What does a tap on a locked arrow cost?</td><td>Nothing. The key flashes and the toast says "Tied — free the key first." A mistake stays a tap on an arrow whose ray is blocked; the star rule is untouched.</td><td><span class="pill rec">recommended</span></td></tr>
-    <tr><td>Q3</td><td>Do daily boards get locks?</td><td>Not this pass. The daily's sizes are drawn from its seed before the generator runs, so a lock count is a fourth draw and re-records every daily's golden; and the campaign should teach the rule first. Revisit when Q1's band has shipped.</td><td><span class="pill rec">recommended</span></td></tr>
-    <tr><td>Q4</td><td>Colour bands — park or drop?</td><td>Park indefinitely, with the reason recorded (the table above). Colour would come back only if it <i>meant</i> something — a tray, a group — which is a different game.</td><td><span class="pill rec">recommended</span></td></tr>
-    <tr><td>Q5</td><td>How is a lock drawn?</td><td>The locked arrow dim, a badge at its head, a dashed tie between the two touching cells (the sketch). A chain along the shared edge was the alternative; it reads as a border on a 44px cell.</td><td><span class="pill rec">recommended</span></td></tr>
+    <tr><td>Q1</td><td>Where do locks start, and how many? Easy is levels 1–15.</td><td>Level 8, one lock; then <code>1 + floor((n − 8) · 7 / 92)</code> — eight at level 100 (of 68 arrows). Seven levels of the ray rule alone before the knot gets a key; levels 1–7 unchanged to the byte.</td><td><span class="pill rec">DECIDED 2026-09-08: level 8, one; the curve</span></td></tr>
+    <tr><td>Q2</td><td>What does a tap on a locked arrow cost?</td><td>Nothing. The key flashes and the toast says "Tied — free the key first." A mistake stays a tap on an arrow whose ray is blocked; the star rule is untouched.</td><td><span class="pill rec">DECIDED 2026-09-08: a locked tap costs nothing</span></td></tr>
+    <tr><td>Q3</td><td>Do daily boards get locks?</td><td>Not this pass. The daily's sizes are drawn from its seed before the generator runs, so a lock count is a fourth draw and re-records every daily's golden; and the campaign should teach the rule first. Revisit when Q1's band has shipped.</td><td><span class="pill rec">DECIDED 2026-09-08: no dailies this pass</span></td></tr>
+    <tr><td>Q4</td><td>Colour bands — park or drop?</td><td>Park indefinitely, with the reason recorded (the table above). Colour would come back only if it <i>meant</i> something — a tray, a group — which is a different game.</td><td><span class="pill rec">DECIDED 2026-09-08: parked</span></td></tr>
+    <tr><td>Q5</td><td>How is a lock drawn?</td><td>The locked arrow dim, a badge at its head, a dashed tie between the two touching cells (the sketch). A chain along the shared edge was the alternative; it reads as a border on a 44px cell.</td><td><span class="pill rec">DECIDED 2026-09-08: badge + tie</span></td></tr>
   </table>
 
   <h3 class="h-pair-title">1 · A level-8 board with one lock <span class="pill sketch">sketch · Q1, Q2, Q5</span></h3>

@@ -1,8 +1,9 @@
 # Plan — Loose Ends' second mechanic: the knot has a key
 
-**Status:** **RESEARCHED + SKETCHED, 2026-09-08 — nothing built; waiting on the owner's
-read of mock G before any phase starts.** Plan filename carries no ordinal per
-`CroftC/.claude/TRACKING.md` § "Plan files". Branch `claude/looseends-mechanic`, worktree
+**Status:** **Phase 1 BUILT, 2026-09-08 (owner: "go with the recommendations, build phase 1");
+phases 2–4 not started.** Q1–Q5 decided at their recommendations (Review Log). Plan filename
+carries no ordinal per `CroftC/.claude/TRACKING.md` § "Plan files". Plan landed from
+`claude/looseends-mechanic` (#85); phase 1 on `claude/looseends-locks`, worktree
 `CroftC/worktrees/looseends-mechanic/fun`. Mock: `mocks/g-looseends-mechanic.html` v1, its
 Current capture in `mocks/snaps/g-looseends-mechanic/` (`current.*` from `fun@5fcb81f`).
 
@@ -139,12 +140,17 @@ honestly).
 
 ## Phases
 
-### Phase 1: The rule in the core
-`Board.locks`, `is_free` reads it, `ReleaseError::Locked(key)`, `Tap::Locked(key)`; RED
-first on a hand-built board (a locked arrow with a clear ray is not free; freeing the key
-frees it; a lock on a gone key is inert). Done-when: crate tests green, clippy clean,
-`cargo mutants --package looseends-core --in-place` run and its survivors triaged in the
-Review Log.
+### Phase 1: The rule in the core — BUILT
+`Board::with_locks`, `locks()`, `key_of(id)`; `is_free` is `ray_clear && key_of.is_none()`
+(the ray walk is now `ray_clear`, so the two clauses are readable apart); `release` reports
+`Blocked` before `Locked(key)` — the ray is the visible fault (Q2); `Tap::Locked(key)`; the
+wasm `tap` returns status 3 for it (the key export is phase 3). RED first on hand-built
+boards: a locked arrow with a clear ray is not free until its key goes; a locked arrow with
+a blocked ray reports Blocked; a lock on a gone or unknown key is inert; locks never enter
+the hash; `greedy_solve` releases the key before the lock; a locked tap names its key, is
+not a move, the hint is the key. Done-when met: crate tests green (23 unit + acceptance),
+clippy clean, mutation audit run twice and triaged (Review Log). **Executed 2026-09-08**
+(`d27e166`, `0486a31`).
 
 ### Phase 2: The generator and the curve
 `Config.locks`, `level_config` from level 8, pairs drawn after the wrapper; goldens: the
@@ -170,6 +176,29 @@ decision as built is the decision in the mock.
 Q1–Q5 are in mock G's decisions table with a recommendation each; the plan repeats none.
 
 ## Review Log
+
+### Phase 1 — 2026-09-08 (owner: "go with the recommendations, build phase 1")
+- Decisions, all at the mock's recommendation: **Q1** locks from level 8, one, then
+  `1 + floor((n − 8) · 7 / 92)`; **Q2** a locked tap costs nothing, the key flashes; **Q3**
+  no locks on daily boards this pass; **Q4** colour bands parked indefinitely; **Q5** the
+  locked arrow dim, a badge at its head, a dashed tie to its key.
+- Verified on the way (each a test): `state_hash` of a board with locks equals the same
+  board's without, fresh and after a release; `greedy_solve` orders key before lock; the
+  hint never names a locked arrow.
+- **Mutation audit** (`cargo mutants --in-place` over `board.rs` + `game.rs`, first run):
+  118 mutants — 81 caught, 12 timeouts (kills: the greedy loop hangs when the FREE rule
+  lies), 11 unviable, **14 missed, none in the lock path**. Triage of the 14: nine were the
+  hash's inputs (`width`, `height`, `occupancy_bytes`) with no golden pinning the encoding —
+  real gap, closed by three vectors in `hash.rs` recorded from the generator; three were
+  `Origin::to_packed`'s operators with no round-trip — `<<`→`>>` and `|`→`&` real, closed by
+  a round-trip over both modes with the JS-safe bound, `|`→`^` **equivalent** (bit 0 of a
+  shifted value is clear) and left; `Game::hint → Some(1)` survived because the locked test's
+  key happened to be id 1 — real, the ids swapped; `Game::is_won → true` survived because
+  no test asserted a live board is not won — real, asserted twice. **Second run** (board,
+  game, hash): 120 mutants — 95 caught, 12 timeouts, 11 unviable, **2 missed**: the
+  equivalent `|`→`^`, and `hint → Some(0)`, which the id swap had made the key — closed by
+  asserting the hint moves to id 1 once the key is gone (a constant cannot be both), watched
+  red by hand against the mutant and restored from HEAD.
 
 ### Pass 1 — 2026-09-08 (research + sketch)
 - Reconstructed: `main@5fcb81f`, clean; worktrees `chess-emoji` and `poster-desktop-art`

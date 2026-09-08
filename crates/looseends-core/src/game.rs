@@ -234,6 +234,11 @@ mod tests {
         assert_eq!(g.hint(), Some(0), "the hint is the key, never the lock");
         assert_eq!(g.tap(0), Tap::Released);
         assert!(!g.is_won(), "the lock is still on the board");
+        assert_eq!(
+            g.hint(),
+            Some(1),
+            "with the key gone the hint moves to the freed lock"
+        );
         assert_eq!(g.tap(1), Tap::Released, "unlocked with its key gone");
         assert!(g.is_won());
     }
