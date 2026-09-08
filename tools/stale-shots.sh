@@ -13,6 +13,10 @@
 # landing check, wired into `npm run gate`.
 #
 #   bash tools/stale-shots.sh            # exit 1 and the game named, or 0
+#
+# Escape hatch, audited: a commit in the range carrying the trailer
+#   Shots-Unchanged: <id> — <why>
+# passes that game with a line saying so.
 set -uo pipefail
 
 if ! git rev-parse --verify -q refs/remotes/origin/main >/dev/null; then
@@ -32,10 +36,20 @@ ids=$(printf '%s\n' "$changed" \
   | grep -vE '/' \
   | sort -u)
 
+# A commit in the range may say, where a reader can find it, that a game's look in a
+# still shot did not change:  Shots-Unchanged: <id> — <why>   (a slide beat is a
+# transient; a re-encoded JPEG of the same picture is byte-identical and the diff
+# cannot tell). One id per trailer; the why is required reading, not parsed.
+declared=$(git log --format=%B "$base..HEAD" | grep -E '^Shots-Unchanged: ' | sed -E 's/^Shots-Unchanged: ([a-z0-9-]+).*/\1/')
+
 status=0
 for id in $ids; do
   # Only a game with a guide can have stale shots.
   if ! git ls-tree --name-only HEAD "assets/guide/" | grep -q "^assets/guide/$id-"; then continue; fi
+  if printf '%s\n' "$declared" | grep -qx "$id"; then
+    echo "stale-shots: $id changed and a commit says Shots-Unchanged for it — audited, not checked"
+    continue
+  fi
   if ! printf '%s\n' "$changed" | grep -q "^assets/guide/$id-"; then
     echo "stale-shots: $id changed under src/games/$id but no assets/guide/$id-*.jpg changed with it."
     echo "             Regenerate:  E2E_PORT=<port> node tools/guide-shots.mjs $id   (a served dist/ on that port)"
