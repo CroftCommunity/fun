@@ -1,6 +1,11 @@
 //! Level and daily board configuration — pure deterministic functions of the
-//! level number / daily seed, ported exactly from the spec's `levelConfig` /
-//! `dailyConfig`.
+//! level number / daily seed. `dailyConfig` is ported exactly from the spec;
+//! `levelConfig` was **rebased on 2026-09-08** (mock F Q10, play-surface plan
+//! phase 11): the spec's curve started at three arrows on a 5×6 — nothing to
+//! read — and the genre's fun is reading a dense knot that resolves in order.
+//! Level 1 is now ten arrows on 6×8 with snakes of 3–5; Easy's end (level 15)
+//! is ~24 on 8×11; the top of the curve stays where the spec put it (68 on
+//! 18×26, snakes up to 12). The daily config is untouched.
 //!
 //! Sizing uses `f64` exactly as the spec's `Math.round(a + b*t)` does. IEEE-754
 //! `+ - * /` are bit-identical on native and `wasm32`, and for the always-
@@ -44,16 +49,16 @@ pub fn daily_seed(date_key: &str) -> u32 {
     hash_str(&format!("loose-ends-daily-{date_key}"))
 }
 
-/// Campaign level config for `n` (`1..=100`) — the spec's `levelConfig`.
+/// Campaign level config for `n` (`1..=100`) — the rebased curve (module doc).
 #[must_use]
 pub fn level_config(n: u32) -> Config {
     let t = (f64::from(n) - 1.0) / 99.0;
     Config {
-        w: jround(5.0 + 13.0 * t),
-        h: jround(6.0 + 20.0 * t),
-        target: jround(3.0 + 65.0 * t),
-        min_len: 2 + jround(t),
-        max_len: 4 + jround(t * 8.0),
+        w: jround(6.0 + 12.0 * t),
+        h: jround(8.0 + 18.0 * t),
+        target: jround(10.0 + 58.0 * t),
+        min_len: 3,
+        max_len: 5 + jround(t * 7.0),
         seed: level_seed(n),
     }
 }
@@ -83,10 +88,13 @@ mod tests {
 
     #[test]
     fn level_config_matches_reference() {
+        // The curve rebased 2026-09-08 (mock F Q10, play-surface phase 11): level 1
+        // is a puzzle to read — ten arrows on 6×8 with snakes of 3–5 — and the top
+        // of the curve stays where it was (68 on 18×26, snakes up to 12).
         let c1 = level_config(1);
         assert_eq!(
             (c1.w, c1.h, c1.target, c1.min_len, c1.max_len),
-            (5, 6, 3, 2, 4)
+            (6, 8, 10, 3, 5)
         );
         assert_eq!(c1.seed, 3_873_835_247);
 
@@ -100,7 +108,7 @@ mod tests {
         let c50 = level_config(50);
         assert_eq!(
             (c50.w, c50.h, c50.target, c50.min_len, c50.max_len),
-            (11, 16, 35, 2, 8)
+            (12, 17, 39, 3, 8)
         );
         assert_eq!(c50.seed, 3_273_002_345);
     }
