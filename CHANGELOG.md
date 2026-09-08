@@ -12,6 +12,9 @@ earlier is in `git log`.
 
 ## 2026-09
 
+- 2026-09-08 **cribbage:** the table plays Tuesday Night Rainfall. It had named nothing and
+  so played the shelf's bed; of the four airier candidates it takes the one no other game
+  names. (mock F Q9, phase 12, play-surface)
 - 2026-09-05 **bubble:** the pieces are fruit. Six fruit — apple, blueberries, kiwi, grapes,
   orange, lemon — sit in glass bubbles, the loaded one in a launcher ring with the next in a
   dashed ring beside it; the launcher chip names the fruit for a screen reader. A fruit has
