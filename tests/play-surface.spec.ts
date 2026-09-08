@@ -341,22 +341,25 @@ test("mock F7.1: Drop 4's disc falls in — the just-played cell animates and th
   await page.waitForFunction(() => Boolean(window.__drop4));
   // Tap and watch from inside the page: the drop lasts a few hundred ms, so a
   // second round trip could land after it. The most animations seen on the
-  // played cell over the next 600ms is the measure.
-  const running = await page.evaluate(() => {
+  // played cell over the next 1.5s is the measure — polled on a timer, not
+  // requestAnimationFrame, which CI's loaded WebKit starves. A runner that
+  // prefers reduced motion gets no animation by design (F7.3); it still records.
+  const { running, reduced } = await page.evaluate(() => {
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
     document.querySelector<HTMLElement>('.drop4-col[data-col="3"]')!.click();
-    return new Promise<number>((resolve) => {
+    return new Promise<{ running: number; reduced: boolean }>((resolve) => {
       const t0 = performance.now();
       let most = 0;
       const look = (): void => {
         most = Math.max(most, document.querySelector(".drop4-cell.just-played")?.getAnimations().length ?? 0);
-        if (performance.now() - t0 < 600) requestAnimationFrame(look);
-        else resolve(most);
+        if (performance.now() - t0 < 1500) setTimeout(look, 16);
+        else resolve({ running: most, reduced });
       };
       look();
     });
   });
   await expect(page.locator(".gf-stage")).toHaveAttribute("data-beat", "drop");
-  expect(running).toBeGreaterThanOrEqual(1);
+  if (!reduced) expect(running).toBeGreaterThanOrEqual(1);
 });
 
 test("mock F7.2: Othello's turned discs flip — every legal opening turns at least one, and the stage records the flip", async ({ page }) => {
@@ -377,7 +380,7 @@ test("mock F7.3: under reduced motion a beat collapses to its last frame — not
       let most = 0;
       const look = (): void => {
         most = Math.max(most, document.querySelector(".drop4-cell.just-played")?.getAnimations().length ?? 0);
-        if (performance.now() - t0 < 600) requestAnimationFrame(look);
+        if (performance.now() - t0 < 1500) setTimeout(look, 16);
         else resolve(most);
       };
       look();

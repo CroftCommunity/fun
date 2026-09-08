@@ -332,7 +332,10 @@ test("leaving mid-game and returning to the bare URL resumes the same position",
 async function enableTutor(page: Page): Promise<void> {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator('.gf-verb[data-verb="settings"]').click();
-  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-input').click({ force: true });
+  // The track a player taps: the checkbox is a 1px hidden input, and with the Pieces row
+  // above it (phase 10b) it sits past the sheet's fold on a phone — a force-click there
+  // landed nowhere on CI's WebKit.
+  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-track').click();
   await page.keyboard.press("Escape");
 }
 
@@ -342,7 +345,10 @@ test("the tutor panel is off by default and appears when enabled in settings", a
   await expect(page.locator(".chess-tutor")).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
   await page.locator('.gf-verb[data-verb="settings"]').click();
-  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-input').click({ force: true });
+  // The track a player taps: the checkbox is a 1px hidden input, and with the Pieces row
+  // above it (phase 10b) it sits past the sheet's fold on a phone — a force-click there
+  // landed nowhere on CI's WebKit.
+  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-track').click();
   await expect(page.locator(".chess-tutor-explain")).toBeVisible();
 });
 
