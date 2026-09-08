@@ -289,7 +289,7 @@ mod tests {
         );
         // Nothing to pair: no arrows, one arrow, or none wanted — empty, no panic.
         assert!(draw_locks(&[], 1, &mut Rng::new(7)).is_empty());
-        assert!(draw_locks(&[a.clone()], 1, &mut Rng::new(7)).is_empty());
+        assert!(draw_locks(std::slice::from_ref(&a), 1, &mut Rng::new(7)).is_empty());
         assert!(draw_locks(&[a.clone(), under.clone()], 0, &mut Rng::new(7)).is_empty());
         // Wanting none leaves the stream where it was.
         let mut untouched = Rng::new(7);

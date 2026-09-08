@@ -1,10 +1,12 @@
 # Plan — Loose Ends' second mechanic: the knot has a key
 
-**Status:** **Phase 1 BUILT, 2026-09-08 (owner: "go with the recommendations, build phase 1");
-phases 2–4 not started.** Q1–Q5 decided at their recommendations (Review Log). Plan filename
-carries no ordinal per `CroftC/.claude/TRACKING.md` § "Plan files". Plan landed from
-`claude/looseends-mechanic` (#85); phase 1 on `claude/looseends-locks`, worktree
-`CroftC/worktrees/looseends-mechanic/fun`. Mock: `mocks/g-looseends-mechanic.html` v1, its
+**Status:** **Phase 2 BUILT, 2026-09-08 (owner: "build phase 2") — on `claude/looseends-locks-gen`,
+NOT to land before phase 3: the shipped UI maps a tap status by index, so the new status 3
+is undefined there and a locked tap does nothing silently; landing phase 2 alone puts
+invisible locks on levels 8+.** Phase 1 landed (#89). Phases 3–4 not started. Q1–Q5 decided
+at their recommendations (Review Log). Plan filename carries no ordinal per
+`CroftC/.claude/TRACKING.md` § "Plan files". Plan landed from `claude/looseends-mechanic`
+(#85); worktree `CroftC/worktrees/looseends-mechanic/fun`. Mock: `mocks/g-looseends-mechanic.html` v1, its
 Current capture in `mocks/snaps/g-looseends-mechanic/` (`current.*` from `fun@5fcb81f`).
 
 ## Problem Statement
@@ -152,12 +154,20 @@ not a move, the hint is the key. Done-when met: crate tests green (23 unit + acc
 clippy clean, mutation audit run twice and triaged (Review Log). **Executed 2026-09-08**
 (`d27e166`, `0486a31`).
 
-### Phase 2: The generator and the curve
-`Config.locks`, `level_config` from level 8, pairs drawn after the wrapper; goldens: the
-lock pairs for levels 8, 50 and 100 and the count for all 100; the acceptance suite's
-solvability over 100 levels + 365 dailies with the pair rule; `xbuild` replays a locked level
-natively and in `wasm32` to the same hash. Done-when: existing goldens unchanged to the byte
-(the diff shows only additions), the new ones recorded from the generator once read.
+### Phase 2: The generator and the curve — BUILT (not landed)
+`Config.locks` (`level_locks`: 0 through 7, then `1 + floor((n − 8) · 7 / 92)`; a daily 0),
+pairs drawn after the wrapper by `draw_locks` (a locked arrow among all but the last placed,
+a key among the later-placed arrows whose body touches, one lock per arrow, `24 × locks`
+draws then stop). Goldens: the pairs for 8, 50, 100; the structural test proves every level
+8–100 carries its full count with every key later and touching (an independent adjacency
+check). Existing goldens unchanged to the byte — the diff adds and changes none. The
+acceptance suite's solvability (100 levels + 365 dailies) passes unchanged through `is_free`.
+**xbuild had no Loose Ends scenario at all**; it has one now — four vectors in
+`looseends-core/vectors` pinned natively by `tests/vectors.rs` and replayed in `wasm32`:
+level 8 fresh, through its key then its lock, the same with the lock tapped first (a no-op,
+so the same hash), a greedy clear of level 100. Found on the way: RULES.md claimed a `Config`
+packed into a `u64`; no such packing existed — corrected to the `Origin`. **Executed
+2026-09-08** (`976c714` + the audit's closing commit).
 
 ### Phase 3: The binding and the board
 `looseends-wasm` exports pairs and the `Locked(key)` tap; `looseends.ts` draws the lock and
@@ -176,6 +186,27 @@ decision as built is the decision in the mock.
 Q1–Q5 are in mock G's decisions table with a recommendation each; the plan repeats none.
 
 ## Review Log
+
+### Phase 2 — 2026-09-08 (owner: "build phase 2")
+- RED first: the curve's values and monotonicity; levels 1–7 none, level 8 one; every lock
+  on 8–100 later-placed, touching, once, the full count; determinism over the pairs; the
+  goldens read from a failing assertion and pinned. Level 8's greedy order releases the key
+  (9) before the lock (5) — the vector records it.
+- **Mutation audit** (generate.rs + config.rs): 176 mutants — 152 caught, 9 timeouts
+  (kills), 5 unviable, **10 missed**. Two were gaps in the new tests, closed: the structural
+  test graded `touches` with itself (`+ → *`, diagonal adjacency, passed its own check) —
+  now an adjacency check written the other way round, plus a direct `touches` test; and
+  `draw_locks`' guard and budget had no direct caller — now graded on two touching arrows,
+  no arrows, one arrow, none wanted (stream untouched), and two that never touch (empty,
+  exactly the budget spent). One older: `daily_config`'s `9 +` invisible on a seed whose
+  width draw is zero — a second daily golden (2026-09-14, draw 3). Two **corpus-equivalent**
+  and left: `<` → `<=` on the placement loop (no level places a target+1th arrow before
+  its attempts run out) and `>` → `>=` on the best-attempt tie (no tie on levels 1, 50 or
+  any count). **Second run**: 176 mutants — 157 caught, 12 timeouts, 5 unviable, **2
+  missed**: exactly those two.
+- **Landing held**: the UI's `TAP[status]` table has three entries, so status 3 is
+  `undefined` — neither released nor blocked — and a locked tap does nothing silently.
+  Phase 3 lands the draw and the flash; phase 2 lands with it.
 
 ### Phase 1 — 2026-09-08 (owner: "go with the recommendations, build phase 1")
 - Decisions, all at the mock's recommendation: **Q1** locks from level 8, one, then
