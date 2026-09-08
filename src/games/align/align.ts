@@ -15,6 +15,7 @@ import { Align, type Action, type BoardView, type Cell, type SharedVerify } from
 import { decodeRecord, encodeRecord, type AlignEnvelope } from "./align-outcome.js";
 import { dayIndexUTC } from "../share.js";
 import {
+  padVisible,
   alignHapticsEnabled,
   alignMoveSpeed,
   ALIGN_MOVE_SPEED_SPEC,
@@ -24,6 +25,7 @@ import {
   setAlignHaptics,
   setAlignMoveSpeed,
 } from "../../settings.js";
+import { renderPad } from "../../pad.js";
 
 declare global {
   interface Window {
@@ -517,48 +519,36 @@ export function alignModule(): GameModule {
     }
   };
 
-  interface TouchOpts {
-    /** Auto-repeat while held (after the initial delay). */
-    repeat?: boolean;
-    /** Repeat interval in ms; read at hold-start so a settings change applies to
-     *  the next press. Defaults to the soft-drop cadence. */
-    repeatMs?: () => number;
-    /** Extra class for row-specific sizing. */
-    cls?: string;
-  }
-
-  const touchButton = (label: string, aria: string, a: Action, opts: TouchOpts = {}): HTMLElement => {
-    const { repeat = false, repeatMs, cls = "" } = opts;
-    const b = el(
-      "button",
-      { type: "button", class: cls ? `al-tbtn ${cls}` : "al-tbtn", "aria-label": aria },
-      label,
-    );
-    let delay = 0;
-    let timer = 0;
-    const fire = (): void => act(a);
-    const stop = (): void => {
-      if (delay) window.clearTimeout(delay);
-      if (timer) window.clearInterval(timer);
-      delay = 0;
-      timer = 0;
-    };
-    b.addEventListener("pointerdown", (e) => {
-      e.preventDefault();
-      haptic();
-      fire();
-      if (!repeat) return;
-      const gap = repeatMs ? repeatMs() : SOFT_REPEAT_MS;
-      // Wait a beat (DAS) so a tap is one cell, then auto-repeat at `gap`.
-      delay = window.setTimeout(() => {
-        fire();
-        timer = window.setInterval(fire, gap);
-      }, TOUCH_DAS_MS);
+  // The well's own gestures (phase 7): a tap turns the piece, a flick down drops
+  // it, a flick sideways shifts it one cell — so a phone with the pad Off still
+  // plays with one thumb. Everything routes through `act`, like a key.
+  const attachWellGestures = (well: HTMLCanvasElement): void => {
+    let sx = 0;
+    let sy = 0;
+    let down = false;
+    well.addEventListener("pointerdown", (e) => {
+      down = true;
+      sx = e.clientX;
+      sy = e.clientY;
     });
-    b.addEventListener("pointerup", stop);
-    b.addEventListener("pointerleave", stop);
-    b.addEventListener("pointercancel", stop);
-    return b;
+    well.addEventListener("pointerup", (e) => {
+      if (!down) return;
+      down = false;
+      const dx = e.clientX - sx;
+      const dy = e.clientY - sy;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < 14) {
+        act("RotCW");
+        return;
+      }
+      if (Math.abs(dy) > Math.abs(dx)) {
+        if (dy > 40) act("HardDrop");
+        return;
+      }
+      act(dx > 0 ? "ShiftR" : "ShiftL");
+    });
+    well.addEventListener("pointercancel", () => {
+      down = false;
+    });
   };
 
   // --- what the frame shows: three stats, the mode chip, verbs, the New game card, preferences ---
@@ -627,38 +617,35 @@ export function alignModule(): GameModule {
     const sideR = el("div", { class: "al-side" }, el("div", { class: "al-label" }, "Next"), nextCanvas);
     const stage = el("div", { class: "al-stage" }, sideL, canvas, sideR);
 
-    // Thumb-first layout, sized to the board width: a wide 50/50 move row, a
-    // rotate row with each direction under its matching arrow, then a drop/hold
-    // row (soft · hard · hold). Every action still routes through the core.
+    // The split pad (phase 7, mock F Q4): move and hold under the left thumb,
+    // turn and drop under the right; 64px targets, beneath the well and never
+    // over it (owner, 2026-09-05). Shown per the common preference; the keys
+    // and the well's own gestures always work.
     const moveRepeat = (): number => moveSpeedToMs(alignMoveSpeed());
-    const moveRow = el(
-      "div",
-      { class: "al-touch-row al-touch-move" },
-      touchButton("◄", "Move left", "ShiftL", { repeat: true, repeatMs: moveRepeat, cls: "al-tbtn-move" }),
-      touchButton("►", "Move right", "ShiftR", { repeat: true, repeatMs: moveRepeat, cls: "al-tbtn-move" }),
-    );
-    const rotRow = el(
-      "div",
-      { class: "al-touch-row al-touch-rot" },
-      touchButton("⟲", "Rotate counter-clockwise", "RotCCW", { cls: "al-tbtn-rot" }),
-      touchButton("⟳", "Rotate clockwise", "RotCW", { cls: "al-tbtn-rot" }),
-    );
-    const dropRow = el(
-      "div",
-      { class: "al-touch-row al-touch-drop" },
-      touchButton("▼", "Soft drop", "SoftStep", { repeat: true, cls: "al-tbtn-soft" }),
-      touchButton("⤓", "Hard drop", "HardDrop", { cls: "al-tbtn-hard" }),
-      touchButton("⇄", "Hold", "Hold", { cls: "al-tbtn-hold" }),
-    );
-    const pad = el(
-      "div",
-      { class: "al-touch", role: "group", "aria-label": "Controls" },
-      moveRow,
-      rotRow,
-      dropRow,
-    );
+    const pad = padVisible()
+      ? renderPad({
+          layout: "split",
+          label: "Controls",
+          left: [
+            { id: "ShiftL", glyph: "◄", label: "Move left", repeat: true, cls: "al-pad-move" },
+            { id: "ShiftR", glyph: "►", label: "Move right", repeat: true, cls: "al-pad-move" },
+            { id: "Hold", glyph: "⇄", label: "Hold", cls: "al-pad-hold" },
+          ],
+          right: [
+            { id: "RotCCW", glyph: "⟲", label: "Rotate counter-clockwise" },
+            { id: "RotCW", glyph: "⟳", label: "Rotate clockwise" },
+            { id: "SoftStep", glyph: "▼", label: "Soft drop", repeat: true },
+            { id: "HardDrop", glyph: "⤓", label: "Hard drop" },
+          ],
+          repeatMs: (id) => (id === "SoftStep" ? SOFT_REPEAT_MS : moveRepeat()),
+          dasMs: TOUCH_DAS_MS,
+          haptic: () => haptic(),
+          onPress: (id) => act(id as Action),
+        })
+      : null;
+    attachWellGestures(canvas);
 
-    const wrap = el("div", { class: "al-game" }, callout, stage, pad, statusEl);
+    const wrap = el("div", { class: "al-game" }, callout, stage, ...(pad ? [pad] : []), statusEl);
     return wrap;
   };
 
@@ -801,7 +788,13 @@ export function alignModule(): GameModule {
       container = c;
       gf = services?.frame ?? null;
       disposed = false;
-      gf?.onSettingsChange(() => declare()); // Hints flips the verb
+      gf?.onSettingsChange(() => {
+        declare(); // Hints flips the verb
+        // The pad preference (phase 7) adds or removes the pad: rebuild only then,
+        // so a Hints flip never replaces the well under a thumb.
+        const has = Boolean(container?.querySelector(".gf-pad"));
+        if (has !== padVisible()) rebuild();
+      });
       declare();
       Object.assign(pal, palette());
       container.replaceChildren(el("div", { class: "sol-loading" }, "Loading Align…"));

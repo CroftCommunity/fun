@@ -12,6 +12,14 @@ earlier is in `git log`.
 
 ## 2026-09
 
+- 2026-09-08 **2048, Align, every game:** one shape for hand controls. Settings → Every game
+  gains **On-screen controls: Auto / On / Off** — Auto shows a pad on a touch screen and hides
+  it where there is a keyboard; swipes and keys always work. 2048's arrow pad and Align's
+  buttons are the same pad: translucent 60–64px targets over the game's ground. Align's is
+  the split — move and Hold under the left thumb, the rotates and drops under the right —
+  beneath the well, never over it, and the well itself now takes a tap to rotate, a flick
+  down to drop, a flick sideways to move. With the pad off, 2048's tiles take its room.
+  (mock F Q3 + Q4, phase 7, play-surface)
 - 2026-09-08 **every game:** the stage carries the game's own ground — a pool of the board's
   colour under the board and a faint vignette at the edges, so the room around a felt table is
   green and the room around a mancala board is wood. The frame holds the hook; the colour is

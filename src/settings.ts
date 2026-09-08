@@ -25,6 +25,7 @@ const CS_ICONS_KEY = "fun-color-sort-icons";
 const CS_STRICT_KEY = "fun-color-sort-strict";
 const CONTROLS_LEFT_KEY = "fun-controls-left";
 const CHESS_PACK_KEY = "fun-chess-pack";
+const PAD_KEY = "fun-pad";
 
 /** Pure resolver: an explicit stored "on"/"off" wins; otherwise the default. */
 export function resolveBool(stored: string | null, fallback: boolean): boolean {
@@ -812,4 +813,41 @@ export function setChessPack(pack: ChessPack): void {
   } catch {
     // Storage denied (private mode): the setting still applies for the session.
   }
+}
+
+// ---------- On-screen controls (the pad — phase 7, mock F Q3) ----------
+
+/** Auto shows a pad on a coarse pointer (a phone, a tablet); On and Off override. */
+export type PadMode = "auto" | "on" | "off";
+
+/** Pure resolver: On or Off if stored, else Auto. */
+export function resolvePadMode(stored: string | null): PadMode {
+  return stored === "on" || stored === "off" ? stored : "auto";
+}
+
+/** Pure: does a pad show, given the mode and whether the pointer is coarse? */
+export function padShown(mode: PadMode, coarse: boolean): boolean {
+  return mode === "on" || (mode === "auto" && coarse);
+}
+
+/** The stored mode — **Auto by default**. */
+export function padMode(): PadMode {
+  try {
+    return resolvePadMode(localStorage.getItem(PAD_KEY));
+  } catch {
+    return "auto";
+  }
+}
+export function setPadMode(mode: PadMode): void {
+  try {
+    localStorage.setItem(PAD_KEY, mode);
+  } catch {
+    // Storage denied (private mode): the setting still applies for the session.
+  }
+}
+
+/** Should a game render its pad right now? Reads the preference and the pointer. */
+export function padVisible(): boolean {
+  const coarse = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
+  return padShown(padMode(), coarse);
 }

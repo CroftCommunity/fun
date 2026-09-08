@@ -18,11 +18,17 @@ const filled = (page: Page): Promise<number> =>
     window.__t2048!.game.board().cells.flat().filter((v: number) => v !== 0).length,
   );
 
+// The pad is Auto by default (phase 7): shown on a coarse pointer only. These
+// specs drive it on both engines, so they turn it On.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("fun-pad", "on"));
+});
+
 test("the board, arrow pad, and HUD render", { tag: "@smoke" }, async ({ page }) => {
   await page.goto("/2048/?seed=7");
   await ready(page);
   await expect(page.locator(".t48-board")).toBeVisible();
-  await expect(page.locator(".t48-pad")).toBeVisible();
+  await expect(page.locator(".gf-pad")).toBeVisible();
   // Score and best tile are the frame's meters; the game's own bar and banner are gone.
   await expect(page.locator('.gf-stat[data-meter="score"]')).toContainText(/score/i);
   await expect(page.locator('.gf-stat[data-meter="best"]')).toContainText(/best tile/i);
@@ -40,7 +46,7 @@ test("an arrow move slides and spawns a tile", async ({ page }) => {
   const before = await filled(page);
   // Use the core's hint to pick a guaranteed-legal direction, then tap that arrow.
   const dir = await page.evaluate(() => window.__t2048!.game.hint());
-  await page.locator(`.t48-arrow[data-dir="${dir}"]`).click();
+  await page.locator(`.gf-pad [data-pad="${dir}"]`).click();
   const after = await filled(page);
   expect(after).toBe(before + 1); // a legal move spawns one new tile
 });
@@ -56,7 +62,7 @@ test("the core decides legality — no partial moves (spawn only on a real slide
       hash: window.__t2048!.game.currentHash(),
       n: window.__t2048!.game.board().cells.flat().filter((v: number) => v !== 0).length,
     }));
-    await page.locator(`.t48-arrow[data-dir="${d}"]`).click();
+    await page.locator(`.gf-pad [data-pad="${d}"]`).click();
     const after = await page.evaluate(() => ({
       hash: window.__t2048!.game.currentHash(),
       n: window.__t2048!.game.board().cells.flat().filter((v: number) => v !== 0).length,
@@ -137,8 +143,8 @@ test("a slide does not move the board, and neither does the settings sheet", { t
   await page.goto("/2048/?seed=7");
   await ready(page);
   const v = await boardTopStable(page, ".t48-board", async () => {
-    await page.locator('.t48-arrow[data-dir="Left"]').click();
-    await page.locator('.t48-arrow[data-dir="Up"]').click();
+    await page.locator('.gf-pad [data-pad="Left"]').click();
+    await page.locator('.gf-pad [data-pad="Up"]').click();
     await page.locator('.gf-verb[data-verb="settings"]').click();
     await expect(page.locator(".gf-sheet")).toBeVisible();
     await page.keyboard.press("Escape");
@@ -152,7 +158,7 @@ test("leaving mid-game and returning to the bare URL resumes the same board", as
   await ready(page);
   const board = (): Promise<string> => page.evaluate(() => JSON.stringify(window.__t2048!.game.board()));
   const start = await board();
-  for (const dir of ["Left", "Up", "Right", "Down"]) await page.locator(`.t48-arrow[data-dir="${dir}"]`).click();
+  for (const dir of ["Left", "Up", "Right", "Down"]) await page.locator(`.gf-pad [data-pad="${dir}"]`).click();
   const after = await board();
   expect(after).not.toBe(start);
   await page.goto("/2048/");
@@ -177,7 +183,7 @@ test("the board is centered and shares a centerline with the arrow pad", async (
   await page.goto("/2048/?seed=7");
   await ready(page);
   const board = await page.locator(".t48-board").boundingBox();
-  const pad = await page.locator(".t48-pad").boundingBox();
+  const pad = await page.locator(".gf-pad").boundingBox();
   const area = await page.locator(".gf-stage").boundingBox();
   expect(board).not.toBeNull();
   expect(pad).not.toBeNull();

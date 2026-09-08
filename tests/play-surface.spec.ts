@@ -123,7 +123,7 @@ const GRIDS: readonly { id: string; url: string; surface: readonly string[] }[] 
   { id: "chess", url: "/chess/?seed=7", surface: [".chess-board"] },
   { id: "drop4", url: "/drop4/?seed=7", surface: [".drop4-board"] },
   { id: "dots", url: "/dots/?seed=7", surface: [".dots-board"] },
-  { id: "2048", url: "/2048/?seed=7", surface: [".t48-board", ".t48-pad"] },
+  { id: "2048", url: "/2048/?seed=7", surface: [".t48-board", ".gf-pad"] },
   { id: "wyrdle", url: "/wyrdle/?seed=7", surface: [".wy-grid", ".wy-keyboard"] },
   { id: "blockdoku", url: "/blockdoku/?seed=7", surface: [".bdk-board", ".bdk-tray"] },
 ];
@@ -222,4 +222,66 @@ test("mock F4.1: every game's stage carries its own ground — a tint of the gam
   }
   // Not one ground for all: at least six distinct colours across the shelf.
   expect(new Set(seen.values()).size).toBeGreaterThanOrEqual(6);
+});
+
+// --- F5 (phase 7, Q3 + Q4): one shape for hand controls -------------------------
+
+test("mock F5.1: the pad follows the preference — Auto shows it on a coarse pointer only, On and Off override", async ({ page }) => {
+  await page.goto("/2048/?seed=7");
+  await expect(page.locator(".t48-board")).toBeVisible();
+  const coarse = await page.evaluate(() => matchMedia("(pointer: coarse)").matches);
+  await expect(page.locator(".gf-pad")).toHaveCount(coarse ? 1 : 0);
+  // The stage is a phone's or a desktop's: the setting sheet is where the row lives on both.
+  await page.evaluate(() => localStorage.setItem("fun-pad", "on"));
+  await page.reload();
+  await expect(page.locator(".t48-board")).toBeVisible();
+  await expect(page.locator(".gf-pad.gf-pad-dpad")).toHaveCount(1);
+  await page.evaluate(() => localStorage.setItem("fun-pad", "off"));
+  await page.reload();
+  await expect(page.locator(".t48-board")).toBeVisible();
+  await expect(page.locator(".gf-pad")).toHaveCount(0);
+  // Off is not a smaller board: the room the pad took goes to the tiles.
+  const cell = await page.locator(".t48-tile").first().boundingBox();
+  await page.evaluate(() => localStorage.setItem("fun-pad", "on"));
+  await page.reload();
+  await expect(page.locator(".gf-pad")).toHaveCount(1);
+  const cellWithPad = await page.locator(".t48-tile").first().boundingBox();
+  expect(cell!.width).toBeGreaterThanOrEqual(cellWithPad!.width);
+});
+
+test("mock F5.2: the common row — On-screen controls: Auto / On / Off — lives in Every game, and changing it re-renders the pad in place", async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  await page.goto("/2048/?seed=7");
+  await expect(page.locator(".t48-board")).toBeVisible();
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  const row = page.locator('.gf-sheet [data-setting="pad"]');
+  await expect(row.locator("input")).toHaveCount(3);
+  await expect(row.locator('input[value="auto"]')).toBeChecked();
+  await row.locator('input[value="off"]').check();
+  await expect(page.locator(".gf-pad")).toHaveCount(0);
+  await row.locator('input[value="on"]').check();
+  await expect(page.locator(".gf-pad")).toHaveCount(1);
+});
+
+test("mock F5.3: Align's pad is the split — move and hold under the left thumb, turn and drop under the right, 64px targets, the well clear of them", async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  await page.addInitScript(() => localStorage.setItem("fun-pad", "on"));
+  await page.goto("/align/?seed=7");
+  await expect(page.locator(".al-board")).toBeVisible();
+  const pad = page.locator(".gf-pad.gf-pad-split");
+  await expect(pad).toHaveCount(1);
+  for (const b of await pad.locator("button").all()) {
+    const box = await b.boundingBox();
+    expect(box!.width, "a thumb target").toBeGreaterThanOrEqual(56);
+    expect(box!.height, "a thumb target").toBeGreaterThanOrEqual(56);
+  }
+  const [well, left, right] = await Promise.all([
+    page.locator(".al-board").boundingBox(),
+    pad.locator(".gf-pad-left").boundingBox(),
+    pad.locator(".gf-pad-right").boundingBox(),
+  ]);
+  // Owner, 2026-09-05: "the controls are overlapping the board on mobile view" — never again.
+  expect(well!.y + well!.height, "the well ends above the clusters").toBeLessThanOrEqual(Math.min(left!.y, right!.y) + 1);
+  expect(well!.height, "the well keeps its height").toBeGreaterThanOrEqual(380);
+  expect(left!.x + left!.width, "left cluster is left").toBeLessThan(right!.x);
 });

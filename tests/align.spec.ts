@@ -19,11 +19,17 @@ const activeMinX = (page: Page): Promise<number> =>
     return Math.min(...a.cells.map((c) => c[0]));
   });
 
+// The pad is Auto by default (phase 7): shown on a coarse pointer only. These
+// specs drive it on both engines, so they turn it On.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("fun-pad", "on"));
+});
+
 test("the board, touch pad, and HUD render with an active piece", { tag: "@smoke" }, async ({ page }) => {
   await page.goto("/align/?seed=7");
   await ready(page);
   await expect(page.locator(".al-board")).toBeVisible();
-  await expect(page.locator(".al-touch")).toBeVisible();
+  await expect(page.locator(".gf-pad")).toBeVisible();
   // Score, level and lines are the frame's meters; the side panels keep Hold and Next.
   await expect(page.locator('.gf-stat[data-meter="score"]')).toContainText(/score/i);
   await expect(page.locator('.gf-stat[data-meter="level"]')).toContainText(/level/i);
@@ -34,22 +40,18 @@ test("the board, touch pad, and HUD render with an active piece", { tag: "@smoke
   expect(hasActive).toBe(true);
 });
 
-test("the touch pad is the three-row layout: move · rotate · drop+hold", async ({ page }) => {
+test("the pad is the split (phase 7, Q4): move + hold under the left thumb, turn + drop under the right", async ({ page }) => {
   await page.goto("/align/?seed=7");
   await ready(page);
-  // Row 1: two wide movement buttons (left, right).
-  await expect(page.locator(".al-touch-move button")).toHaveCount(2);
+  await expect(page.locator(".gf-pad-left button")).toHaveCount(3);
   await expect(page.getByRole("button", { name: /move left/i })).toBeVisible();
   await expect(page.getByRole("button", { name: /move right/i })).toBeVisible();
-  // Row 2: both rotate directions, one under each arrow.
-  await expect(page.locator(".al-touch-rot button")).toHaveCount(2);
+  await expect(page.getByRole("button", { name: /^hold/i })).toBeVisible();
+  await expect(page.locator(".gf-pad-right button")).toHaveCount(4);
   await expect(page.getByRole("button", { name: /rotate counter-clockwise/i })).toBeVisible();
   await expect(page.getByRole("button", { name: /rotate clockwise/i })).toBeVisible();
-  // Row 3: soft drop, hard drop, hold.
-  await expect(page.locator(".al-touch-drop button")).toHaveCount(3);
   await expect(page.getByRole("button", { name: /soft drop/i })).toBeVisible();
   await expect(page.getByRole("button", { name: /hard drop/i })).toBeVisible();
-  await expect(page.getByRole("button", { name: /^hold/i })).toBeVisible();
 });
 
 test("tapping the on-screen move buttons shifts the piece through the core", async ({ page }) => {

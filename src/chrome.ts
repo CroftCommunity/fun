@@ -18,10 +18,12 @@ import { clearProgress, readProgress, writeProgress, type Progress } from "./pro
 import {
   controlsOnLeft,
   declareAssistanceEnabled,
+  padMode,
   hintsEnabled,
   setControlsOnLeft,
   setDeclareAssistance,
   setHintsEnabled,
+  setPadMode,
 } from "./settings.js";
 import { displayName } from "./contract.js";
 import {
@@ -348,6 +350,19 @@ export function boot(root: HTMLElement = document.body): Chrome {
           label: "Sound",
           value: music.isEnabled(),
           onChange: (on) => music.setEnabled(on),
+        },
+        {
+          kind: "choice",
+          id: "pad",
+          label: "On-screen controls",
+          hint: "The arrow pad in 2048, the thumb clusters in Align. Auto shows them on a touch screen; swipes and keys always work.",
+          value: padMode(),
+          options: [
+            { value: "auto", label: "Auto" },
+            { value: "on", label: "On" },
+            { value: "off", label: "Off" },
+          ],
+          onChange: (v) => setPadMode(v === "on" || v === "off" ? v : "auto"),
         },
         {
           kind: "toggle",
