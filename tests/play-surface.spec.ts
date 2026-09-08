@@ -252,6 +252,7 @@ test("mock F3.1: at 390×844 a long toast wraps inside the stage instead of runn
 const GROUNDED = ["chess", "othello", "checkers", "drop4", "dots", "furrow", "wyrdle", "2048", "align", "bubble", "looseends", "solitaire", "cribbage", "blockdoku", "mahjong", "color-sort", "trio-tumble", "orchard-drop"] as const;
 
 test("mock F4.1: every game's stage carries its own ground — a tint of the game's board colour, not the gallery's flat black", async ({ page }) => {
+  test.setTimeout(120_000); // eighteen page loads, each through its poster's Play
   await page.setViewportSize(DESKTOP);
   const seen = new Map<string, string>();
   for (const id of GROUNDED) {

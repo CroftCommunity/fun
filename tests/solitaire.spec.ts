@@ -7,6 +7,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { boardTopStable } from "./helpers/board-top.js";
+import { flipToggle } from "./helpers/toggle.js";
 
 /** Wait until the board and the test hook are live. */
 async function ready(page: Page): Promise<void> {
@@ -179,7 +180,7 @@ test("with hints off, 'I'm stuck' ends the game and reports whether a move exist
   // Disable hints in the settings sheet's "Every game" section — the verb flips to "I'm stuck".
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator('.gf-verb[data-verb="settings"]').click();
-  await page.locator('.gf-sheet [data-setting="hints"] .sheet-toggle-track').click({ force: true });
+  await flipToggle(page, ".gf-sheet", "hints");
   await page.keyboard.press("Escape");
   const stuck = page.locator('.gf-verb[data-verb="stuck"]');
   await expect(stuck).toBeVisible();
@@ -218,7 +219,7 @@ test("auto-play (opt-in) sends safe cards to the foundations", async ({ page }) 
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator('.gf-verb[data-verb="settings"]').click();
-  await page.locator('.gf-sheet [data-setting="autoplay"] .sheet-toggle-track').click({ force: true });
+  await flipToggle(page, ".gf-sheet", "autoplay");
   await page.keyboard.press("Escape");
   await page.locator(".sol-stock").click(); // seed 0: draws the Ace of Hearts
 

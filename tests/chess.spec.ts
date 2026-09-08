@@ -16,6 +16,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
 import { boardTopStable } from "./helpers/board-top.js";
+import { flipToggle } from "./helpers/toggle.js";
 
 async function ready(page: Page): Promise<void> {
   await expect(page.locator(".chess-board")).toBeVisible();
@@ -340,7 +341,7 @@ async function enableTutor(page: Page): Promise<void> {
   // The track a player taps: the checkbox is a 1px hidden input, and with the Pieces row
   // above it (phase 10b) it sits past the sheet's fold on a phone — a force-click there
   // landed nowhere on CI's WebKit.
-  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-track').click({ force: true });
+  await flipToggle(page, ".gf-sheet", "tutor");
   await page.keyboard.press("Escape");
 }
 
@@ -353,7 +354,7 @@ test("the tutor panel is off by default and appears when enabled in settings", a
   // The track a player taps: the checkbox is a 1px hidden input, and with the Pieces row
   // above it (phase 10b) it sits past the sheet's fold on a phone — a force-click there
   // landed nowhere on CI's WebKit.
-  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-track').click({ force: true });
+  await flipToggle(page, ".gf-sheet", "tutor");
   await expect(page.locator(".chess-tutor-explain")).toBeVisible();
 });
 

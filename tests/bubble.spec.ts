@@ -8,6 +8,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { boardTopStable } from "./helpers/board-top.js";
+import { flipToggle } from "./helpers/toggle.js";
 
 async function ready(page: Page): Promise<void> {
   await expect(page.locator(".bub-canvas")).toBeVisible();
@@ -48,7 +49,7 @@ test("levels: the level, score and clock are meters; the clock is a fixed slot t
   await expect(page.locator(".bub-hud .bub-drop")).toContainText(/drops in/i);
   await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
   await page.locator('.gf-verb[data-verb="settings"]').click();
-  await page.locator('.gf-sheet [data-setting="timer"] .sheet-toggle-track').click({ force: true });
+  await flipToggle(page, ".gf-sheet", "timer");
   await page.keyboard.press("Escape");
   await expect(clock).toContainText(/\d:\d\d/);
 });
@@ -78,7 +79,7 @@ test("firing does not move the board, and neither does toggling the timer", { ta
     await page.locator(".bub-fire").click();
     await page.waitForFunction((b) => window.__bubble!.game.levelBoard().shotsToInsert !== b, before);
     await page.locator('.gf-verb[data-verb="settings"]').click();
-    await page.locator('.gf-sheet [data-setting="timer"] .sheet-toggle-track').click({ force: true });
+    await flipToggle(page, ".gf-sheet", "timer");
     await page.keyboard.press("Escape");
     await expect(page.locator('.gf-stat[data-meter="clock"]')).toContainText(/\d:\d\d/);
   });
@@ -363,7 +364,7 @@ test("with hints off, 'I'm done' ends the round", async ({ page }) => {
   await ready(page);
   await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
   await page.locator('.gf-verb[data-verb="settings"]').click();
-  await page.locator('.gf-sheet [data-setting="hints"] .sheet-toggle-track').click({ force: true });
+  await flipToggle(page, ".gf-sheet", "hints");
   await page.keyboard.press("Escape");
   await page.locator('.gf-verb[data-verb="done"]').click();
   await expect(page.locator(".sol-result")).toBeVisible();
