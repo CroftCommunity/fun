@@ -12,6 +12,19 @@ earlier is in `git log`.
 
 ## 2026-09
 
+- 2026-09-08 **furrow:** the board stands up on a phone. Upright is the across board turned a
+  quarter: your six pits are the right-hand column sowing upward into your store at the top,
+  The Engine's the left-hand column sowing down into its store at the bottom; the pits grow to
+  44px and more from the stage's height and nothing scrolls. Settings → Board: Auto / Across /
+  Upright; Auto follows the screen's shape, so a desktop stays across. The core's pit order
+  never changes — only the CSS turns. (mock F Q5, phase 8, play-surface)
+- 2026-09-08 **loose ends:** level 1 is a puzzle. The campaign curve is rebased — ten arrows
+  on a 6×8 with snakes of 3–5 at level 1, ~16 by the end of Easy, the top of the curve where
+  it was (68 on 18×26) — so the first board is a knot to read rather than three arrows on a
+  5×6. Golden vectors re-recorded; the daily board is untouched; solved levels stay solved.
+  (mock F Q10, phase 11, play-surface)
+- 2026-09-08 **guide shots:** the Furrow result step taps through one evaluate and waits for
+  the core to take the move, so a re-rendered pit can no longer slip out from under the tap.
 - 2026-09-08 **2048, Align, every game:** one shape for hand controls. Settings → Every game
   gains **On-screen controls: Auto / On / Off** — Auto shows a pad on a touch screen and hides
   it where there is a keyboard; swipes and keys always work. 2048's arrow pad and Align's
