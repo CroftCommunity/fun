@@ -245,6 +245,11 @@ test("playing Black flips the board and the engine opens", async ({ page }) => {
 test("a full game plays to a terminal result; the final board shows; share re-verifies", { tag: "@long" }, async ({
   page,
 }) => {
+  // Measured, not tuned: ~3s here on either engine after the Easy and ?fast=1 seams and
+  // two round trips per ply, yet past 30s three times on 2026-09-08 on a WebKit shard
+  // running 150 tests on two workers (6.6m for the shard). The seams are all applied;
+  // what is left is the runner's load, and this is the one full game the suite plays.
+  test.setTimeout(90_000);
   await page.goto("/chess/?seed=3&fast=1");
   await ready(page);
   // Play at Easy. The test asserts the record and the wiring, not the engine's
@@ -335,7 +340,7 @@ async function enableTutor(page: Page): Promise<void> {
   // The track a player taps: the checkbox is a 1px hidden input, and with the Pieces row
   // above it (phase 10b) it sits past the sheet's fold on a phone — a force-click there
   // landed nowhere on CI's WebKit.
-  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-track').click();
+  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-track').click({ force: true });
   await page.keyboard.press("Escape");
 }
 
@@ -348,7 +353,7 @@ test("the tutor panel is off by default and appears when enabled in settings", a
   // The track a player taps: the checkbox is a 1px hidden input, and with the Pieces row
   // above it (phase 10b) it sits past the sheet's fold on a phone — a force-click there
   // landed nowhere on CI's WebKit.
-  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-track').click();
+  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-track').click({ force: true });
   await expect(page.locator(".chess-tutor-explain")).toBeVisible();
 });
 

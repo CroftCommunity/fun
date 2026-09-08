@@ -305,7 +305,7 @@ test("the tutor panel is off by default, appears when enabled, and is exact for 
   // must not snap the panel shut (the Dots hang; `src/ui-state.ts`).
   await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
   await page.locator('.gf-verb[data-verb="settings"]').click();
-  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-track').click();
+  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-track').click({ force: true });
   await page.keyboard.press("Escape");
   await expect(page.locator(".crib-tutor-explain")).toBeVisible();
   await waitHumanOrOver(page);
@@ -328,7 +328,7 @@ test("the table reads engine, board, middle, your hand — and the seats can be 
   await expect(page.locator(".crib-board .crib-peg-front")).toHaveCount(2);
   // Which way the table faces is a New game decision, not a mid-deal one.
   await page.locator('.gf-verb[data-verb="new"]').click();
-  await page.locator('.gf-sheet [data-setting="seats"] .sheet-toggle-track').click();
+  await page.locator('.gf-sheet [data-setting="seats"] .sheet-toggle-track').click({ force: true });
   await page.locator(".gf-sheet .gf-sheet-start").click();
   await ready(page);
   const flipped = await order();

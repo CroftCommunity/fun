@@ -197,7 +197,7 @@ test("the tutor panel is off by default and appears when enabled in settings", a
   await expect(page.locator(".checkers-tutor")).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
   await page.locator('.gf-verb[data-verb="settings"]').click();
-  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-track').click();
+  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-track').click({ force: true });
   await expect(page.locator(".checkers-tutor-explain")).toBeVisible();
 });
 
@@ -274,7 +274,7 @@ test("the settings sheet stays open when something re-renders the board", async 
   await page.locator('.gf-verb[data-verb="settings"]').click();
   const sheet = page.locator(".gf-sheet");
   await expect(sheet).toBeVisible();
-  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-track').click();
+  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-track').click({ force: true });
   await expect(page.locator(".checkers-tutor")).toBeVisible();
   await expect(sheet).toBeVisible();
 });

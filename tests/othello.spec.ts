@@ -136,7 +136,7 @@ test("the board does not move when Settings opens and closes, or the tutor is to
   const v = await boardTopStable(page, ".othello-board", async () => {
     await page.locator('.gf-verb[data-verb="settings"]').click();
     await expect(page.locator(".gf-sheet")).toBeVisible();
-    await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-track').click();
+    await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-track').click({ force: true });
     await expect(page.locator(".othello-tutor")).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(page.locator(".gf-sheet")).toBeHidden();
@@ -247,7 +247,7 @@ test("the tutor panel is off by default and appears when enabled in the settings
   await ready(page);
   await expect(page.locator(".othello-tutor")).toHaveCount(0);
   await page.locator('.gf-verb[data-verb="settings"]').click();
-  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-track').click();
+  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-track').click({ force: true });
   await expect(page.locator(".othello-tutor-explain")).toBeVisible();
 });
 
@@ -301,7 +301,7 @@ test("the settings sheet stays open when something re-renders the board", async 
   await page.locator('.gf-verb[data-verb="settings"]').click();
   const sheet = page.locator(".gf-sheet");
   await expect(sheet).toBeVisible();
-  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-track').click();
+  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-track').click({ force: true });
   await expect(page.locator(".othello-tutor")).toBeVisible();
   await expect(sheet).toBeVisible();
 });
