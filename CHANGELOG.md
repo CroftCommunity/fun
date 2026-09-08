@@ -12,6 +12,16 @@ earlier is in `git log`.
 
 ## 2026-09
 
+- 2026-09-08 **furrow, trio tumble, solitaire, bubble, cribbage:** the rest of the fill. Each
+  now sizes from the stage the way the eight grids do: Furrow's pits across from the width
+  (a desktop board was 448px wide in a 960px stage), Trio Tumble's gems from the short side,
+  solitaire's cards from the width (real card size on a desktop), Bubble's canvas from the
+  height with its 22rem cap gone, cribbage's table and cards from the width. Every how-to
+  shot regenerated — the ground changed every stage. (mock F2.6–F2.7, phase 4, play-surface)
+- 2026-09-08 **gate:** `tools/stale-shots.sh` runs first and names any game whose module
+  changed against `origin/main` without a how-to shot of its own changing (PR #79 landed
+  eight resized boards with every shot stale). No `origin/main` — CI's shallow checkout —
+  means nothing to compare, and it says so.
 - 2026-09-08 **drop 4, othello, checkers, chess, dots, furrow, cribbage:** life on the versus
   boards. One vocabulary of beats, played from the move the core already resolved: Drop 4's
   disc falls into its slot and settles; Othello's turned discs flip over, outward from the

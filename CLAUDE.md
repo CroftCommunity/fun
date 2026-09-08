@@ -188,10 +188,11 @@ at them and add what's specific to this repo. Git identity: chasemp
 - **Commit at every stable (green) point.** No batching phases. Each commit is a
   working checkpoint. Co-author trailer, naming **the model that actually wrote
   the commit** — currently
-  `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`. The name
+  `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`. The name
   is attribution, so it tracks the model rather than this line: a newer model
   updates it here as part of its first commit rather than signing a predecessor's
-  name. (Was pinned to Opus 4.8 until 2026-08-07, Opus 5 until 2026-08-29.) Don't push/PR unless asked.
+  name. (Was pinned to Opus 4.8 until 2026-08-07, Opus 5 until 2026-08-29, Fable 5
+  until 2026-09-08.) Don't push/PR unless asked.
 - **No stubs; built means wired means tested.** A game isn't done until it's
   reachable from its `/<id>/` URL through the drawer registry, with a wiring
   test that goes through the entry point (BUILDING-GAMES §8).
@@ -201,7 +202,10 @@ at them and add what's specific to this repo. Git identity: chasemp
   `npm run build:wasm && npm run build && npm run guide:shots` (writes
   `assets/guide/<name>.jpg`; a unit test fails on a missing referenced shot, an
   e2e fails on a 404). This is part of the definition of done for a game update,
-  alongside the how-to *copy* itself — commit the regenerated shots. Guard
+  alongside the how-to *copy* itself — commit the regenerated shots. The gate's first
+  step, `tools/stale-shots.sh`, names any game whose `src/games/<id>` changed against
+  `origin/main` without a shot of its own changing (PR #79 landed eight resized boards
+  with every shot stale, which is why the check exists). Guard
   against unrelated churn: `guide:shots` rebuilds **every** game's shots, so
   `git add` only the shots for the game you changed and `git checkout --` the
   rest (other games' JPEGs can re-encode differently run-to-run).
