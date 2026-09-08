@@ -8,7 +8,7 @@
 //! declared assistance; mistakes and hints are UI-side (not part of the move
 //! list), graded for display by [`crate::score`].
 
-use crate::board::Board;
+use crate::board::{Board, ReleaseError};
 use crate::config::{daily_config, level_config};
 use crate::generate::generate;
 use crate::hash::state_hash;
@@ -20,6 +20,9 @@ pub enum Tap {
     Released,
     /// The arrow was BLOCKED — no change (the UI charges a droplet).
     Blocked,
+    /// The arrow's ray is clear but its key (the id carried) is still on the
+    /// board — no change, no droplet: the UI flashes the key.
+    Locked(u32),
     /// The arrow was already gone (or unknown) — no change.
     Gone,
 }
@@ -87,6 +90,17 @@ impl Game {
         }
     }
 
+    /// A game over a hand-built board (tests): the origin is what a record
+    /// would carry; the board is whatever the test laid out.
+    #[cfg(test)]
+    pub(crate) fn with_board(origin: Origin, board: Board) -> Self {
+        Self {
+            origin,
+            board,
+            released: Vec::new(),
+        }
+    }
+
     /// Rebuild a game from a packed origin (used by replay / verification).
     #[must_use]
     pub fn from_packed(packed: u64) -> Self {
@@ -111,8 +125,8 @@ impl Game {
         &self.board
     }
 
-    /// Tap arrow `id`: release it if FREE, else report BLOCKED/GONE with no
-    /// change. A successful release is appended to the move list.
+    /// Tap arrow `id`: release it if FREE, else report BLOCKED / LOCKED / GONE
+    /// with no change. A successful release is appended to the move list.
     pub fn tap(&mut self, id: u32) -> Tap {
         let idx = id as usize;
         if !self.board.is_present(idx) {
@@ -123,6 +137,7 @@ impl Game {
                 self.released.push(id);
                 Tap::Released
             }
+            Err(ReleaseError::Locked(key)) => Tap::Locked(key as u32),
             Err(_) => Tap::Blocked,
         }
     }
@@ -194,6 +209,29 @@ mod tests {
         assert_eq!(g.tap(id), Tap::Released);
         assert_eq!(g.tap(id), Tap::Gone, "re-tapping a gone arrow does nothing");
         assert_eq!(g.moves(), &[id]);
+    }
+
+    #[test]
+    fn a_tap_on_a_locked_arrow_names_its_key_and_changes_nothing() {
+        use crate::board::{Arrow, Board};
+        let arrow = |cells: &[[i32; 2]], dir: [i32; 2]| Arrow {
+            cells: cells.to_vec(),
+            dir,
+        };
+        let a = arrow(&[[0, 0], [1, 0]], [1, 0]);
+        let k = arrow(&[[0, 1], [1, 1]], [1, 0]);
+        let board = Board::with_locks(5, 2, vec![a, k], vec![(0, 1)]);
+        let mut g = Game::with_board(Origin::Level(1), board);
+        assert_eq!(
+            g.tap(0),
+            Tap::Locked(1),
+            "the key is named so the UI can flash it"
+        );
+        assert_eq!(g.moves(), &[] as &[u32], "a locked tap is not a move");
+        assert_eq!(g.hint(), Some(1), "the hint is the key, never the lock");
+        assert_eq!(g.tap(1), Tap::Released);
+        assert_eq!(g.tap(0), Tap::Released, "unlocked with its key gone");
+        assert!(g.is_won());
     }
 
     #[test]
