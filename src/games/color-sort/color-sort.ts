@@ -413,6 +413,7 @@ export function colorSortModule(): GameModule {
     ];
     return {
       title: "Color Sort",
+      ground: "var(--cs-c10)",
       mode: mode === "daily" ? "Daily" : `Level ${level}`,
       // Three stats for the life of the frame (mock E2.1): moves · the mark to beat
       // (par on a daily, the level in endless) · the best level reached.

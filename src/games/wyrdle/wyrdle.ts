@@ -310,6 +310,7 @@ export function wyrdleModule(): GameModule {
     const hints = hintsEnabled();
     return {
       title: "Wyrdle",
+      ground: "var(--wy-correct)",
       mode: mode === "daily" ? "Today’s word" : "New word",
       meters: [{ kind: "stat", id: "guesses", value: board?.guessesLeft ?? maxGuesses, label: "guesses left" }],
       verbs: [

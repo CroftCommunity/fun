@@ -651,6 +651,7 @@ export function solitaireModule(): GameModule {
     const hints = hintsEnabled();
     return {
       title: "Solitaire",
+      ground: "var(--felt)",
       mode: mode === "daily" ? "Today’s deal" : "Free deal",
       meters: [
         { kind: "stat", id: "moves", value: moveCount, label: "moves" },

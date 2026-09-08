@@ -332,7 +332,10 @@ test("leaving mid-game and returning to the bare URL resumes the same position",
 async function enableTutor(page: Page): Promise<void> {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator('.gf-verb[data-verb="settings"]').click();
-  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-input').click({ force: true });
+  // The track a player taps: the checkbox is a 1px hidden input, and with the Pieces row
+  // above it (phase 10b) it sits past the sheet's fold on a phone — a force-click there
+  // landed nowhere on CI's WebKit.
+  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-track').click();
   await page.keyboard.press("Escape");
 }
 
@@ -342,7 +345,10 @@ test("the tutor panel is off by default and appears when enabled in settings", a
   await expect(page.locator(".chess-tutor")).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
   await page.locator('.gf-verb[data-verb="settings"]').click();
-  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-input').click({ force: true });
+  // The track a player taps: the checkbox is a 1px hidden input, and with the Pieces row
+  // above it (phase 10b) it sits past the sheet's fold on a phone — a force-click there
+  // landed nowhere on CI's WebKit.
+  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-track').click();
   await expect(page.locator(".chess-tutor-explain")).toBeVisible();
 });
 
@@ -388,4 +394,59 @@ test("the experimental local-AI toggle appears with a real adapter and discloses
   const row = page.locator('.gf-sheet [data-setting="local-ai"]');
   await expect(row).toHaveCount(1);
   await expect(row.locator(".sheet-hint")).toContainText(/download|one[- ]time/i);
+});
+
+// ---------- phase 10b (mock F, Q8): the set — packs, a frame, coordinates outside ----------
+
+test("chess 10b: the board is a set — a framed board with the ranks down its left and the files under it, outside the squares", async ({ page }) => {
+  await page.goto("/chess/?seed=7");
+  await ready(page);
+  const set = page.locator(".chess-set");
+  await expect(set).toHaveCount(1);
+  await expect(set.locator(".chess-ranks span")).toHaveText(["8", "7", "6", "5", "4", "3", "2", "1"]);
+  await expect(set.locator(".chess-files span")).toHaveText(["a", "b", "c", "d", "e", "f", "g", "h"]);
+  // Nothing rides on the squares any more: a square's box is the square, its label is outside.
+  await expect(page.locator(".chess-square[data-file], .chess-square[data-rank]")).toHaveCount(0);
+  // The frame is wood, not the page: it paints its own background around the board.
+  const paint = await set.evaluate((n) => getComputedStyle(n).backgroundImage + getComputedStyle(n).backgroundColor);
+  expect(paint).not.toMatch(/^none?rgba\(0, 0, 0, 0\)$/);
+  const [board, frame] = await Promise.all([page.locator(".chess-board").boundingBox(), set.boundingBox()]);
+  // A phone's frame is a hairline gutter (the 44px floor must still fit 390); a desktop's is wood.
+  expect(frame!.width).toBeGreaterThan(board!.width + 8);
+  expect(frame!.height).toBeGreaterThan(board!.height + 8);
+});
+
+test("chess 10b: playing Black turns the coordinates with the board", async ({ page }) => {
+  await page.goto("/chess/?seed=7");
+  await ready(page);
+  await page.locator('.gf-verb[data-verb="new"]').click();
+  await page.locator('.gf-sheet [data-setting="side"] input[value="black"]').check();
+  await page.locator(".gf-sheet .gf-sheet-start").click();
+  await expect(page.locator(".chess-set .chess-ranks span")).toHaveText(["1", "2", "3", "4", "5", "6", "7", "8"]);
+  await expect(page.locator(".chess-set .chess-files span")).toHaveText(["h", "g", "f", "e", "d", "c", "b", "a"]);
+});
+
+test("chess 10b: the pack row in Settings — Classic by default, Bold marks the board and is remembered", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
+  await page.goto("/chess/?seed=7");
+  await ready(page);
+  await expect(page.locator('.chess-board[data-pack="classic"]')).toHaveCount(1);
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  const row = page.locator('.gf-sheet [data-setting="pack"]');
+  await expect(row.locator(".sheet-choice-opt input")).toHaveCount(2);
+  await expect(row.locator(".sheet-choice-opt")).toContainText(["Classic", "Bold"]);
+  await row.locator('input[value="bold"]').check();
+  await expect(page.locator('.chess-board[data-pack="bold"]')).toHaveCount(1);
+  expect(await page.evaluate(() => localStorage.getItem("fun-chess-pack"))).toBe("bold");
+  await page.reload();
+  await ready(page);
+  await expect(page.locator('.chess-board[data-pack="bold"]')).toHaveCount(1);
+  // Bold is a different rendering, not a renamed one: the glyph is larger and drops its outline.
+  const piece = page.locator(".chess-piece.a").first();
+  const bold = await piece.evaluate((n) => ({ size: parseFloat(getComputedStyle(n).fontSize), shadow: getComputedStyle(n).textShadow }));
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await row.locator('input[value="classic"]').check();
+  const classic = await piece.evaluate((n) => ({ size: parseFloat(getComputedStyle(n).fontSize), shadow: getComputedStyle(n).textShadow }));
+  expect(bold.size).toBeGreaterThan(classic.size);
+  expect(bold.shadow).not.toBe(classic.shadow);
 });

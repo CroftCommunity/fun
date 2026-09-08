@@ -36,6 +36,7 @@ import {
   type VerifyResult,
 } from "./othello-outcome.js";
 import { Othello, type BoardView, type Level, type MoveAssessment } from "./othello-wasm.js";
+import { beatEach, beatSound, beatWord } from "../../beats.js";
 import { captureUiState, restoreUiState } from "../../ui-state.js";
 
 declare global {
@@ -285,6 +286,7 @@ export function othelloModule(): GameModule {
   let level: OthelloLevel = othelloLevel();
   let disc: OthelloDisc = othelloDisc();
   let lastMove: number | null = null;
+  let prevCells: number[][] | null = null; // the board before this render, for the flip beat
   // Engine-grounded coaching for the human's last move, surfaced after the
   // engine replies (so it does not spoil the reply). Cleared each human turn.
   let coachMsg: string | null = null;
@@ -347,6 +349,7 @@ export function othelloModule(): GameModule {
     game.pass();
     moves.push(PASS_CODE);
     lastMove = null;
+    prevCells = null;
   };
 
   // --- turn loop: after any move, advance auto-turns (passes + the engine)
@@ -629,6 +632,7 @@ export function othelloModule(): GameModule {
     }
     return {
       title: "Othello",
+      ground: "var(--oth-board)",
       mode: LEVEL_LABELS[level],
       meters: [
         { kind: "seat", id: "you", name: "You", glyph: glyphFor(humanSide()), score: you, state: yourState, ...(yourSub ? { sub: yourSub } : {}) },
@@ -669,6 +673,33 @@ export function othelloModule(): GameModule {
     const ui = captureUiState(container);
     container.replaceChildren(el("div", { class: "othello-game" }, ...parts));
     restoreUiState(container, ui);
+    // Beat (phase 9): the discs the move turned flip over, outward from the play.
+    // `?fast=1` collapses every beat to a frame — these too.
+    if (beats !== FAST_BEATS && prevCells && lastMove !== null && prevCells.length === board.cells.length) {
+      const n = board.size;
+      const cellsEl = container.querySelector(".othello-cell")?.parentElement;
+      const lr = Math.floor(lastMove / n);
+      const lc = lastMove % n;
+      const flipped: { el: Element; d: number }[] = [];
+      for (let r = 0; r < n; r += 1) {
+        for (let c = 0; c < n; c += 1) {
+          const idx = r * n + c;
+          const was = prevCells[r]?.[c] ?? 0;
+          const now = board.cells[r]?.[c] ?? 0;
+          const cellEl = cellsEl?.children[idx];
+          if (idx !== lastMove && was !== 0 && now !== 0 && was !== now && cellEl) {
+            flipped.push({ el: cellEl, d: Math.max(Math.abs(r - lr), Math.abs(c - lc)) });
+          }
+        }
+      }
+      if (flipped.length > 0) {
+        flipped.sort((a, b) => a.d - b.d);
+        beatEach(flipped.map((f) => f.el), "flip", 55);
+        beatSound("flip");
+        if (flipped.length >= 4 && frame) beatWord(frame.stage, `${flipped.length} flipped!`);
+      }
+    }
+    prevCells = board.cells.map((row) => [...row]);
     declare();
     // Transients overlay the stage — never in flow above the board (frame rule 1).
     if (aiSay && opponentKind === LOCAL_AI && aiSay !== toasted) {
@@ -742,6 +773,7 @@ export function othelloModule(): GameModule {
     thinking = false;
     ending = false;
     lastMove = null;
+    prevCells = null;
     moves = [];
     hinted = false;
     seed = seedOverride ?? randomSeed();
@@ -761,6 +793,7 @@ export function othelloModule(): GameModule {
     thinking = false;
     ending = false;
     lastMove = null;
+    prevCells = null;
     hinted = true; // not a first move
     seed = typeof rec.seed === "string" ? BigInt(rec.seed) : randomSeed();
     game.newGame(seed);

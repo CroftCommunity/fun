@@ -19,7 +19,9 @@ import {
   type VerifyResult,
 } from "./2048-outcome.js";
 import { dayIndexUTC } from "../share.js";
-import { declareAssistanceEnabled, hintsEnabled } from "../../settings.js";
+import {
+  padVisible, declareAssistanceEnabled, hintsEnabled } from "../../settings.js";
+import { renderPad } from "../../pad.js";
 
 declare global {
   interface Window {
@@ -245,6 +247,7 @@ export function twenty48Module(): GameModule {
     const hints = hintsEnabled();
     return {
       title: "2048",
+      ground: "var(--t48-mid)",
       mode: MODE_LABEL[mode],
       meters: [
         { kind: "stat", id: "score", value: b?.score ?? 0, label: "score" },
@@ -317,21 +320,19 @@ export function twenty48Module(): GameModule {
     });
   };
 
-  const renderPad = (): HTMLElement => {
-    const pad = el("div", { class: "t48-pad", role: "group", "aria-label": "Slide" });
-    const key = (dir: Direction): HTMLElement =>
-      el(
-        "button",
-        { type: "button", class: `t48-arrow t48-${dir.toLowerCase()}`, "data-dir": dir, "aria-label": `Slide ${dir.toLowerCase()}` },
-        ARROW[dir],
-      );
-    pad.append(key("Up"), key("Left"), key("Down"), key("Right"));
-    pad.addEventListener("click", (e) => {
-      const btn = (e.target as HTMLElement).closest<HTMLElement>(".t48-arrow");
-      if (btn) playDir(btn.dataset.dir as Direction);
+  // The d-pad is the shared pad (phase 7): shown per the common preference —
+  // Auto on a coarse pointer — and never a second copy of the swipe.
+  const buildPad = (): HTMLElement =>
+    renderPad({
+      layout: "dpad",
+      label: "Slide",
+      buttons: (["Up", "Left", "Down", "Right"] as const).map((dir) => ({
+        id: dir,
+        glyph: ARROW[dir],
+        label: `Slide ${dir.toLowerCase()}`,
+      })),
+      onPress: (id) => playDir(id as Direction),
     });
-    return pad;
-  };
 
   const onKeydown = (e: KeyboardEvent): void => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -378,7 +379,8 @@ export function twenty48Module(): GameModule {
     const board = game.board();
     // A single centered column: board and d-pad share one vertical axis so the
     // directional keys read as belonging to the board.
-    const game_ = el("div", { class: "t48-game" }, renderBoard(board), renderPad(), statusEl);
+    const pad = padVisible();
+    const game_ = el("div", { class: "t48-game", "data-pad": pad ? "on" : "off" }, renderBoard(board), ...(pad ? [buildPad()] : []), statusEl);
     container.replaceChildren(game_);
     if (!toasted) {
       toasted = true;

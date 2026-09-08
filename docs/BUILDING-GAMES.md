@@ -210,6 +210,22 @@ narrow-viewport check and ≥ 44px touch targets. The full playbook and the less
 are `docs/RESPONSIVE-DESIGN.md`. What changed: controls, HUD, banners and settings are
 **no longer the game's to stack above the board** — they are declared to the frame.
 
+### 4b. The board sizes from the stage, never from the viewport
+
+The stage is a **size container** (`.gf-stage { container: stage / size }`) and declares
+the room a board may fill: `--room-w` (the stage's content width) and `--room-h` (its
+content height less a 3rem lane at the foot for the toast). A board's cell, tile, card
+or pit reads those, never `vw`: `--oth-cell: clamp(1.7rem, calc((min(var(--room-w),
+var(--room-h)) - 2.5rem) / 8), 6rem)` — a floor that keeps the 360px rule and the tap
+size, the stage's short side divided by the count, and a ceiling so a disc stays a disc.
+A canvas keeps its own aspect and takes `max-height: calc(var(--room-h) - <its
+controls>)`. Why: a `vw` rule can never see the stage's *height*, and the stage is what
+the board actually has — a phone's is 366×572 inside a 390×844 viewport, a desktop's
+960×796 inside 1280×900. `docs/RESPONSIVE-DESIGN.md` Principle 1c has the reasoning and
+the measurements (mock F, 2026-09-04); `tests/play-surface.spec.ts` F2.1–F2.7 grade every
+board's fill on both engines, and a new game adds its row there. The result screen's
+small board (`.othello-final` and kin) keeps its own fixed size.
+
 ### 4c. The game frame — declaring your controls, and how the game will be shown
 
 Every game page shares one structure, `src/game-frame.ts`. A game declares a

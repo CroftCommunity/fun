@@ -27,8 +27,12 @@ import type { SettingRow } from "../../settings-sheet.js";
 import { WebLLMRuntime } from "../../harness/ai-runtime.js";
 import { speak } from "../../harness/banter.js";
 import { buildBand, HybridPlayer, type BandMove } from "../../harness/hybrid-player.js";
+import { beat, beatSound, beatWord } from "../../beats.js";
 import { captureUiState, restoreUiState } from "../../ui-state.js";
 import {
+  furrowOrient,
+  furrowUpright,
+  setFurrowOrient,
   declareAssistanceEnabled,
   furrowLevel,
   furrowTutorEnabled,
@@ -321,6 +325,8 @@ export function furrowModule(): GameModule {
   let disposed = false;
   let busy = false;
   let frame: GameFrame | null = null;
+  let orientWatch: ResizeObserver | null = null;
+  let prevStores: [number, number] | null = null; // the stores before this render, for the tick beat
   let pendingResume: Progress | null = null;
   let moves: number[] = [];
   let hinted = false;
@@ -507,6 +513,14 @@ export function furrowModule(): GameModule {
    * right-to-left along the top, yours left-to-right along the bottom, with each
    * store at its owner's end.
    */
+  // The stage's aspect decides Auto (phase 8): measured at render, re-measured on
+  // resize. The DOM order never changes — upright is the across board turned a
+  // quarter by CSS, so the core's pit order and the reading order stay one thing.
+  const upright = (): boolean => {
+    const stage = frame?.stage;
+    return furrowUpright(furrowOrient(), { w: stage?.clientWidth ?? 0, h: stage?.clientHeight ?? 0 });
+  };
+
   const buildBoard = (board: BoardView, interactive: boolean): HTMLElement => {
     const theirs: number[] = [];
     for (let i = 2 * board.pits; i >= board.pits + 1; i -= 1) theirs.push(i);
@@ -515,7 +529,7 @@ export function furrowModule(): GameModule {
 
     const boardEl = el(
       "div",
-      { class: "furrow-board", role: "group", "aria-label": "Furrow board" },
+      { class: "furrow-board", role: "group", "aria-label": "Furrow board", "data-orient": upright() ? "upright" : "across" },
       storeCell(board, ENGINE),
       el(
         "div",
@@ -550,6 +564,22 @@ export function furrowModule(): GameModule {
     const hints = hintsEnabled();
     const preferences: SettingRow[] = [
       {
+        kind: "choice",
+        id: "orient",
+        label: "Board",
+        hint: "Upright turns the board a quarter so it stands on a phone — your column on the right, sowing upward. Auto follows the screen's shape.",
+        value: furrowOrient(),
+        options: [
+          { value: "auto", label: "Auto" },
+          { value: "across", label: "Across" },
+          { value: "upright", label: "Upright" },
+        ],
+        onChange: (v) => {
+          setFurrowOrient(v === "across" || v === "upright" ? v : "auto");
+          render();
+        },
+      },
+      {
         kind: "toggle",
         id: "tutor",
         label: "Tutor",
@@ -582,6 +612,7 @@ export function furrowModule(): GameModule {
     const engineSub = engineThinking ? (b.keptTurn ? "goes again…" : "thinking…") : undefined;
     return {
       title: "Furrow",
+      ground: "var(--fur-board)",
       mode: level,
       meters: [
         { kind: "seat", id: "you", name: "You", glyph: MARK[HUMAN], score: b ? yourStore(b) : 0, state: humanTurn && !busy ? "active" : "idle", ...(yourSub ? { sub: yourSub } : {}) },
@@ -696,6 +727,19 @@ export function furrowModule(): GameModule {
         statusEl,
       ),
     );
+    // Beat (phase 9): a store that grew nudges its count.
+    const stores: [number, number] = [yourStore(board), theirStore(board)];
+    if (prevStores) {
+      if (stores[0] > prevStores[0]) {
+        const n = container.querySelector(".furrow-store.mine .furrow-count");
+        if (n) beat(n, "tick");
+      }
+      if (stores[1] > prevStores[1]) {
+        const n = container.querySelector(".furrow-store.theirs .furrow-count");
+        if (n) beat(n, "tick");
+      }
+    }
+    prevStores = stores;
     const boardEl = container.querySelector(".furrow-board");
     boardEl?.addEventListener("click", onBoardClick);
     restoreUiState(container, ui);
@@ -728,6 +772,8 @@ export function furrowModule(): GameModule {
     }
     if (preview.capturesFrom !== null) {
       boardEl.querySelector(`[data-pit="${preview.capturesFrom}"]`)?.classList.add("captured");
+      if (frame) beatWord(frame.stage, "Capture!"); // beat (phase 9)
+      beatSound("word");
       await sleep(SETTLE_MS);
     }
   };
@@ -987,6 +1033,17 @@ export function furrowModule(): GameModule {
     mount(c: HTMLElement, services?: GameServices): void {
       container = c;
       frame = services?.frame ?? null;
+      // Auto follows the stage's aspect: when a resize would turn the board, render again.
+      if (frame && typeof ResizeObserver !== "undefined") {
+        orientWatch?.disconnect();
+        orientWatch = new ResizeObserver(() => {
+          const boardEl = container?.querySelector<HTMLElement>(".furrow-board");
+          if (!boardEl) return;
+          const want = upright() ? "upright" : "across";
+          if (boardEl.dataset.orient !== want) render();
+        });
+        orientWatch.observe(frame.stage);
+      }
       disposed = false;
       level = furrowLevel();
       frame?.onSettingsChange(() => render()); // Hints flips the verb
@@ -1028,6 +1085,8 @@ export function furrowModule(): GameModule {
       disposed = true;
       delete window.__furrow;
       container?.replaceChildren();
+      orientWatch?.disconnect();
+      orientWatch = null;
       container = null;
       frame = null;
       game = null;

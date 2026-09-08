@@ -160,7 +160,7 @@ test("on desktop the same rows are inline in the rail and no scrim exists", { ta
   await expect(page.locator(".gf-scrim")).toHaveCount(0);
   await expect(page.locator(".gf-sheet")).toHaveCount(0);
   // the sheet's toggle writes the shared setting: flip Hints and read it back
-  await page.locator('.gf-extra [data-setting="hints"] .sheet-toggle-input').click({ force: true });
+  await page.locator('.gf-extra [data-setting="hints"] .sheet-toggle-track').click();
   expect(await page.evaluate(() => localStorage.getItem("fun-hints"))).toBe("off");
 });
 
@@ -174,7 +174,9 @@ test("the mirror preference puts the rail left of the board and reverses the doc
   const railX = async (): Promise<number> => (await page.locator(".gf-dock").boundingBox())!.x;
   const stageX = async (): Promise<number> => (await page.locator(".gf-stage").boundingBox())!.x;
   expect(await railX()).toBeGreaterThan(await stageX());
-  await page.locator('.gf-extra [data-setting="controls-left"] .sheet-toggle-input').click({ force: true });
+  // The row sits below the On-screen controls row (phase 7) — past a 680px viewport until
+  // the rail scrolls; the checkbox is a 1px hidden input, so tap the track a player taps.
+  await page.locator('.gf-extra [data-setting="controls-left"] .sheet-toggle-track').click();
   await expect(page.locator(".gf")).toHaveAttribute("data-gf-side", "left");
   expect(await railX()).toBeLessThan(await stageX()); // no reload
   expect(await page.evaluate(() => localStorage.getItem("fun-controls-left"))).toBe("on");
@@ -188,7 +190,7 @@ test("the mirror preference puts the rail left of the board and reverses the doc
   expect(xs[0]).toBeGreaterThan(xs[xs.length - 1]!);
   // and off again, from the phone sheet, without a reload
   await page.locator('.gf-verb[data-verb="settings"]').click();
-  await page.locator('.gf-sheet [data-setting="controls-left"] .sheet-toggle-input').click({ force: true });
+  await page.locator('.gf-sheet [data-setting="controls-left"] .sheet-toggle-track').click();
   await expect(page.locator(".gf")).toHaveAttribute("data-gf-side", "right");
 });
 

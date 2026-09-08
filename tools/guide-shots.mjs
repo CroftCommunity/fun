@@ -629,14 +629,27 @@ const SHOTS = [
           return !h.busy() && (b.result !== -1 || (b.toMove === 1 && b.legal.length > 0));
         });
         if (await page.evaluate(() => window.__furrow.game.board().result !== -1)) break;
-        const pit = await page.evaluate(() => {
+        // Pick and tap in ONE evaluate: the board re-renders on every sow, so a
+        // locator resolved here and clicked a beat later could land on a node
+        // that had already been replaced (observed 2026-09-05: the step died
+        // on a pit that had gone aria-disabled between the pick and the tap).
+        // Then wait for the core to have taken the move before picking again.
+        const before = await page.evaluate(() => window.__furrow.game.board().lastPit);
+        await page.evaluate(() => {
           const h = window.__furrow;
           const best = h.game.coach().bestCol;
-          return best !== null && h.game.board().legal.includes(best)
-            ? best
-            : h.game.board().legal[0];
+          const b = h.game.board();
+          const pit = best !== null && b.legal.includes(best) ? best : b.legal[0];
+          document.querySelector(`.furrow-pit[data-pit="${pit}"]`)?.click();
         });
-        await page.click(`.furrow-pit[data-pit="${pit}"]`);
+        await page.waitForFunction(
+          (prev) => {
+            const h = window.__furrow;
+            return h.busy() || h.game.board().lastPit !== prev || h.game.board().result !== -1;
+          },
+          before,
+          { timeout: 10000 },
+        );
       }
       await page.waitForSelector(".sol-result .sol-verify-badge.ok", { timeout: 60000 });
     },

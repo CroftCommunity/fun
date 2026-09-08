@@ -12,6 +12,66 @@ earlier is in `git log`.
 
 ## 2026-09
 
+- 2026-09-08 **every poster:** the title and pitch sit on a translucent, blurred panel over
+  the art. The splash carries its own lettering, and the pitch set straight on it was
+  unreadable (Trio Tumble, Dots on a phone). (owner review of PR #82)
+- 2026-09-08 **furrow, trio tumble, solitaire, bubble, cribbage:** the rest of the fill. Each
+  now sizes from the stage the way the eight grids do: Furrow's pits across from the width
+  (a desktop board was 448px wide in a 960px stage), Trio Tumble's gems from the short side,
+  solitaire's cards from the width (real card size on a desktop), Bubble's canvas from the
+  height with its 22rem cap gone, cribbage's table and cards from the width. Every how-to
+  shot regenerated — the ground changed every stage. (mock F2.6–F2.7, phase 4, play-surface)
+- 2026-09-08 **gate:** `tools/stale-shots.sh` runs first and names any game whose module
+  changed against `origin/main` without a how-to shot of its own changing (PR #79 landed
+  eight resized boards with every shot stale). No `origin/main` — CI's shallow checkout —
+  means nothing to compare, and it says so.
+- 2026-09-08 **drop 4, othello, checkers, chess, dots, furrow, cribbage:** life on the versus
+  boards. One vocabulary of beats, played from the move the core already resolved: Drop 4's
+  disc falls into its slot and settles; Othello's turned discs flip over, outward from the
+  play, and four or more get their count; a taken man or piece shrinks out where it stood
+  (checkers, chess); a crowning says "King!", a check says "Check!"; a closed box pulses and a
+  double gets its count; a Furrow capture says so and a store that grew nudges its count; a
+  pegged fifteen, thirty-one, pair or run is called over the cribbage table. Each beat has a
+  short synthesised voice under the Sound row, and reduced motion collapses every beat to its
+  last frame. (mock F Q11, phase 9, play-surface)
+- 2026-09-08 **furrow:** the board stands up on a phone. Upright is the across board turned a
+  quarter: your six pits are the right-hand column sowing upward into your store at the top,
+  The Engine's the left-hand column sowing down into its store at the bottom; the pits grow to
+  44px and more from the stage's height and nothing scrolls. Settings → Board: Auto / Across /
+  Upright; Auto follows the screen's shape, so a desktop stays across. The core's pit order
+  never changes — only the CSS turns. (mock F Q5, phase 8, play-surface)
+- 2026-09-08 **loose ends:** level 1 is a puzzle. The campaign curve is rebased — ten arrows
+  on a 6×8 with snakes of 3–5 at level 1, ~16 by the end of Easy, the top of the curve where
+  it was (68 on 18×26) — so the first board is a knot to read rather than three arrows on a
+  5×6. Golden vectors re-recorded; the daily board is untouched; solved levels stay solved.
+  (mock F Q10, phase 11, play-surface)
+- 2026-09-08 **guide shots:** the Furrow result step taps through one evaluate and waits for
+  the core to take the move, so a re-rendered pit can no longer slip out from under the tap.
+- 2026-09-08 **2048, Align, every game:** one shape for hand controls. Settings → Every game
+  gains **On-screen controls: Auto / On / Off** — Auto shows a pad on a touch screen and hides
+  it where there is a keyboard; swipes and keys always work. 2048's arrow pad and Align's
+  buttons are the same pad: translucent 60–64px targets over the game's ground. Align's is
+  the split — move and Hold under the left thumb, the rotates and drops under the right —
+  beneath the well, never over it, and the well itself now takes a tap to rotate, a flick
+  down to drop, a flick sideways to move. With the pad off, 2048's tiles take its room.
+  (mock F Q3 + Q4, phase 7, play-surface)
+- 2026-09-08 **every game:** the stage carries the game's own ground — a pool of the board's
+  colour under the board and a faint vignette at the edges, so the room around a felt table is
+  green and the room around a mancala board is wood. The frame holds the hook; the colour is
+  the game's (ADR-0003). (mock F Q2, phase 6, play-surface)
+- 2026-09-08 **every poster:** a setup choice with three or fewer options is a segmented
+  control — one row of segments with the chosen option's note under it — instead of three
+  44px lines, so the Trio Tumble and chess posters fit a 390×844 phone without scrolling.
+  (mock F Q6, phase 5, play-surface)
+- 2026-09-08 **chess:** the board is a set. A wooden frame with the ranks down its left and the
+  files under it — outside the squares, turned with the board when you play Black — a shadow on
+  the ground, and the last move ringed rather than boxed. Settings gains **Pieces**: Classic
+  (the outlined set) or Bold (heavier, flat, with a shadow); the choice is remembered and never
+  changes the game. On a phone the frame is a hairline gutter so the 44px squares still fit.
+  (mock F Q8, phase 10b, play-surface)
+- 2026-09-08 **cribbage:** the table plays Tuesday Night Rainfall. It had named nothing and
+  so played the shelf's bed; of the four airier candidates it takes the one no other game
+  names. (mock F Q9, phase 12, play-surface)
 - 2026-09-05 **bubble:** the pieces are fruit. Six fruit — apple, blueberries, kiwi, grapes,
   orange, lemon — sit in glass bubbles, the loaded one in a launcher ring with the next in a
   dashed ring beside it; the launcher chip names the fruit for a screen reader. A fruit has

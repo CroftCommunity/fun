@@ -307,10 +307,131 @@
       "height": 900,
       "baseline": "fun@98b88a0",
       "tag": "shipped"
+    },
+    {
+      "file": "shipped.chess.board.phone.png",
+      "game": "chess",
+      "route": "board",
+      "url": "/chess/?seed=7",
+      "viewport": "phone",
+      "width": 390,
+      "height": 844,
+      "baseline": "fun@23b0f84",
+      "tag": "shipped"
+    },
+    {
+      "file": "shipped.chess.board.desktop.png",
+      "game": "chess",
+      "route": "board",
+      "url": "/chess/?seed=7",
+      "viewport": "desktop",
+      "width": 1280,
+      "height": 900,
+      "baseline": "fun@23b0f84",
+      "tag": "shipped"
+    },
+    {
+      "file": "shipped.align.board.phone.png",
+      "game": "align",
+      "route": "board",
+      "url": "/align/?seed=7",
+      "viewport": "phone",
+      "width": 390,
+      "height": 844,
+      "baseline": "fun@23b0f84",
+      "tag": "shipped"
+    },
+    {
+      "file": "shipped.furrow.board.phone.png",
+      "game": "furrow",
+      "route": "board",
+      "url": "/furrow/?seed=7",
+      "viewport": "phone",
+      "width": 390,
+      "height": 844,
+      "baseline": "fun@23b0f84",
+      "tag": "shipped"
+    },
+    {
+      "file": "shipped.furrow.board.desktop.png",
+      "game": "furrow",
+      "route": "board",
+      "url": "/furrow/?seed=7",
+      "viewport": "desktop",
+      "width": 1280,
+      "height": 900,
+      "baseline": "fun@23b0f84",
+      "tag": "shipped"
+    },
+    {
+      "file": "shipped.2048.board.desktop.png",
+      "game": "2048",
+      "route": "board",
+      "url": "/2048/?seed=7",
+      "viewport": "desktop",
+      "width": 1280,
+      "height": 900,
+      "baseline": "fun@23b0f84",
+      "tag": "shipped"
+    },
+    {
+      "file": "shipped.looseends.board.phone.png",
+      "game": "looseends",
+      "route": "board",
+      "url": "/looseends/?play=1",
+      "viewport": "phone",
+      "width": 390,
+      "height": 844,
+      "baseline": "fun@23b0f84",
+      "tag": "shipped"
+    },
+    {
+      "file": "shipped.othello.board.desktop.png",
+      "game": "othello",
+      "route": "board",
+      "url": "/othello/?seed=7",
+      "viewport": "desktop",
+      "width": 1280,
+      "height": 900,
+      "baseline": "fun@23b0f84",
+      "tag": "shipped"
+    },
+    {
+      "file": "shipped.trio-tumble.poster.phone.png",
+      "game": "trio-tumble",
+      "route": "poster",
+      "url": "/trio-tumble/",
+      "viewport": "phone",
+      "width": 390,
+      "height": 844,
+      "baseline": "fun@64888dc",
+      "tag": "shipped"
+    },
+    {
+      "file": "shipped.trio-tumble.board.desktop.png",
+      "game": "trio-tumble",
+      "route": "board",
+      "url": "/trio-tumble/?seed=7",
+      "viewport": "desktop",
+      "width": 1280,
+      "height": 900,
+      "baseline": "fun@64888dc",
+      "tag": "shipped"
+    },
+    {
+      "file": "shipped.dots.poster.phone.png",
+      "game": "dots",
+      "route": "poster",
+      "url": "/dots/",
+      "viewport": "phone",
+      "width": 390,
+      "height": 844,
+      "baseline": "fun@64888dc",
+      "tag": "shipped"
     }
   ],
-  "baseline": "fun@98b88a0",
-  "capturedAt": "2026-09-05",
+  "baseline": "fun@64888dc",
+  "capturedAt": "2026-09-08",
   "population": "deep link, fixed seed (hermetic); the poster is the bare land in a fresh context",
   "note": "Pruned to the captures the mock page shows (a full all-games set is 39MB); re-run tools/mock-snaps.mjs <game> --out f-play-surface --tag current|proposed to add one."
 }

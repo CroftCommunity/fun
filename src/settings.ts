@@ -24,6 +24,9 @@ const CS_SKIN_KEY = "fun-color-sort-skin";
 const CS_ICONS_KEY = "fun-color-sort-icons";
 const CS_STRICT_KEY = "fun-color-sort-strict";
 const CONTROLS_LEFT_KEY = "fun-controls-left";
+const CHESS_PACK_KEY = "fun-chess-pack";
+const PAD_KEY = "fun-pad";
+const FURROW_ORIENT_KEY = "fun-furrow-orient";
 
 /** Pure resolver: an explicit stored "on"/"off" wins; otherwise the default. */
 export function resolveBool(stored: string | null, fallback: boolean): boolean {
@@ -779,4 +782,109 @@ export function mahjongDimBlocked(): boolean {
 }
 export function setMahjongDimBlocked(on: boolean): void {
   write(MJ_DIM_KEY, on);
+}
+
+// ---------- Chess (the piece pack — mock F Q8, phase 10b) ----------
+
+/** The packs that ship: Classic (outlined glyphs) and Bold (heavier, flat, shadowed). Emoji is later. */
+export type ChessPack = "classic" | "bold";
+
+/** The pack list as Settings shows it — Classic first, because it is the default. */
+export const CHESS_PACKS: ReadonlyArray<{ readonly value: ChessPack; readonly label: string; readonly hint: string }> = [
+  { value: "classic", label: "Classic", hint: "The outlined set." },
+  { value: "bold", label: "Bold", hint: "Heavier pieces, flat, with a shadow." },
+];
+
+/** Pure resolver: a stored pack that ships wins, else Classic. */
+export function resolveChessPack(stored: string | null): ChessPack {
+  return stored === "bold" || stored === "classic" ? stored : "classic";
+}
+
+/** The chosen piece pack — **Classic by default**. */
+export function chessPack(): ChessPack {
+  try {
+    return resolveChessPack(localStorage.getItem(CHESS_PACK_KEY));
+  } catch {
+    return "classic";
+  }
+}
+export function setChessPack(pack: ChessPack): void {
+  try {
+    localStorage.setItem(CHESS_PACK_KEY, pack);
+  } catch {
+    // Storage denied (private mode): the setting still applies for the session.
+  }
+}
+
+// ---------- On-screen controls (the pad — phase 7, mock F Q3) ----------
+
+/** Auto shows a pad on a coarse pointer (a phone, a tablet); On and Off override. */
+export type PadMode = "auto" | "on" | "off";
+
+/** Pure resolver: On or Off if stored, else Auto. */
+export function resolvePadMode(stored: string | null): PadMode {
+  return stored === "on" || stored === "off" ? stored : "auto";
+}
+
+/** Pure: does a pad show, given the mode and whether the pointer is coarse? */
+export function padShown(mode: PadMode, coarse: boolean): boolean {
+  return mode === "on" || (mode === "auto" && coarse);
+}
+
+/** The stored mode — **Auto by default**. */
+export function padMode(): PadMode {
+  try {
+    return resolvePadMode(localStorage.getItem(PAD_KEY));
+  } catch {
+    return "auto";
+  }
+}
+export function setPadMode(mode: PadMode): void {
+  try {
+    localStorage.setItem(PAD_KEY, mode);
+  } catch {
+    // Storage denied (private mode): the setting still applies for the session.
+  }
+}
+
+/** Should a game render its pad right now? Reads the preference and the pointer. */
+export function padVisible(): boolean {
+  const coarse = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
+  return padShown(padMode(), coarse);
+}
+
+// ---------- Furrow (the board's orientation — phase 8, mock F Q5) ----------
+
+/** Auto follows the stage's aspect; Across and Upright force it. */
+export type FurrowOrient = "auto" | "across" | "upright";
+
+/** Pure resolver: Across or Upright if stored, else Auto. */
+export function resolveFurrowOrient(stored: string | null): FurrowOrient {
+  return stored === "across" || stored === "upright" ? stored : "auto";
+}
+
+/**
+ * Pure: does the board stand up? Auto stands up on a portrait stage (taller
+ * than wide); an unmeasured stage (before layout) lies across, the default the
+ * board always had.
+ */
+export function furrowUpright(pref: FurrowOrient, stage: { readonly w: number; readonly h: number }): boolean {
+  if (pref !== "auto") return pref === "upright";
+  return stage.h > stage.w;
+}
+
+/** The stored orientation — **Auto by default**. */
+export function furrowOrient(): FurrowOrient {
+  try {
+    return resolveFurrowOrient(localStorage.getItem(FURROW_ORIENT_KEY));
+  } catch {
+    return "auto";
+  }
+}
+export function setFurrowOrient(orient: FurrowOrient): void {
+  try {
+    localStorage.setItem(FURROW_ORIENT_KEY, orient);
+  } catch {
+    // Storage denied (private mode): the setting still applies for the session.
+  }
 }

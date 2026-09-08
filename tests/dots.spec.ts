@@ -98,6 +98,8 @@ test("closing a box scores it and keeps the turn with the closer", async ({ page
   expect(after.boxesB).toBeGreaterThan(0);
   await expect(page.locator(".dots-box.b")).toHaveCount(after.boxesB);
   await expect(page.locator(".dots-status")).toContainText(/again/i);
+  // Beat (phase 9): the closed box pulsed — the stage records the beat, whatever motion ran.
+  await expect(page.locator(".gf-stage")).toHaveAttribute("data-beat", "line");
 });
 
 test("the difficulty picker persists the chosen level", async ({ page }) => {
@@ -202,7 +204,7 @@ test("the tutor panel is off by default and appears when enabled in settings", a
   await expect(page.locator(".dots-tutor")).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
   await page.locator('.gf-verb[data-verb="settings"]').click();
-  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-input').click({ force: true });
+  await page.locator('.gf-sheet [data-setting="tutor"] .sheet-toggle-track').click();
   await expect(page.locator(".dots-tutor-explain")).toBeVisible();
 });
 
@@ -293,7 +295,7 @@ test("the settings sheet stays open when something re-renders the board", async 
   await page.locator('.gf-verb[data-verb="settings"]').click();
   const sheet = page.locator(".gf-sheet");
   await expect(sheet).toBeVisible();
-  await page.locator('.gf-sheet [data-setting="hints"] .sheet-toggle-input').click({ force: true });
+  await page.locator('.gf-sheet [data-setting="hints"] .sheet-toggle-track').click();
   await expect(page.locator('.gf-verb[data-verb="done"]')).toHaveCount(1);
   await expect(sheet).toBeVisible();
   await expect(page.locator('.gf-sheet [data-setting="tutor"]')).toBeVisible();
@@ -322,7 +324,7 @@ test("the tutor's explained options survive a re-render, and clear when the boar
   // writes a setting, so using it proved nothing and passed against the bug.
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator('.gf-verb[data-verb="settings"]').click();
-  await page.locator('.gf-sheet [data-setting="hints"] .sheet-toggle-input').click({ force: true }); // -> render()
+  await page.locator('.gf-sheet [data-setting="hints"] .sheet-toggle-track').click(); // -> render()
   await page.keyboard.press("Escape");
   await expect(items).toHaveCount(before);
   await expect(page.locator(".dots-tutor-note")).toHaveText(note ?? "");

@@ -133,6 +133,9 @@ const PAIRS: ReadonlyArray<readonly [string, string, number]> = [
   ["chs-check", "chs-dark", 3],
   ["chs-last", "chs-light", 3],
   ["chs-last", "chs-dark", 3],
+  // The set's coordinates sit on the wooden frame (phase 10b) — small text, so 4.5.
+  ["chs-frame-ink", "chs-frame", 4.5],
+  ["chs-frame-ink", "chs-frame-deep", 4.5],
   // Dots and Boxes: the two sides' edges and box fills read against the paper,
   // and the box mark reads against the fill. The mark is painted in the paper
   // colour, which inverts with the theme, so one pair per side covers both.

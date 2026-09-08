@@ -21,7 +21,7 @@ export const FURROW_GUIDE: Guide = {
         },
         {
           kind: "prose",
-          text: "Your six pits are the bottom row, marked ▲; The Engine's are the top row, marked ●. Your store is the tall well at the right-hand end, its store at the left. The number in each pit is how many seeds are in it — that number is the only thing a pit tells you, so it is never dimmed.",
+          text: "Your six pits are the bottom row, marked ▲; The Engine's are the top row, marked ●. Your store is the tall well at the right-hand end, its store at the left. On a phone the board stands upright — the same board turned a quarter: your pits are the right-hand column, sowing upward into your store at the top, The Engine's the left-hand column sowing down. Settings → Board picks Auto, Across or Upright. The number in each pit is how many seeds are in it — that number is the only thing a pit tells you, so it is never dimmed.",
         },
         {
           kind: "prose",

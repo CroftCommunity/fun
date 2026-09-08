@@ -266,11 +266,12 @@ mod tests {
         // --- a campaign level: board, tap, grading, outcome ---
         new_level(1);
         let view = read(board_json());
-        assert_eq!(view["width"], serde_json::json!(5));
-        assert_eq!(view["total"], serde_json::json!(3));
+        // Level 1 on the rebased curve (config.rs, 2026-09-08): 6×8, ten arrows.
+        assert_eq!(view["width"], serde_json::json!(6));
+        assert_eq!(view["total"], serde_json::json!(10));
 
         let h = hint();
-        assert!(h <= 2, "hint is a valid arrow id");
+        assert!(h <= 9, "hint is a valid arrow id");
         assert_eq!(tap(h), 0, "the hinted arrow releases");
         assert_eq!(tap(h), 2, "re-tapping the gone arrow does nothing");
 

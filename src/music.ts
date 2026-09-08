@@ -87,6 +87,7 @@ const BY_GAME: Readonly<Record<string, string>> = {
   "color-sort": "clover-hill-crossing",
   looseends: "lower-cavern-bloom",
   mahjong: "porch-light-nocturne",
+  cribbage: "tuesday-night-rainfall",
   align: "morning-grid",
   blockdoku: "morning-grid",
   2048: "save-point-morning",

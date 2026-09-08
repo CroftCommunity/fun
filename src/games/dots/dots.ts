@@ -35,6 +35,7 @@ import {
   type DotsSeat,
 } from "../../settings.js";
 import { latticeCells } from "./dots-lattice.js";
+import { beatEach, beatSound, beatWord } from "../../beats.js";
 import { captureUiState, restoreUiState } from "../../ui-state.js";
 import {
   decodeRecord,
@@ -273,6 +274,7 @@ export function dotsModule(): GameModule {
   let container: HTMLElement | null = null;
   let disposed = false;
   let thinking = false;
+  let prevOwners: number[] | null = null; // the boxes before this render, for the box beat
   let frame: GameFrame | null = null;
   let pendingResume: Progress | null = null;
   let moves: number[] = [];
@@ -631,6 +633,7 @@ export function dotsModule(): GameModule {
     const engineSub = engineThinking ? (again === "engine" ? "goes again…" : "thinking…") : undefined;
     return {
       title: "Dots and Boxes",
+      ground: "var(--dots-paper)",
       mode: level,
       meters: [
         { kind: "seat", id: "you", name: "You", glyph: MARK[humanSide()], score: b ? yourBoxes(b) : 0, state: humanTurn && !thinking ? "active" : "idle", ...(yourSub ? { sub: yourSub } : {}) },
@@ -725,6 +728,21 @@ export function dotsModule(): GameModule {
       ),
     );
     restoreUiState(container, ui);
+    // Beat (phase 9): a closed box pulses; two in one move get their word.
+    if (prevOwners && board.lastEdge !== null && prevOwners.length === board.owners.length) {
+      const boxes = container.querySelectorAll(".dots-box");
+      const claimed: Element[] = [];
+      board.owners.forEach((o, i) => {
+        const box = boxes[i];
+        if (o !== 0 && prevOwners?.[i] === 0 && box) claimed.push(box);
+      });
+      if (claimed.length > 0) {
+        beatEach(claimed, "line", 80);
+        beatSound("line");
+        if (claimed.length >= 2 && frame) beatWord(frame.stage, `${claimed.length} boxes!`);
+      }
+    }
+    prevOwners = [...board.owners];
     declare();
     // Transients overlay the stage — never a <p> in flow above the board (frame rule 1).
     if (aiSay && opponentKind === LOCAL_AI && aiSay !== toasted) {
@@ -802,6 +820,7 @@ export function dotsModule(): GameModule {
     seed = seedOverride ?? randomSeed();
     game.newGame(seed);
     moves = [];
+    prevOwners = null;
     hinted = false;
     again = null;
     setStatus("");
@@ -828,6 +847,7 @@ export function dotsModule(): GameModule {
     seed = typeof rec.seed === "string" ? BigInt(rec.seed) : randomSeed();
     game.newGame(seed);
     moves = [];
+    prevOwners = null;
     for (const edge of Array.isArray(rec.moves) ? (rec.moves as unknown[]) : []) {
       if (typeof edge !== "number" || game.play(edge) !== "applied") break;
       moves.push(edge);

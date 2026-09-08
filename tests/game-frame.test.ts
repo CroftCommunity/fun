@@ -382,3 +382,26 @@ describe("renderGameFrame — an open settings sheet follows the spec's rows", (
     expect(host.querySelector('.gf-sheet [data-setting="strict"]')).toBe(before);
   });
 });
+
+// Phase 6 of the play-surface plan (mock F, Q2): a ground per game. The stage is
+// chrome, so the frame owns the hook; the colour is the game's (ADR-0003).
+describe("renderGameFrame — the ground", () => {
+  it("a spec's ground lands on the stage as --stage-ground", () => {
+    const frame = renderGameFrame(host, spec({ ground: "var(--chs-dark)" }));
+    expect(frame.stage.style.getPropertyValue("--stage-ground")).toBe("var(--chs-dark)");
+  });
+  it("no ground means no tint — the property is absent, not empty", () => {
+    const frame = renderGameFrame(host, spec());
+    expect(frame.stage.style.getPropertyValue("--stage-ground")).toBe("");
+    expect(frame.stage.hasAttribute("data-ground")).toBe(false);
+  });
+  it("an update changes or clears the ground with the spec", () => {
+    const frame = renderGameFrame(host, spec({ ground: "var(--chs-dark)" }));
+    frame.update(spec({ ground: "var(--oth-board)" }));
+    expect(frame.stage.style.getPropertyValue("--stage-ground")).toBe("var(--oth-board)");
+    expect(frame.stage.dataset.ground).toBe("on");
+    frame.update(spec());
+    expect(frame.stage.style.getPropertyValue("--stage-ground")).toBe("");
+    expect(frame.stage.hasAttribute("data-ground")).toBe(false);
+  });
+});

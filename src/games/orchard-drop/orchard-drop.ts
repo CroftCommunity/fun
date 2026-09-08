@@ -289,6 +289,7 @@ export function orchardDropModule(): GameModule {
     const w = binding?.world();
     return {
       title: "Orchard Drop",
+      ground: "var(--orchard-crate)",
       mode: MODE_LABEL[mode],
       meters: [
         { kind: "stat", id: "score", value: w?.score ?? 0, label: "score" },

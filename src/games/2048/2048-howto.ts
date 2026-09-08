@@ -36,8 +36,8 @@ export const TWENTY48_GUIDE: Guide = {
         {
           kind: "steps",
           items: [
-            "Tap an arrow on the on-screen pad (↑ ↓ ← →).",
-            "Or swipe across the board in the direction you want.",
+            "Swipe across the board in the direction you want.",
+            "Or tap an arrow on the on-screen pad (↑ ↓ ← →) — shown on a touch screen; Settings → On-screen controls turns it on or off anywhere.",
             "Or use the arrow keys (or W A S D) on a physical keyboard.",
           ],
         },

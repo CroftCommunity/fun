@@ -59,6 +59,13 @@ export interface GameFrameSpec {
   readonly setup?: readonly SettingRow[];
   /** The game's own section of the settings sheet. */
   readonly preferences?: readonly SettingRow[];
+  /**
+   * The ground (phase 6, mock F Q2): a CSS colour — the game's own board token,
+   * `var(--chs-dark)` — that the stage tints itself with, so the room around a
+   * board is the board's world and not the gallery's flat black. The stage is
+   * chrome, so the frame owns the hook; the colour is the game's (ADR-0003).
+   */
+  readonly ground?: string;
   /** Called by the setup sheet's Start button, after the setup rows' own onChange handlers. */
   onStart?(): void;
 }
@@ -312,6 +319,16 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
 
   const mountEl = el("div", { class: "gf-mount" });
   const stage = el("div", { class: "gf-stage" }, mountEl);
+  const setGround = (ground: string | undefined): void => {
+    if (ground) {
+      stage.style.setProperty("--stage-ground", ground);
+      stage.dataset.ground = "on";
+    } else {
+      stage.style.removeProperty("--stage-ground");
+      delete stage.dataset.ground;
+    }
+  };
+  setGround(spec?.ground);
   const root = el("div", { class: "gf" }, bar);
 
   // The shape is declared on the root so a test — and a game — can read it without
@@ -471,9 +488,14 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
         o.onPlay();
       });
       const body = el("div", { class: "gf-start-body" });
-      if (o.chip) body.append(el("span", { class: "gf-start-chip" }, o.chip));
-      body.append(el("h2", { class: "gf-start-title" }, o.title));
-      if (o.pitch) body.append(el("p", { class: "gf-start-pitch" }, o.pitch));
+      // The lede — chip, title, pitch — on its own translucent panel: the splash
+      // art carries its own lettering, and the pitch set straight on it was
+      // unreadable (owner, 2026-09-08, Trio Tumble and Dots at 390×844).
+      const lede = el("div", { class: "gf-start-lede" });
+      if (o.chip) lede.append(el("span", { class: "gf-start-chip" }, o.chip));
+      lede.append(el("h2", { class: "gf-start-title" }, o.title));
+      if (o.pitch) lede.append(el("p", { class: "gf-start-pitch" }, o.pitch));
+      body.append(lede);
       if (o.setup && o.setup.length > 0) {
         body.append(el("div", { class: "gf-start-setup" }, renderSettingsSheet({ rows: [...o.setup] })));
       }
@@ -584,6 +606,7 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
       }
       titleEl.textContent = next.title;
       setMode(next.mode);
+      setGround(next.ground);
       if (meters) {
         const slots = [...meters.children] as HTMLElement[];
         next.meters.forEach((m, i) => patchMeter(slots[i]!, m));

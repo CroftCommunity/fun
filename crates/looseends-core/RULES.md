@@ -49,9 +49,12 @@ target; level 1 lands exactly on target.
 
 ## Sizing — level & daily
 
-`level_config(n)` (`n = 1..=100`) and `daily_config(seed)` mirror the spec's
-`levelConfig` / `dailyConfig` exactly, sizing with `f64` `Math.round` (`floor(x +
-0.5)` for the always-positive values here). Sizing is a pure deterministic
+`daily_config(seed)` mirrors the spec's `dailyConfig` exactly. `level_config(n)`
+(`n = 1..=100`) is the curve **rebased 2026-09-08** (mock F Q10): `w = 6 + 12t`,
+`h = 8 + 18t`, `target = 10 + 58t`, `min_len = 3`, `max_len = 5 + round(7t)` — level 1
+is ten arrows on 6×8 (a knot to read, not three arrows on a 5×6), the top of the
+curve is where the spec put it (68 on 18×26). Both size with `f64` `Math.round`
+(`floor(x + 0.5)` for the always-positive values here). Sizing is a pure deterministic
 function and never enters the state hash, so the hashed path stays integer-only.
 A `Config` packs into one `u64` (`seed:32, w:5, h:5, target:7, min_len:3,
 max_len:4`) so an outcome record regenerates its exact board from the seed alone.
