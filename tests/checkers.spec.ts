@@ -93,6 +93,8 @@ test("tapping a man glows its destinations; tapping one moves it and the engine 
   ).toBe(0);
   expect(await pieces(page)).toBe(24); // a quiet move takes nothing
   await expect(page.locator(".checkers-square.just-played")).not.toHaveCount(0);
+  // Beat (phase 9 follow-up): the moved man slid in — the stage records the slide.
+  await expect(page.locator(".gf-stage")).toHaveAttribute("data-beat", /slide|shrink/);
 });
 
 test("a capture removes exactly the pieces the core says it takes", async ({ page }) => {

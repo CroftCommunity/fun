@@ -725,6 +725,14 @@ body:has(> .play-area > .gf) {
   font-size: 2rem;
   line-height: 1;
 }
+/* The shelf name's second half, beside the title: "Trio Tumble  Jewel Drop" on one
+   line at 390, where the joined 23-character name wrapped and cost the poster its fit. */
+.gf-start-sub {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
 .gf-start-chip {
   display: inline-flex; align-items: center; gap: 0.35rem;
   padding: 0.3rem 0.7rem; margin-bottom: 0.5rem;
@@ -2251,6 +2259,17 @@ body:has(> .play-area > .gf) {
   background: var(--active);
   border-radius: 999px;
 }
+/* The launcher chips name the loaded and the next piece for a reader; the canvas
+   has drawn both since phase 10a, so on screen they take no room (F2.6: a phone's
+   canvas went from 62% to 66% of the stage). */
+.bub-launcher-hud {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
 .bub-loaded {
   display: inline-flex;
   align-items: center;
@@ -2287,7 +2306,7 @@ body:has(> .play-area > .gf) {
   gap: 0.75rem;
   margin: 0.3rem 0;
   color: var(--ink);
-  flex-wrap: wrap;
+  flex-wrap: nowrap; /* one line: the launcher chips left it (below), so the canvas gets the row */
 }
 
 .bub-launcher-hud {

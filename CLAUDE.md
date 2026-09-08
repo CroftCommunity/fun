@@ -205,7 +205,9 @@ at them and add what's specific to this repo. Git identity: chasemp
   alongside the how-to *copy* itself — commit the regenerated shots. The gate's first
   step, `tools/stale-shots.sh`, names any game whose `src/games/<id>` changed against
   `origin/main` without a shot of its own changing (PR #79 landed eight resized boards
-  with every shot stale, which is why the check exists). Guard
+  with every shot stale, which is why the check exists). A change no still shot can show
+  (a transient beat) says so in its commit — `Shots-Unchanged: <id> — <why>` — and the
+  check reports it as audited rather than checked. Guard
   against unrelated churn: `guide:shots` rebuilds **every** game's shots, so
   `git add` only the shots for the game you changed and `git checkout --` the
   rest (other games' JPEGs can re-encode differently run-to-run).

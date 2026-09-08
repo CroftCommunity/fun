@@ -410,7 +410,8 @@ export function boot(root: HTMLElement = document.body): Chrome {
     const showStart = (): void => {
       theFrame.renderStart({
         id: game.id,
-        title: displayName(game),
+        title: game.title,
+        ...(game.subtitle ? { subtitle: game.subtitle } : {}),
         ...(game.pitch ? { pitch: game.pitch } : {}),
         ...(game.setup ? { setup: game.setup() } : {}),
         ...(game.chip ? { chip: game.chip() } : {}),

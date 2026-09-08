@@ -10,6 +10,7 @@ import {
   coachFor,
   outcomeLabel,
   pegPercent,
+  beatCall,
   scoredLine,
   turnLine,
 } from "../src/games/cribbage/cribbage.js";
@@ -138,5 +139,55 @@ describe("the coach adds only a pointer, hedged the same way as the engine's lin
     const b = { ...a, exact: false, line: "The engine would have played differently." };
     expect(coachFor(b, 17)).toBe("The engine would have played differently. It would have played card 2.");
     expect(coachFor({ ...a, regret: 0, quality: "best" as const, line: "That is the best keep." }, 3)).toBe("That is the best keep.");
+  });
+});
+
+// Beats (play-surface phase 9, follow-up 2026-09-08): the call over the table is
+// pure data from the last event, so the show and the crib get theirs like pegging.
+describe("beatCall — the word over the table", () => {
+  const peg = (over: Partial<LastEvent>): LastEvent => ({
+    seat: 1,
+    kind: "peg",
+    points: 0,
+    fifteen: 0,
+    thirtyOne: 0,
+    pairs: 0,
+    run: 0,
+    claimed: null,
+    actual: null,
+    muggins: null,
+    ...over,
+  });
+  const claim = (over: Partial<LastEvent>): LastEvent => ({
+    seat: 1,
+    kind: "claim",
+    points: 0,
+    fifteen: 0,
+    thirtyOne: 0,
+    pairs: 0,
+    run: 0,
+    claimed: null,
+    actual: { fifteens: 0, pairs: 0, runs: 0, flush: 0, nobs: 0, total: 0 },
+    muggins: null,
+    ...over,
+  });
+  it("pegging: fifteen first, then thirty-one, a pair by its size, a run by its length", () => {
+    expect(beatCall(peg({ points: 2, fifteen: 2 }), "peg")).toBe("Fifteen two!");
+    expect(beatCall(peg({ points: 2, thirtyOne: 2 }), "peg")).toBe("Thirty-one!");
+    expect(beatCall(peg({ points: 6, pairs: 6 }), "peg")).toBe("Pair royal!");
+    expect(beatCall(peg({ points: 3, run: 3 }), "peg")).toBe("Run of three!");
+    expect(beatCall(peg({ points: 0 }), "peg")).toBeNull();
+  });
+  it("the show: the hand's total, or the crib's when the crib is being counted", () => {
+    expect(beatCall(claim({ claimed: 12, actual: { fifteens: 8, pairs: 2, runs: 0, flush: 0, nobs: 2, total: 12 } }), "showNonDealer")).toBe("Hand: 12!");
+    expect(beatCall(claim({ claimed: 4, actual: { fifteens: 2, pairs: 2, runs: 0, flush: 0, nobs: 0, total: 4 } }), "showCrib")).toBe("Crib: 4!");
+  });
+  it("a hand of nothing is a nineteen; muggins names what was taken", () => {
+    expect(beatCall(claim({ claimed: 0 }), "showDealer")).toBe("Nineteen!");
+    expect(beatCall(claim({ claimed: 8, muggins: 4, actual: { fifteens: 8, pairs: 4, runs: 0, flush: 0, nobs: 0, total: 12 } }), "showDealer")).toBe("Muggins 4!");
+  });
+  it("heels, a go and last card are the seat's line, not a word", () => {
+    expect(beatCall({ ...peg({ points: 1 }), kind: "go" }, "peg")).toBeNull();
+    expect(beatCall({ ...peg({ points: 2 }), kind: "heels" }, "peg")).toBeNull();
   });
 });

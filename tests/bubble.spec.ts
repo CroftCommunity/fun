@@ -22,7 +22,8 @@ test("the board renders a canvas, a launcher chip, an aim control and the HUD", 
   await page.goto("/bubble/?variant=classic&seed=7");
   await ready(page);
   await expect(page.locator(".bub-canvas")).toHaveAttribute("aria-label", /bubbles left/i);
-  await expect(page.locator(".bub-loaded")).toBeVisible();
+  // The chips name the launcher for a reader; the canvas draws it (phase 10a), so they take no room.
+  await expect(page.locator(".bub-loaded")).toBeAttached();
   // Mock F phase 10 (owner Q7, 2026-09-05): the pieces are fruit. The launcher chip
   // names the loaded fruit for a screen reader and shows its emoji.
   await expect(page.locator(".bub-loaded")).toHaveAttribute("aria-label", /^Launcher loaded: (apple|blueberries|kiwi|grapes|orange|lemon)$/);

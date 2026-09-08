@@ -17,7 +17,7 @@ import type { SettingRow } from "../../settings-sheet.js";
 import { WebLLMRuntime, type AIRuntime } from "../../harness/ai-runtime.js";
 import { speak } from "../../harness/banter.js";
 import { buildBand, HybridPlayer, type BandMove, type HybridDecision } from "../../harness/hybrid-player.js";
-import { beatSound, beatWord, ghost } from "../../beats.js";
+import { beatSound, beatWord, ghost, slideFrom } from "../../beats.js";
 import { captureUiState, restoreUiState } from "../../ui-state.js";
 import {
   CHESS_PACKS,
@@ -864,8 +864,12 @@ export function chessModule(): GameModule {
     const stage = beats === FAST_BEATS ? null : frame?.stage;
     if (prevCells && stage && board.lastMove !== null && moves.length > 1 && moves.length !== beatenPly) {
       beatenPly = moves.length;
-      const [, to] = fromTo(board.lastMove);
+      const [from, to] = fromTo(board.lastMove);
       const was = prevCells[to] ?? 0;
+      // The moved piece slides in from the square it left.
+      const fromEl = container.querySelector(`.chess-square[data-sq="${from}"]`);
+      const movedEl = container.querySelector(`.chess-square[data-sq="${to}"] .chess-piece`);
+      if (fromEl && movedEl) slideFrom(movedEl, fromEl);
       const now = board.cells[to] ?? 0;
       const at = container.querySelector(`.chess-square[data-sq="${to}"]`);
       if (was !== 0 && now !== 0 && ownerOf(was) !== ownerOf(now) && at) {

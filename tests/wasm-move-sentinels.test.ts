@@ -31,6 +31,12 @@ async function withWasm<T>(path: string, load: () => Promise<T>): Promise<T> {
 }
 
 describe("wasm move sentinels decode to null / pass, not negative numbers", () => {
+  // The level is irrelevant to the decode — a terminal position is terminal at any
+  // strength — and "Perfect" / "Expert" self-play cost this file 42s on CI's
+  // runner, where the worker's RPC heartbeat timed out three times on 2026-09-08
+  // with every test green. Easy, and a yield between games so the worker answers.
+  const yieldToWorker = (): Promise<void> => new Promise((r) => setImmediate(r));
+
   it("drop4: liveMove and oracleBest return null at a terminal position", async () => {
     const g = await withWasm(
       "target/wasm32-unknown-unknown/release/drop4_wasm.wasm",
@@ -38,7 +44,7 @@ describe("wasm move sentinels decode to null / pass, not negative numbers", () =
     );
     g.newGame(7n);
     while (g.board().result === -1) {
-      const m = g.liveMove("Perfect");
+      const m = g.liveMove("Easy");
       expect(typeof m).toBe("number");
       g.play(m as number);
     }
@@ -57,6 +63,7 @@ describe("wasm move sentinels decode to null / pass, not negative numbers", () =
     let sawForcedPass = false;
     for (let seed = 0; seed < 40 && !sawForcedPass; seed++) {
       g.newGame(BigInt(seed));
+      await yieldToWorker();
       while (g.board().result === -1) {
         if (g.legalMoves().length === 0) {
           expect(g.liveMove("Expert")).toBe("pass");
@@ -64,7 +71,7 @@ describe("wasm move sentinels decode to null / pass, not negative numbers", () =
           g.pass();
           continue;
         }
-        const m = g.liveMove("Expert");
+        const m = g.liveMove("Easy");
         expect(typeof m).toBe("number");
         g.play(m as number);
       }
@@ -77,7 +84,7 @@ describe("wasm move sentinels decode to null / pass, not negative numbers", () =
         g.pass();
         continue;
       }
-      g.play(g.liveMove("Expert") as number);
+      g.play(g.liveMove("Easy") as number);
     }
     expect(g.liveMove("Expert")).toBeNull();
   }, 300_000);

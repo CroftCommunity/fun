@@ -83,4 +83,31 @@ describe("tools/stale-shots.sh", () => {
     expect(r.status).toBe(0);
     expect(r.out).toMatch(/origin\/main/);
   });
+
+  it("a commit in the range saying `Shots-Unchanged: <id> — <why>` is an audited pass for that game", () => {
+    // A slide beat is a transient no still shot can show: the module changed, the
+    // look in a shot did not, and the author says so where a reader can find it.
+    const dir = repo();
+    writeFileSync(join(dir, "src", "games", "chess", "chess.ts"), "export const a = 2;\n");
+    git(dir, "commit", "-qam", "chess: a slide beat\n\nShots-Unchanged: chess — the slide is a transient no still shot shows");
+    const r = run(dir);
+    expect(r.status).toBe(0);
+    expect(r.out).toMatch(/chess.*Shots-Unchanged/);
+  });
+
+  it("the trailer covers only the game it names", () => {
+    const dir = repo();
+    mkdirSync(join(dir, "src", "games", "dots"), { recursive: true });
+    writeFileSync(join(dir, "src", "games", "dots", "dots.ts"), "export const d = 1;\n");
+    writeFileSync(join(dir, "assets", "guide", "dots-board.jpg"), "jpg");
+    git(dir, "add", "-A");
+    git(dir, "commit", "-qm", "dots: base");
+    git(dir, "update-ref", "refs/remotes/origin/main", "HEAD");
+    writeFileSync(join(dir, "src", "games", "chess", "chess.ts"), "export const a = 2;\n");
+    writeFileSync(join(dir, "src", "games", "dots", "dots.ts"), "export const d = 2;\n");
+    git(dir, "commit", "-qam", "both\n\nShots-Unchanged: chess — a transient");
+    const r = run(dir);
+    expect(r.status).toBe(1);
+    expect(r.out).toMatch(/dots changed/);
+  });
 });
