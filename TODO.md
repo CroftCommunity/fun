@@ -18,3 +18,14 @@
 - **`e-color-sort.html` is built (rule 7) but names no `mock-proposal`** (rule 8). Its
   Shipped-per-phase captures from `tools/mock-snaps.mjs` are the right shape; the owed part
   is the meta naming the branch sha the Proposed frames came from, so check 44 can resolve it.
+
+## Shared code (`CroftC/.claude/SHARED-CODE.md`)
+
+Six files are copies of croft-pwa's atproto module, headed "Ported from croft-pwa":
+`src/atproto/oauth/{client,dpop,jose,pkce,resolve}.ts` and `src/atproto/read.ts`. They are
+register rows in SHARED-CODE.md § Register of copies (rule 4: a copy is debt with a
+name), so audit check 47b NOTEs them every run until this closes.
+
+- [ ] When croft-pwa exports its atproto module as a package (its TODO § 3), replace the
+      six files with a dependency pinned to a commit: `github:CroftCommunity/croft-pwa#<sha>`
+      (rule 1), and delete the register rows in the same landing.
