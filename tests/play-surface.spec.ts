@@ -160,6 +160,34 @@ test("mock F1.4: the poster's title and pitch sit on a translucent panel over th
   }
 });
 
+test("mock F1.5: on a desktop the poster's art is the whole splash — its lettering on screen, never cropped by the column (owner, 2026-09-08: '2048 splash on desktop is way off screen')", async ({ page }) => {
+  // The splashes are portrait posters with the title lettering at the foot. A 50%-wide
+  // column under object-fit: cover scaled a 538×1200 poster to the column's width and
+  // cropped the bottom third — on a short, wide window the lettering left the frame.
+  for (const vp of [DESKTOP, { width: 1100, height: 640 }]) {
+    await page.setViewportSize(vp);
+    for (const id of ["2048", "chess"]) {
+      await page.goto(`/${id}/`);
+      const art = page.locator(".gf-poster .gf-start-art");
+      await expect(art).toBeVisible();
+      const m = await art.evaluate((img: HTMLImageElement) => {
+        const b = img.getBoundingClientRect();
+        return { w: b.width, h: b.height, top: b.top, bottom: b.bottom, nw: img.naturalWidth, nh: img.naturalHeight };
+      });
+      expect(m.nh, `${id} @ ${vp.width}: the splash loaded`).toBeGreaterThan(0);
+      // The box keeps the poster's own aspect, so nothing of it is cropped away.
+      expect(Math.abs(m.w / m.h - m.nw / m.nh), `${id} @ ${vp.width}: the art's box is the poster's shape`).toBeLessThan(0.02);
+      expect(m.top, `${id} @ ${vp.width}: the poster's top is on screen`).toBeGreaterThanOrEqual(0);
+      expect(m.bottom, `${id} @ ${vp.width}: the poster's foot (its lettering) is on screen`).toBeLessThanOrEqual(vp.height + 1);
+      // The body keeps its room beside the art: Play on screen and the lede at least as wide as the art.
+      const play = await page.locator(".gf-poster .gf-play").boundingBox();
+      const lede = await page.locator(".gf-poster .gf-start-lede").boundingBox();
+      expect(play!.y + play!.height, `${id} @ ${vp.width}: Play on screen`).toBeLessThanOrEqual(vp.height);
+      expect(lede!.width, `${id} @ ${vp.width}: the lede is not squeezed by the art`).toBeGreaterThanOrEqual(m.w);
+    }
+  }
+});
+
 // --- F2: a board fills the stage ------------------------------------------------
 
 /** A game, its board route, and the elements whose union is "the play surface". */

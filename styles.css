@@ -834,20 +834,33 @@ body:has(> .play-area > .gf) {
   .gf-poster {
     flex-direction: row;
   }
+  /* The art is the whole poster at its own shape, full height, never wider than
+     half the frame: a splash is a portrait with its lettering at the foot, and a
+     50%-wide column under cover cropped that foot away (owner, 2026-09-08: "2048
+     splash on desktop is way off screen" — on a short, wide window a 538×1200
+     poster lost its bottom third). Cover still crops a landscape splash
+     (checkers) at the cap, sideways, where nothing is written. The fade into the
+     body's ground is a mask on the art itself, so it tracks the art's real edge
+     rather than the 40–50% band the veil assumed. */
   .gf-poster .gf-start-art {
     position: relative;
     inset: auto;
-    width: 50%;
+    flex: 0 0 auto;
+    width: auto;
+    max-width: 50%;
     height: 100%;
+    object-position: center;
+    -webkit-mask-image: linear-gradient(90deg, rgb(0 0 0) 72%, transparent);
+    mask-image: linear-gradient(90deg, rgb(0 0 0) 72%, transparent);
   }
   .gf-poster .gf-start-veil {
-    left: 40%;
-    right: 50%;
-    background: linear-gradient(90deg, transparent, var(--bg));
+    display: none;
   }
   .gf-poster .gf-start-body {
-    margin: auto 0;
-    width: 50%;
+    flex: 1 1 auto;
+    margin: auto;
+    width: auto;
+    max-width: 44rem;
     padding: 2rem 2.25rem;
   }
   .gf-start-title {

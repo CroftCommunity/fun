@@ -12,6 +12,10 @@ earlier is in `git log`.
 
 ## 2026-09
 
+- 2026-09-08 **every poster:** on a desktop the art is the whole splash at its own shape — a
+  poster's lettering sits at its foot, and the half-width column cropped it away (2048 on a
+  short window lost its bottom third); the setup and Play centre in the room beside it.
+  (owner, 2026-09-08)
 - 2026-09-08 **checkers, chess, cribbage:** more life. A moved man or piece slides in from the
   square it left; the cribbage show calls the hand's or the crib's total, a hand of nothing is
   a nineteen, and muggins names what was taken. (beats follow-up)
