@@ -397,6 +397,17 @@
       "tag": "shipped"
     },
     {
+      "file": "shipped.trio-tumble.poster.phone.png",
+      "game": "trio-tumble",
+      "route": "poster",
+      "url": "/trio-tumble/",
+      "viewport": "phone",
+      "width": 390,
+      "height": 844,
+      "baseline": "fun@64888dc",
+      "tag": "shipped"
+    },
+    {
       "file": "shipped.trio-tumble.board.desktop.png",
       "game": "trio-tumble",
       "route": "board",
@@ -404,11 +415,22 @@
       "viewport": "desktop",
       "width": 1280,
       "height": 900,
-      "baseline": "fun@23b0f84",
+      "baseline": "fun@64888dc",
+      "tag": "shipped"
+    },
+    {
+      "file": "shipped.dots.poster.phone.png",
+      "game": "dots",
+      "route": "poster",
+      "url": "/dots/",
+      "viewport": "phone",
+      "width": 390,
+      "height": 844,
+      "baseline": "fun@64888dc",
       "tag": "shipped"
     }
   ],
-  "baseline": "fun@23b0f84",
+  "baseline": "fun@64888dc",
   "capturedAt": "2026-09-08",
   "population": "deep link, fixed seed (hermetic); the poster is the bare land in a fresh context",
   "note": "Pruned to the captures the mock page shows (a full all-games set is 39MB); re-run tools/mock-snaps.mjs <game> --out f-play-surface --tag current|proposed to add one."

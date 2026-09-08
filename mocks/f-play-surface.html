@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="mock-version" content="5" />
+<meta name="mock-version" content="5.1" />
 <meta name="mock-baseline" content="fun@aafe332" />
 <meta name="mock-proposal" content="fun@eb509fc" />
 <title>The play surface — the board fills the stage, the door opens, one shape for hand controls · v5 · fun.croft.ing mocks</title>
@@ -194,6 +194,7 @@
   <p class="h-note">Compare in one skin: every capture and sketch here is the default Worlds night skin. Captures are true size — 390×844 as-is, 1280×900 shown in an 1180×740 window, top-aligned — from <code>tools/mock-snaps.mjs all --out f-play-surface --tag current|proposed</code>, hermetic: fixed seeds, and the poster is the bare land in a fresh context.</p>
 
   <h2>Revisions</h2>
+  <p class="rev"><b>v5.1</b> — owner review of PR #82, 2026-09-08: "the instruction text overlaid on the splash is unreadable". The poster's lede (chip, title, pitch) now sits on a translucent, blurred panel over the art; <b>Shipped</b> captures of the Trio Tumble and Dots posters (<code>fun@64888dc</code>) stand beside proposal 1. Trio Tumble's two-line title leaves its poster a small scroll behind the sticky Play (F1.3 says so).</p>
   <p class="rev"><b>v5</b> — Pass 2 built 2026-09-08 (owner: "do these TDD first"): every open decision taken at its recommendation and shipped on <code>claude/play-surface-2</code> — Q9 Cribbage → Tuesday Night Rainfall, Q8 Classic + Bold, Q6 segmented rows, Q2 the tint, Q3 Auto, Q4 the split, Q5 Auto + preference, Q10 the curve, Q11 the beats, and phase 4 (the rest of the fill). <b>Shipped</b> captures (<code>snaps/f-play-surface/shipped.*</code>, <code>fun@23b0f84</code>) stand beside sketches 4, 5, 6, 8 and 9 and beside proposal 2 for the fill. The sketches stay as drawn — they are the record of what was asked.</p>
   <p class="rev"><b>v4</b> — phase 10a shipped: Bubble's pieces are the fruit set in glass bubbles with a launcher ring and an on-deck ring; a <b>Shipped</b> capture (<code>snaps/f-play-surface/shipped.bubble.*</code>, branch <code>claude/bubble-fruit</code>) stands beside proposal 8's sketch. The chess half of proposal 8 waits on Q8.</p>
   <p class="rev"><b>v3</b> — owner decisions 2026-09-05: <b>Q7 fruit</b> (Bubble's pieces are the fruit set), <b>Q9 Mahjong → Porch Light Nocturne</b> (landed the same day in <code>src/music.ts</code>; Cribbage's pick stays open). Proposals 1–3 landed on main as <code>fun@0b98217</code> (PR #79).</p>
@@ -238,6 +239,8 @@
     <figure class="h-frame"><figcaption><b>Proposed</b> — captured <code>fun@eb509fc</code>: Play sticky, the card scrolls behind it</figcaption><img class="snap" src="snaps/f-play-surface/proposed.trio-tumble.poster.phone.png" alt="Proposed: the same poster; the Play button sits fully on screen at the bottom and the last option is scrolling behind it." /></figure>
     <figure class="h-frame"><figcaption><b>Current</b> — Dots and Boxes at 390×844</figcaption><img class="snap" src="snaps/f-play-surface/current.dots.poster.phone.png" alt="Current: the Dots and Boxes poster; the Play button is off the bottom." /></figure>
     <figure class="h-frame"><figcaption><b>Proposed</b> — Dots and Boxes at 390×844</figcaption><img class="snap" src="snaps/f-play-surface/proposed.dots.poster.phone.png" alt="Proposed: the Dots and Boxes poster with Play on screen." /></figure>
+    <figure class="h-frame"><figcaption><b>Shipped</b> — captured <code>fun@64888dc</code>, 390×844: the lede on its panel, readable over the art (v5.1)</figcaption><img class="snap" src="snaps/f-play-surface/shipped.trio-tumble.poster.phone.png" alt="Shipped, phone: the Trio Tumble poster with the title and pitch on a translucent panel." /></figure>
+    <figure class="h-frame"><figcaption><b>Shipped</b> — captured <code>fun@64888dc</code>, 390×844: Dots and Boxes, the same panel</figcaption><img class="snap" src="snaps/f-play-surface/shipped.dots.poster.phone.png" alt="Shipped, phone: the Dots and Boxes poster with its lede on a translucent panel." /></figure>
   </div>
 
   <h3 class="h-pair-title">2 · The board fills the stage <span class="pill built">built · F2.1–F2.5</span></h3>
