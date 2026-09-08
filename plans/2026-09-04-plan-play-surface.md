@@ -200,7 +200,18 @@ selectors. Done-when: every game on the rule, `docs/BUILDING-GAMES.md` §4b upda
 ### Phase 8: Furrow upright (Q5)
 ### Phase 9: Beats on the versus boards (Q11) — `src/beats.ts`, then one game per commit
 ### Phase 10: Pieces (Q7, Q8) — Bubble emoji + launcher; chess packs + presence
-Q7 DECIDED 2026-09-05: the fruit set (🍎🍋🫐🍇🍊🥝). Q8 open. Ready for its Done-when in Pass 2.
+Q7 DECIDED 2026-09-05: the fruit set. Q8 open — the chess half waits on it.
+
+**Phase 10a — Bubble's fruit (Pass 2, 2026-09-05).** `src/games/bubble/bubble-pieces.ts` is the
+table (glyph + name per colour index, in the palette's `--gem-N` order: 🍎 apple, 🫐
+blueberries, 🥝 kiwi, 🍇 grapes, 🍊 orange, 🍋 lemon); the canvas draws a glass bubble (tint,
+rim, highlight) with the fruit inside, a launcher ring under the loaded piece and a dashed
+on-deck ring; the HUD chips show the fruit and name it for a screen reader; the how-to copy
+names the fruit and its shots regenerate. Done-when: `tests/bubble-pieces.test.ts` (the table
+as data), the wiring test's launcher assertions (`tests/bubble.spec.ts`, structure) green on
+both engines; `assets/guide/bubble-*.jpg` regenerated; mock F v4 carries a Shipped capture
+of the board beside proposal 8. No core change: colours are indices, and the core never knew
+a shape.
 ### Phase 11: Loose Ends' curve (Q10)
 ### Phase 12: Music (Q9)
 Mahjong → Porch Light Nocturne DECIDED and landed 2026-09-05 (`tests/appearance.test.ts` pins

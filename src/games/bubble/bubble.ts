@@ -32,6 +32,7 @@ import {
   type VerifyResult,
 } from "./bubble-outcome.js";
 import { aimSettingRows } from "./bubble-aim-settings.js";
+import { EMOJI_FONT, pieceFor } from "./bubble-pieces.js";
 import { dayIndexUTC } from "../share.js";
 import {
   aimGuideEnabled,
@@ -65,8 +66,6 @@ declare global {
   }
 }
 
-const BUBBLE_GLYPH = ["●", "▲", "■", "◆", "★", "✚"];
-const BUBBLE_NAME = ["circle", "triangle", "square", "diamond", "star", "plus"];
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -435,28 +434,64 @@ export function bubbleModule(): GameModule {
     const r = geom.radius * 0.92 * scale;
     ctx.save();
     ctx.globalAlpha = alpha;
+    // A glass bubble: a faint tinted disc, a rim, and a highlight up-left — the
+    // fruit sits inside it (mock F phase 10; the owner's fruit set, Q7).
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fillStyle = p.surface;
     ctx.fill();
-    ctx.fillStyle = p.gems[color] ?? p.ink;
-    ctx.font = `${Math.round(geom.radius * 1.15 * scale)}px system-ui, sans-serif`;
+    const tint = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r);
+    tint.addColorStop(0, "rgba(255,255,255,0.32)");
+    tint.addColorStop(0.55, "rgba(255,255,255,0.04)");
+    tint.addColorStop(1, "rgba(0,0,0,0.18)");
+    ctx.fillStyle = tint;
+    ctx.fill();
+    ctx.lineWidth = Math.max(1, r * 0.08);
+    ctx.strokeStyle = "rgba(255,255,255,0.22)";
+    ctx.stroke();
+    ctx.font = `${Math.round(geom.radius * 1.12 * scale)}px ${EMOJI_FONT}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(BUBBLE_GLYPH[color] ?? "●", x, y + geom.radius * 0.06 * scale);
+    ctx.fillStyle = p.gems[color] ?? p.ink; // the fallback glyph's colour; an emoji ignores it
+    ctx.fillText(pieceFor(color).glyph, x, y + geom.radius * 0.06 * scale);
     ctx.restore();
   };
 
-  // The on-deck ("next") bubble, drawn small and dimmed beside the launcher so
-  // the player can plan the shot after this one (a next-piece preview).
+  // The launcher: a ring the loaded piece sits in, so the shot's origin reads
+  // as a thing on the table rather than a bubble that happens to be low.
+  const drawLauncher = (ctx: CanvasRenderingContext2D, p: Palette, o: { x: number; y: number }): void => {
+    const r = geom.radius * 1.3;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(o.x, o.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.fill();
+    ctx.lineWidth = Math.max(2, geom.radius * 0.14);
+    ctx.strokeStyle = p.inkMuted;
+    ctx.globalAlpha = 0.7;
+    ctx.stroke();
+    ctx.restore();
+  };
+
+  // The on-deck ("next") piece, drawn small in a dashed ring beside the launcher
+  // so the player can plan the shot after this one (a next-piece preview).
   const drawOnDeck = (
     ctx: CanvasRenderingContext2D,
     p: Palette,
     o: { x: number; y: number },
     color: number,
   ): void => {
-    const x = o.x + geom.diam * 0.95;
-    drawBubble(ctx, p, x, o.y, color, 0.58, 0.7);
+    const x = o.x + geom.diam * 1.15;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, o.y, geom.radius * 0.75, 0, Math.PI * 2);
+    ctx.setLineDash([geom.radius * 0.25, geom.radius * 0.2]);
+    ctx.lineWidth = Math.max(1, geom.radius * 0.08);
+    ctx.strokeStyle = p.inkMuted;
+    ctx.globalAlpha = 0.6;
+    ctx.stroke();
+    ctx.restore();
+    drawBubble(ctx, p, x, o.y, color, 0.58, 0.85);
   };
 
   // A translucent danger band over the reserved bottom deadline rows (levels
@@ -504,6 +539,7 @@ export function bubbleModule(): GameModule {
 
     const o = origin(u);
     if (!u.over) {
+      drawLauncher(ctx, p, o);
       drawBubble(ctx, p, o.x, o.y, u.currentColor);
       drawOnDeck(ctx, p, o, u.nextColor);
     }
@@ -781,18 +817,18 @@ export function bubbleModule(): GameModule {
         {
           class: `bub-loaded bub-color-${color}`,
           role: "img",
-          "aria-label": `Launcher loaded: ${BUBBLE_NAME[color] ?? "bubble"}`,
+          "aria-label": `Launcher loaded: ${pieceFor(color).name}`,
         },
-        BUBBLE_GLYPH[color] ?? "●",
+        pieceFor(color).glyph,
       ),
       el(
         "span",
         {
           class: `bub-next bub-color-${nextColor}`,
           role: "img",
-          "aria-label": `Next up: ${BUBBLE_NAME[nextColor] ?? "bubble"}`,
+          "aria-label": `Next up: ${pieceFor(nextColor).name}`,
         },
-        BUBBLE_GLYPH[nextColor] ?? "●",
+        pieceFor(nextColor).glyph,
       ),
     );
 
@@ -983,7 +1019,7 @@ export function bubbleModule(): GameModule {
     if (prefersReducedMotion()) return;
     const layer = el("div", { class: "sol-cascade", "aria-hidden": "true" });
     for (let i = 0; i < 24; i += 1) {
-      const s = el("span", { class: `gem-${i % 6}` }, BUBBLE_GLYPH[i % 6]!);
+      const s = el("span", { class: `gem-${i % 6}` }, pieceFor(i % 6).glyph);
       s.style.left = `${(i * 4.15) % 100}%`;
       s.style.animationDelay = `${(i % 8) * 0.08}s`;
       layer.append(s);

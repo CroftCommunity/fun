@@ -12,6 +12,12 @@ earlier is in `git log`.
 
 ## 2026-09
 
+- 2026-09-05 **bubble:** the pieces are fruit. Six fruit — apple, blueberries, kiwi, grapes,
+  orange, lemon — sit in glass bubbles, the loaded one in a launcher ring with the next in a
+  dashed ring beside it; the launcher chip names the fruit for a screen reader. A fruit has
+  its own shape as well as its own colour, so the pieces stay distinct however you see
+  colour. (mock F Q7, phase 10a, play-surface)
+
 - 2026-09-05 **mahjong:** the music is Porch Light Nocturne. Mahjong named no track of
   its own and played the shelf's bed. (mock F Q9, play-surface)
 
