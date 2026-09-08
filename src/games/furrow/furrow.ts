@@ -29,6 +29,9 @@ import { speak } from "../../harness/banter.js";
 import { buildBand, HybridPlayer, type BandMove } from "../../harness/hybrid-player.js";
 import { captureUiState, restoreUiState } from "../../ui-state.js";
 import {
+  furrowOrient,
+  furrowUpright,
+  setFurrowOrient,
   declareAssistanceEnabled,
   furrowLevel,
   furrowTutorEnabled,
@@ -321,6 +324,7 @@ export function furrowModule(): GameModule {
   let disposed = false;
   let busy = false;
   let frame: GameFrame | null = null;
+  let orientWatch: ResizeObserver | null = null;
   let pendingResume: Progress | null = null;
   let moves: number[] = [];
   let hinted = false;
@@ -507,6 +511,14 @@ export function furrowModule(): GameModule {
    * right-to-left along the top, yours left-to-right along the bottom, with each
    * store at its owner's end.
    */
+  // The stage's aspect decides Auto (phase 8): measured at render, re-measured on
+  // resize. The DOM order never changes — upright is the across board turned a
+  // quarter by CSS, so the core's pit order and the reading order stay one thing.
+  const upright = (): boolean => {
+    const stage = frame?.stage;
+    return furrowUpright(furrowOrient(), { w: stage?.clientWidth ?? 0, h: stage?.clientHeight ?? 0 });
+  };
+
   const buildBoard = (board: BoardView, interactive: boolean): HTMLElement => {
     const theirs: number[] = [];
     for (let i = 2 * board.pits; i >= board.pits + 1; i -= 1) theirs.push(i);
@@ -515,7 +527,7 @@ export function furrowModule(): GameModule {
 
     const boardEl = el(
       "div",
-      { class: "furrow-board", role: "group", "aria-label": "Furrow board" },
+      { class: "furrow-board", role: "group", "aria-label": "Furrow board", "data-orient": upright() ? "upright" : "across" },
       storeCell(board, ENGINE),
       el(
         "div",
@@ -549,6 +561,22 @@ export function furrowModule(): GameModule {
     const engineThinking = live && !humanTurn && busy;
     const hints = hintsEnabled();
     const preferences: SettingRow[] = [
+      {
+        kind: "choice",
+        id: "orient",
+        label: "Board",
+        hint: "Upright turns the board a quarter so it stands on a phone — your column on the right, sowing upward. Auto follows the screen's shape.",
+        value: furrowOrient(),
+        options: [
+          { value: "auto", label: "Auto" },
+          { value: "across", label: "Across" },
+          { value: "upright", label: "Upright" },
+        ],
+        onChange: (v) => {
+          setFurrowOrient(v === "across" || v === "upright" ? v : "auto");
+          render();
+        },
+      },
       {
         kind: "toggle",
         id: "tutor",
@@ -988,6 +1016,17 @@ export function furrowModule(): GameModule {
     mount(c: HTMLElement, services?: GameServices): void {
       container = c;
       frame = services?.frame ?? null;
+      // Auto follows the stage's aspect: when a resize would turn the board, render again.
+      if (frame && typeof ResizeObserver !== "undefined") {
+        orientWatch?.disconnect();
+        orientWatch = new ResizeObserver(() => {
+          const boardEl = container?.querySelector<HTMLElement>(".furrow-board");
+          if (!boardEl) return;
+          const want = upright() ? "upright" : "across";
+          if (boardEl.dataset.orient !== want) render();
+        });
+        orientWatch.observe(frame.stage);
+      }
       disposed = false;
       level = furrowLevel();
       frame?.onSettingsChange(() => render()); // Hints flips the verb
@@ -1029,6 +1068,8 @@ export function furrowModule(): GameModule {
       disposed = true;
       delete window.__furrow;
       container?.replaceChildren();
+      orientWatch?.disconnect();
+      orientWatch = null;
       container = null;
       frame = null;
       game = null;

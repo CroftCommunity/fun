@@ -4090,8 +4090,8 @@ a.le-btn {
 }
 
 .furrow-pit {
-  inline-size: 2.75rem;
-  block-size: 2.75rem;
+  inline-size: var(--fur-pit, 2.75rem);
+  block-size: var(--fur-pit, 2.75rem);
   border-radius: 50%;
   font: inherit;
   font-weight: 600;
@@ -4153,6 +4153,42 @@ a.le-btn {
   font-weight: 700;
 }
 
+
+/* Upright (phase 8, mock F Q5): the across board turned a quarter, counter-
+   clockwise, by CSS alone — the DOM order is the across order. Your row becomes
+   the right column read bottom-up (pit 0 at the bottom, sowing upward into your
+   store, which moves to the top); the engine's row becomes the left column read
+   top-down into its store at the bottom. The pits grow from the stage's height. */
+.furrow-board[data-orient="upright"] {
+  --fur-pit: clamp(2.75rem, calc((var(--room-h) - 14rem) / 6), 3.75rem);
+  grid-template-columns: none;
+  grid-template-rows: auto 1fr auto;
+  justify-items: center;
+  width: max-content;
+}
+.furrow-board[data-orient="upright"] .furrow-store.mine { order: -1; }
+.furrow-board[data-orient="upright"] .furrow-store.theirs { order: 1; }
+.furrow-board[data-orient="upright"] .furrow-store {
+  inline-size: calc(var(--fur-pit) * 2 + 3rem);
+  block-size: 3rem;
+  border-radius: 1.5rem;
+  flex-direction: row;
+  gap: 0.5rem;
+}
+.furrow-board[data-orient="upright"] .furrow-rows {
+  flex-direction: row;
+  gap: 1.25rem;
+}
+.furrow-board[data-orient="upright"] .furrow-row {
+  flex-direction: column-reverse; /* the quarter turn: each row's far end is now its top */
+}
+.furrow-board[data-orient="upright"] .furrow-rowmark {
+  inline-size: auto;
+  block-size: 1.1rem;
+}
+/* The upright board never scrolls sideways: it is two pits wide. */
+.furrow-board[data-orient="upright"] ~ *,
+.furrow-boardwrap:has(.furrow-board[data-orient="upright"]) { overflow-x: visible; }
 
 .furrow-flash {
   margin: 0;

@@ -285,3 +285,51 @@ test("mock F5.3: Align's pad is the split — move and hold under the left thumb
   expect(well!.height, "the well keeps its height").toBeGreaterThanOrEqual(380);
   expect(left!.x + left!.width, "left cluster is left").toBeLessThan(right!.x);
 });
+
+// --- F6 (phase 8, Q5): Furrow stands up on a phone -------------------------------
+
+test("mock F6.1: on a 390×844 phone Furrow is upright — two columns of six, your column on the right sowing upward into your store at the top, 44px pits, no scroll", async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  await page.goto("/furrow/?seed=7");
+  const board = page.locator(".furrow-board");
+  await expect(board).toBeVisible();
+  await expect(board).toHaveAttribute("data-orient", "upright");
+  const stage = await stageContent(page);
+  const box = await board.boundingBox();
+  expect(box!.width, "no wider than the stage").toBeLessThanOrEqual(stage.w + 1);
+  expect(box!.height / stage.h, "the board uses the height it now has").toBeGreaterThanOrEqual(0.7);
+  expect(await page.evaluate(() => document.querySelector(".furrow-boardwrap")!.scrollWidth <= document.querySelector(".furrow-boardwrap")!.clientWidth)).toBe(true);
+  for (const pit of await page.locator(".furrow-pit").all()) {
+    const b = await pit.boundingBox();
+    expect(b!.width).toBeGreaterThanOrEqual(44);
+  }
+  // Geometry: the core's pit 0 is the bottom of your column, pit 5 the top; your store is above it,
+  // theirs below their column — the across board turned a quarter, counter-clockwise, so sowing
+  // (0 → 5 → your store) runs upward and the engine's (7 → 12 → its store; 6 is your store) runs downward.
+  const y = async (sel: string): Promise<number> => (await page.locator(sel).boundingBox())!.y;
+  const x = async (sel: string): Promise<number> => (await page.locator(sel).boundingBox())!.x;
+  expect(await y('.furrow-pit[data-pit="0"]')).toBeGreaterThan(await y('.furrow-pit[data-pit="5"]'));
+  expect(await y(".furrow-store.mine")).toBeLessThan(await y('.furrow-pit[data-pit="5"]'));
+  expect(await y('.furrow-pit[data-pit="7"]')).toBeLessThan(await y('.furrow-pit[data-pit="12"]'));
+  expect(await y(".furrow-store.theirs")).toBeGreaterThan(await y('.furrow-pit[data-pit="12"]'));
+  expect(await x('.furrow-pit[data-pit="0"]')).toBeGreaterThan(await x('.furrow-pit[data-pit="7"]'));
+});
+
+test("mock F6.2: a desktop stage lies across; the Board preference (Auto / Across / Upright) overrides either way and is remembered", async ({ page }) => {
+  await page.setViewportSize(DESKTOP);
+  await page.goto("/furrow/?seed=7");
+  await expect(page.locator(".furrow-board")).toHaveAttribute("data-orient", "across");
+  await page.evaluate(() => localStorage.setItem("fun-furrow-orient", "upright"));
+  await page.reload();
+  await expect(page.locator(".furrow-board")).toHaveAttribute("data-orient", "upright");
+  await page.setViewportSize(PHONE);
+  await page.evaluate(() => localStorage.setItem("fun-furrow-orient", "across"));
+  await page.reload();
+  await expect(page.locator(".furrow-board")).toHaveAttribute("data-orient", "across");
+  // The row lives with the game's own settings.
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  const row = page.locator('.gf-sheet [data-setting="orient"]');
+  await expect(row.locator("input")).toHaveCount(3);
+  await row.locator('input[value="upright"]').check();
+  await expect(page.locator(".furrow-board")).toHaveAttribute("data-orient", "upright");
+});

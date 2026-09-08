@@ -26,6 +26,7 @@ const CS_STRICT_KEY = "fun-color-sort-strict";
 const CONTROLS_LEFT_KEY = "fun-controls-left";
 const CHESS_PACK_KEY = "fun-chess-pack";
 const PAD_KEY = "fun-pad";
+const FURROW_ORIENT_KEY = "fun-furrow-orient";
 
 /** Pure resolver: an explicit stored "on"/"off" wins; otherwise the default. */
 export function resolveBool(stored: string | null, fallback: boolean): boolean {
@@ -850,4 +851,40 @@ export function setPadMode(mode: PadMode): void {
 export function padVisible(): boolean {
   const coarse = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
   return padShown(padMode(), coarse);
+}
+
+// ---------- Furrow (the board's orientation — phase 8, mock F Q5) ----------
+
+/** Auto follows the stage's aspect; Across and Upright force it. */
+export type FurrowOrient = "auto" | "across" | "upright";
+
+/** Pure resolver: Across or Upright if stored, else Auto. */
+export function resolveFurrowOrient(stored: string | null): FurrowOrient {
+  return stored === "across" || stored === "upright" ? stored : "auto";
+}
+
+/**
+ * Pure: does the board stand up? Auto stands up on a portrait stage (taller
+ * than wide); an unmeasured stage (before layout) lies across, the default the
+ * board always had.
+ */
+export function furrowUpright(pref: FurrowOrient, stage: { readonly w: number; readonly h: number }): boolean {
+  if (pref !== "auto") return pref === "upright";
+  return stage.h > stage.w;
+}
+
+/** The stored orientation — **Auto by default**. */
+export function furrowOrient(): FurrowOrient {
+  try {
+    return resolveFurrowOrient(localStorage.getItem(FURROW_ORIENT_KEY));
+  } catch {
+    return "auto";
+  }
+}
+export function setFurrowOrient(orient: FurrowOrient): void {
+  try {
+    localStorage.setItem(FURROW_ORIENT_KEY, orient);
+  } catch {
+    // Storage denied (private mode): the setting still applies for the session.
+  }
 }
