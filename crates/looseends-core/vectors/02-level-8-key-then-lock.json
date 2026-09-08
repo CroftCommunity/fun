@@ -1,0 +1,16 @@
+{
+  "name": "level 8, the key then the lock",
+  "note": "The greedy release order through the key (9) and then the lock (5), cut after the lock leaves. Locks decide the order; the hash is occupancy.",
+  "level": 8,
+  "moves": [
+    0,
+    2,
+    7,
+    9,
+    10,
+    11,
+    12,
+    5
+  ],
+  "final_state_hash": "ff7f93598b7793d4157a447aee717b3f43046f93a123d22d640c798cb2dcd41c"
+}

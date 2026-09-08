@@ -28,6 +28,9 @@ pub struct Config {
     pub min_len: i32,
     /// Maximum arrow body length.
     pub max_len: i32,
+    /// How many `(locked, key)` pairs the generator draws after placing the
+    /// arrows (plan 2026-09-08; none through level 7, none on a daily).
+    pub locks: i32,
     /// The RNG seed (FNV-1a of the level/daily key).
     pub seed: u32,
 }
@@ -59,8 +62,20 @@ pub fn level_config(n: u32) -> Config {
         target: jround(10.0 + 58.0 * t),
         min_len: 3,
         max_len: 5 + jround(t * 7.0),
+        locks: level_locks(n),
         seed: level_seed(n),
     }
+}
+
+/// The lock count for level `n`: none through level 7 (the ray rule alone),
+/// one from level 8, then `1 + floor((n − 8) · 7 / 92)` — eight at level 100.
+/// Integer arithmetic; it never enters the hashed path either way.
+#[must_use]
+pub fn level_locks(n: u32) -> i32 {
+    if n < 8 {
+        return 0;
+    }
+    1 + ((n as i32 - 8) * 7) / 92
 }
 
 /// Daily config derived from the daily `seed` — the spec's `dailyConfig`, whose
@@ -78,6 +93,7 @@ pub fn daily_config(seed: u32) -> Config {
         target,
         min_len: 2,
         max_len: 9,
+        locks: 0,
         seed,
     }
 }
@@ -97,6 +113,7 @@ mod tests {
             (6, 8, 10, 3, 5)
         );
         assert_eq!(c1.seed, 3_873_835_247);
+        assert_eq!(c1.locks, 0, "seven levels of the ray rule alone");
 
         let c100 = level_config(100);
         assert_eq!(
@@ -114,6 +131,26 @@ mod tests {
     }
 
     #[test]
+    fn locks_start_at_level_8_and_reach_eight_at_100() {
+        // Plan 2026-09-08, Q1 at its recommendation: none through level 7, one from
+        // level 8, then 1 + floor((n − 8) · 7 / 92) — eight at level 100.
+        let locks = |n: u32| level_config(n).locks;
+        assert_eq!((1..=7).map(locks).collect::<Vec<_>>(), vec![0; 7]);
+        assert_eq!(locks(8), 1);
+        assert_eq!(locks(21), 1);
+        assert_eq!(locks(22), 2);
+        assert_eq!(locks(50), 4);
+        assert_eq!(locks(99), 7);
+        assert_eq!(locks(100), 8);
+        for n in 8..100 {
+            assert!(
+                locks(n) <= locks(n + 1),
+                "the lock count never falls (level {n})"
+            );
+        }
+    }
+
+    #[test]
     fn daily_config_matches_reference() {
         let seed = daily_seed("2026-08-02");
         assert_eq!(seed, 2_028_026_207);
@@ -122,5 +159,6 @@ mod tests {
             (c.w, c.h, c.target, c.min_len, c.max_len),
             (9, 14, 26, 2, 9)
         );
+        assert_eq!(c.locks, 0, "no locks on a daily board this pass (Q3)");
     }
 }

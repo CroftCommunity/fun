@@ -5,15 +5,15 @@
 // solitaire-core/vectors/. Byte-identical hashes across targets = the Rust->wasm
 // determinism property. Exits non-zero on any mismatch.
 //
-// Usage: node check.mjs <xbuild.wasm> <solitaire-vectors> <dots-vectors> <furrow-vectors> <orchard-vectors> <cribbage-vectors> <mahjong-vectors> <chess-vectors>
+// Usage: node check.mjs <xbuild.wasm> <solitaire-vectors> <dots-vectors> <furrow-vectors> <orchard-vectors> <cribbage-vectors> <mahjong-vectors> <chess-vectors> <looseends-vectors>
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-const [wasmPath, vectorsDir, dotsVectorsDir, furrowVectorsDir, orchardVectorsDir, cribbageVectorsDir, mahjongVectorsDir, chessVectorsDir] =
+const [wasmPath, vectorsDir, dotsVectorsDir, furrowVectorsDir, orchardVectorsDir, cribbageVectorsDir, mahjongVectorsDir, chessVectorsDir, looseendsVectorsDir] =
   process.argv.slice(2);
-if (!wasmPath || !vectorsDir || !dotsVectorsDir || !furrowVectorsDir || !orchardVectorsDir || !cribbageVectorsDir || !mahjongVectorsDir || !chessVectorsDir) {
+if (!wasmPath || !vectorsDir || !dotsVectorsDir || !furrowVectorsDir || !orchardVectorsDir || !cribbageVectorsDir || !mahjongVectorsDir || !chessVectorsDir || !looseendsVectorsDir) {
   console.error(
-    "usage: node check.mjs <xbuild.wasm> <solitaire-vectors-dir> <dots-vectors-dir> <furrow-vectors-dir> <orchard-vectors-dir> <cribbage-vectors-dir> <mahjong-vectors-dir> <chess-vectors-dir>",
+    "usage: node check.mjs <xbuild.wasm> <solitaire-vectors-dir> <dots-vectors-dir> <furrow-vectors-dir> <orchard-vectors-dir> <cribbage-vectors-dir> <mahjong-vectors-dir> <chess-vectors-dir> <looseends-vectors-dir>",
   );
   process.exit(2);
 }
@@ -41,6 +41,7 @@ const {
   chess_replay_hash,
   chess_in_ptr,
   chess_in_cap,
+  looseends_replay_hash,
 } = instance.exports;
 const len = hash_len();
 
@@ -156,6 +157,35 @@ for (const file of [
           throw new Error("move list exceeds the chess input buffer");
         new Uint16Array(memory.buffer, chess_in_ptr(), v.moves.length).set(v.moves);
         return readHash(chess_replay_hash(lo, hi, v.moves.length));
+      },
+      goldenValue: v.final_state_hash,
+    });
+  }
+}
+
+// Loose Ends: generation, the lock draw and the lock rule in `release` are all
+// on the path — a vector is (level, releases), and a release the rules refuse
+// is a no-op on both targets. The loop discovers the directory and FAILS on an
+// empty one, the chess shape: nothing graded is a red run.
+{
+  const files = (await readdir(looseendsVectorsDir)).filter((f) => f.endsWith(".json")).sort();
+  if (files.length === 0) {
+    console.error(`looseends: no vector files in ${looseendsVectorsDir} — nothing graded is a FAIL`);
+    process.exit(1);
+  }
+  for (const file of files) {
+    const v = await vectorFrom(looseendsVectorsDir, file);
+    if (!Array.isArray(v.moves)) {
+      console.error(`looseends ${file}: moves is a recording directive, not a list — record it natively first`);
+      process.exit(1);
+    }
+    cases.push({
+      name: `looseends ${v.name}`,
+      wasm: () => {
+        if (v.moves.length > move_in_cap())
+          throw new Error("release list exceeds the wasm input buffer");
+        new Uint8Array(memory.buffer, move_in_ptr(), v.moves.length).set(v.moves);
+        return readHash(looseends_replay_hash(v.level, v.moves.length));
       },
       goldenValue: v.final_state_hash,
     });

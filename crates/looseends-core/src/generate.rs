@@ -8,6 +8,14 @@
 //! A direct, integer-exact port of the spec's `generate` + its retry wrapper;
 //! the `Rng` helpers ([`Rng::below`], [`Rng::lt_half`]) reproduce the spec's
 //! `(rng()*n)|0` / `rng()<0.5` draw-for-draw.
+//!
+//! **Locks** (plan 2026-09-08, phase 2) are drawn *after* the retry wrapper has
+//! picked its attempt, from the same stream, so every arrow layout — and every
+//! golden recorded before locks existed — is byte-identical. A pair's key is
+//! always an arrow placed **later** than its lock, which the reverse-order
+//! construction releases **earlier**, so releasing in reverse placement order
+//! still clears the board: solvability by construction is kept by the
+//! direction of the pair.
 
 use crate::board::{Arrow, Board};
 use crate::config::Config;
@@ -155,7 +163,52 @@ pub fn generate(cfg: &Config) -> Board {
             break;
         }
     }
-    Board::new(cfg.w, cfg.h, best.unwrap_or_default())
+    let arrows = best.unwrap_or_default();
+    let locks = draw_locks(&arrows, cfg.locks, &mut rng);
+    Board::with_locks(cfg.w, cfg.h, arrows, locks)
+}
+
+/// Do two arrows' bodies touch — any cell of one 4-adjacent to any cell of the other?
+fn touches(a: &Arrow, b: &Arrow) -> bool {
+    a.cells.iter().any(|p| {
+        b.cells
+            .iter()
+            .any(|q| (p[0] - q[0]).abs() + (p[1] - q[1]).abs() == 1)
+    })
+}
+
+/// Draw up to `want` `(locked, key)` pairs over `arrows` (in placement order).
+/// Each draw picks a locked arrow among all but the last placed, then a key
+/// among the arrows placed after it whose body touches its body; a draw with no
+/// candidate, or on an arrow already locked, is skipped and the stream moves
+/// on. Bounded: `24 × want` draws, so a board with nothing touching yields
+/// fewer locks rather than never returning (the count test says if it does).
+fn draw_locks(arrows: &[Arrow], want: i32, rng: &mut Rng) -> Vec<(usize, usize)> {
+    let n = arrows.len();
+    let mut locks = Vec::new();
+    if want <= 0 || n < 2 {
+        return locks;
+    }
+    let mut held = vec![false; n];
+    let budget = want.saturating_mul(24);
+    let mut tries = 0;
+    while (locks.len() as i32) < want && tries < budget {
+        tries += 1;
+        let i = rng.below((n - 1) as u32) as usize;
+        if held[i] {
+            continue;
+        }
+        let cands: Vec<usize> = (i + 1..n)
+            .filter(|&j| touches(&arrows[i], &arrows[j]))
+            .collect();
+        if cands.is_empty() {
+            continue;
+        }
+        let j = cands[rng.below(cands.len() as u32) as usize];
+        held[i] = true;
+        locks.push((i, j));
+    }
+    locks
 }
 
 #[cfg(test)]
@@ -186,6 +239,74 @@ mod tests {
         assert_eq!(arrows_json(&board), golden);
     }
 
+    // ---- Locks (plan 2026-09-08, phase 2) ----
+
+    #[test]
+    fn levels_1_to_7_carry_no_locks_and_level_8_carries_one() {
+        for n in 1..=7u32 {
+            assert!(generate(&level_config(n)).locks().is_empty(), "level {n}");
+        }
+        assert_eq!(generate(&level_config(8)).locks().len(), 1);
+    }
+
+    #[test]
+    fn every_lock_is_a_later_placed_touching_key_and_no_arrow_is_locked_twice() {
+        for n in 8..=100u32 {
+            let cfg = level_config(n);
+            let board = generate(&cfg);
+            let arrows = board.arrows();
+            let mut seen = std::collections::HashSet::new();
+            for &(locked, key) in board.locks() {
+                assert!(
+                    key > locked,
+                    "level {n}: key {key} placed after lock {locked} (released before it)"
+                );
+                assert!(key < arrows.len(), "level {n}: key {key} exists");
+                assert!(
+                    touches(&arrows[locked], &arrows[key]),
+                    "level {n}: {locked} and {key} touch"
+                );
+                assert!(seen.insert(locked), "level {n}: arrow {locked} locked once");
+            }
+            assert_eq!(
+                board.locks().len() as i32,
+                cfg.locks,
+                "level {n} carries its lock count"
+            );
+        }
+    }
+
+    #[test]
+    fn lock_pairs_match_golden() {
+        // Recorded from the generator 2026-09-08 once read (levels 8, 50, 100).
+        let got = (
+            generate(&level_config(8)).locks().to_vec(),
+            generate(&level_config(50)).locks().to_vec(),
+            generate(&level_config(100)).locks().to_vec(),
+        );
+        assert_eq!(
+            got,
+            (
+                GOLDEN_LOCKS_L8.to_vec(),
+                GOLDEN_LOCKS_L50.to_vec(),
+                GOLDEN_LOCKS_L100.to_vec()
+            )
+        );
+    }
+
+    const GOLDEN_LOCKS_L8: &[(usize, usize)] = &[(5, 9)];
+    const GOLDEN_LOCKS_L50: &[(usize, usize)] = &[(20, 30), (13, 17), (6, 28), (23, 25)];
+    const GOLDEN_LOCKS_L100: &[(usize, usize)] = &[
+        (33, 46),
+        (13, 21),
+        (8, 9),
+        (27, 43),
+        (51, 52),
+        (22, 24),
+        (32, 43),
+        (39, 42),
+    ];
+
     #[test]
     fn deterministic_byte_identical() {
         for n in [1u32, 7, 42, 100] {
@@ -195,6 +316,11 @@ mod tests {
                 arrows_json(&a),
                 arrows_json(&b),
                 "level {n} re-generates identically"
+            );
+            assert_eq!(
+                a.locks(),
+                b.locks(),
+                "level {n}'s locks re-generate identically"
             );
         }
         let seed = daily_seed("2026-08-02");

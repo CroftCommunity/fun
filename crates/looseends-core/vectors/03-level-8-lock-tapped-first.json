@@ -1,0 +1,17 @@
+{
+  "name": "level 8, the lock tapped before its key",
+  "note": "Vector 02 with a tap on the lock (5) in front: the replay skips it, exactly as pond_outcome::verify does, so the hash must equal vector 02's on both targets.",
+  "level": 8,
+  "moves": [
+    5,
+    0,
+    2,
+    7,
+    9,
+    10,
+    11,
+    12,
+    5
+  ],
+  "final_state_hash": "ff7f93598b7793d4157a447aee717b3f43046f93a123d22d640c798cb2dcd41c"
+}
