@@ -12,6 +12,14 @@ earlier is in `git log`.
 
 ## 2026-09
 
+- 2026-09-08 **checkers, chess, cribbage:** more life. A moved man or piece slides in from the
+  square it left; the cribbage show calls the hand's or the crib's total, a hand of nothing is
+  a nineteen, and muggins names what was taken. (beats follow-up)
+- 2026-09-08 **bubble:** the launcher chips left the HUD — the canvas has drawn the loaded and
+  the next piece since the fruit landed — so a phone's board is taller; they still name the
+  pieces for a screen reader.
+- 2026-09-08 **every poster:** a shelf name split at its colon shows the title with the subtitle
+  beside it, so "Trio Tumble  Jewel Drop" is one line and its poster fits a phone again.
 - 2026-09-08 **every poster:** the title and pitch sit on a translucent, blurred panel over
   the art. The splash carries its own lettering, and the pitch set straight on it was
   unreadable (Trio Tumble, Dots on a phone). (owner review of PR #82)

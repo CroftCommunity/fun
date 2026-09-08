@@ -97,6 +97,8 @@ export interface GameFrameOptions {
 export interface StartOptions {
   readonly id: string;
   readonly title: string;
+  /** The shelf name's second half ("Jewel Drop"), shown beside the title on its own span. */
+  readonly subtitle?: string;
   readonly pitch?: string;
   /** A chip above the title on the poster ("Today's puzzle · par 32"), or null. */
   readonly chip?: string | null;
@@ -493,7 +495,14 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
       // unreadable (owner, 2026-09-08, Trio Tumble and Dots at 390×844).
       const lede = el("div", { class: "gf-start-lede" });
       if (o.chip) lede.append(el("span", { class: "gf-start-chip" }, o.chip));
-      lede.append(el("h2", { class: "gf-start-title" }, o.title));
+      lede.append(
+        el(
+          "h2",
+          { class: "gf-start-title" },
+          el("span", { class: "gf-start-name" }, o.title),
+          ...(o.subtitle ? [" ", el("span", { class: "gf-start-sub" }, o.subtitle)] : []),
+        ),
+      );
       if (o.pitch) lede.append(el("p", { class: "gf-start-pitch" }, o.pitch));
       body.append(lede);
       if (o.setup && o.setup.length > 0) {
@@ -502,7 +511,7 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
       body.append(play);
       start = el(
         "section",
-        { class: "gf-start gf-poster", "aria-label": `Start ${o.title}` },
+        { class: "gf-start gf-poster", "aria-label": `Start ${o.subtitle ? `${o.title}: ${o.subtitle}` : o.title}` },
         el("img", { class: "gf-start-art", src: `/${o.id}/assets/splash.jpg`, alt: "" }),
         el("div", { class: "gf-start-veil", "aria-hidden": "true" }),
         body,

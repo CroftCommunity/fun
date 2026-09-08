@@ -405,3 +405,26 @@ describe("renderGameFrame — the ground", () => {
     expect(frame.stage.hasAttribute("data-ground")).toBe(false);
   });
 });
+
+// The poster's title and subtitle (follow-up 2026-09-08): a shelf name is split at
+// the colon (contract.ts) so a 23-character name fits a phone; the poster shows the
+// title on its own line with the subtitle beside it, and names the whole for a reader.
+describe("renderGameFrame — the poster's title", () => {
+  const start = (frame: ReturnType<typeof renderGameFrame>, over: { title: string; subtitle?: string }): HTMLElement => {
+    frame.renderStart({ id: "trio-tumble", ...over, progress: null, onPlay: () => {}, onResume: () => {}, onNewGame: () => {} });
+    return frame.root.querySelector(".gf-poster")!;
+  };
+  it("shows the title and the subtitle as two spans in one heading, and names the section with both", () => {
+    const poster = start(renderGameFrame(host, spec()), { title: "Trio Tumble", subtitle: "Jewel Drop" });
+    const h2 = poster.querySelector(".gf-start-title")!;
+    expect(h2.querySelector(".gf-start-name")?.textContent).toBe("Trio Tumble");
+    expect(h2.querySelector(".gf-start-sub")?.textContent).toBe("Jewel Drop");
+    expect(poster.getAttribute("aria-label")).toBe("Start Trio Tumble: Jewel Drop");
+  });
+  it("a title alone has no subtitle span", () => {
+    const poster = start(renderGameFrame(host, spec()), { title: "Othello" });
+    expect(poster.querySelector(".gf-start-title")!.textContent).toBe("Othello");
+    expect(poster.querySelector(".gf-start-sub")).toBeNull();
+    expect(poster.getAttribute("aria-label")).toBe("Start Othello");
+  });
+});

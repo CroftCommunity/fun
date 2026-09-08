@@ -120,10 +120,9 @@ test("mock F1.3 (phase 5, Q6): a choice of three or fewer is a segmented control
     }, row);
     expect(m.segmented, `${id}: ${row} is segmented`).toBe(true);
     expect(m.h, `${id}: the ${row} row is one line of segments plus its hint`).toBeLessThanOrEqual(140);
-    // Chess fits outright. Trio Tumble's two-line title on the lede panel (F1.4) leaves
-    // it a small scroll — under 48px — and F1.2's sticky Play keeps every option reachable.
-    // (56px on CI's Linux fonts, under 48 on a Mac's — the pitch wraps a line further there.)
-    expect(m.sh - m.ch, `${id}: the poster fits, or nearly`).toBeLessThanOrEqual(id === "chess" ? 0 : 80);
+    // Both fit outright: Trio Tumble's name is split — the title on one line, the
+    // subtitle beside it — so the lede panel (F1.4) no longer costs it the fit.
+    expect(m.sh, `${id}: the poster fits without scrolling`).toBeLessThanOrEqual(m.ch);
     // A segment is still a radio a player (and a test) can check by value.
     const opt = page.locator(`.gf-poster [data-setting="${row}"] input`).last();
     await opt.check();
@@ -448,7 +447,8 @@ const FILL_REST: readonly { id: string; url: string; surface: string; desktop: {
   { id: "solitaire", url: "/solitaire/?seed=7", surface: ".sol-board", desktop: { w: 0.85 }, phone: { w: 0.9 } },
   // A tall shooter: the height, on both — the chips and the aim bar take the rest (a phone
   // leaves it 62%: 588 less 62 + 93 + 22 for them); no 22rem cap on a desktop any more.
-  { id: "bubble", url: "/bubble/?seed=7", surface: ".bub-canvas", desktop: { h: 0.7 }, phone: { h: 0.6 } },
+  // (the launcher chips left the HUD for the canvas, which already draws them: 0.62 → 0.66 on a phone)
+  { id: "bubble", url: "/bubble/?seed=7", surface: ".bub-canvas", desktop: { h: 0.7 }, phone: { h: 0.65 } },
   // The card table: cards grow with the room on a desktop.
   { id: "cribbage", url: "/cribbage/?seed=7", surface: ".crib-table", desktop: { w: 0.7 }, phone: { w: 0.95 } },
 ];
