@@ -293,6 +293,7 @@ export function mahjongModule(): GameModule {
     ];
     return {
       title: "Mahjong",
+      ground: "var(--mj-green)",
       mode: mode === "daily" ? "Daily · Turtle" : `Level ${level} · ${layoutName(b?.layout ?? "pond")}`,
       meters: [
         { kind: "stat", id: "left", value: b?.remaining ?? 0, label: "left" },

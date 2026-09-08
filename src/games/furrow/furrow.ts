@@ -582,6 +582,7 @@ export function furrowModule(): GameModule {
     const engineSub = engineThinking ? (b.keptTurn ? "goes again…" : "thinking…") : undefined;
     return {
       title: "Furrow",
+      ground: "var(--fur-board)",
       mode: level,
       meters: [
         { kind: "seat", id: "you", name: "You", glyph: MARK[HUMAN], score: b ? yourStore(b) : 0, state: humanTurn && !busy ? "active" : "idle", ...(yourSub ? { sub: yourSub } : {}) },

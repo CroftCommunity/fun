@@ -159,10 +159,23 @@ function renderRangeRow(row: RangeRow): HTMLElement {
 // render gets its own suffix.
 let sheetSerial = 0;
 
+/** A choice this short is a segmented control (phase 5, mock F Q6): three
+ *  segments in a row instead of three 44px lines, so a poster's setup card fits
+ *  a phone. The radios stay — a segment is a radio in a different coat — and the
+ *  chosen option's hint shows beneath the row, following the choice. */
+const SEGMENT_MAX = 3;
+
 function renderChoiceRow(row: ChoiceRow, serial: number): HTMLElement {
-  const wrap = el("fieldset", { class: "sheet-row sheet-choice", "data-setting": row.id });
+  const segmented = row.options.length <= SEGMENT_MAX;
+  const wrap = el("fieldset", { class: `sheet-row sheet-choice${segmented ? " sheet-choice-segmented" : ""}`, "data-setting": row.id });
   wrap.append(el("legend", { class: "sheet-choice-label" }, row.label));
   if (row.hint) wrap.append(el("p", { class: "sheet-hint" }, row.hint));
+  const opts = segmented ? el("div", { class: "sheet-choice-opts" }) : wrap;
+  const anyHint = segmented && row.options.some((o) => o.hint !== undefined);
+  const current = anyHint ? el("small", { class: "sheet-choice-current", "aria-live": "polite" }) : null;
+  const showHint = (value: string): void => {
+    if (current) current.textContent = row.options.find((o) => o.value === value)?.hint ?? "";
+  };
   for (const opt of row.options) {
     const input = el("input", {
       type: "radio",
@@ -173,11 +186,18 @@ function renderChoiceRow(row: ChoiceRow, serial: number): HTMLElement {
     input.checked = opt.value === row.value;
     if (opt.disabled) input.disabled = true;
     input.addEventListener("change", () => {
-      if (input.checked) row.onChange(opt.value);
+      if (!input.checked) return;
+      showHint(opt.value);
+      row.onChange(opt.value);
     });
     const label = el("label", { class: "sheet-choice-opt" }, input, el("span", {}, opt.label));
-    if (opt.hint) label.append(el("small", { class: "sheet-choice-hint" }, opt.hint));
-    wrap.append(label);
+    if (opt.hint && !segmented) label.append(el("small", { class: "sheet-choice-hint" }, opt.hint));
+    opts.append(label);
+  }
+  if (segmented) wrap.append(opts);
+  if (current) {
+    showHint(row.value);
+    wrap.append(current);
   }
   return wrap;
 }

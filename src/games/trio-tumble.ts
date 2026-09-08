@@ -617,6 +617,7 @@ export function trioTumbleModule(): GameModule {
     verbs.push({ id: "new", label: "New board", icon: "⟳", onPress: (btn) => frame?.openSheet("setup", btn) });
     return {
       title: "Trio Tumble",
+      ground: "var(--gem-3)",
       mode: chip(),
       meters: meters(board),
       verbs,

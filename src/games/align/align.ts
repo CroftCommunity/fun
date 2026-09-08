@@ -568,6 +568,7 @@ export function alignModule(): GameModule {
     const hints = hintsEnabled();
     return {
       title: "Align",
+      ground: "var(--al-i)",
       mode: MODE_LABEL[chosenOf()],
       meters: [
         { kind: "stat", id: "score", value: b?.score ?? 0, label: "score" },

@@ -468,6 +468,7 @@ export function blockdokuModule(): GameModule {
     const diff = config.difficulty;
     return {
       title: "Blockdoku",
+      ground: "var(--bdk-box)",
       mode: `${diff[0]!.toUpperCase()}${diff.slice(1)} · ${mode === "daily" ? "Today’s" : "New"}`,
       meters: [
         { kind: "stat", id: "score", value: b?.score ?? 0, label: "score" },

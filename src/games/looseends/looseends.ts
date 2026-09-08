@@ -326,6 +326,7 @@ export function looseendsModule(): GameModule {
     const m = mode;
     return {
       title: "Loose Ends",
+      ground: "var(--le-bg)",
       mode: m.kind === "level" ? bandFor(m.n) : "Daily",
       meters: [
         { kind: "stat", id: "level", value: m.kind === "level" ? `Level ${m.n}` : m.dateKey, label: m.kind === "level" ? "level" : "daily" },

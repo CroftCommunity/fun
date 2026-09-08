@@ -571,6 +571,7 @@ export function drop4Module(): GameModule {
     }
     return {
       title: "Drop 4",
+      ground: "var(--d4-board)",
       mode: LEVEL_LABELS[level],
       meters: [
         { kind: "seat", id: "you", name: "You", glyph: glyphFor(playerMark), score: "", state: youActive ? "active" : "idle", ...(youActive ? { sub: "your move" } : {}) },

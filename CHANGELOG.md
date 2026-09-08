@@ -12,6 +12,14 @@ earlier is in `git log`.
 
 ## 2026-09
 
+- 2026-09-08 **every game:** the stage carries the game's own ground — a pool of the board's
+  colour under the board and a faint vignette at the edges, so the room around a felt table is
+  green and the room around a mancala board is wood. The frame holds the hook; the colour is
+  the game's (ADR-0003). (mock F Q2, phase 6, play-surface)
+- 2026-09-08 **every poster:** a setup choice with three or fewer options is a segmented
+  control — one row of segments with the chosen option's note under it — instead of three
+  44px lines, so the Trio Tumble and chess posters fit a 390×844 phone without scrolling.
+  (mock F Q6, phase 5, play-surface)
 - 2026-09-08 **chess:** the board is a set. A wooden frame with the ranks down its left and the
   files under it — outside the squares, turned with the board when you play Black — a shadow on
   the ground, and the last move ringed rather than boxed. Settings gains **Pieces**: Classic

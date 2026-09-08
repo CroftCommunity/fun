@@ -805,6 +805,7 @@ export function chessModule(): GameModule {
     const engineSub = engineThinking ? "thinking…" : live && !lastByHuman ? (b?.lastSan ?? "") : "";
     return {
       title: "Chess",
+      ground: "var(--chs-dark)",
       mode: level,
       meters: [
         {

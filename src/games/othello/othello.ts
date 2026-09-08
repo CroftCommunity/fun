@@ -629,6 +629,7 @@ export function othelloModule(): GameModule {
     }
     return {
       title: "Othello",
+      ground: "var(--oth-board)",
       mode: LEVEL_LABELS[level],
       meters: [
         { kind: "seat", id: "you", name: "You", glyph: glyphFor(humanSide()), score: you, state: yourState, ...(yourSub ? { sub: yourSub } : {}) },

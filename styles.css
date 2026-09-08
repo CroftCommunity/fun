@@ -369,6 +369,13 @@ body:has(> .play-area > .gf) {
   /* an unmigrated game taller than the stage scrolls inside it rather than
      flowing under the dock, where its controls could not be tapped (furrow) */
   overflow-y: auto;
+  /* The ground (phase 6, mock F Q2): a game names its board colour and the
+     stage tints itself with it — a low-alpha pool under the board and a faint
+     vignette at the edges — so the room around a board belongs to the board.
+     One mix for every game (the frame's), one colour per game (its own). */
+  background:
+    radial-gradient(110% 70% at 50% 45%, color-mix(in srgb, var(--stage-ground, transparent) 22%, transparent), transparent 62%),
+    radial-gradient(140% 100% at 50% 50%, transparent 55%, color-mix(in srgb, var(--ink) 7%, transparent));
   /* The stage is a SIZE CONTAINER, so a board can size itself from the room it
      actually has — `min(100cqw, 100cqh)` is the stage's short side. Before this
      every grid clamped its cell against the viewport width (`9.5vw`, capped at
@@ -4590,6 +4597,59 @@ a.le-btn {
 }
 .sheet-choice-input { width: 1.05rem; height: 1.05rem; accent-color: var(--accent); }
 .sheet-choice-hint { margin-left: auto; color: var(--ink-muted); font-size: 0.75rem; }
+/* The segmented coat (phase 5, mock F Q6): the radios overlay their segments,
+   invisible but every bit as tappable, so a keyboard, a screen reader and a
+   test see the same three radios the list had. */
+.sheet-choice-segmented .sheet-choice-opts {
+  display: flex;
+  margin-top: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  padding: 3px;
+  gap: 3px;
+}
+.sheet-choice-segmented .sheet-choice-opt {
+  position: relative;
+  flex: 1 1 0;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  text-align: center;
+  line-height: 1.15;
+  font-size: 0.88rem;
+  color: var(--ink-muted);
+  transition: background 120ms, color 120ms;
+}
+.sheet-choice-segmented .sheet-choice-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.sheet-choice-segmented .sheet-choice-opt:has(.sheet-choice-input:checked) {
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 22%), inset 0 0 0 1px var(--border);
+}
+.sheet-choice-segmented .sheet-choice-opt:has(.sheet-choice-input:focus-visible) {
+  outline: 3px solid var(--focus);
+  outline-offset: 1px;
+}
+.sheet-choice-segmented .sheet-choice-opt:has(.sheet-choice-input:disabled) { opacity: 0.45; cursor: default; }
+.sheet-choice-current {
+  display: block;
+  min-height: 1.1rem; /* the hint line keeps its room when a choice has none */
+  margin-top: 0.4rem;
+  padding: 0 0.3rem;
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+}
 
 /* ===========================================================================
    Cribbage. The felt is the table; cards reuse the solitaire card language

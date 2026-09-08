@@ -245,6 +245,7 @@ export function twenty48Module(): GameModule {
     const hints = hintsEnabled();
     return {
       title: "2048",
+      ground: "var(--t48-mid)",
       mode: MODE_LABEL[mode],
       meters: [
         { kind: "stat", id: "score", value: b?.score ?? 0, label: "score" },

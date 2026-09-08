@@ -867,6 +867,7 @@ export function bubbleModule(): GameModule {
       : { kind: "stat", id: "clock", value: b ? b.cells.flat().filter((c) => c >= 0).length : 0, label: "bubbles left" };
     return {
       title: "Bubble",
+      ground: "var(--gem-5)",
       mode: VARIANT_LABEL[variant],
       meters: [
         lv

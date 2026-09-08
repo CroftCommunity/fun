@@ -745,6 +745,7 @@ export function cribbageModule(): GameModule {
     ];
     return {
       title: "Cribbage",
+      ground: "var(--felt)",
       mode: level,
       meters: [
         { kind: "seat", id: "you", name: "You", glyph: "🙂", score: v ? v.scores[0] : 0, state: humanTurn ? "active" : "idle", ...cribSub(HUMAN) },

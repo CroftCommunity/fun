@@ -151,4 +151,43 @@ describe("renderSettingsSheet", () => {
     expect(sheet.querySelector(".sheet-section")).toBeNull();
     expect(sheet.querySelectorAll(".sheet-row")).toHaveLength(0);
   });
+
+  // Phase 5 of the play-surface plan (mock F, Q6): a short choice is a segmented
+  // control, so a poster's setup card fits a phone without scrolling.
+  describe("a choice with three or fewer options is a segmented control", () => {
+    const row = (n: number, hints = false) => ({
+      kind: "choice" as const,
+      id: "seat",
+      label: "Seat",
+      value: "b",
+      options: ["a", "b", "c", "d"].slice(0, n).map((v) => ({ value: v, label: v.toUpperCase(), ...(hints ? { hint: `hint ${v}` } : {}) })),
+      onChange: () => {},
+    });
+    it("marks the row and keeps the radios — a segment is a radio with a different coat", () => {
+      const sheet = renderSettingsSheet({ rows: [row(3)] });
+      const fs = sheet.querySelector('[data-setting="seat"]')!;
+      expect(fs.classList.contains("sheet-choice-segmented")).toBe(true);
+      expect(fs.querySelectorAll('input[type="radio"]')).toHaveLength(3);
+      expect(fs.querySelector<HTMLInputElement>('input[value="b"]')!.checked).toBe(true);
+    });
+    it("leaves four options as the list", () => {
+      const sheet = renderSettingsSheet({ rows: [row(4)] });
+      expect(sheet.querySelector('[data-setting="seat"]')!.classList.contains("sheet-choice-segmented")).toBe(false);
+      expect(sheet.querySelector(".sheet-choice-current")).toBeNull();
+    });
+    it("shows the chosen option's hint under the segments and follows the choice", () => {
+      const sheet = renderSettingsSheet({ rows: [row(3, true)] });
+      document.body.append(sheet);
+      const current = sheet.querySelector(".sheet-choice-current")!;
+      expect(current.textContent).toBe("hint b");
+      const c = sheet.querySelector<HTMLInputElement>('input[value="c"]')!;
+      c.checked = true;
+      c.dispatchEvent(new Event("change", { bubbles: true }));
+      expect(current.textContent).toBe("hint c");
+    });
+    it("has no hint line when no option carries one", () => {
+      const sheet = renderSettingsSheet({ rows: [row(2)] });
+      expect(sheet.querySelector(".sheet-choice-current")).toBeNull();
+    });
+  });
 });

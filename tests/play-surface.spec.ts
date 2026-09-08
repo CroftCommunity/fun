@@ -74,7 +74,8 @@ test("mock F1.1: Play sits inside the viewport on the chess, Trio Tumble and Dot
 });
 
 test("mock F1.2: a setup card taller than the poster scrolls inside the poster's body, so every option is reachable", async ({ page }) => {
-  await page.setViewportSize(PHONE);
+  // A short phone (or a tall browser chrome): since phase 5 the nine options fit 844.
+  await page.setViewportSize({ width: 390, height: 640 });
   await page.goto("/trio-tumble/");
   await expect(page.locator(".gf-poster .gf-play")).toBeVisible();
   const scrolls = await page.evaluate(() => {
@@ -82,7 +83,7 @@ test("mock F1.2: a setup card taller than the poster scrolls inside the poster's
     return { overflowY: getComputedStyle(body).overflowY, scrollHeight: body.scrollHeight, clientHeight: body.clientHeight };
   });
   expect(scrolls.overflowY).toBe("auto");
-  expect(scrolls.scrollHeight, "Trio Tumble's nine options overflow a phone: the body must be the scroller").toBeGreaterThan(scrolls.clientHeight);
+  expect(scrolls.scrollHeight, "Trio Tumble's nine options overflow a short phone: the body must be the scroller").toBeGreaterThan(scrolls.clientHeight);
   // The last option is reachable — scrolled into view, it sits above Play.
   const last = page.locator(".gf-poster .sheet-choice-opt").last();
   // The page's own scrollIntoView (what focus and a screen reader use), which
@@ -91,6 +92,26 @@ test("mock F1.2: a setup card taller than the poster scrolls inside the poster's
   const lastBox = await last.boundingBox();
   const playBox = await page.locator(".gf-poster .gf-play").boundingBox();
   expect(lastBox!.y + lastBox!.height).toBeLessThanOrEqual(playBox!.y + 1);
+});
+
+test("mock F1.3 (phase 5, Q6): a choice of three or fewer is a segmented control, so the Trio Tumble and chess posters fit a 390×844 phone without scrolling", async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  for (const [id, row] of [["trio-tumble", "board"], ["chess", "side"]] as const) {
+    await page.goto(`/${id}/`);
+    await expect(page.locator(".gf-poster .gf-play")).toBeVisible();
+    const m = await page.evaluate((setting) => {
+      const body = document.querySelector(".gf-poster .gf-start-body")!;
+      const fs = body.querySelector<HTMLElement>(`[data-setting="${setting}"]`)!;
+      return { sh: body.scrollHeight, ch: body.clientHeight, segmented: fs.classList.contains("sheet-choice-segmented"), h: fs.getBoundingClientRect().height };
+    }, row);
+    expect(m.segmented, `${id}: ${row} is segmented`).toBe(true);
+    expect(m.h, `${id}: the ${row} row is one line of segments plus its hint`).toBeLessThanOrEqual(140);
+    expect(m.sh, `${id}: the poster fits without scrolling`).toBeLessThanOrEqual(m.ch);
+    // A segment is still a radio a player (and a test) can check by value.
+    const opt = page.locator(`.gf-poster [data-setting="${row}"] input`).last();
+    await opt.check();
+    await expect(opt).toBeChecked();
+  }
 });
 
 // --- F2: a board fills the stage ------------------------------------------------
@@ -179,4 +200,26 @@ test("mock F3.1: at 390×844 a long toast wraps inside the stage instead of runn
   const t = await toast.boundingBox();
   expect(t!.x, "left edge inside the stage").toBeGreaterThanOrEqual(stage.x - 1);
   expect(t!.x + t!.width, "right edge inside the stage").toBeLessThanOrEqual(stage.x + stage.w + 1);
+});
+
+// --- F4 (phase 6, Q2): a ground per game ----------------------------------------
+
+const GROUNDED = ["chess", "othello", "checkers", "drop4", "dots", "furrow", "wyrdle", "2048", "align", "bubble", "looseends", "solitaire", "cribbage", "blockdoku", "mahjong", "color-sort", "trio-tumble", "orchard-drop"] as const;
+
+test("mock F4.1: every game's stage carries its own ground — a tint of the game's board colour, not the gallery's flat black", async ({ page }) => {
+  await page.setViewportSize(DESKTOP);
+  const seen = new Map<string, string>();
+  for (const id of GROUNDED) {
+    await page.goto(`/${id}/`);
+    // The poster covers the stage; the ground is the playing surface's, declared with the game's spec.
+    await page.locator(".gf-poster .gf-play").click();
+    const stage = page.locator(".gf-stage");
+    await expect(stage).toHaveAttribute("data-ground", "on");
+    const paint = await stage.evaluate((n) => ({ image: getComputedStyle(n).backgroundImage, ground: getComputedStyle(n).getPropertyValue("--stage-ground").trim() }));
+    expect(paint.image, `${id}: the stage paints a gradient`).toMatch(/gradient/);
+    expect(paint.ground, `${id}: names a colour`).not.toBe("");
+    seen.set(id, paint.ground);
+  }
+  // Not one ground for all: at least six distinct colours across the shelf.
+  expect(new Set(seen.values()).size).toBeGreaterThanOrEqual(6);
 });

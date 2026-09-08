@@ -631,6 +631,7 @@ export function dotsModule(): GameModule {
     const engineSub = engineThinking ? (again === "engine" ? "goes again…" : "thinking…") : undefined;
     return {
       title: "Dots and Boxes",
+      ground: "var(--dots-paper)",
       mode: level,
       meters: [
         { kind: "seat", id: "you", name: "You", glyph: MARK[humanSide()], score: b ? yourBoxes(b) : 0, state: humanTurn && !thinking ? "active" : "idle", ...(yourSub ? { sub: yourSub } : {}) },

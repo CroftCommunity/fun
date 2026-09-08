@@ -751,6 +751,7 @@ export function checkersModule(): GameModule {
     }
     return {
       title: "Checkers",
+      ground: "var(--chk-dark)",
       mode: level,
       meters: [
         { kind: "seat", id: "you", name: "You", glyph: humanSide() === 1 ? "●" : "○", score: you, state: humanTurn && !thinking ? "active" : "idle", ...(humanTurn && !thinking ? { sub: "your move" } : {}) },
