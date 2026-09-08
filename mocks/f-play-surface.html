@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="mock-version" content="4" />
+<meta name="mock-version" content="5" />
 <meta name="mock-baseline" content="fun@aafe332" />
 <meta name="mock-proposal" content="fun@eb509fc" />
-<title>The play surface — the board fills the stage, the door opens, one shape for hand controls · v4 · fun.croft.ing mocks</title>
+<title>The play surface — the board fills the stage, the door opens, one shape for hand controls · v5 · fun.croft.ing mocks</title>
 <link rel="stylesheet" href="harness.css" />
 <style>
 /* =========================================================================
@@ -194,6 +194,7 @@
   <p class="h-note">Compare in one skin: every capture and sketch here is the default Worlds night skin. Captures are true size — 390×844 as-is, 1280×900 shown in an 1180×740 window, top-aligned — from <code>tools/mock-snaps.mjs all --out f-play-surface --tag current|proposed</code>, hermetic: fixed seeds, and the poster is the bare land in a fresh context.</p>
 
   <h2>Revisions</h2>
+  <p class="rev"><b>v5</b> — Pass 2 built 2026-09-08 (owner: "do these TDD first"): every open decision taken at its recommendation and shipped on <code>claude/play-surface-2</code> — Q9 Cribbage → Tuesday Night Rainfall, Q8 Classic + Bold, Q6 segmented rows, Q2 the tint, Q3 Auto, Q4 the split, Q5 Auto + preference, Q10 the curve, Q11 the beats, and phase 4 (the rest of the fill). <b>Shipped</b> captures (<code>snaps/f-play-surface/shipped.*</code>, <code>fun@23b0f84</code>) stand beside sketches 4, 5, 6, 8 and 9 and beside proposal 2 for the fill. The sketches stay as drawn — they are the record of what was asked.</p>
   <p class="rev"><b>v4</b> — phase 10a shipped: Bubble's pieces are the fruit set in glass bubbles with a launcher ring and an on-deck ring; a <b>Shipped</b> capture (<code>snaps/f-play-surface/shipped.bubble.*</code>, branch <code>claude/bubble-fruit</code>) stands beside proposal 8's sketch. The chess half of proposal 8 waits on Q8.</p>
   <p class="rev"><b>v3</b> — owner decisions 2026-09-05: <b>Q7 fruit</b> (Bubble's pieces are the fruit set), <b>Q9 Mahjong → Porch Light Nocturne</b> (landed the same day in <code>src/music.ts</code>; Cribbage's pick stays open). Proposals 1–3 landed on main as <code>fun@0b98217</code> (PR #79).</p>
   <p class="rev"><b>v2</b> — owner review 2026-09-05: the Align sketch's thumb pads overlapped the well on a phone (the well is now 380px and the pads sit clear beneath it); the Loose Ends sketch's arrows were stubby bars with triangles — redrawn as the game's own shape, a rounded shaft with a wide head, in SVG. Built proposals unchanged; approved to land.</p>
@@ -215,16 +216,16 @@
   <table class="h-table">
     <tr><th>#</th><th>Question</th><th>This draft shows</th><th>Standing</th></tr>
     <tr><td>Q1</td><td>The fill rule's ceilings — an 8×8 board stops at 6rem cells (768px). Big enough on a 27" monitor, or let it run?</td><td>6rem for 8×8, 6.5rem Drop 4, 8.5rem 2048, 5rem Wyrdle, 14rem a Dots span</td><td><span class="pill rec">as drawn</span> a disc stays a disc; raise per game if a capture says so</td></tr>
-    <tr><td>Q2</td><td>A ground per game (proposal 4): the stage takes a low-alpha tint and vignette from the game's own board colour, or stays gallery black?</td><td>tinted, 12–22% of the board colour, in four sketches</td><td><span class="pill rec">tint</span> — the stage is chrome, so the hook is the frame's (<code>--stage-ground</code>, set by the game); ADR-0002 successor</td></tr>
-    <tr><td>Q3</td><td>On-screen pads (2048's arrows, Align's buttons): a preference <i>Auto / On / Off</i>, Auto meaning "coarse pointer only"? Or On by default everywhere?</td><td>Auto; 2048 sketched with the pad off and a swipe hint</td><td><span class="pill rec">Auto</span> the first-move toast teaches the swipe</td></tr>
-    <tr><td>Q4</td><td>Align: two thumb clusters in the stage's bottom corners, over the ground (move left; rotate + drop right), instead of three rows under the well?</td><td>the split, translucent, 64px targets, the well 380px tall and clear of them</td><td><span class="pill rec">split</span> frees ~150px of well height on a phone</td></tr>
-    <tr><td>Q5</td><td>Furrow upright on a portrait stage by default, with a preference <i>Board: Auto / Across / Upright</i>?</td><td>upright at 390: two columns of six, stores top and bottom, your column on the right sowing upward</td><td><span class="pill rec">Auto + preference</span></td></tr>
-    <tr><td>Q6</td><td>Compact setup rows — a choice with three or fewer options becomes a segmented control (chess "You play", Trio Tumble "Board"), so most posters fit a phone without scrolling?</td><td>not drawn; the built fix (scroll + sticky Play) covers every case first</td><td><span class="pill">open</span> phase 3 if yes</td></tr>
+    <tr><td>Q2</td><td>A ground per game (proposal 4): the stage takes a low-alpha tint and vignette from the game's own board colour, or stays gallery black?</td><td>tinted, 12–22% of the board colour, in four sketches</td><td><span class="pill built">DECIDED 2026-09-08: tint · shipped, phase 6 (ADR-0003)</span></td></tr>
+    <tr><td>Q3</td><td>On-screen pads (2048's arrows, Align's buttons): a preference <i>Auto / On / Off</i>, Auto meaning "coarse pointer only"? Or On by default everywhere?</td><td>Auto; 2048 sketched with the pad off and a swipe hint</td><td><span class="pill built">DECIDED 2026-09-08: Auto · shipped, phase 7</span></td></tr>
+    <tr><td>Q4</td><td>Align: two thumb clusters in the stage's bottom corners, over the ground (move left; rotate + drop right), instead of three rows under the well?</td><td>the split, translucent, 64px targets, the well 380px tall and clear of them</td><td><span class="pill built">DECIDED 2026-09-08: split · shipped, phase 7 (the well 380px+ on a phone, clear of the clusters)</span></td></tr>
+    <tr><td>Q5</td><td>Furrow upright on a portrait stage by default, with a preference <i>Board: Auto / Across / Upright</i>?</td><td>upright at 390: two columns of six, stores top and bottom, your column on the right sowing upward</td><td><span class="pill built">DECIDED 2026-09-08: Auto + preference · shipped, phase 8</span></td></tr>
+    <tr><td>Q6</td><td>Compact setup rows — a choice with three or fewer options becomes a segmented control (chess "You play", Trio Tumble "Board"), so most posters fit a phone without scrolling?</td><td>not drawn; the built fix (scroll + sticky Play) covers every case first</td><td><span class="pill built">DECIDED 2026-09-08: yes · shipped, phase 5</span></td></tr>
     <tr><td>Q7</td><td>Bubble's pieces as emoji — which set? Fruit (🍎🍋🫐🍇🍊🥝), faces, gems. Each colour keeps a distinct shape either way.</td><td>fruit, with a launcher and a Next slot</td><td><span class="pill built">DECIDED 2026-09-05: fruit · shipped, phase 10a</span></td></tr>
-    <tr><td>Q8</td><td>Chess piece packs — which two ship first: Classic glyphs (today), Bold flat, Emoji?</td><td>Classic on a wood-framed board with coordinates; the pack row in Settings</td><td><span class="pill rec">Classic + Bold</span></td></tr>
-    <tr><td>Q9</td><td>Music: Mahjong plays the shelf bed (Morning Miles — "country") because it names no track; Cribbage names Morning Miles too. Which of the airier pieces? Candidates by title: Porch Light Nocturne, Lower Cavern Bloom, Tuesday Night Rainfall, Gravity Glass.</td><td>not drawn — a one-line change in <code>src/music.ts</code> once picked</td><td><span class="pill rec">DECIDED 2026-09-05: Mahjong → Porch Light Nocturne</span> (landed); Cribbage <span class="pill">open</span></td></tr>
-    <tr><td>Q10</td><td>Loose Ends: rebase the curve so level 1 is a puzzle (10 arrows on 6×8, snakes 3–5; Easy ends at ~24 on 8×11) now, and park the second mechanic (colour bands, locks, a par with stars) for a research pass?</td><td>a level-1 sketch at the proposed density</td><td><span class="pill rec">curve now, mechanic after research</span></td></tr>
-    <tr><td>Q11</td><td>Versus beats — which events earn a flourish: a capture, a king, a flip of four or more, a Drop 4 line, a Dots chain, a cribbage 15/pair/run? Nothing on an ordinary move.</td><td>Drop 4 mid-drop and its win line; a checkers jump; the score ticking</td><td><span class="pill rec">that list, no confetti on ordinary moves</span></td></tr>
+    <tr><td>Q8</td><td>Chess piece packs — which two ship first: Classic glyphs (today), Bold flat, Emoji?</td><td>Classic on a wood-framed board with coordinates; the pack row in Settings</td><td><span class="pill built">DECIDED 2026-09-08: Classic + Bold · shipped, phase 10b</span></td></tr>
+    <tr><td>Q9</td><td>Music: Mahjong plays the shelf bed (Morning Miles — "country") because it names no track; Cribbage names Morning Miles too. Which of the airier pieces? Candidates by title: Porch Light Nocturne, Lower Cavern Bloom, Tuesday Night Rainfall, Gravity Glass.</td><td>not drawn — a one-line change in <code>src/music.ts</code> once picked</td><td><span class="pill rec">DECIDED 2026-09-05: Mahjong → Porch Light Nocturne</span> (landed); <span class="pill rec">DECIDED 2026-09-08: Cribbage → Tuesday Night Rainfall</span> (landed)</td></tr>
+    <tr><td>Q10</td><td>Loose Ends: rebase the curve so level 1 is a puzzle (10 arrows on 6×8, snakes 3–5; Easy ends at ~24 on 8×11) now, and park the second mechanic (colour bands, locks, a par with stars) for a research pass?</td><td>a level-1 sketch at the proposed density</td><td><span class="pill built">DECIDED 2026-09-08: the curve · shipped, phase 11; the mechanic stays a research pass</span></td></tr>
+    <tr><td>Q11</td><td>Versus beats — which events earn a flourish: a capture, a king, a flip of four or more, a Drop 4 line, a Dots chain, a cribbage 15/pair/run? Nothing on an ordinary move.</td><td>Drop 4 mid-drop and its win line; a checkers jump; the score ticking</td><td><span class="pill built">DECIDED 2026-09-08: that list · shipped, phase 9</span></td></tr>
   </table>
 
   <!-- ===================================================================== -->
@@ -266,13 +267,14 @@
     <figure class="h-frame"><figcaption><b>Proposed</b> — Blockdoku: nine cells across the stage</figcaption><img class="snap" src="snaps/f-play-surface/proposed.blockdoku.board.phone.png" alt="Proposed: the Blockdoku board spans the stage's width." /></figure>
     <figure class="h-frame"><figcaption><b>Current</b> — Wyrdle, 1280×900</figcaption><img class="snap desk" src="snaps/f-play-surface/current.wyrdle.board.desktop.png" alt="Current: small Wyrdle tiles and a small keyboard." /></figure>
     <figure class="h-frame"><figcaption><b>Proposed</b> — Wyrdle: tiles to 5rem, the keyboard under them</figcaption><img class="snap desk" src="snaps/f-play-surface/proposed.wyrdle.board.desktop.png" alt="Proposed: larger Wyrdle tiles and keyboard." /></figure>
+    <figure class="h-frame"><figcaption><b>Shipped</b> — captured <code>fun@23b0f84</code>, 1280×900: Trio Tumble's gems from the stage's short side (phase 4)</figcaption><img class="snap desk" src="snaps/f-play-surface/shipped.trio-tumble.board.desktop.png" alt="Shipped, desktop: the Trio Tumble board filling the stage's height." /></figure>
   </div>
   <p class="h-note">Not yet on the rule, and each a phase of its own with the same spec shape: Furrow (proposal 6 first), Bubble (its canvas already flexes; the tap floor is the check), Align's well, cribbage's table, Mahjong's layout, Loose Ends (its canvas already fills), solitaire and Trio Tumble. The checkers and chess captures are the same shape as Othello's and are in <code>snaps/f-play-surface/</code>.</p>
 
   <h3 class="h-pair-title">3 · The stage's transients stay out of the way <span class="pill built">built · F2.5, F3.1</span></h3>
   <p class="h-note">A toast wraps inside the stage instead of running off a phone, and a full-height board leaves it a lane — the two captures under proposal 2 (Othello desktop, 2048 phone) show both. Nothing to decide; recorded because it fell out of the fill.</p>
 
-  <h3 class="h-pair-title">4 · A ground per game <span class="pill sketch">sketch · Q2</span></h3>
+  <h3 class="h-pair-title">4 · A ground per game <span class="pill sketch">sketch · Q2</span> <span class="pill built">shipped 2026-09-08</span></h3>
   <p class="h-note">Wyrdle's "so much negative space and it's just blah". The frame keeps its gallery black; each game sets one hook — a low-alpha radial tint of its own board colour with a vignette — so the room around the board reads as that game's room, not a void. Chrome roles stay skinnable; the tint is game-owned, like the board (ADR-0001). Drawn on Wyrdle and 2048 (the 2048 sketch also shows Q3's pad off).</p>
   <div class="h-pair">
     <figure class="h-frame"><figcaption><b>Current</b> — Wyrdle at 390×844</figcaption><img class="snap" src="snaps/f-play-surface/current.wyrdle.board.phone.png" alt="Current: Wyrdle's empty grid and keyboard on a black stage." /></figure>
@@ -313,9 +315,10 @@
       </div>
       <div class="dock"><button class="verb primary"><i>✦</i>Hint</button><button class="verb"><i>⟳</i>New game</button><button class="verb"><i>☰</i>Settings</button></div>
     </div></div></figure>
+    <figure class="h-frame"><figcaption><b>Shipped</b> — captured <code>fun@23b0f84</code>, 1280×900: Othello on its own felt-green ground, the vignette at the edges (phase 6)</figcaption><img class="snap desk" src="snaps/f-play-surface/shipped.othello.board.desktop.png" alt="Shipped, desktop: the Othello board on a green-tinted stage." /></figure>
   </div>
 
-  <h3 class="h-pair-title">5 · One shape for hand controls — gestures first, one pad, Align split <span class="pill sketch">sketch · Q3, Q4</span></h3>
+  <h3 class="h-pair-title">5 · One shape for hand controls — gestures first, one pad, Align split <span class="pill sketch">sketch · Q3, Q4</span> <span class="pill built">shipped 2026-09-08</span></h3>
   <p class="h-note">Today: 2048 has a d-pad of four 48px buttons that is always there; Align has seven buttons in three rows under the well, each a different width, none branded. Proposed: one shared pad component the frame draws over the stage's ground — rounded 64px targets tinted with the game's colour, translucent, haptic on press — in two layouts: a d-pad (2048) and a <b>two-thumb split</b> (Align: move under the left thumb, rotate and drop under the right, Hold and Next beside the well). A preference, <i>On-screen controls: Auto / On / Off</i>, governs both games; Auto shows the pad on a coarse pointer only. Swipes stay: 2048's board already reads them; Align gains swipe-down for hard drop and tap-to-rotate on the well.</p>
   <div class="h-pair">
     <figure class="h-frame"><figcaption><b>Current</b> — Align at 390×844</figcaption><img class="snap" src="snaps/f-play-surface/current.align.board.phone.png" alt="Current: the Align well with Hold and Next beside it and three rows of buttons below." /></figure>
@@ -338,9 +341,11 @@
       </div>
       <div class="dock"><button class="verb primary"><i>✦</i>Hint</button><button class="verb"><i>⟳</i>New game</button><button class="verb"><i>☰</i>Settings</button></div>
     </div></div></figure>
+    <figure class="h-frame"><figcaption><b>Shipped</b> — captured <code>fun@23b0f84</code>, 390×844 (a coarse pointer, pad Auto): the split — move and Hold under the left thumb, the turns and drops under the right, the well clear above them (phase 7)</figcaption><img class="snap" src="snaps/f-play-surface/shipped.align.board.phone.png" alt="Shipped, phone: Align's well with two thumb clusters beneath it." /></figure>
+    <figure class="h-frame"><figcaption><b>Shipped</b> — captured <code>fun@23b0f84</code>, 1280×900 (a fine pointer, pad Auto): 2048 with no pad, the tiles taking its room (phase 7)</figcaption><img class="snap desk" src="snaps/f-play-surface/shipped.2048.board.desktop.png" alt="Shipped, desktop: the 2048 board with no arrow pad." /></figure>
   </div>
 
-  <h3 class="h-pair-title">6 · Furrow stands up on a phone <span class="pill sketch">sketch · Q5</span></h3>
+  <h3 class="h-pair-title">6 · Furrow stands up on a phone <span class="pill sketch">sketch · Q5</span> <span class="pill built">shipped 2026-09-08</span></h3>
   <p class="h-note">A mancala row cannot wrap, so across a phone it scrolls and the stores clip. Upright, the same fourteen cells are two columns of six with a store at each end — the engine's column on the left sowing downward, yours on the right sowing upward, the same counter-clockwise circuit turned a quarter. The pits grow to 44px+ from 2.75rem. <i>Board: Auto / Across / Upright</i> in Settings; Auto follows the stage's aspect, so a desktop stays across.</p>
   <div class="h-pair">
     <figure class="h-frame"><figcaption><b>Current</b> — Furrow at 390×844, the row scrolls</figcaption><img class="snap" src="snaps/f-play-surface/current.furrow.board.phone.png" alt="Current: a horizontal mancala board clipped at both ends, small in a tall empty stage." /></figure>
@@ -361,9 +366,11 @@
       </div>
       <div class="dock"><button class="verb primary"><i>✦</i>Hint</button><button class="verb"><i>⟳</i>New game</button><button class="verb"><i>☰</i>Settings</button></div>
     </div></div></figure>
+    <figure class="h-frame"><figcaption><b>Shipped</b> — captured <code>fun@23b0f84</code>, 390×844: upright — your column on the right, your store at the top, 44px pits (phase 8)</figcaption><img class="snap" src="snaps/f-play-surface/shipped.furrow.board.phone.png" alt="Shipped, phone: the Furrow board standing upright." /></figure>
+    <figure class="h-frame"><figcaption><b>Shipped</b> — captured <code>fun@23b0f84</code>, 1280×900: across, the pits from the stage's width (phase 4)</figcaption><img class="snap desk" src="snaps/f-play-surface/shipped.furrow.board.desktop.png" alt="Shipped, desktop: the Furrow board across, filling the stage's width." /></figure>
   </div>
 
-  <h3 class="h-pair-title">7 · Life on the versus boards <span class="pill sketch">sketch · Q11</span></h3>
+  <h3 class="h-pair-title">7 · Life on the versus boards <span class="pill sketch">sketch · Q11</span> <span class="pill built">shipped 2026-09-08</span></h3>
   <p class="h-note">"Drop 4 … lackluster gameplay", "checkers gameplay could use some pick me up", "cribbage needs more animations and life". One vocabulary of <b>beats</b>, shared by the six versus games and cribbage, each a Web Animations API call the game triggers from the move the core already resolved (the same rule as Color Sort's pour): the <b>drop</b> (Drop 4's disc falls with a trail and settles with a bounce; Othello's flips run outward in sequence; a checkers piece slides its chain and a captured piece shrinks out; a chess piece slides), the <b>reply mark</b> (the engine's move ringed for a beat — exists), the <b>line</b> (a winning four, a closed box, a flipped run pulses), the <b>flourish</b> (the score in the seat ticks up; one word in the game's display face — "Four!", "King!", "Fifteen two" — that fades), and the result screen's fanfare (exists). Sound has a voice per beat under the Sound toggle; reduced motion collapses each beat to its last frame. Nothing fires on an ordinary move.</p>
   <div class="vignettes">
     <figure class="vig"><div class="d4" style="transform:scale(.72);transform-origin:top left;margin:0;position:absolute;left:16px;top:10px">
@@ -385,7 +392,7 @@
     <figure class="vig"><div style="display:flex;flex-direction:column;gap:10px;align-items:center"><div class="seat on" style="width:230px">🙂 You<small>fifteen two, a pair</small><b class="tick">4</b></div><div class="cheer" style="position:static;transform:none;font-size:26px;animation:none">Fifteen two, fifteen four</div><div style="font-size:0.78rem;color:#98a2ad">the peg hops the holes one at a time</div></div><figcaption>Cribbage — SKETCH: the count is spoken as it is pegged; the score ticks; the peg hops</figcaption></figure>
   </div>
 
-  <h3 class="h-pair-title">8 · Pieces with character — Bubble as emoji, chess with presence <span class="pill sketch">sketch · Q7, Q8</span></h3>
+  <h3 class="h-pair-title">8 · Pieces with character — Bubble as emoji, chess with presence <span class="pill sketch">sketch · Q7, Q8</span> <span class="pill built">shipped 2026-09-05 / 2026-09-08</span></h3>
   <p class="h-note">"Bubbles looks pretty cheesy … maybe we use emojis as pieces." Six colours become six fruit — each still a distinct shape, so the colour-blind pairing the tokens test grades is kept — inside glassy bubbles, fired from a launcher that shows the loaded and the next piece; the aim line is a dotted arc. Chess: the pieces stay glyphs but get a <b>pack</b> row in Settings (Classic, Bold; Emoji later), and the board gets a wooden frame, coordinates outside the squares, a shadow on the ground, and a last-move ring — the "life and presence" of a real set.</p>
   <div class="h-pair">
     <figure class="h-frame"><figcaption><b>Current</b> — Bubble at 390×844</figcaption><img class="snap" src="snaps/f-play-surface/current.bubble.board.phone.png" alt="Current: flat coloured shapes in dark circles on a green board; an aim slider and a Fire button below." /></figure>
@@ -434,9 +441,11 @@
       </div>
       <div class="dock"><button class="verb"><i>↶</i>Undo</button><button class="verb primary"><i>✦</i>Hint</button><button class="verb"><i>⟳</i>New game</button><button class="verb"><i>☰</i>Settings</button></div>
     </div></div></figure>
+    <figure class="h-frame"><figcaption><b>Shipped</b> — captured <code>fun@23b0f84</code>, 390×844: the set — a hairline frame, the coordinates outside the squares (phase 10b)</figcaption><img class="snap" src="snaps/f-play-surface/shipped.chess.board.phone.png" alt="Shipped, phone: the chess set with the ranks and files outside the board." /></figure>
+    <figure class="h-frame"><figcaption><b>Shipped</b> — captured <code>fun@23b0f84</code>, 1280×900: the wooden frame, the shadow, the Pieces row in the rail (phase 10b)</figcaption><img class="snap desk" src="snaps/f-play-surface/shipped.chess.board.desktop.png" alt="Shipped, desktop: the chess set in its wooden frame beside the rail." /></figure>
   </div>
 
-  <h3 class="h-pair-title">9 · Loose Ends starts as a puzzle <span class="pill sketch">sketch · Q10</span></h3>
+  <h3 class="h-pair-title">9 · Loose Ends starts as a puzzle <span class="pill sketch">sketch · Q10</span> <span class="pill built">shipped 2026-09-08</span></h3>
   <p class="h-note">What the genre's players say they enjoy is <b>reading the knot</b>: a board that looks impossible until the order reveals itself, difficulty rising through density and interleaving, never through a clock (the sources are in the plan). Level 1 today has three arrows and nothing to read. Proposed curve: level 1 = <b>10 arrows on 6×8</b>, snakes of 3–5; Easy ends (level 15) at ~24 arrows on 8×11; the top of the curve stays where it is (68 on 18×26). The core's generator already places arrows in reverse solution order, so density is a config change with golden vectors re-recorded; a level's <b>star</b> already rewards a clean solve. Parked for a research pass: a second mechanic — colour bands that hide the flow, locked arrows that need a neighbour freed first, a par with three stars.</p>
   <div class="h-pair">
     <figure class="h-frame"><figcaption><b>Current</b> — Loose Ends level 1 at 390×844: three arrows</figcaption><img class="snap" src="snaps/f-play-surface/current.looseends.board.phone.png" alt="Current: a dark blue board with three large pale arrows." /></figure>
@@ -451,6 +460,7 @@
       </div>
       <div class="dock"><button class="verb primary"><i>✦</i>Hint</button><button class="verb"><i>▦</i>Levels</button><button class="verb"><i>☰</i>Settings</button></div>
     </div></div></figure>
+    <figure class="h-frame"><figcaption><b>Shipped</b> — captured <code>fun@23b0f84</code>, 390×844: level 1 at ten arrows on 6×8 (phase 11)</figcaption><img class="snap" src="snaps/f-play-surface/shipped.looseends.board.phone.png" alt="Shipped, phone: Loose Ends level 1 with ten interleaved arrows." /></figure>
   </div>
 
   <h3 class="h-pair-title">10 · Two music picks <span class="pill">decision · Q9</span></h3>

@@ -1,10 +1,10 @@
 # Plan — the play surface: the board fills the stage, the door opens, one shape for hand controls
 
-**Status:** **DRAFT — Pass 1, 2026-09-04.** Phases 1–3 are BUILT on `claude/play-surface` and
-captured as mock F's Proposed frames (`fun@eb509fc`); phases 4–12 wait on decisions Q1–Q11 in
-`mocks/f-play-surface.html` and on Passes 2–3 of this plan. **Phases 1–3 LANDED 2026-09-05**
-(PR #79, owner: "I like most everything"; the Align and Loose Ends sketches revised to v2 on review).
-Review Log at the foot. Plan filename carries no ordinal per `CroftC/.claude/TRACKING.md` § "Plan files".
+**Status:** **Pass 2 EXECUTED, 2026-09-08 — every phase built on `claude/play-surface-2`; PR open,
+merge pending the owner.** Phases 1–3 landed 2026-09-05 (PR #79); phase 10a and Mahjong's track
+2026-09-05 (#80, #81); phases 4, 5, 6, 7, 8, 9, 10b, 11 and 12 built 2026-09-08 at the mock's
+recommendations (owner: "do these TDD first"), each with its Done-when below. Review Log at the
+foot. Plan filename carries no ordinal per `CroftC/.claude/TRACKING.md` § "Plan files".
 
 Branch `claude/play-surface` (from `main@c4db11a`); worktree
 `CroftC/worktrees/play-surface/fun`. Mock: `mocks/f-play-surface.html` v1, its captures in
@@ -190,17 +190,62 @@ Done-when: F2.1–F2.4 green; the affected games' specs green; conflict markers 
 ### Phase 3: The toast lane and the wrap — BUILT
 Done-when: F2.5, F3.1 green. **Executed 2026-09-04** (`4418f19`).
 
-### Phase 4: The rest of the fill (Furrow across, Bubble, Align, cribbage, Mahjong, solitaire, Trio Tumble, Loose Ends HUD)
-One game per commit; each adds its row to the F2.1/F2.2 tables with its own surface
-selectors. Done-when: every game on the rule, `docs/BUILDING-GAMES.md` §4b updated.
+### Phase 4: The rest of the fill (Furrow across, Bubble, cribbage, solitaire, Trio Tumble) — BUILT
+Measured first (2026-09-08, both viewports): Align's well already fills (its `fitBoard`),
+Mahjong fills a desktop (95%) and is width-bound on a phone by its own layout, Loose Ends'
+canvas is the stage's whole box by design (its wrapper cancels the stage padding). The five
+that were fixed-size got the rule: Furrow's pits across from the width (a row of six between
+two stores — the desktop board was 448px in a 960px stage), Trio Tumble's gems from the short
+side, solitaire's cards from the width, Bubble's canvas from the height (the 22rem cap gone;
+a phone leaves it 62% — chips + aim bar, measured), cribbage's table and cards from the width.
+Done-when: F2.6 (soft per game) and F2.7 green on both engines; §4b in BUILDING-GAMES; every
+how-to shot regenerated (the ground changed every stage). **Executed 2026-09-08** (`c51c783`).
 
-### Phase 5: Compact setup rows (Q6)
-### Phase 6: A ground per game (Q2) + ADR-0003
-### Phase 7: One shape for hand controls (Q3, Q4) — the preference, `src/pad.ts`, 2048, Align
-### Phase 8: Furrow upright (Q5)
-### Phase 9: Beats on the versus boards (Q11) — `src/beats.ts`, then one game per commit
+### Phase 5: Compact setup rows (Q6) — BUILT
+A `choice` row with ≤3 options renders as a segmented control — the same radios, each input
+overlaying its segment invisible and tappable, the chosen option's hint under the row. Done-when:
+settings-sheet unit (segmented / list / hint follows), F1.3 (Trio Tumble and chess posters fit
+390×844 without scrolling; F1.2 moves to a 640px phone to keep asserting the scroller). Found on
+the way: a colour transition on the segments let the light-and-dark axe pass grade a half-way
+grey against a half-way grey — removed. **Executed 2026-09-08** (`90d199b`).
+
+### Phase 6: A ground per game (Q2) + ADR-0003 — BUILT
+`GameFrameSpec.ground` → `--stage-ground` + `data-ground` on the stage; one `color-mix` rule
+(22% pool, 7% ink vignette) for every game; eighteen games name their own board token.
+Done-when: game-frame unit (lands, clears, follows update), F4.1 (every game, ≥6 distinct
+colours) on both engines; ADR-0003. **Executed 2026-09-08** (`90d199b`).
+
+### Phase 7: One shape for hand controls (Q3, Q4) — BUILT
+Every game: *On-screen controls: Auto / On / Off* (`fun-pad`, Auto = coarse pointer);
+`src/pad.ts` draws a d-pad or a split pair of thumb clusters with one DAS/ARR policy and the
+game's haptic; 2048 and Align drop their own; Align's well takes tap / flick-down / flick-sideways;
+with the pad Off, 2048's tiles take its room. Done-when: pad unit (resolver, truth table, both
+layouts, repeat under fake timers), F5.1–F5.3 on both engines (Align's well ≥380px, clear of the
+clusters — owner 2026-09-05). **Executed 2026-09-08** (`eeb8703`).
+
+### Phase 8: Furrow upright (Q5) — BUILT
+`.furrow-board[data-orient]`: upright is the across DOM turned a quarter by CSS (each row a
+column read bottom-up, your store to the top, the engine's to the bottom), pits from the stage's
+height; *Board: Auto / Across / Upright*, Auto from the stage's aspect, re-measured on resize.
+Done-when: `furrowUpright` pure, F6.1–F6.2 on both engines, the Furrow suite green.
+**Executed 2026-09-08** (`60f8911`).
+
+### Phase 9: Beats on the versus boards (Q11) — BUILT
+`src/beats.ts`: drop, flip, slide, shrink, line, tick, word — WAAPI from the move the core
+resolved; reduced motion collapses to the last frame; the stage's `data-beat` is the test seam;
+a synthesised voice per beat under Sound. Drop 4 (the fall), Othello (flips outward; ≥4 get a
+count), checkers and chess (a ghost shrinks where the taken piece stood; King! / Check!), Dots (a
+closed box pulses; two get a count), Furrow (Capture!; a store ticks), cribbage (the pegging
+call). Done-when: beats unit, F7.1–F7.3 on both engines, the seven suites green.
+**Executed 2026-09-08** (`1a74a8a`).
 ### Phase 10: Pieces (Q7, Q8) — Bubble emoji + launcher; chess packs + presence
-Q7 DECIDED 2026-09-05: the fruit set. Q8 open — the chess half waits on it.
+Q7 DECIDED 2026-09-05: the fruit set. Q8 DECIDED 2026-09-08 at the recommendation: Classic + Bold.
+
+**Phase 10b — the chess set (2026-09-08, `678f4de`).** A wooden frame with the ranks down its
+left and the files under it, outside the squares, turned with the board for Black; a hairline
+gutter on a phone (the 44px floor leaves no room for more); the last move a ring; *Pieces:
+Classic / Bold* in Settings (`fun-chess-pack`). Done-when: `resolveChessPack` pure, three browser
+specs on both engines, the frame's coordinate contrast pinned in tokens.test.ts, shots regenerated.
 
 **Phase 10a — Bubble's fruit (Pass 2, 2026-09-05).** `src/games/bubble/bubble-pieces.ts` is the
 table (glyph + name per colour index, in the palette's `--gem-N` order: 🍎 apple, 🫐
@@ -212,18 +257,40 @@ as data), the wiring test's launcher assertions (`tests/bubble.spec.ts`, structu
 both engines; `assets/guide/bubble-*.jpg` regenerated; mock F v4 carries a Shipped capture
 of the board beside proposal 8. No core change: colours are indices, and the core never knew
 a shape.
-### Phase 11: Loose Ends' curve (Q10)
-### Phase 12: Music (Q9)
-Mahjong → Porch Light Nocturne DECIDED and landed 2026-09-05 (`tests/appearance.test.ts` pins
-it). Cribbage's pick still open; the phase closes when it lands.
+### Phase 11: Loose Ends' curve (Q10) — BUILT
+`level_config`: `w = 6 + 12t`, `h = 8 + 18t`, `target = 10 + 58t`, `min_len = 3`,
+`max_len = 5 + round(7t)`; level 1 is ten arrows on 6×8 and fills exactly; the top of the curve
+unchanged; the daily config untouched; goldens re-recorded from the generator. Done-when: the
+config test pins the new curve, the crate's tests + clippy green, RULES.md says which half is
+the spec's. **Executed 2026-09-08** (`5536d40`).
 
-Phases 5–12 get their Done-when, wiring test and claims in Pass 2, after the decisions.
+### Phase 12: Music (Q9) — BUILT
+Mahjong → Porch Light Nocturne (2026-09-05); Cribbage → Tuesday Night Rainfall (2026-09-08,
+`7769e40`, the one candidate nothing else names). `tests/appearance.test.ts` pins both.
+
+### Also landed with Pass 2
+The two loose ends: `tools/guide-shots.mjs`'s Furrow result step taps in one evaluate and waits
+for the move (`36974aa`); `tools/stale-shots.sh`, first in `npm run gate`, names a game whose
+module changed against `origin/main` without a shot of its own changing (`23b0f84`).
 
 ## Open Questions
 
 Q1–Q11 are in the mock's decisions table with a recommendation each; the plan repeats none.
 
 ## Review Log
+
+### Pass 2 — 2026-09-08 (owner: "do these TDD first")
+- Reconstructed: `main@88a2285`, clean; worktree `worktrees/play-surface-2/fun`.
+- Every open decision taken at the mock's recommendation: Q9 Cribbage → Tuesday Night Rainfall
+  (the one candidate nothing else names), Q8 Classic + Bold, Q6 segmented rows, Q2 the tint,
+  Q3 Auto, Q4 the split, Q5 Auto + preference, Q10 the curve now, Q11 that list.
+- Order of work: Q9, Q8, Q6, Q2, Q3/Q4, Q5, Q10, Q11, phase 4, the two loose ends. Each phase
+  RED→GREEN (unit + browser on both engines) and one commit; the mock revised to v5 with
+  Shipped captures beside the sketches and every decision marked.
+- Measured on the way: a phone's Bubble canvas is height-bound by the chips and the aim bar
+  (62%); Loose Ends' canvas already fills the stage's box by design; the segmented control's
+  colour transition tripped axe mid-toggle (removed); Playwright's `check()` works on an
+  opacity-0 radio overlaying its segment.
 
 ### Decisions — 2026-09-05 (owner)
 - Mock F v2 approved ("I like most everything"); phases 1–3 landed, PR #79, `0b98217`.
