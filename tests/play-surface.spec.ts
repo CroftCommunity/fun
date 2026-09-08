@@ -48,8 +48,11 @@ async function union(page: Page, selectors: readonly string[]): Promise<Box> {
   }, selectors);
 }
 
-async function mounted(page: Page): Promise<void> {
+/** The board mounted — and, given a selector, the surface itself: the mount's first
+ *  child can be a loading placeholder, which CI's slow WebKit measured (2026-09-08). */
+async function mounted(page: Page, surface?: string): Promise<void> {
   await page.waitForFunction(() => (document.querySelector(".gf-mount")?.children.length ?? 0) > 0);
+  if (surface) await page.locator(surface).first().waitFor({ state: "attached" });
   await page.waitForTimeout(300);
 }
 
@@ -132,7 +135,7 @@ test("mock F2.1: at 1280×900 a grid board's play surface uses at least 80% of o
   await page.setViewportSize(DESKTOP);
   for (const g of GRIDS) {
     await page.goto(g.url);
-    await mounted(page);
+    await mounted(page, g.surface[0]);
     const stage = await stageContent(page);
     const box = await union(page, g.surface);
     const fill = Math.max(box.w / stage.w, box.h / stage.h);
@@ -146,7 +149,7 @@ test("mock F2.2: at 390×844 the same boards use at least 85% of the stage's wid
   await page.setViewportSize(PHONE);
   for (const g of GRIDS) {
     await page.goto(g.url);
-    await mounted(page);
+    await mounted(page, g.surface[0]);
     const stage = await stageContent(page);
     const box = await union(page, g.surface);
     expect(box.w / stage.w, `${g.id}: width ${Math.round(box.w)} of ${Math.round(stage.w)}`).toBeGreaterThanOrEqual(0.85);
@@ -179,7 +182,7 @@ test("mock F2.5: at 1280×900 the first-move toast sits below the board, never o
   await page.setViewportSize(DESKTOP);
   for (const g of GRIDS.filter((x) => x.id === "othello" || x.id === "dots")) {
     await page.goto(g.url);
-    await mounted(page);
+    await mounted(page, g.surface[0]);
     const toast = page.locator(".gf-toast");
     await expect(toast).toBeVisible();
     const board = await union(page, g.surface);
