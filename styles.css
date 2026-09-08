@@ -5349,6 +5349,27 @@ dialog.signin-sheet::backdrop { background: rgba(0, 0, 0, 0.45); }
 }
 .chess-board[data-pack="bold"] .chess-piece.a { -webkit-text-stroke: 0.05em var(--chs-a-ink); }
 .chess-board[data-pack="bold"] .chess-piece.b { -webkit-text-stroke: 0.05em var(--chs-b-ink); }
+/* The Emoji pack: a court of emoji (💂 🐴 🧙 🏰 👸 🤴, the table in chess-pieces.ts)
+   on a round token painted with the side's colour — an emoji brings its own
+   colours and cannot take the side's, so the side is the token. Its fill and rim
+   are the pairs tokens.test.ts already grades (chs-a-ink and chs-b on both
+   squares); no new ink. */
+.chess-board[data-pack="emoji"] .chess-piece {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: calc(var(--chs-cell) * 0.84);
+  height: calc(var(--chs-cell) * 0.84);
+  border-radius: 50%;
+  border: 2px solid;
+  font-size: calc(var(--chs-cell) * 0.5);
+  font-variant-emoji: emoji;
+  text-shadow: none;
+  box-shadow: 0 2px 2px rgb(0 0 0 / 35%);
+}
+.chess-board[data-pack="emoji"] .chess-piece.a { background: var(--chs-a); border-color: var(--chs-a-ink); }
+.chess-board[data-pack="emoji"] .chess-piece.b { background: var(--chs-b); border-color: var(--chs-b-ink); }
 .chess-square.selectable { cursor: pointer; }
 .chess-square.target { cursor: pointer; }
 .chess-square.target::after {

@@ -787,17 +787,18 @@ export function setMahjongDimBlocked(on: boolean): void {
 // ---------- Chess (the piece pack — mock F Q8, phase 10b) ----------
 
 /** The packs that ship: Classic (outlined glyphs) and Bold (heavier, flat, shadowed). Emoji is later. */
-export type ChessPack = "classic" | "bold";
+export type ChessPack = "classic" | "bold" | "emoji";
 
 /** The pack list as Settings shows it — Classic first, because it is the default. */
 export const CHESS_PACKS: ReadonlyArray<{ readonly value: ChessPack; readonly label: string; readonly hint: string }> = [
   { value: "classic", label: "Classic", hint: "The outlined set." },
   { value: "bold", label: "Bold", hint: "Heavier pieces, flat, with a shadow." },
+  { value: "emoji", label: "Emoji", hint: "A court of emoji, each on a token in its side's colour." },
 ];
 
 /** Pure resolver: a stored pack that ships wins, else Classic. */
 export function resolveChessPack(stored: string | null): ChessPack {
-  return stored === "bold" || stored === "classic" ? stored : "classic";
+  return stored === "bold" || stored === "classic" || stored === "emoji" ? stored : "classic";
 }
 
 /** The chosen piece pack — **Classic by default**. */

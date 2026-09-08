@@ -12,6 +12,9 @@ earlier is in `git log`.
 
 ## 2026-09
 
+- 2026-09-08 **chess:** a third piece pack, Emoji — a court (💂 🐴 🧙 🏰 👸 🤴) on a round
+  token in its side's colour — under Settings → Pieces beside Classic and Bold. The board,
+  the rules and the record never see a pack. (mock F Q8: "Emoji later")
 - 2026-09-08 **every poster:** on a desktop the art is the whole splash at its own shape — a
   poster's lettering sits at its foot, and the half-width column cropped it away (2048 on a
   short window lost its bottom third); the setup and Play centre in the room beside it.

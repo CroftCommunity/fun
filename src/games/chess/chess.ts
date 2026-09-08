@@ -23,6 +23,7 @@ import {
   CHESS_PACKS,
   chessLevel,
   chessPack,
+  resolveChessPack,
   chessSide,
   chessTutorEnabled,
   hintsEnabled,
@@ -49,6 +50,7 @@ import {
   type MoveAssessment,
   type SideCode,
 } from "./chess-wasm.js";
+import { pieceGlyph } from "./chess-pieces.js";
 
 declare global {
   interface Window {
@@ -159,8 +161,6 @@ export const squareName = (sq: number): string =>
 /** The `(from, to)` a packed move code names — the UI reads codes, never builds them. */
 const fromTo = (code: number): [number, number] => [code & 63, (code >> 6) & 63];
 
-/** One glyph per kind (the filled shapes, coloured by CSS for both sides). */
-const GLYPHS = ["", "♟", "♞", "♝", "♜", "♛", "♚"] as const;
 const PROMO_KINDS: readonly { promo: number; glyph: string; name: string }[] = [
   { promo: 4, glyph: "♛", name: "queen" },
   { promo: 3, glyph: "♜", name: "rook" },
@@ -611,7 +611,7 @@ export function chessModule(): GameModule {
     el(
       "span",
       { class: `chess-piece ${ownerOf(v) === 1 ? "a" : "b"}`, "aria-hidden": "true" },
-      GLYPHS[kindOf(v)] ?? "",
+      pieceGlyph(pack, kindOf(v)),
     );
 
   const describe = (v: number): string =>
@@ -760,7 +760,7 @@ export function chessModule(): GameModule {
         value: pack,
         options: CHESS_PACKS,
         onChange: (v) => {
-          pack = v === "bold" ? "bold" : "classic";
+          pack = resolveChessPack(v);
           setChessPack(pack);
           render();
         },

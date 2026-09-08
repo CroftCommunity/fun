@@ -447,8 +447,8 @@ test("chess 10b: the pack row in Settings — Classic by default, Bold marks the
   await expect(page.locator('.chess-board[data-pack="classic"]')).toHaveCount(1);
   await page.locator('.gf-verb[data-verb="settings"]').click();
   const row = page.locator('.gf-sheet [data-setting="pack"]');
-  await expect(row.locator(".sheet-choice-opt input")).toHaveCount(2);
-  await expect(row.locator(".sheet-choice-opt")).toContainText(["Classic", "Bold"]);
+  await expect(row.locator(".sheet-choice-opt input")).toHaveCount(3);
+  await expect(row.locator(".sheet-choice-opt")).toContainText(["Classic", "Bold", "Emoji"]);
   await row.locator('input[value="bold"]').check();
   await expect(page.locator('.chess-board[data-pack="bold"]')).toHaveCount(1);
   expect(await page.evaluate(() => localStorage.getItem("fun-chess-pack"))).toBe("bold");
@@ -463,4 +463,48 @@ test("chess 10b: the pack row in Settings — Classic by default, Bold marks the
   const classic = await piece.evaluate((n) => ({ size: parseFloat(getComputedStyle(n).fontSize), shadow: getComputedStyle(n).textShadow }));
   expect(bold.size).toBeGreaterThan(classic.size);
   expect(bold.shadow).not.toBe(classic.shadow);
+});
+
+
+test("chess 10b: the Emoji pack — a court of emoji on a token coloured by side, remembered, and the game unchanged", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/chess/?seed=7");
+  await ready(page);
+  const before = await page.locator(".chess-square .chess-piece").allTextContents();
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await page.locator('.gf-sheet [data-setting="pack"] input[value="emoji"]').check();
+  await expect(page.locator('.chess-board[data-pack="emoji"]')).toHaveCount(1);
+  expect(await page.evaluate(() => localStorage.getItem("fun-chess-pack"))).toBe("emoji");
+  // Every piece is an emoji now, and every square that had a piece still has one.
+  const after = await page.locator(".chess-square .chess-piece").allTextContents();
+  expect(after.length).toBe(before.length);
+  for (const g of after) expect(g).not.toMatch(/[\u2654-\u265F]/);
+  expect(new Set(after).size).toBe(6);
+  // White's king is the king, in a one-code-point emoji, and the row of pawns reads as pawns.
+  const white = page.locator(".chess-square").filter({ has: page.locator(".chess-piece.a") });
+  await expect(white).toHaveCount(16);
+  expect(await white.locator(".chess-piece").allTextContents()).toContain("🤴");
+  // The side is the token, not the glyph: a white and a black piece paint different grounds behind the same emoji.
+  const ground = async (side: "a" | "b") =>
+    page.locator(`.chess-piece.${side}`).first().evaluate((n) => {
+      const cs = getComputedStyle(n);
+      return { bg: cs.backgroundColor, radius: cs.borderRadius, border: cs.borderTopWidth };
+    });
+  const [a, b] = await Promise.all([ground("a"), ground("b")]);
+  expect(a.bg).not.toBe("rgba(0, 0, 0, 0)");
+  expect(b.bg).not.toBe("rgba(0, 0, 0, 0)");
+  expect(a.bg).not.toBe(b.bg);
+  expect(parseFloat(a.border)).toBeGreaterThan(0);
+  expect(a.radius).not.toBe("0px");
+  // A token still fits its square (the 44px floor at 390) and the reload keeps the pack.
+  const [sq, tok] = await Promise.all([page.locator(".chess-square").first().boundingBox(), page.locator(".chess-piece").first().boundingBox()]);
+  expect(tok!.width).toBeLessThanOrEqual(sq!.width);
+  expect(tok!.height).toBeLessThanOrEqual(sq!.height);
+  await page.reload();
+  await ready(page);
+  await expect(page.locator('.chess-board[data-pack="emoji"]')).toHaveCount(1);
+  // The move list, the engine and the rules never saw a pack: a legal move still plays.
+  await page.locator('.chess-square[data-sq="12"]').click();
+  await page.locator('.chess-square[data-sq="28"]').click();
+  await expect(page.locator('.chess-square[data-sq="28"] .chess-piece')).toHaveText("💂");
 });
