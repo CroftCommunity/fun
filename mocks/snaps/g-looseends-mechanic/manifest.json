@@ -1,0 +1,18 @@
+{
+  "files": [
+    {
+      "file": "current.looseends.board.phone.png",
+      "game": "looseends",
+      "route": "board",
+      "url": "/looseends/?play=1",
+      "viewport": "phone",
+      "width": 390,
+      "height": 844,
+      "baseline": "fun@5fcb81f",
+      "tag": "current"
+    }
+  ],
+  "baseline": "fun@5fcb81f",
+  "capturedAt": "2026-09-08",
+  "population": "deep link, fixed seed (hermetic); the poster is the bare land in a fresh context"
+}
