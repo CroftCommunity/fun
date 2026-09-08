@@ -7,6 +7,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { boardTopStable } from "./helpers/board-top.js";
+import { flipToggle } from "./helpers/toggle.js";
 
 async function ready(page: Page): Promise<void> {
   await expect(page.locator(".al-board")).toBeVisible();
@@ -109,7 +110,7 @@ test("turning haptics off stops the buzz", async ({ page }) => {
   await ready(page);
   await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
   await page.locator('.gf-verb[data-verb="settings"]').click();
-  await page.locator('.gf-sheet [data-setting="haptics"] .sheet-toggle-track').click();
+  await flipToggle(page, ".gf-sheet", "haptics");
   await page.keyboard.press("Escape");
   await page.evaluate(() => {
     (window as unknown as { __vibes: unknown[] }).__vibes.length = 0;
@@ -227,7 +228,7 @@ test("with hints off, 'End run' ends the round with a verifiable result", async 
   await ready(page);
   await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
   await page.locator('.gf-verb[data-verb="settings"]').click();
-  await page.locator('.gf-sheet [data-setting="hints"] .sheet-toggle-track').click();
+  await flipToggle(page, ".gf-sheet", "hints");
   await page.keyboard.press("Escape");
   await expect(page.locator('.gf-verb[data-verb="hint"]')).toHaveCount(0);
   await page.locator('.gf-verb[data-verb="done"]').click();

@@ -10,6 +10,7 @@
 
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { flipToggle } from "./helpers/toggle.js";
 
 async function ready(page: Page): Promise<void> {
   await expect(page.locator(".bub-canvas")).toBeVisible();
@@ -126,7 +127,7 @@ test("the optional timer is presentational — it never changes the outcome", as
   await expect(clock).toHaveText("—");
   await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
   await page.locator('.gf-verb[data-verb="settings"]').click();
-  await page.locator('.gf-sheet [data-setting="timer"] .sheet-toggle-track').click();
+  await flipToggle(page, ".gf-sheet", "timer");
   await page.keyboard.press("Escape");
   await expect(clock).toHaveText(/^\d+:\d\d$/);
 

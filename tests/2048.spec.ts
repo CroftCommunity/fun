@@ -7,6 +7,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { boardTopStable } from "./helpers/board-top.js";
+import { flipToggle } from "./helpers/toggle.js";
 
 async function ready(page: Page): Promise<void> {
   await expect(page.locator(".t48-board")).toBeVisible();
@@ -95,7 +96,7 @@ test("the fixture line replays to a verifiable result; share round-trips", async
   if (!(await page.locator(".sol-result").isVisible())) {
     await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
     await page.locator('.gf-verb[data-verb="settings"]').click();
-    await page.locator('.gf-sheet [data-setting="hints"] .sheet-toggle-track').click();
+    await flipToggle(page, ".gf-sheet", "hints");
     await page.keyboard.press("Escape");
     await page.locator('.gf-verb[data-verb="done"]').click();
   }
@@ -118,7 +119,7 @@ test("with hints off, 'I'm done' ends the round", async ({ page }) => {
   await ready(page);
   await page.setViewportSize({ width: 390, height: 844 }); // Settings is a sheet on a phone
   await page.locator('.gf-verb[data-verb="settings"]').click();
-  await page.locator('.gf-sheet [data-setting="hints"] .sheet-toggle-track').click();
+  await flipToggle(page, ".gf-sheet", "hints");
   await page.keyboard.press("Escape");
   await expect(page.locator('.gf-verb[data-verb="hint"]')).toHaveCount(0);
   await page.locator('.gf-verb[data-verb="done"]').click();
