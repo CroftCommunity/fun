@@ -103,6 +103,14 @@ test("tapping a piece glows its destinations; tapping one moves it and the engin
   expect(await hash(page)).not.toBe(before);
 });
 
+test("a moved piece slides in from the square it left — the stage records the slide (beats, phase 9 follow-up)", async ({ page }) => {
+  await page.goto("/chess/?seed=7"); // no ?fast=1: fast collapses every beat
+  await ready(page);
+  await cell(page, sqOf("e2")).click();
+  await cell(page, sqOf("e4")).click();
+  await expect(page.locator(".gf-stage")).toHaveAttribute("data-beat", "slide");
+});
+
 test("castling is the king's two-square tap", async ({ page }) => {
   await page.goto("/chess/?seed=7&fast=1");
   await ready(page);

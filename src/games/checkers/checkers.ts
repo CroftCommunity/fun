@@ -21,7 +21,7 @@ import type { SettingRow } from "../../settings-sheet.js";
 import { WebLLMRuntime } from "../../harness/ai-runtime.js";
 import { speak } from "../../harness/banter.js";
 import { buildBand, HybridPlayer, type BandMove } from "../../harness/hybrid-player.js";
-import { beatSound, beatWord, ghost } from "../../beats.js";
+import { beatSound, beatWord, ghost, slideFrom } from "../../beats.js";
 import { captureUiState, restoreUiState } from "../../ui-state.js";
 import {
   checkersLevel,
@@ -799,6 +799,11 @@ export function checkersModule(): GameModule {
     const stage = beats === FAST_BEATS ? null : frame?.stage;
     if (prevCells && lastTo !== null && stage && prevCells.length === board.cells.length) {
       const boardEl = container.querySelector(".checkers-board");
+      // The moved man slides in from the square it left (the first landing of a chain);
+      // the slide first, so a capture's shrink is what the stage records last.
+      const fromEl = lastFrom !== null ? boardEl?.querySelector(`.checkers-square[data-sq="${lastFrom}"]`) : null;
+      const movedEl = boardEl?.querySelector(`.checkers-square[data-sq="${lastTo}"] .checkers-piece`);
+      if (fromEl && movedEl) slideFrom(movedEl, fromEl);
       let taken = 0;
       board.cells.forEach((now, sq) => {
         const was = prevCells?.[sq] ?? 0;

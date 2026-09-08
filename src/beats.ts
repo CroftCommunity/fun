@@ -195,6 +195,17 @@ export function beatEach(nodes: readonly Element[], kind: BeatKind, staggerMs: n
   nodes.forEach((n, i) => beat(n, kind, { ...opts, delay: i * staggerMs }));
 }
 
+/** A piece that moved slides in from the box it left: the slide beat, measured. */
+export function slideFrom(moved: Element, from: Element): Animation | null {
+  const a = moved.getBoundingClientRect();
+  const b = from.getBoundingClientRect();
+  const dx = a.left + a.width / 2 - (b.left + b.width / 2);
+  const dy = a.top + a.height / 2 - (b.top + b.height / 2);
+  const d = Math.hypot(dx, dy);
+  if (d < 1) return null;
+  return beat(moved, "slide", { distancePx: d, dx: dx / d, dy: dy / d });
+}
+
 let wordTimer = 0;
 
 /** One word over the stage. A second word replaces the first. */

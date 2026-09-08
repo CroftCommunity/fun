@@ -66,6 +66,7 @@ import {
   type Assessment,
   type CardView,
   type LastEvent,
+  type Phase,
   type Level,
   type RevealedHand,
   type UiView,
@@ -252,6 +253,32 @@ export function scoredLine(last: LastEvent, opponent: string): string | null {
     }
   }
 }
+
+/**
+ * The word over the table for a scoring event (beats, phase 9), or null when the
+ * seat's line is all it deserves — heels, a go, last card. Pegging calls fifteen
+ * first, then thirty-one, a pair by its size, a run by its length; the show calls
+ * the hand's (or the crib's) total, a hand of nothing is a nineteen, and muggins
+ * names what was taken. Pure.
+ */
+export function beatCall(last: LastEvent, phase: Phase): string | null {
+  if (last.kind === "peg") {
+    if (last.points === 0) return null;
+    if (last.fifteen) return "Fifteen two!";
+    if (last.thirtyOne) return "Thirty-one!";
+    if (last.pairs) return last.pairs === 2 ? "A pair!" : last.pairs === 6 ? "Pair royal!" : "Double pair royal!";
+    if (last.run) return `Run of ${RUN_WORDS[last.run] ?? last.run}!`;
+    return null;
+  }
+  if (last.kind === "claim") {
+    if ((last.muggins ?? 0) > 0) return `Muggins ${last.muggins}!`;
+    const total = last.actual?.total ?? 0;
+    if (total === 0) return "Nineteen!";
+    return `${phase === "showCrib" ? "Crib" : "Hand"}: ${total}!`;
+  }
+  return null;
+}
+const RUN_WORDS: Readonly<Record<number, string>> = { 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven" };
 
 /** The coach's line plus a pointer at the better move, hedged like the line. */
 export function coachFor(a: Assessment, best: number | null): string {
@@ -873,24 +900,11 @@ export function cribbageModule(): GameModule {
     if (!v.last) return;
     const line = scoredLine(v.last, opponentIdentity().name);
     if (line) setStatus(line);
-    // Beat (phase 9): a pegged fifteen, thirty-one, pair or run gets its call over the table.
-    const last = v.last;
-    if (last.kind === "peg" && last.points > 0 && frame && beats !== FAST_BEATS) {
-      const call = last.fifteen
-        ? "Fifteen two"
-        : last.thirtyOne
-          ? "Thirty-one"
-          : last.pairs
-            ? last.pairs === 2
-              ? "A pair"
-              : last.pairs === 6
-                ? "Pair royal"
-                : "Double pair royal"
-            : last.run
-              ? `Run of ${last.run}`
-              : null;
+    // Beat (phase 9): the call over the table — pegging, the show, the crib.
+    if (frame && beats !== FAST_BEATS) {
+      const call = beatCall(v.last, v.phase);
       if (call) {
-        beatWord(frame.stage, `${call}!`);
+        beatWord(frame.stage, call);
         beatSound("word");
       }
     }
