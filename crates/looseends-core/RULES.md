@@ -27,6 +27,20 @@ where occupancy frees the instant a slide starts). Releasing a non-FREE, unknown
 or already-gone arrow is a reported error — never a panic. Clearing every arrow is
 a **win**.
 
+## Locks — a locked arrow needs its key freed first (2026-09-08, plan `looseends-mechanic`)
+
+A board may carry `(locked, key)` pairs. The locked arrow is **not FREE while its key
+is still on the board**, ray clear or not, and unlocks the instant the key is released;
+a pair naming an id that does not exist holds nothing. `is_free` is therefore two
+clauses — `ray_clear` and no key held (`key_of`) — and `release`, `free_arrows`,
+`greedy_solve` and the hint all go through it. `release` reports a **blocked ray before
+a lock**: the ray is the visible fault, so that tap is a mistake; a tap on a locked arrow
+with a clear ray is `Locked(key)` — information for the player (the UI flashes the key),
+never a mistake and never a move. Locks are geometry, a function of the seed like the
+arrows (phase 2 draws them; levels 1–7 and every daily have none), and they **never
+enter the state hash** — occupancy already says whether the key is present, so a board
+with locks hashes exactly as the same board without (pinned by a test).
+
 ## The RNG — integer-exact port of the spec
 
 `hash_str` is FNV-1a over a key's bytes (ASCII keys only). `Rng` carries the

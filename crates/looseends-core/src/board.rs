@@ -6,6 +6,12 @@
 //! every other still-present arrow. Releasing it clears its cells immediately,
 //! so the next release sees the updated board (matching the animated game, where
 //! occupancy frees the moment a slide starts).
+//!
+//! **Locks** (plan 2026-09-08): a board may carry `(locked, key)` pairs. The
+//! locked arrow is not FREE while its key is still on the board — ray clear or
+//! not — and unlocks the instant the key is released. A lock is geometry, a
+//! function of the seed like the arrows; it never enters the state hash, whose
+//! occupancy already says whether the key is present.
 
 use serde::{Deserialize, Serialize};
 
@@ -38,6 +44,10 @@ pub enum ReleaseError {
     /// The arrow's exit ray is not clear.
     #[error("arrow is blocked")]
     Blocked,
+    /// The ray is clear but the arrow is locked: its key (the id carried) is
+    /// still on the board. Information for the player, not a mistake.
+    #[error("arrow is locked by arrow {0}")]
+    Locked(usize),
 }
 
 /// A live board: fixed arrow geometry plus which arrows are still present.
@@ -51,6 +61,8 @@ pub struct Board {
     /// Per-arrow present flag (`false` once released).
     present: Vec<bool>,
     remaining: usize,
+    /// `(locked, key)` pairs: `locked` stays put while `key` is present.
+    locks: Vec<(usize, usize)>,
 }
 
 impl Board {
@@ -59,6 +71,13 @@ impl Board {
     /// produces it), and later cells simply win.
     #[must_use]
     pub fn new(w: i32, h: i32, arrows: Vec<Arrow>) -> Self {
+        Self::with_locks(w, h, arrows, Vec::new())
+    }
+
+    /// [`Board::new`] plus `(locked, key)` pairs. A pair naming an id that does
+    /// not exist holds nothing (a key that is not present is a key that is gone).
+    #[must_use]
+    pub fn with_locks(w: i32, h: i32, arrows: Vec<Arrow>, locks: Vec<(usize, usize)>) -> Self {
         let mut occ = vec![-1i32; (w * h) as usize];
         for (id, a) in arrows.iter().enumerate() {
             for c in &a.cells {
@@ -73,6 +92,7 @@ impl Board {
             occ,
             present: vec![true; n],
             remaining: n,
+            locks,
         }
     }
 
@@ -106,16 +126,37 @@ impl Board {
     pub fn is_cleared(&self) -> bool {
         self.remaining == 0
     }
+    /// The `(locked, key)` pairs, as generated.
+    #[must_use]
+    pub fn locks(&self) -> &[(usize, usize)] {
+        &self.locks
+    }
+    /// The key still holding arrow `id` in place, if any.
+    #[must_use]
+    pub fn key_of(&self, id: usize) -> Option<usize> {
+        self.locks
+            .iter()
+            .find(|&&(locked, key)| locked == id && self.is_present(key))
+            .map(|&(_, key)| key)
+    }
 
     #[inline]
     fn in_bounds(&self, x: i32, y: i32) -> bool {
         x >= 0 && y >= 0 && x < self.w && y < self.h
     }
 
-    /// Is arrow `id` FREE? Walks the exit ray from `head + dir`; FREE iff every
-    /// visited cell is empty. A missing / already-released arrow is not FREE.
+    /// Is arrow `id` FREE? Its exit ray is clear ([`Board::ray_clear`]) and no
+    /// key holds it. A missing / already-released arrow is not FREE.
     #[must_use]
     pub fn is_free(&self, id: usize) -> bool {
+        self.ray_clear(id) && self.key_of(id).is_none()
+    }
+
+    /// Is arrow `id`'s exit ray clear? Walks from `head + dir` to the edge; clear
+    /// iff every visited cell is empty. Ignores locks; a missing / already-
+    /// released arrow has no ray.
+    #[must_use]
+    pub fn ray_clear(&self, id: usize) -> bool {
         if !self.is_present(id) {
             return false;
         }
@@ -145,7 +186,8 @@ impl Board {
     /// decrements the remaining count.
     ///
     /// # Errors
-    /// [`ReleaseError`] if the id is unknown, already gone, or blocked.
+    /// [`ReleaseError`] if the id is unknown, already gone, blocked, or locked.
+    /// A blocked ray is reported before a lock: the ray is the visible fault.
     pub fn release(&mut self, id: usize) -> Result<(), ReleaseError> {
         if id >= self.arrows.len() {
             return Err(ReleaseError::NoSuchArrow);
@@ -153,8 +195,11 @@ impl Board {
         if !self.present[id] {
             return Err(ReleaseError::AlreadyGone);
         }
-        if !self.is_free(id) {
+        if !self.ray_clear(id) {
             return Err(ReleaseError::Blocked);
+        }
+        if let Some(key) = self.key_of(id) {
+            return Err(ReleaseError::Locked(key));
         }
         for c in &self.arrows[id].cells {
             self.occ[(c[1] * self.w + c[0]) as usize] = -1;
@@ -218,6 +263,102 @@ mod tests {
         board.release(1).expect("B is free");
         assert!(board.is_free(0), "A is free once B is gone");
         assert_eq!(board.remaining(), 1);
+    }
+
+    // ---- Locks (plan 2026-09-08, phase 1): a locked arrow needs its key freed first ----
+
+    /// A 5×2 board: A across row 0 with a clear ray to the right, K under it on
+    /// row 1 (their bodies touch), and A locked by K.
+    fn locked_pair() -> Board {
+        let a = arrow(&[[0, 0], [1, 0]], [1, 0]);
+        let k = arrow(&[[0, 1], [1, 1]], [1, 0]);
+        Board::with_locks(5, 2, vec![a, k], vec![(0, 1)])
+    }
+
+    #[test]
+    fn a_locked_arrow_with_a_clear_ray_is_not_free_until_its_key_goes() {
+        let mut board = locked_pair();
+        assert!(!board.is_free(0), "A's ray is clear but K holds it");
+        assert!(board.is_free(1), "K itself is free");
+        assert_eq!(board.free_arrows(), vec![1]);
+        assert_eq!(
+            board.release(0),
+            Err(ReleaseError::Locked(1)),
+            "the error names the key"
+        );
+        assert_eq!(board.remaining(), 2, "a locked tap changes nothing");
+        board.release(1).expect("the key is free");
+        assert!(board.is_free(0), "the lock falls off with its key");
+        board.release(0).expect("unlocked, ray clear");
+        assert!(board.is_cleared());
+    }
+
+    #[test]
+    fn a_locked_arrow_whose_ray_is_blocked_reports_blocked_not_locked() {
+        // A on row 0 runs into B; K under A locks it. The ray is the visible
+        // fault, so the tap is a mistake (Q2), not a lock lesson.
+        let a = arrow(&[[0, 0], [1, 0]], [1, 0]);
+        let b = arrow(&[[3, 0], [4, 0]], [1, 0]);
+        let k = arrow(&[[0, 1], [1, 1]], [1, 0]);
+        let mut board = Board::with_locks(5, 2, vec![a, b, k], vec![(0, 2)]);
+        assert_eq!(board.release(0), Err(ReleaseError::Blocked));
+        board.release(1).expect("B is free");
+        assert_eq!(
+            board.release(0),
+            Err(ReleaseError::Locked(2)),
+            "ray clear, still locked"
+        );
+    }
+
+    #[test]
+    fn a_lock_on_a_gone_or_unknown_key_is_inert() {
+        let a = arrow(&[[0, 0], [1, 0]], [1, 0]);
+        let k = arrow(&[[0, 1], [1, 1]], [1, 0]);
+        let board = Board::with_locks(5, 2, vec![a.clone(), k.clone()], vec![(0, 99)]);
+        assert!(board.is_free(0), "a key that does not exist holds nothing");
+        assert_eq!(board.key_of(0), None);
+
+        let mut board = Board::with_locks(5, 2, vec![a, k], vec![(0, 1)]);
+        assert_eq!(board.key_of(0), Some(1));
+        assert_eq!(board.key_of(1), None, "the key is not itself locked");
+        board.release(1).expect("K is free");
+        assert_eq!(board.key_of(0), None, "a released key holds nothing");
+        assert!(board.is_free(0));
+    }
+
+    #[test]
+    fn locks_are_readable_and_never_enter_the_hash() {
+        use crate::hash::state_hash;
+        let plain = Board::new(5, 2, locked_pair().arrows().to_vec());
+        let locked = locked_pair();
+        assert_eq!(locked.locks(), &[(0, 1)]);
+        assert_eq!(plain.locks(), &[]);
+        assert_eq!(
+            state_hash(&plain),
+            state_hash(&locked),
+            "a lock is a function of the seed, not state"
+        );
+        let mut plain = plain;
+        let mut locked = locked;
+        plain.release(1).expect("free");
+        locked.release(1).expect("free");
+        assert_eq!(
+            state_hash(&plain),
+            state_hash(&locked),
+            "and stays out after a release"
+        );
+    }
+
+    #[test]
+    fn greedy_solve_releases_the_key_before_the_lock() {
+        // A (id 0) is ray-free from the start but locked by K (id 2), whose ray
+        // runs into B (id 1). The only order that clears is B, K, A.
+        let a = arrow(&[[0, 0], [1, 0]], [1, 0]);
+        let b = arrow(&[[3, 1], [4, 1]], [0, 1]);
+        let k = arrow(&[[0, 1], [1, 1]], [1, 0]);
+        let mut board = Board::with_locks(5, 2, vec![a, b, k], vec![(0, 2)]);
+        assert_eq!(board.greedy_solve(), vec![1, 2, 0]);
+        assert!(board.is_cleared());
     }
 
     #[test]

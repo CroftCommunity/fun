@@ -8,7 +8,7 @@
 //! declared assistance; mistakes and hints are UI-side (not part of the move
 //! list), graded for display by [`crate::score`].
 
-use crate::board::Board;
+use crate::board::{Board, ReleaseError};
 use crate::config::{daily_config, level_config};
 use crate::generate::generate;
 use crate::hash::state_hash;
@@ -20,6 +20,9 @@ pub enum Tap {
     Released,
     /// The arrow was BLOCKED — no change (the UI charges a droplet).
     Blocked,
+    /// The arrow's ray is clear but its key (the id carried) is still on the
+    /// board — no change, no droplet: the UI flashes the key.
+    Locked(u32),
     /// The arrow was already gone (or unknown) — no change.
     Gone,
 }
@@ -87,6 +90,17 @@ impl Game {
         }
     }
 
+    /// A game over a hand-built board (tests): the origin is what a record
+    /// would carry; the board is whatever the test laid out.
+    #[cfg(test)]
+    pub(crate) fn with_board(origin: Origin, board: Board) -> Self {
+        Self {
+            origin,
+            board,
+            released: Vec::new(),
+        }
+    }
+
     /// Rebuild a game from a packed origin (used by replay / verification).
     #[must_use]
     pub fn from_packed(packed: u64) -> Self {
@@ -111,8 +125,8 @@ impl Game {
         &self.board
     }
 
-    /// Tap arrow `id`: release it if FREE, else report BLOCKED/GONE with no
-    /// change. A successful release is appended to the move list.
+    /// Tap arrow `id`: release it if FREE, else report BLOCKED / LOCKED / GONE
+    /// with no change. A successful release is appended to the move list.
     pub fn tap(&mut self, id: u32) -> Tap {
         let idx = id as usize;
         if !self.board.is_present(idx) {
@@ -123,6 +137,7 @@ impl Game {
                 self.released.push(id);
                 Tap::Released
             }
+            Err(ReleaseError::Locked(key)) => Tap::Locked(key as u32),
             Err(_) => Tap::Blocked,
         }
     }
@@ -197,6 +212,38 @@ mod tests {
     }
 
     #[test]
+    fn a_tap_on_a_locked_arrow_names_its_key_and_changes_nothing() {
+        use crate::board::{Arrow, Board};
+        let arrow = |cells: &[[i32; 2]], dir: [i32; 2]| Arrow {
+            cells: cells.to_vec(),
+            dir,
+        };
+        // The key is id 0 and the lock id 1, so the hint (the lowest FREE id)
+        // is the key only because the lock is not free.
+        let k = arrow(&[[0, 1], [1, 1]], [1, 0]);
+        let a = arrow(&[[0, 0], [1, 0]], [1, 0]);
+        let board = Board::with_locks(5, 2, vec![k, a], vec![(1, 0)]);
+        let mut g = Game::with_board(Origin::Level(1), board);
+        assert!(!g.is_won(), "two arrows on the board");
+        assert_eq!(
+            g.tap(1),
+            Tap::Locked(0),
+            "the key is named so the UI can flash it"
+        );
+        assert_eq!(g.moves(), &[] as &[u32], "a locked tap is not a move");
+        assert_eq!(g.hint(), Some(0), "the hint is the key, never the lock");
+        assert_eq!(g.tap(0), Tap::Released);
+        assert!(!g.is_won(), "the lock is still on the board");
+        assert_eq!(
+            g.hint(),
+            Some(1),
+            "with the key gone the hint moves to the freed lock"
+        );
+        assert_eq!(g.tap(1), Tap::Released, "unlocked with its key gone");
+        assert!(g.is_won());
+    }
+
+    #[test]
     fn a_full_greedy_solve_wins_and_verifies() {
         let mut g = Game::level(3);
         // Play the greedy release order through the live tap API.
@@ -229,6 +276,33 @@ mod tests {
         assert!(
             !v.ok || bad.moves == record.moves,
             "a tampered order fails to verify"
+        );
+    }
+
+    #[test]
+    fn origin_packing_round_trips_and_stays_js_safe() {
+        for o in [
+            Origin::Level(1),
+            Origin::Level(100),
+            Origin::Daily(2_028_026_207),
+            Origin::Daily(u32::MAX),
+        ] {
+            let packed = o.to_packed();
+            assert_eq!(Origin::from_packed(packed), o, "{o:?} round-trips");
+            assert!(
+                packed < (1u64 << 33),
+                "{o:?} packs under 2^33 (an exact JS integer)"
+            );
+        }
+        assert_eq!(
+            Origin::Level(1).to_packed(),
+            2,
+            "a level is its number shifted up one"
+        );
+        assert_eq!(
+            Origin::Daily(1).to_packed(),
+            3,
+            "a daily: seed shifted up one, mode bit set"
         );
     }
 

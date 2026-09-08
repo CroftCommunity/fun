@@ -188,11 +188,12 @@ pub extern "C" fn score_for(mistakes: u32, hints: u32) -> u32 {
     score(mistakes, hints)
 }
 
-// --- taps (status: 0 released / 1 blocked / 2 gone or no game) ----------
+// --- taps (status: 0 released / 1 blocked / 2 gone or no game / 3 locked) ----------
 
 /// Tap arrow `id`. A FREE arrow is released (status 0); a BLOCKED arrow is a
 /// no-op (status 1, the host charges a droplet); an already-gone / unknown id is
-/// status 2.
+/// status 2; a LOCKED arrow (ray clear, its key still on the board) is a no-op
+/// with status 3 — no droplet; phase 3 exports the key so the host can flash it.
 #[no_mangle]
 pub extern "C" fn tap(id: u32) -> u32 {
     let Some(s) = session_mut() else { return 2 };
@@ -200,6 +201,7 @@ pub extern "C" fn tap(id: u32) -> u32 {
         Tap::Released => 0,
         Tap::Blocked => 1,
         Tap::Gone => 2,
+        Tap::Locked(_) => 3,
     }
 }
 
