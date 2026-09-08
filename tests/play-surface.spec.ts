@@ -333,3 +333,56 @@ test("mock F6.2: a desktop stage lies across; the Board preference (Auto / Acros
   await row.locator('input[value="upright"]').check();
   await expect(page.locator(".furrow-board")).toHaveAttribute("data-orient", "upright");
 });
+
+// --- F7 (phase 9, Q11): life on the versus boards ------------------------------
+
+test("mock F7.1: Drop 4's disc falls in — the just-played cell animates and the stage records the drop", async ({ page }) => {
+  await page.goto("/drop4/?seed=7");
+  await page.waitForFunction(() => Boolean(window.__drop4));
+  // Tap and watch from inside the page: the drop lasts a few hundred ms, so a
+  // second round trip could land after it. The most animations seen on the
+  // played cell over the next 600ms is the measure.
+  const running = await page.evaluate(() => {
+    document.querySelector<HTMLElement>('.drop4-col[data-col="3"]')!.click();
+    return new Promise<number>((resolve) => {
+      const t0 = performance.now();
+      let most = 0;
+      const look = (): void => {
+        most = Math.max(most, document.querySelector(".drop4-cell.just-played")?.getAnimations().length ?? 0);
+        if (performance.now() - t0 < 600) requestAnimationFrame(look);
+        else resolve(most);
+      };
+      look();
+    });
+  });
+  await expect(page.locator(".gf-stage")).toHaveAttribute("data-beat", "drop");
+  expect(running).toBeGreaterThanOrEqual(1);
+});
+
+test("mock F7.2: Othello's turned discs flip — every legal opening turns at least one, and the stage records the flip", async ({ page }) => {
+  await page.goto("/othello/?seed=7");
+  await page.waitForFunction(() => Boolean(window.__othello));
+  await page.locator(".othello-cell.legal").first().click();
+  await expect(page.locator(".gf-stage")).toHaveAttribute("data-beat", "flip");
+});
+
+test("mock F7.3: under reduced motion a beat collapses to its last frame — nothing animates, and the stage still records it", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/drop4/?seed=7");
+  await page.waitForFunction(() => Boolean(window.__drop4));
+  const running = await page.evaluate(() => {
+    document.querySelector<HTMLElement>('.drop4-col[data-col="3"]')!.click();
+    return new Promise<number>((resolve) => {
+      const t0 = performance.now();
+      let most = 0;
+      const look = (): void => {
+        most = Math.max(most, document.querySelector(".drop4-cell.just-played")?.getAnimations().length ?? 0);
+        if (performance.now() - t0 < 600) requestAnimationFrame(look);
+        else resolve(most);
+      };
+      look();
+    });
+  });
+  await expect(page.locator(".gf-stage")).toHaveAttribute("data-beat", "drop");
+  expect(running).toBe(0);
+});

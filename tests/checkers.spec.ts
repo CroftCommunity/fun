@@ -111,6 +111,8 @@ test("a capture removes exactly the pieces the core says it takes", async ({ pag
         return window.__checkers!.game.board().cells.filter((v: number) => v !== 0).length <= n;
       }, before - jump.captures.length);
       captured = true;
+      // Beat (phase 9): the taken man shrank out — the stage records the beat, whatever motion ran.
+      await expect(page.locator(".gf-stage")).toHaveAttribute("data-beat", "shrink");
     }
   }
   expect(captured, "no capture reached in 60 plies").toBe(true);

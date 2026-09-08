@@ -425,6 +425,34 @@ body:has(> .play-area > .gf) {
   .gf-pad { --pad-btn: 3.5rem; }
 }
 
+/* Beats (src/beats.ts, phase 9): a word over the stage, a ghost of a taken piece. */
+.gf-beat-word {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  pointer-events: none;
+  padding: 0.35rem 1rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.4rem, 5cqw, 2.2rem);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  box-shadow: 0 6px 24px rgb(0 0 0 / 30%);
+}
+.gf-beat-ghost {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .gf-stage {
   flex: 1;
   min-height: 0;

@@ -23,6 +23,7 @@ import type { GameModule, GameServices } from "../../contract.js";
 import type { GameFrame, GameFrameSpec } from "../../game-frame.js";
 import type { Progress } from "../../progress.js";
 import type { SettingRow } from "../../settings-sheet.js";
+import { beatSound, beatWord } from "../../beats.js";
 import { captureUiState, restoreUiState } from "../../ui-state.js";
 import {
   cribbageBoard,
@@ -872,6 +873,27 @@ export function cribbageModule(): GameModule {
     if (!v.last) return;
     const line = scoredLine(v.last, opponentIdentity().name);
     if (line) setStatus(line);
+    // Beat (phase 9): a pegged fifteen, thirty-one, pair or run gets its call over the table.
+    const last = v.last;
+    if (last.kind === "peg" && last.points > 0 && frame) {
+      const call = last.fifteen
+        ? "Fifteen two"
+        : last.thirtyOne
+          ? "Thirty-one"
+          : last.pairs
+            ? last.pairs === 2
+              ? "A pair"
+              : last.pairs === 6
+                ? "Pair royal"
+                : "Double pair royal"
+            : last.run
+              ? `Run of ${last.run}`
+              : null;
+      if (call) {
+        beatWord(frame.stage, `${call}!`);
+        beatSound("word");
+      }
+    }
   };
 
   const onHandClick = (ev: Event): void => {

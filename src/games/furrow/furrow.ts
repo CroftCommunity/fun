@@ -27,6 +27,7 @@ import type { SettingRow } from "../../settings-sheet.js";
 import { WebLLMRuntime } from "../../harness/ai-runtime.js";
 import { speak } from "../../harness/banter.js";
 import { buildBand, HybridPlayer, type BandMove } from "../../harness/hybrid-player.js";
+import { beat, beatSound, beatWord } from "../../beats.js";
 import { captureUiState, restoreUiState } from "../../ui-state.js";
 import {
   furrowOrient,
@@ -325,6 +326,7 @@ export function furrowModule(): GameModule {
   let busy = false;
   let frame: GameFrame | null = null;
   let orientWatch: ResizeObserver | null = null;
+  let prevStores: [number, number] | null = null; // the stores before this render, for the tick beat
   let pendingResume: Progress | null = null;
   let moves: number[] = [];
   let hinted = false;
@@ -725,6 +727,19 @@ export function furrowModule(): GameModule {
         statusEl,
       ),
     );
+    // Beat (phase 9): a store that grew nudges its count.
+    const stores: [number, number] = [yourStore(board), theirStore(board)];
+    if (prevStores) {
+      if (stores[0] > prevStores[0]) {
+        const n = container.querySelector(".furrow-store.mine .furrow-count");
+        if (n) beat(n, "tick");
+      }
+      if (stores[1] > prevStores[1]) {
+        const n = container.querySelector(".furrow-store.theirs .furrow-count");
+        if (n) beat(n, "tick");
+      }
+    }
+    prevStores = stores;
     const boardEl = container.querySelector(".furrow-board");
     boardEl?.addEventListener("click", onBoardClick);
     restoreUiState(container, ui);
@@ -757,6 +772,8 @@ export function furrowModule(): GameModule {
     }
     if (preview.capturesFrom !== null) {
       boardEl.querySelector(`[data-pit="${preview.capturesFrom}"]`)?.classList.add("captured");
+      if (frame) beatWord(frame.stage, "Capture!"); // beat (phase 9)
+      beatSound("word");
       await sleep(SETTLE_MS);
     }
   };

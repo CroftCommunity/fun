@@ -21,6 +21,7 @@ import type { SettingRow } from "../../settings-sheet.js";
 import { WebLLMRuntime } from "../../harness/ai-runtime.js";
 import { speak } from "../../harness/banter.js";
 import { buildBand, HybridPlayer, type BandMove } from "../../harness/hybrid-player.js";
+import { beatSound, beatWord, ghost } from "../../beats.js";
 import { captureUiState, restoreUiState } from "../../ui-state.js";
 import {
   checkersLevel,
@@ -320,6 +321,7 @@ export function checkersModule(): GameModule {
   let container: HTMLElement | null = null;
   let disposed = false;
   let thinking = false;
+  let prevCells: number[] | null = null; // the board before this render, for the capture beat
   let frame: GameFrame | null = null;
   let pendingResume: Progress | null = null;
   let moves: number[] = [];
@@ -792,6 +794,30 @@ export function checkersModule(): GameModule {
     const ui = captureUiState(container);
     container.replaceChildren(el("div", { class: "checkers-game" }, ...parts));
     restoreUiState(container, ui);
+    // Beat (phase 9): a taken man shrinks out where it stood; a crowning gets its word.
+    const stage = frame?.stage;
+    if (prevCells && lastTo !== null && stage && prevCells.length === board.cells.length) {
+      const boardEl = container.querySelector(".checkers-board");
+      let taken = 0;
+      board.cells.forEach((now, sq) => {
+        const was = prevCells?.[sq] ?? 0;
+        if (was === 0 || now !== 0 || sq === lastFrom) return;
+        const at = boardEl?.querySelector(`.checkers-square[data-sq="${sq}"]`);
+        if (at) {
+          ghost(stage, pieceNode(was), at);
+          taken += 1;
+        }
+      });
+      const crowned = lastFrom !== null && !isKing(prevCells[lastFrom] ?? 0) && isKing(board.cells[lastTo] ?? 0);
+      if (taken > 0) beatSound("shrink");
+      if (crowned) {
+        beatWord(stage, "King!");
+        beatSound("word");
+      } else if (taken > 1) {
+        beatWord(stage, `${taken} taken!`);
+      }
+    }
+    prevCells = [...board.cells];
     declare();
     // Transients overlay the stage — never a <p> in flow above the board (frame rule 1).
     if (aiSay && opponentKind === LOCAL_AI && aiSay !== toasted) {
@@ -867,6 +893,7 @@ export function checkersModule(): GameModule {
     selected = null;
     prefix = [];
     lastFrom = null;
+    prevCells = null;
     lastTo = null;
     coachMsg = null;
     pendingCoach = null;
@@ -892,6 +919,7 @@ export function checkersModule(): GameModule {
     selected = null;
     prefix = [];
     lastFrom = null;
+    prevCells = null;
     lastTo = null;
     coachMsg = null;
     pendingCoach = null;

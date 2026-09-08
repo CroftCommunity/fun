@@ -98,6 +98,8 @@ test("closing a box scores it and keeps the turn with the closer", async ({ page
   expect(after.boxesB).toBeGreaterThan(0);
   await expect(page.locator(".dots-box.b")).toHaveCount(after.boxesB);
   await expect(page.locator(".dots-status")).toContainText(/again/i);
+  // Beat (phase 9): the closed box pulsed — the stage records the beat, whatever motion ran.
+  await expect(page.locator(".gf-stage")).toHaveAttribute("data-beat", "line");
 });
 
 test("the difficulty picker persists the chosen level", async ({ page }) => {

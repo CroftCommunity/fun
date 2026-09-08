@@ -17,6 +17,7 @@ import type { SettingRow } from "../../settings-sheet.js";
 import { WebLLMRuntime, type AIRuntime } from "../../harness/ai-runtime.js";
 import { speak } from "../../harness/banter.js";
 import { buildBand, HybridPlayer, type BandMove, type HybridDecision } from "../../harness/hybrid-player.js";
+import { beatSound, beatWord, ghost } from "../../beats.js";
 import { captureUiState, restoreUiState } from "../../ui-state.js";
 import {
   CHESS_PACKS,
@@ -305,6 +306,8 @@ export function chessModule(): GameModule {
   let seed = 0n;
   let level: ChessLevel = chessLevel();
   let pack: ChessPack = chessPack();
+  let prevCells: number[] | null = null; // the board before this render, for the capture beat
+  let beatenPly = -1;
   let side: ChessSide = chessSide();
   let seat: Seat = side === "black" ? "black" : "white";
   // The in-progress tap: the piece picked up.
@@ -855,6 +858,22 @@ export function chessModule(): GameModule {
     const ui = captureUiState(container);
     container.replaceChildren(el("div", { class: "chess-game" }, ...parts));
     restoreUiState(container, ui);
+    // Beat (phase 9): a taken piece shrinks out on the square it stood; check gets its word.
+    // Ply 1 is skipped: a fresh game's first render would diff against the last game's board.
+    const stage = frame?.stage;
+    if (prevCells && stage && board.lastMove !== null && moves.length > 1 && moves.length !== beatenPly) {
+      beatenPly = moves.length;
+      const [, to] = fromTo(board.lastMove);
+      const was = prevCells[to] ?? 0;
+      const now = board.cells[to] ?? 0;
+      const at = container.querySelector(`.chess-square[data-sq="${to}"]`);
+      if (was !== 0 && now !== 0 && ownerOf(was) !== ownerOf(now) && at) {
+        ghost(stage, pieceNode(was), at);
+        beatSound("shrink");
+      }
+      if (board.inCheck && board.result === -1) beatWord(stage, "Check!");
+    }
+    prevCells = [...board.cells];
     declare();
     // Transients overlay the stage — never a <p> in flow above the board (frame rule 1).
     if (aiSay && opponentKind === LOCAL_AI && aiSay !== toasted) {

@@ -13,6 +13,7 @@
 import type { GameModule, GameServices } from "../../contract.js";
 import type { GameFrame, GameFrameSpec } from "../../game-frame.js";
 import type { Progress } from "../../progress.js";
+import { beat, beatSound } from "../../beats.js";
 import type { SettingRow } from "../../settings-sheet.js";
 import { Drop4, type BoardView, type Level, type MoveAssessment } from "./drop4-wasm.js";
 import { WebLLMRuntime } from "../../harness/ai-runtime.js";
@@ -310,6 +311,7 @@ export function drop4Module(): GameModule {
   let level: Level = drop4Level();
   let playerMark: Mark = drop4Mark();
   let lastMove: Cell | null = null;
+  let beaten: string | null = null; // the move the drop beat last played for
   // Engine-grounded coaching for the human's last move, surfaced after the
   // engine replies (so it does not spoil the reply). Cleared each human turn.
   let coachMsg: string | null = null;
@@ -739,6 +741,17 @@ export function drop4Module(): GameModule {
       statusEl,
     ];
     container.replaceChildren(el("div", { class: "drop4-game" }, ...parts));
+    // Beat (phase 9): the disc that just landed falls in from the top of its column.
+    const key = lastMove ? `${lastMove[0]},${lastMove[1]}:${moves.length}` : null;
+    if (key && key !== beaten) {
+      beaten = key;
+      const cell = container.querySelector<HTMLElement>(".drop4-cell.just-played");
+      const top = cell?.closest(".drop4-col")?.querySelector<HTMLElement>(".drop4-cell");
+      if (cell && top) {
+        beat(cell, "drop", { distancePx: cell.getBoundingClientRect().top - top.getBoundingClientRect().top });
+        beatSound("drop");
+      }
+    }
     declare();
     // Transients overlay the stage — never a <p> in flow above the board (frame rule 1).
     if (aiSay && opponentKind === LOCAL_AI && aiSay !== toasted) {

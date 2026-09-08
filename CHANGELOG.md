@@ -12,6 +12,15 @@ earlier is in `git log`.
 
 ## 2026-09
 
+- 2026-09-08 **drop 4, othello, checkers, chess, dots, furrow, cribbage:** life on the versus
+  boards. One vocabulary of beats, played from the move the core already resolved: Drop 4's
+  disc falls into its slot and settles; Othello's turned discs flip over, outward from the
+  play, and four or more get their count; a taken man or piece shrinks out where it stood
+  (checkers, chess); a crowning says "King!", a check says "Check!"; a closed box pulses and a
+  double gets its count; a Furrow capture says so and a store that grew nudges its count; a
+  pegged fifteen, thirty-one, pair or run is called over the cribbage table. Each beat has a
+  short synthesised voice under the Sound row, and reduced motion collapses every beat to its
+  last frame. (mock F Q11, phase 9, play-surface)
 - 2026-09-08 **furrow:** the board stands up on a phone. Upright is the across board turned a
   quarter: your six pits are the right-hand column sowing upward into your store at the top,
   The Engine's the left-hand column sowing down into its store at the bottom; the pits grow to
