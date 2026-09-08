@@ -704,6 +704,21 @@ body:has(> .play-area > .gf) {
   flex-shrink: 0;
   box-shadow: 0 -14px 14px -6px var(--bg);
 }
+/* The poster's lede sits on a translucent, blurred panel over the art, so the
+   title and pitch read over the splash's own lettering (F1.4). --bg based, so
+   the ink pairs the page already grades hold on it in both themes. */
+.gf-poster .gf-start-lede {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 25%);
+}
+.gf-poster .gf-start-lede .gf-start-chip { align-self: flex-start; margin-bottom: 0; }
 .gf-start-title {
   margin: 0;
   font-family: var(--font-display);

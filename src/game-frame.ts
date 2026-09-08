@@ -488,9 +488,14 @@ export function renderGameFrame(host: HTMLElement, spec?: GameFrameSpec, opts: G
         o.onPlay();
       });
       const body = el("div", { class: "gf-start-body" });
-      if (o.chip) body.append(el("span", { class: "gf-start-chip" }, o.chip));
-      body.append(el("h2", { class: "gf-start-title" }, o.title));
-      if (o.pitch) body.append(el("p", { class: "gf-start-pitch" }, o.pitch));
+      // The lede — chip, title, pitch — on its own translucent panel: the splash
+      // art carries its own lettering, and the pitch set straight on it was
+      // unreadable (owner, 2026-09-08, Trio Tumble and Dots at 390×844).
+      const lede = el("div", { class: "gf-start-lede" });
+      if (o.chip) lede.append(el("span", { class: "gf-start-chip" }, o.chip));
+      lede.append(el("h2", { class: "gf-start-title" }, o.title));
+      if (o.pitch) lede.append(el("p", { class: "gf-start-pitch" }, o.pitch));
+      body.append(lede);
       if (o.setup && o.setup.length > 0) {
         body.append(el("div", { class: "gf-start-setup" }, renderSettingsSheet({ rows: [...o.setup] })));
       }

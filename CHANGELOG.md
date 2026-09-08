@@ -12,6 +12,9 @@ earlier is in `git log`.
 
 ## 2026-09
 
+- 2026-09-08 **every poster:** the title and pitch sit on a translucent, blurred panel over
+  the art. The splash carries its own lettering, and the pitch set straight on it was
+  unreadable (Trio Tumble, Dots on a phone). (owner review of PR #82)
 - 2026-09-08 **furrow, trio tumble, solitaire, bubble, cribbage:** the rest of the fill. Each
   now sizes from the stage the way the eight grids do: Furrow's pits across from the width
   (a desktop board was 448px wide in a 960px stage), Trio Tumble's gems from the short side,

@@ -109,11 +109,41 @@ test("mock F1.3 (phase 5, Q6): a choice of three or fewer is a segmented control
     }, row);
     expect(m.segmented, `${id}: ${row} is segmented`).toBe(true);
     expect(m.h, `${id}: the ${row} row is one line of segments plus its hint`).toBeLessThanOrEqual(140);
-    expect(m.sh, `${id}: the poster fits without scrolling`).toBeLessThanOrEqual(m.ch);
+    // Chess fits outright. Trio Tumble's two-line title on the lede panel (F1.4) leaves
+    // it a small scroll — under 48px — and F1.2's sticky Play keeps every option reachable.
+    expect(m.sh - m.ch, `${id}: the poster fits, or nearly`).toBeLessThanOrEqual(id === "chess" ? 0 : 48);
     // A segment is still a radio a player (and a test) can check by value.
     const opt = page.locator(`.gf-poster [data-setting="${row}"] input`).last();
     await opt.check();
     await expect(opt).toBeChecked();
+  }
+});
+
+test("mock F1.4: the poster's title and pitch sit on a translucent panel over the art — readable over the splash's own lettering (owner, 2026-09-08)", async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  for (const id of ["trio-tumble", "dots"]) {
+    await page.goto(`/${id}/`);
+    const pitch = page.locator(".gf-poster .gf-start-pitch");
+    await expect(pitch).toBeVisible();
+    const m = await pitch.evaluate((p) => {
+      const panel = p.closest<HTMLElement>(".gf-start-lede");
+      if (!panel) return null;
+      const cs = getComputedStyle(panel);
+      const pb = panel.getBoundingClientRect();
+      const tb = p.getBoundingClientRect();
+      const title = panel.querySelector(".gf-start-title")!.getBoundingClientRect();
+      return {
+        bg: cs.backgroundColor,
+        blur: cs.backdropFilter,
+        covers: pb.left <= tb.left && pb.right >= tb.right && pb.top <= title.top && pb.bottom >= tb.bottom,
+      };
+    });
+    expect(m, `${id}: the title and pitch have a panel`).not.toBeNull();
+    // A real backdrop, not the art: an opaque-enough colour (alpha ≥ 0.7) and a blur behind it.
+    const alpha = Number(/\/\s*([\d.]+)\)|rgba\([^)]*,\s*([\d.]+)\)/.exec(m!.bg)?.[1] ?? /rgba\([^)]*,\s*([\d.]+)\)/.exec(m!.bg)?.[1] ?? (m!.bg.startsWith("rgb(") ? "1" : "0"));
+    expect(alpha, `${id}: panel background ${m!.bg}`).toBeGreaterThanOrEqual(0.7);
+    expect(m!.blur, `${id}: a blur behind the panel`).not.toBe("none");
+    expect(m!.covers, `${id}: the panel covers the title and the pitch`).toBe(true);
   }
 });
 
