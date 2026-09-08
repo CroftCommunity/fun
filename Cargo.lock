@@ -870,6 +870,7 @@ dependencies = [
  "cribbage-core",
  "dots-core",
  "furrow-core",
+ "looseends-core",
  "mahjong-core",
  "orchard-core",
  "pond-outcome",

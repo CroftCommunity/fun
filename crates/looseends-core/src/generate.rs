@@ -241,6 +241,75 @@ mod tests {
 
     // ---- Locks (plan 2026-09-08, phase 2) ----
 
+    /// An adjacency check written the other way round — a set of one body's
+    /// cells, the four neighbours of each cell of the other — so the structural
+    /// test does not grade the generator's `touches` with itself (the mutation
+    /// audit found `+ → *`, diagonal adjacency, invisible that way).
+    fn touches_ref(a: &Arrow, b: &Arrow) -> bool {
+        let cells: std::collections::HashSet<[i32; 2]> = b.cells.iter().copied().collect();
+        a.cells.iter().any(|&[x, y]| {
+            [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]]
+                .iter()
+                .any(|n| cells.contains(n))
+        })
+    }
+
+    fn arrow(cells: &[[i32; 2]], dir: [i32; 2]) -> Arrow {
+        Arrow {
+            cells: cells.to_vec(),
+            dir,
+        }
+    }
+
+    #[test]
+    fn touches_is_orthogonal_adjacency_only() {
+        let a = arrow(&[[0, 0], [1, 0]], [1, 0]);
+        let under = arrow(&[[0, 1], [1, 1]], [1, 0]);
+        let diagonal = arrow(&[[2, 1], [3, 1]], [1, 0]);
+        let apart = arrow(&[[0, 3], [1, 3]], [1, 0]);
+        assert!(touches(&a, &under));
+        assert!(touches(&under, &a), "symmetric");
+        assert!(!touches(&a, &diagonal), "a corner is not a touch");
+        assert!(!touches(&a, &apart));
+        for (x, y) in [(&a, &under), (&a, &diagonal), (&a, &apart)] {
+            assert_eq!(touches(x, y), touches_ref(x, y));
+        }
+    }
+
+    #[test]
+    fn draw_locks_pairs_a_later_touching_key_and_refuses_what_it_cannot_pair() {
+        let a = arrow(&[[0, 0], [1, 0]], [1, 0]);
+        let under = arrow(&[[0, 1], [1, 1]], [1, 0]);
+        let apart = arrow(&[[0, 3], [1, 3]], [1, 0]);
+        // Two touching arrows, one lock: the earlier placed is held by the later.
+        let mut rng = Rng::new(7);
+        assert_eq!(
+            draw_locks(&[a.clone(), under.clone()], 1, &mut rng),
+            vec![(0, 1)]
+        );
+        // Nothing to pair: no arrows, one arrow, or none wanted — empty, no panic.
+        assert!(draw_locks(&[], 1, &mut Rng::new(7)).is_empty());
+        assert!(draw_locks(&[a.clone()], 1, &mut Rng::new(7)).is_empty());
+        assert!(draw_locks(&[a.clone(), under.clone()], 0, &mut Rng::new(7)).is_empty());
+        // Wanting none leaves the stream where it was.
+        let mut untouched = Rng::new(7);
+        draw_locks(&[a.clone(), under], 0, &mut untouched);
+        assert_eq!(untouched.next_u32(), Rng::new(7).next_u32());
+        // Two arrows that never touch: no lock, and the draw stops at its budget —
+        // 24 × want draws, one per try, then the stream carries on from there.
+        let mut rng = Rng::new(7);
+        assert!(draw_locks(&[a, apart], 1, &mut rng).is_empty());
+        let mut expected = Rng::new(7);
+        for _ in 0..24 {
+            expected.next_u32();
+        }
+        assert_eq!(
+            rng.next_u32(),
+            expected.next_u32(),
+            "exactly the budget was spent"
+        );
+    }
+
     #[test]
     fn levels_1_to_7_carry_no_locks_and_level_8_carries_one() {
         for n in 1..=7u32 {
@@ -263,7 +332,7 @@ mod tests {
                 );
                 assert!(key < arrows.len(), "level {n}: key {key} exists");
                 assert!(
-                    touches(&arrows[locked], &arrows[key]),
+                    touches_ref(&arrows[locked], &arrows[key]),
                     "level {n}: {locked} and {key} touch"
                 );
                 assert!(seen.insert(locked), "level {n}: arrow {locked} locked once");

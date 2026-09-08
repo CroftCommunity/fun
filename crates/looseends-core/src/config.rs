@@ -160,5 +160,15 @@ mod tests {
             (9, 14, 26, 2, 9)
         );
         assert_eq!(c.locks, 0, "no locks on a daily board this pass (Q3)");
+
+        // A second daily whose width draw is not zero, so the `9 +` is graded too
+        // (the mutation audit found `+ → -` invisible on the first seed). Recorded
+        // 2026-09-08 from the generator.
+        let seed = daily_seed("2026-09-14");
+        let c = daily_config(seed);
+        assert_eq!(
+            (seed, c.w, c.h, c.target, c.locks),
+            (2_153_557_309, 12, 13, 20, 0)
+        );
     }
 }
