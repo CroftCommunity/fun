@@ -174,7 +174,9 @@ test("the mirror preference puts the rail left of the board and reverses the doc
   const railX = async (): Promise<number> => (await page.locator(".gf-dock").boundingBox())!.x;
   const stageX = async (): Promise<number> => (await page.locator(".gf-stage").boundingBox())!.x;
   expect(await railX()).toBeGreaterThan(await stageX());
-  await page.locator('.gf-extra [data-setting="controls-left"] .sheet-toggle-input').click({ force: true });
+  // The row sits below the On-screen controls row (phase 7) — past a 680px viewport until
+  // the rail scrolls; the checkbox is a 1px hidden input, so tap the track a player taps.
+  await page.locator('.gf-extra [data-setting="controls-left"] .sheet-toggle-track').click();
   await expect(page.locator(".gf")).toHaveAttribute("data-gf-side", "left");
   expect(await railX()).toBeLessThan(await stageX()); // no reload
   expect(await page.evaluate(() => localStorage.getItem("fun-controls-left"))).toBe("on");
