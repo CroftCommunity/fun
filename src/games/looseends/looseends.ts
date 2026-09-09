@@ -313,6 +313,8 @@ export function looseendsModule(): GameModule {
   const flash = new Map<number, number>(); // arrow id → blocked-flash age (s)
   let hintId = -1;
   let hintAge = 0;
+  /** A locked tap lights the key holding it (plan 2026-09-08, Q2): id → age. */
+  const keyFlash = new Map<number, number>();
   let lastFrame = 0;
 
   const reduceMotion =
@@ -655,6 +657,11 @@ export function looseendsModule(): GameModule {
       hintAge += dt;
       if (hintAge > 2.4) hintId = -1;
     }
+    for (const [id, age] of keyFlash) {
+      const next = age + dt;
+      if (next > 1.6) keyFlash.delete(id);
+      else keyFlash.set(id, next);
+    }
   }
 
   // world → screen
@@ -682,14 +689,20 @@ export function looseendsModule(): GameModule {
     for (let id = 0; id < b.arrows.length; id++) {
       const a = b.arrows[id]!;
       if (!a.present) continue;
-      drawArrow(a.cells, a.dir, id, a.free);
+      drawArrow(a.cells, a.dir, id, a.free, a.lockedBy !== null);
+    }
+    // ties over the arrows: a locked arrow to the key still holding it
+    for (const a of b.arrows) {
+      if (!a.present || a.lockedBy === null) continue;
+      const key = b.arrows[a.lockedBy];
+      if (key?.present) drawTie(a.cells, key.cells);
     }
 
     // release slides on top
     for (const sl of slides) drawSlide(sl);
   }
 
-  function drawArrow(cells: [number, number][], dir: [number, number], id: number, free: boolean): void {
+  function drawArrow(cells: [number, number][], dir: [number, number], id: number, free: boolean, locked = false): void {
     if (!ctx) return;
     const pts = centers(cells);
     // blocked shake offset (perpendicular to head dir), decaying
@@ -708,16 +721,19 @@ export function looseendsModule(): GameModule {
       }
     }
     const isHint = id === hintId;
-    if (isHint) {
-      const pulse = 0.5 + 0.5 * Math.sin(hintAge * 6);
+    const keyAge = keyFlash.get(id);
+    const isKey = keyAge !== undefined;
+    if (isHint || isKey) {
+      const pulse = 0.5 + 0.5 * Math.sin((isHint ? hintAge : keyAge!) * 6);
       ctx.save();
-      ctx.shadowColor = pal.hint;
+      ctx.shadowColor = isHint ? pal.hint : pal.accent;
       ctx.shadowBlur = (6 + 8 * pulse) * (vp.scale / 40);
-      color = pal.hint;
+      color = isHint ? pal.hint : pal.accent;
     }
 
     ctx.strokeStyle = free ? color : color;
-    ctx.globalAlpha = free ? 1 : 0.82;
+    // A locked arrow sits dimmer still: it is not the one to read for a lane.
+    ctx.globalAlpha = locked ? 0.55 : free ? 1 : 0.82;
     ctx.lineWidth = 0.24 * vp.scale;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
@@ -740,8 +756,61 @@ export function looseendsModule(): GameModule {
     drawHead(head, dir, color, ox, oy);
     void hd;
 
-    if (isHint) ctx.restore();
+    if (isHint || isKey) ctx.restore();
     ctx.globalAlpha = 1;
+    if (locked) drawLock(head, ox, oy);
+  }
+
+  /** The lock badge at a tied arrow's head: a disc in the board's ground with a padlock in the accent. */
+  function drawLock(head: Pt, ox = 0, oy = 0): void {
+    if (!ctx) return;
+    const cx = sx(head.x) + ox;
+    const cy = sy(head.y) + oy;
+    const r = 0.24 * vp.scale;
+    ctx.save();
+    ctx.fillStyle = pal.bg;
+    ctx.strokeStyle = pal.accent;
+    ctx.lineWidth = 0.05 * vp.scale;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    // the padlock: a shackle arc over a body
+    const bw = 0.2 * vp.scale;
+    const bh = 0.15 * vp.scale;
+    ctx.fillStyle = pal.accent;
+    ctx.fillRect(cx - bw / 2, cy - bh / 2 + 0.03 * vp.scale, bw, bh);
+    ctx.lineWidth = 0.045 * vp.scale;
+    ctx.beginPath();
+    ctx.arc(cx, cy - bh / 2 + 0.03 * vp.scale, bw * 0.3, Math.PI, 0);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /** The dashed tie between a locked arrow and its key, drawn cell-centre to cell-centre where the two bodies touch. */
+  function drawTie(locked: [number, number][], key: [number, number][]): void {
+    if (!ctx) return;
+    let pair: [Pt, Pt] | null = null;
+    for (const [lx, ly] of locked) {
+      for (const [kx, ky] of key) {
+        if (Math.abs(lx - kx) + Math.abs(ly - ky) === 1) {
+          pair = [{ x: lx + 0.5, y: ly + 0.5 }, { x: kx + 0.5, y: ky + 0.5 }];
+          break;
+        }
+      }
+      if (pair) break;
+    }
+    if (!pair) return;
+    ctx.save();
+    ctx.strokeStyle = pal.accent;
+    ctx.lineWidth = 0.07 * vp.scale;
+    ctx.lineCap = "round";
+    ctx.setLineDash([0.1 * vp.scale, 0.12 * vp.scale]);
+    ctx.beginPath();
+    ctx.moveTo(sx(pair[0].x), sy(pair[0].y));
+    ctx.lineTo(sx(pair[1].x), sy(pair[1].y));
+    ctx.stroke();
+    ctx.restore();
   }
 
   function drawHead(head: Pt, dir: [number, number], color: string, ox = 0, oy = 0): void {
@@ -933,6 +1002,11 @@ export function looseendsModule(): GameModule {
         finished = true;
         window.setTimeout(() => failNow(), reduceMotion ? 50 : 450);
       }
+    } else if (status === "locked") {
+      // Information, not a mistake (Q2): the key lights up and the toast says why.
+      const key = arrow?.lockedBy;
+      if (key !== null && key !== undefined) keyFlash.set(key, 0);
+      gf?.toast("Tied — free the key first.", 2500);
     }
     exposeHook();
   }

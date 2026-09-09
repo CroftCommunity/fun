@@ -96,11 +96,15 @@ pub extern "C" fn new_from_packed(lo: u32, hi: u32) {
 // --- reads ----------
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 struct ArrowView {
     cells: Vec<[i32; 2]>,
     dir: [i32; 2],
     present: bool,
     free: bool,
+    /// The arrow still holding this one in place, if any (plan 2026-09-08):
+    /// `null` once that key has left the board — or when there never was one.
+    locked_by: Option<usize>,
 }
 
 #[derive(Serialize)]
@@ -124,6 +128,7 @@ fn board_view(board: &Board) -> BoardView {
             dir: a.dir,
             present: board.is_present(id),
             free: board.is_free(id),
+            locked_by: board.key_of(id),
         })
         .collect();
     BoardView {
@@ -282,6 +287,26 @@ mod tests {
 
         let rec = read(outcome_json(1, 0));
         assert_eq!(rec["kind"], serde_json::json!("looseends"));
+
+        // --- level 8: the first lock (plan 2026-09-08, phase 3) — the view names
+        // the key, a locked tap is status 3 and changes nothing ---
+        new_level(8);
+        let view = read(board_json());
+        let tied: Vec<(usize, u64)> = view["arrows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .enumerate()
+            .filter_map(|(id, a)| a["lockedBy"].as_u64().map(|k| (id, k)))
+            .collect();
+        assert_eq!(tied, vec![(5, 9)], "arrow 5 is held by arrow 9");
+        assert!(
+            view["arrows"][5]["free"] == serde_json::json!(false),
+            "held, so not free"
+        );
+        let before = remaining();
+        assert_eq!(tap(5), 3, "a locked tap reports locked");
+        assert_eq!(remaining(), before, "and changes nothing");
 
         // --- a daily board from a seed ---
         new_daily(looseends_core::daily_seed("2026-08-02"));

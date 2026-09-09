@@ -70,6 +70,47 @@ test("the core decides legality — a FREE tap releases, a BLOCKED tap only cost
   }
 });
 
+test("level 8 has a tied arrow — a tap on it costs nothing and names its key, and the lock falls off with the key", async ({ page }) => {
+  await page.goto("/looseends/?play=1");
+  await ready(page);
+  await openLevel(page, 8);
+
+  type Full = { arrows: { present: boolean; free: boolean; lockedBy: number | null }[]; remaining: number };
+  const full = (): Promise<Full> =>
+    page.evaluate(() => {
+      const b = window.__looseends!.board();
+      return { arrows: b.arrows.map((a) => ({ present: a.present, free: a.free, lockedBy: a.lockedBy })), remaining: b.remaining };
+    });
+  const b0 = await full();
+  const tied = b0.arrows.map((a, id) => ({ id, key: a.lockedBy })).filter((t) => t.key !== null);
+  expect(tied, "level 8 carries exactly one lock").toHaveLength(1);
+  const { id: lockedId, key } = tied[0]!;
+  expect(b0.arrows[lockedId]!.free, "held, so not free").toBe(false);
+
+  // A locked tap: nothing moves, no droplet, and the toast names the key.
+  await page.evaluate((id) => window.__looseends!.tapArrow(id), lockedId);
+  const b1 = await full();
+  expect(b1.remaining).toBe(b0.remaining);
+  await expect(page.locator(".le-droplet.spent")).toHaveCount(0);
+  await expect(page.locator(".gf-toast")).toContainText("Tied");
+
+  // Release free arrows, never the lock, until the key has left; the lock falls off.
+  for (let i = 0; i < 40; i++) {
+    const b = await full();
+    if (!b.arrows[key!]!.present) break;
+    const next = b.arrows.findIndex((a, id) => a.present && a.free && id !== lockedId);
+    expect(next, "a free arrow remains while the key is on the board").toBeGreaterThanOrEqual(0);
+    await page.evaluate((id) => window.__looseends!.tapArrow(id), next);
+  }
+  const b2 = await full();
+  expect(b2.arrows[key!]!.present).toBe(false);
+  expect(b2.arrows[lockedId]!.lockedBy, "the lock is gone with its key").toBeNull();
+  await page.evaluate((id) => window.__looseends!.tapArrow(id), lockedId);
+  const b3 = await full();
+  expect(b3.remaining, "the freed lock releases").toBe(b2.remaining - 1);
+  await expect(page.locator(".le-droplet.spent")).toHaveCount(0);
+});
+
 test("clearing the board reaches a verified win, and its share re-verifies", async ({ page }) => {
   await page.goto("/looseends/?play=1");
   await ready(page);

@@ -11,8 +11,10 @@ export interface ArrowView {
   dir: [number, number];
   /** Whether the arrow is still on the board. */
   present: boolean;
-  /** Whether the arrow is currently FREE (its exit ray is clear). */
+  /** Whether the arrow is currently FREE (its exit ray is clear and no key holds it). */
   free: boolean;
+  /** The arrow still holding this one in place (a lock's key), or null. */
+  lockedBy: number | null;
 }
 
 /** The board as the UI sees it. */
@@ -25,8 +27,8 @@ export interface BoardView {
   won: boolean;
 }
 
-/** A tap outcome the core decided. */
-export type TapStatus = "released" | "blocked" | "gone";
+/** A tap outcome the core decided. `locked`: the ray is clear but the key is still on the board — no droplet. */
+export type TapStatus = "released" | "blocked" | "gone" | "locked";
 
 /** The `pond-docformat` outcome envelope for a finished board. */
 export interface OutcomeEnvelope {
@@ -42,7 +44,7 @@ export interface OutcomeEnvelope {
   };
 }
 
-const TAP: Record<number, TapStatus> = { 0: "released", 1: "blocked", 2: "gone" };
+const TAP: Record<number, TapStatus> = { 0: "released", 1: "blocked", 2: "gone", 3: "locked" };
 
 interface Exports {
   memory: WebAssembly.Memory;
@@ -139,7 +141,7 @@ export class LooseEnds {
   scoreFor(mistakes: number, hints: number): number {
     return this.x.score_for(mistakes, hints);
   }
-  /** Tap arrow `id`. The core decides FREE (released) / BLOCKED / GONE. */
+  /** Tap arrow `id`. The core decides FREE (released) / BLOCKED / LOCKED / GONE. */
   tap(id: number): TapStatus {
     return TAP[this.x.tap(id)]!;
   }
