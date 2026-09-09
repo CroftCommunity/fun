@@ -100,6 +100,14 @@ at them and add what's specific to this repo. Git identity: chasemp
     cribbage, Othello and checkers read `?fast=1` and collapse the engine's beats
     to a frame; their full-game tests (`@long`) pass it. Cribbage's full game
     went from 72 s per engine to 5 s.
+  - **Two flake shapes seen 2026-09-08, both unrelated to the change under test.** On
+    CI, `[vitest-worker]: Timeout calling "onTaskUpdate"` from `tests/chess-harness.test.ts`
+    with every test passing (a runner starving the worker's RPC; the rerun passed). On
+    WebKit, `page.goto: Test timeout of 30000ms exceeded` on games the branch never
+    touched — on CI's 2-worker shard and on a laptop running the 7-worker suite beside a
+    Rust build (the OS killed one full gate for memory). Both pass alone. Read a red of
+    either shape by re-running the failed job or the failed tests alone before touching
+    code; a fix belongs where the cause is, not in a longer timeout.
 
 - **Node is pinned by `.nvmrc` (22) — use a version manager, not the system Node.**
   The same rule as `rust-toolchain.toml`: the repo pins the toolchain, CI reads

@@ -10,9 +10,31 @@
       "height": 844,
       "baseline": "fun@5fcb81f",
       "tag": "current"
+    },
+    {
+      "file": "shipped.looseends.tied.phone.png",
+      "game": "looseends",
+      "route": "tied",
+      "url": "/looseends/?play=1&level=8",
+      "viewport": "phone",
+      "width": 390,
+      "height": 844,
+      "baseline": "fun@2322e60",
+      "tag": "shipped"
+    },
+    {
+      "file": "shipped.looseends.tied.desktop.png",
+      "game": "looseends",
+      "route": "tied",
+      "url": "/looseends/?play=1&level=8",
+      "viewport": "desktop",
+      "width": 1280,
+      "height": 900,
+      "baseline": "fun@2322e60",
+      "tag": "shipped"
     }
   ],
-  "baseline": "fun@5fcb81f",
+  "baseline": "fun@2322e60",
   "capturedAt": "2026-09-08",
   "population": "deep link, fixed seed (hermetic); the poster is the bare land in a fresh context"
 }

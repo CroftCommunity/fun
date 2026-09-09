@@ -1,10 +1,10 @@
 # Plan — Loose Ends' second mechanic: the knot has a key
 
-**Status:** **Phase 3 BUILT, 2026-09-08 (owner: "go") on `claude/looseends-locks-gen` with phase 2;
-PR #90 carries both and lands together.** Phase 1 landed (#89). Phase 4 (the mock's Shipped
-captures) not started. Q1–Q5 decided at their recommendations (Review Log). Plan filename
-carries no ordinal per `CroftC/.claude/TRACKING.md` § "Plan files". Plan landed from
-`claude/looseends-mechanic` (#85); worktree `CroftC/worktrees/looseends-mechanic/fun`.
+**Status:** **DONE — every phase built and landed, 2026-09-08.** Phase 1 (#89), phases 2 + 3
+(#90), phase 4 (the mock's Shipped captures on a hermetic `?level=8` route) with this branch.
+Q1–Q5 decided at their recommendations (Review Log). Plan filename carries no ordinal per
+`CroftC/.claude/TRACKING.md` § "Plan files". Plan landed from `claude/looseends-mechanic`
+(#85); worktree `CroftC/worktrees/looseends-mechanic/fun`, to be removed after this lands.
 
 ## Problem Statement
 
@@ -175,17 +175,23 @@ first."; no droplet. The how-to gains "Tied arrows" with a level-8 shot. Done-wh
 wiring spec plays level 8 through its lock on both engines (16/16), the binding's test finds
 5 held by 9, shots regenerated, the gate green. **Executed 2026-09-08.**
 
-### Phase 4: The mock's record
-Mock G v2 with Shipped captures (`tools/mock-snaps.mjs looseends --out g-looseends-mechanic
---tag shipped`; the tool needs a level-8 route — a `?level=8` deep link is the hermetic
-form) beside the sketch; the decisions table marked. Done-when: MOCKS.md rule 4 — the
-decision as built is the decision in the mock.
+### Phase 4: The mock's record — BUILT
+`?play=1&level=N` opens a level directly (RED first: level 8 named in the HUD with one tie;
+999 lands on level 1); `tools/mock-snaps.mjs` gains a `tied` route on it; mock G v2 carries
+Shipped captures of level 8 (`fun@2322e60`, phone and desktop) beside the sketch, the
+decisions table marked. Done-when met: MOCKS.md rule 4. **Executed 2026-09-08.**
 
 ## Open Questions
 
 Q1–Q5 are in mock G's decisions table with a recommendation each; the plan repeats none.
 
 ## Review Log
+
+### Phase 4 — 2026-09-08 (owner: "finish up, pr, merge")
+- The capture tool's Loose Ends route opened the first unsolved level — level 1 in a fresh
+  context, never a lock. A `?level=N` query (1..100) at mount is the hermetic form; the
+  commit carries `Shots-Unchanged: looseends` since no pixel of the board changes.
+- Captured Shipped on the route; pruned to the two tied frames the mock shows.
 
 ### Phase 3 — 2026-09-08 (owner: "go")
 - RED first: the binding's test (level 8: exactly `[(5, 9)]` tied, a locked tap is 3 and

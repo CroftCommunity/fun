@@ -111,6 +111,20 @@ test("level 8 has a tied arrow — a tap on it costs nothing and names its key, 
   await expect(page.locator(".le-droplet.spent")).toHaveCount(0);
 });
 
+test("?play=1&level=8 opens level 8 directly — the hermetic route the capture tool uses for the lock", async ({ page }) => {
+  await page.goto("/looseends/?play=1&level=8");
+  await ready(page);
+  await expect(page.locator(".le-canvas")).toBeVisible();
+  await expect(page.locator(".le-hud")).toContainText("Level 8");
+  const tied = await page.evaluate(() => window.__looseends!.board().arrows.filter((a) => a.lockedBy !== null).length);
+  expect(tied).toBe(1);
+  // Out of range or absent: the ordinary first-unsolved destination, never a crash.
+  await page.goto("/looseends/?play=1&level=999");
+  await ready(page);
+  await expect(page.locator(".le-canvas")).toBeVisible();
+  await expect(page.locator(".le-hud")).toContainText("Level 1");
+});
+
 test("clearing the board reaches a verified win, and its share re-verifies", async ({ page }) => {
   await page.goto("/looseends/?play=1");
   await ready(page);

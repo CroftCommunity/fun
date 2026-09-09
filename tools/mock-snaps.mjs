@@ -111,7 +111,11 @@ const ROUTES = {
   furrow: generic("furrow", "seed=7"),
   align: generic("align", "seed=7"),
   blockdoku: generic("blockdoku", "seed=7"),
-  looseends: generic("looseends", "play=1"),
+  looseends: [
+    ...generic("looseends", "play=1"),
+    // Level 8 carries the first lock (plan 2026-09-08): the badge and its tie.
+    { route: "tied", url: "/looseends/?play=1&level=8", ready: mounted, settle: 1200 },
+  ],
   mahjong: generic("mahjong", "level=1"),
   cribbage: generic("cribbage", "seed=7"),
   "orchard-drop": generic("orchard-drop", "seed=7"),
