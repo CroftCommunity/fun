@@ -1,13 +1,10 @@
 # Plan — Loose Ends' second mechanic: the knot has a key
 
-**Status:** **Phase 2 BUILT, 2026-09-08 (owner: "build phase 2") — on `claude/looseends-locks-gen`,
-NOT to land before phase 3: the shipped UI maps a tap status by index, so the new status 3
-is undefined there and a locked tap does nothing silently; landing phase 2 alone puts
-invisible locks on levels 8+.** Phase 1 landed (#89). Phases 3–4 not started. Q1–Q5 decided
-at their recommendations (Review Log). Plan filename carries no ordinal per
-`CroftC/.claude/TRACKING.md` § "Plan files". Plan landed from `claude/looseends-mechanic`
-(#85); worktree `CroftC/worktrees/looseends-mechanic/fun`. Mock: `mocks/g-looseends-mechanic.html` v1, its
-Current capture in `mocks/snaps/g-looseends-mechanic/` (`current.*` from `fun@5fcb81f`).
+**Status:** **Phase 3 BUILT, 2026-09-08 (owner: "go") on `claude/looseends-locks-gen` with phase 2;
+PR #90 carries both and lands together.** Phase 1 landed (#89). Phase 4 (the mock's Shipped
+captures) not started. Q1–Q5 decided at their recommendations (Review Log). Plan filename
+carries no ordinal per `CroftC/.claude/TRACKING.md` § "Plan files". Plan landed from
+`claude/looseends-mechanic` (#85); worktree `CroftC/worktrees/looseends-mechanic/fun`.
 
 ## Problem Statement
 
@@ -169,11 +166,14 @@ so the same hash), a greedy clear of level 100. Found on the way: RULES.md claim
 packed into a `u64`; no such packing existed — corrected to the `Origin`. **Executed
 2026-09-08** (`976c714` + the audit's closing commit).
 
-### Phase 3: The binding and the board
-`looseends-wasm` exports pairs and the `Locked(key)` tap; `looseends.ts` draws the lock and
-the tie, flashes the key, names it for a screen reader; the toast; the how-to panel and its
-shots; the wiring spec plays level 8 through its lock on both engines. Done-when: the
-looseends specs green on both engines, shots regenerated, `npm run gate` green.
+### Phase 3: The binding and the board — BUILT
+`ArrowView.lockedBy` (the key still holding the arrow, else null) and tap status 3 →
+`"locked"`; the board draws a tied arrow dimmer with a padlock badge at its head and a dashed
+amber tie where the two bodies touch; a locked tap lights the key and the frame's toast
+(`role="status"`, `aria-live="polite"` — the screen-reader path) says "Tied — free the key
+first."; no droplet. The how-to gains "Tied arrows" with a level-8 shot. Done-when met: the
+wiring spec plays level 8 through its lock on both engines (16/16), the binding's test finds
+5 held by 9, shots regenerated, the gate green. **Executed 2026-09-08.**
 
 ### Phase 4: The mock's record
 Mock G v2 with Shipped captures (`tools/mock-snaps.mjs looseends --out g-looseends-mechanic
@@ -186,6 +186,19 @@ decision as built is the decision in the mock.
 Q1–Q5 are in mock G's decisions table with a recommendation each; the plan repeats none.
 
 ## Review Log
+
+### Phase 3 — 2026-09-08 (owner: "go")
+- RED first: the binding's test (level 8: exactly `[(5, 9)]` tied, a locked tap is 3 and
+  changes nothing), the wiring spec (one tie on level 8; the lock tapped: nothing moves, no
+  droplet, the toast names it; free arrows released never the lock until the key is gone; the
+  freed lock releases), the how-to's missing shot. Then the binding, the wrapper, the drawing,
+  the tap branch, the guide entry and shot.
+- Measured on the way: the badge sits on the arrowhead itself and reads at 390 (the
+  arrowhead still shows behind the disc); the tie is drawn cell-centre to cell-centre at the
+  first touching pair, over the arrows.
+- Not done here: no screen-reader naming beyond the toast — the board is one canvas with one
+  label, and a per-arrow name would be a larger change than this phase (a candidate for the
+  accessibility dimension's next pass).
 
 ### Phase 2 — 2026-09-08 (owner: "build phase 2")
 - RED first: the curve's values and monotonicity; levels 1–7 none, level 8 one; every lock
