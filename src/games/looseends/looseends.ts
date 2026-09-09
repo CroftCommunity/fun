@@ -1232,6 +1232,14 @@ export function looseendsModule(): GameModule {
           applyResume(p);
           return;
         }
+        // `?level=N` (1..100) opens that level directly — the hermetic route the
+        // mock capture tool needs for a board only a later level shows (a lock,
+        // plan 2026-09-08 phase 4). Anything else is the ordinary destination.
+        const lvl = Number(new URL(location.href).searchParams.get("level"));
+        if (Number.isInteger(lvl) && lvl >= 1 && lvl <= 100) {
+          startGame({ kind: "level", n: lvl });
+          return;
+        }
         go(chosenDestination);
       })();
     },
