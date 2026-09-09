@@ -73,7 +73,15 @@ filter. The numbering is left alone so existing cross-references still resolve.
 ## 2. Determinism-first core → wasm
 
 - A Rust core crate holds the rules, with a **rules doc + golden vectors** and a
-  `state_hash`. It is cross-build verified so **native == wasm** (`xbuild`).
+  `state_hash`. It is cross-build verified so **native == wasm** (`xbuild`) — and
+  "verified" means **enrolled**: a `crates/<core>/vectors/*.json` corpus of
+  `(seed or level, moves) → final_state_hash`, a native test (`tests/vectors.rs`) that
+  replays each file and asserts its hash, a case in `crates/xbuild/check.mjs` that
+  replays the same files inside `wasm32` (with the directory passed by `run.sh`, and a
+  loop that **fails on an empty directory**), and the core as an `xbuild` dependency.
+  A core with none of that makes the claim without the check: Loose Ends shipped for
+  five weeks that way and was enrolled on 2026-09-08 with its locks (four vectors,
+  one of them a tampered list both targets must skip the same way).
 - The browser binding is **raw C-ABI + serde-JSON** (no `wasm-bindgen`): the wasm
   **holds the game state**, exposes typed integer-arg move exports and JSON reads
   via a `ptr`/`len` output buffer. It **never panics** — every fallible path maps

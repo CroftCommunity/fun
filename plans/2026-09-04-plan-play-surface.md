@@ -107,7 +107,8 @@ rule with a spec; then the decisions the sketches ask, each its own phase with i
 11. **Loose Ends' curve (Q10).** `level_config`: `target = 10 + 58·t`, `w = 6 + 12·t`,
     `h = 8 + 18·t`, `min_len = 3 + …`, `max_len = 5 + …`; golden vectors and the solvability
     test re-recorded; the daily config left alone. A second mechanic is a research plan of
-    its own, not this one.
+    its own, not this one — it became `plans/2026-09-08-plan-looseends-mechanic.md` (locks
+    from level 8; landed the same day, #89–#91).
 12. **Music (Q9).** Two lines in `BY_GAME` once picked; `tests/music*.test.ts` pins them.
 
 ## Reasoning
