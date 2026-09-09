@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="mock-version" content="5.1" />
+<meta name="mock-version" content="5.3" />
 <meta name="mock-baseline" content="fun@aafe332" />
 <meta name="mock-proposal" content="fun@eb509fc" />
 <title>The play surface — the board fills the stage, the door opens, one shape for hand controls · v5 · fun.croft.ing mocks</title>
@@ -194,6 +194,7 @@
   <p class="h-note">Compare in one skin: every capture and sketch here is the default Worlds night skin. Captures are true size — 390×844 as-is, 1280×900 shown in an 1180×740 window, top-aligned — from <code>tools/mock-snaps.mjs all --out f-play-surface --tag current|proposed</code>, hermetic: fixed seeds, and the poster is the bare land in a fresh context.</p>
 
   <h2>Revisions</h2>
+  <p class="rev"><b>v5.3</b> — 2026-09-08, documentation pass: Q10's row points at where its parked half went — mock G (<code>g-looseends-mechanic.html</code>), built and shipped the same day. The <code>mock-version</code> meta now says what the revision list says (it had stayed at 5.1 through v5.2).</p>
   <p class="rev"><b>v5.2</b> — 2026-09-08: the chess <b>Emoji</b> pack (Q8's "later") ships — a court (💂 🐴 🧙 🏰 👸 🤴) on a round token in its side's colour, third in the Pieces row. No capture here: <code>mock-snaps</code> captures a fresh context, which is Classic; the pack is a Settings choice and the board's shape is unchanged.</p>
   <p class="rev"><b>v5.1</b> — owner review of PR #82, 2026-09-08: "the instruction text overlaid on the splash is unreadable". The poster's lede (chip, title, pitch) now sits on a translucent, blurred panel over the art; <b>Shipped</b> captures of the Trio Tumble and Dots posters (<code>fun@64888dc</code>) stand beside proposal 1. Trio Tumble's two-line title leaves its poster a small scroll behind the sticky Play (F1.3 says so).</p>
   <p class="rev"><b>v5</b> — Pass 2 built 2026-09-08 (owner: "do these TDD first"): every open decision taken at its recommendation and shipped on <code>claude/play-surface-2</code> — Q9 Cribbage → Tuesday Night Rainfall, Q8 Classic + Bold, Q6 segmented rows, Q2 the tint, Q3 Auto, Q4 the split, Q5 Auto + preference, Q10 the curve, Q11 the beats, and phase 4 (the rest of the fill). <b>Shipped</b> captures (<code>snaps/f-play-surface/shipped.*</code>, <code>fun@23b0f84</code>) stand beside sketches 4, 5, 6, 8 and 9 and beside proposal 2 for the fill. The sketches stay as drawn — they are the record of what was asked.</p>
@@ -226,7 +227,7 @@
     <tr><td>Q7</td><td>Bubble's pieces as emoji — which set? Fruit (🍎🍋🫐🍇🍊🥝), faces, gems. Each colour keeps a distinct shape either way.</td><td>fruit, with a launcher and a Next slot</td><td><span class="pill built">DECIDED 2026-09-05: fruit · shipped, phase 10a</span></td></tr>
     <tr><td>Q8</td><td>Chess piece packs — which two ship first: Classic glyphs (today), Bold flat, Emoji?</td><td>Classic on a wood-framed board with coordinates; the pack row in Settings</td><td><span class="pill built">DECIDED 2026-09-08: Classic + Bold · shipped, phase 10b; Emoji shipped the same day, the same way (v5.2)</span></td></tr>
     <tr><td>Q9</td><td>Music: Mahjong plays the shelf bed (Morning Miles — "country") because it names no track; Cribbage names Morning Miles too. Which of the airier pieces? Candidates by title: Porch Light Nocturne, Lower Cavern Bloom, Tuesday Night Rainfall, Gravity Glass.</td><td>not drawn — a one-line change in <code>src/music.ts</code> once picked</td><td><span class="pill rec">DECIDED 2026-09-05: Mahjong → Porch Light Nocturne</span> (landed); <span class="pill rec">DECIDED 2026-09-08: Cribbage → Tuesday Night Rainfall</span> (landed)</td></tr>
-    <tr><td>Q10</td><td>Loose Ends: rebase the curve so level 1 is a puzzle (10 arrows on 6×8, snakes 3–5; Easy ends at ~24 on 8×11) now, and park the second mechanic (colour bands, locks, a par with stars) for a research pass?</td><td>a level-1 sketch at the proposed density</td><td><span class="pill built">DECIDED 2026-09-08: the curve · shipped, phase 11; the mechanic stays a research pass</span></td></tr>
+    <tr><td>Q10</td><td>Loose Ends: rebase the curve so level 1 is a puzzle (10 arrows on 6×8, snakes 3–5; Easy ends at ~24 on 8×11) now, and park the second mechanic (colour bands, locks, a par with stars) for a research pass?</td><td>a level-1 sketch at the proposed density</td><td><span class="pill built">DECIDED 2026-09-08: the curve · shipped, phase 11; the research pass became mock G and shipped the same day — locks from level 8 (#89–#91)</span></td></tr>
     <tr><td>Q11</td><td>Versus beats — which events earn a flourish: a capture, a king, a flip of four or more, a Drop 4 line, a Dots chain, a cribbage 15/pair/run? Nothing on an ordinary move.</td><td>Drop 4 mid-drop and its win line; a checkers jump; the score ticking</td><td><span class="pill built">DECIDED 2026-09-08: that list · shipped, phase 9</span></td></tr>
   </table>
 

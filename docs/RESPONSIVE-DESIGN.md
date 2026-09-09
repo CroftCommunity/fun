@@ -161,6 +161,24 @@ vitest. Assert them with Playwright `boundingBox()` across **both** projects
 
 ## Lessons log
 
+### 2026-09-08 — the desktop poster cropped the splash's lettering
+
+- **Symptom:** owner: "2048 splash on desktop is way off screen" — the poster's art showed
+  the top of the splash and cut the "2048" lettering at the frame's foot.
+- **Cause:** the desktop poster gave the art a 50%-wide column under `object-fit: cover`
+  with `object-position: center top`. Every splash is a portrait (538×1200, 669×1200)
+  with its lettering at the foot; cover scaled it to the column's *width* and cropped the
+  bottom third — worse the shorter and wider the window (a 1100×640 window lost 60%).
+  The phone layout never showed it: there the lede panel sits over the foot by design.
+- **Rule:** on a desktop the art is full height at its **own aspect** (`width: auto;
+  height: 100%`), capped at half the frame, so a portrait is whole and only a landscape
+  splash (checkers) is cropped, sideways, where nothing is written. The fade into the
+  body's ground is a **mask on the art itself**, not a veil pinned to a 40–50% band, so
+  it tracks the art's real edge; the body takes the rest and centres in it.
+- **Measured after:** the art's box keeps the poster's shape to within 2% at 1280×900 and
+  1100×640 for 2048 and chess, Play on screen, the lede no narrower than the art —
+  `tests/play-surface.spec.ts` F1.5.
+
 ### 2026-09-04 — every board was small in a big stage; a dead rule left the Orchard crate at the edge
 
 - **Symptom:** the owner's screenshots of thirteen games at desktop and phone: "small game
