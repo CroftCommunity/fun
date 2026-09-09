@@ -19,6 +19,7 @@ use furrow_core::{
     apply_move as furrow_apply, legal_pits, state_hash as furrow_state_hash, Board as FurrowBoard,
     Pit,
 };
+use looseends_core::{state_hash as looseends_state_hash, Origin as LooseOrigin};
 use mahjong_core::vectors as mahjong_vectors;
 use orchard_core::vectors as orchard_vectors;
 use solitaire_core::{state_hash, GameState, Move};
@@ -86,6 +87,25 @@ pub extern "C" fn dots_in_ptr() -> *const u8 {
 #[no_mangle]
 pub extern "C" fn dots_in_cap() -> u32 {
     IN_CAP as u32
+}
+
+/// Loose Ends: the state hash of campaign level `level` after replaying the
+/// first `len` bytes of the input buffer as arrow releases (vectors
+/// `looseends-core/vectors/*.json`). Enrolled with the locks (plan 2026-09-08):
+/// generation, the lock draw and the lock rule in `release` are all on the path
+/// here, and a blocked / locked / gone id is a no-op exactly as
+/// `pond_outcome::verify` treats it, so tampered lists agree across targets too.
+#[no_mangle]
+pub extern "C" fn looseends_replay_hash(level: u32, len: u32) -> *const u8 {
+    let n = (len as usize).min(IN_CAP);
+    // SAFETY: single-threaded wasm; the host fills IN before this call and does
+    // not touch it during. Raw pointers avoid the `static_mut_refs` lint.
+    let moves: [u8; IN_CAP] = unsafe { *core::ptr::addr_of!(IN) };
+    let mut board = LooseOrigin::Level(level).board();
+    for &id in &moves[..n] {
+        let _ = board.release(id as usize);
+    }
+    write_hash(&looseends_state_hash(&board))
 }
 
 /// Furrow (mancala): the state hash after replaying the first `len` bytes of the

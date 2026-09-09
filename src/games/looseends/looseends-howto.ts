@@ -49,6 +49,23 @@ export const LOOSEENDS_GUIDE: Guide = {
       ],
     },
     {
+      testid: "howto-tied",
+      title: "Tied arrows",
+      toc: "Tied arrows",
+      blocks: [
+        {
+          kind: "prose",
+          text: "From level 8 some arrows are tied to a neighbour: a lock sits on the arrow's head and a dashed tie runs to the arrow holding it. A tied arrow stays put even when its lane is clear, until the arrow it is tied to has left the board. Tap a tied arrow and its key lights up — that costs nothing, it is the board telling you the order.",
+        },
+        {
+          kind: "shot",
+          name: "looseends-tied",
+          alt: "A Loose Ends board with one dimmed arrow wearing a small lock at its head and a dashed amber tie to the arrow beside it.",
+          caption: "A tied arrow. Free the arrow at the other end of the tie first; the lock falls off and the arrow leaves as usual.",
+        },
+      ],
+    },
+    {
       testid: "howto-droplets",
       title: "Droplets and hints",
       toc: "Droplets & hints",

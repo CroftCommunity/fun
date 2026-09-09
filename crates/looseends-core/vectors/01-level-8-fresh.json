@@ -1,0 +1,7 @@
+{
+  "name": "level 8 fresh",
+  "note": "Level 8 as generated: 14 arrows on 7×9 and the first lock (arrow 5 held by arrow 9). No release; the hash covers generation, locks excluded by design.",
+  "level": 8,
+  "moves": [],
+  "final_state_hash": "3eca7a9ecb44ca4d54e129e54af59968afc12298fc1b9935f23bdaba8dbee8e6"
+}

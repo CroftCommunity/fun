@@ -900,6 +900,18 @@ const SHOTS = [
     },
   },
   {
+    name: "looseends-tied",
+    clip: ".le-stage",
+    async run(page) {
+      // Level 8 carries the first lock (plan 2026-09-08): the badge and its tie.
+      await page.goto(`${origin}/looseends/?play=1`, { waitUntil: "networkidle" });
+      await page.waitForFunction(() => Boolean(window.__looseends));
+      await page.evaluate(() => window.__looseends.openLevel(8));
+      await page.waitForSelector(".le-canvas");
+      await page.waitForTimeout(400);
+    },
+  },
+  {
     name: "mahjong-home",
     clip: ".gf-poster",
     async run(page) {

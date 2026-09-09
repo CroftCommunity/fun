@@ -12,6 +12,11 @@ earlier is in `git log`.
 
 ## 2026-09
 
+- 2026-09-08 **looseends:** from level 8 an arrow can be tied to a neighbour — a lock on its
+  head, a dashed tie to the arrow holding it. It stays put even with a clear lane until that
+  arrow has left; tapping it lights the key and costs nothing. One tie at level 8, eight by
+  level 100; levels 1–7 and the daily boards are unchanged, board for board. (plan
+  looseends-mechanic, mock G)
 - 2026-09-08 **chess:** a third piece pack, Emoji — a court (💂 🐴 🧙 🏰 👸 🤴) on a round
   token in its side's colour — under Settings → Pieces beside Classic and Bold. The board,
   the rules and the record never see a pack. (mock F Q8: "Emoji later")
