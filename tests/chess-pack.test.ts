@@ -5,10 +5,16 @@
 //! so an unknown or absent value lands on Classic and never on undefined; the
 //! glyph table is data, so it is tested as data.
 
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { CHESS_PACKS, resolveChessPack } from "../src/settings.js";
-import { PACK_GLYPHS, pieceGlyph } from "../src/games/chess/chess-pieces.js";
+import { CHESS_PACKS, resolveChessPack, type ChessPack } from "../src/settings.js";
+import { IMAGE_PACKS, PACK_GLYPHS, packSheet, pieceGlyph } from "../src/games/chess/chess-pieces.js";
+
+const GLYPH_PACKS: readonly ChessPack[] = ["classic", "bold", "emoji"];
+/** The six sets cut from painted boards (2026-09-10), in the order Settings lists them. */
+const SHEET_PACKS: readonly ChessPack[] = ["garden", "arcade", "ancients", "frontier", "tides", "diner"];
 
 describe("resolveChessPack", () => {
   it("lands on Classic when nothing is stored", () => {
@@ -24,12 +30,56 @@ describe("resolveChessPack", () => {
     expect(resolveChessPack("BOLD")).toBe("classic");
     expect(resolveChessPack("pixel")).toBe("classic");
   });
-  it("the pack list is the three that ship, Classic first, each with a label and a hint", () => {
-    expect(CHESS_PACKS.map((p) => p.value)).toEqual(["classic", "bold", "emoji"]);
+  it("keeps every painted set, by the name Settings stores", () => {
+    for (const p of SHEET_PACKS) expect(resolveChessPack(p)).toBe(p);
+    expect(resolveChessPack("Garden")).toBe("classic");
+  });
+  it("the pack list is the nine that ship, Classic first, each with a label and a hint", () => {
+    expect(CHESS_PACKS.map((p) => p.value)).toEqual([...GLYPH_PACKS, ...SHEET_PACKS]);
     for (const p of CHESS_PACKS) {
       expect(p.label.length).toBeGreaterThan(0);
       expect(p.hint.length).toBeGreaterThan(0);
     }
+    expect(new Set(CHESS_PACKS.map((p) => p.label)).size).toBe(CHESS_PACKS.length);
+  });
+});
+
+/** Width and height from a PNG's IHDR — the first chunk, at a fixed offset. */
+function pngSize(path: string): { width: number; height: number } {
+  const buf = readFileSync(path);
+  expect(buf.subarray(1, 4).toString("ascii"), `${path} is a PNG`).toBe("PNG");
+  return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+}
+
+describe("the painted sets are sprite sheets, and the sheets exist", () => {
+  const packsDir = join(process.cwd(), "src", "games", "chess", "assets", "packs");
+  const boardsDir = join(process.cwd(), "tools", "chess-packs", "boards");
+
+  it("the image packs are exactly the painted sets, and a glyph pack has no sheet", () => {
+    expect([...IMAGE_PACKS]).toEqual(SHEET_PACKS);
+    for (const p of GLYPH_PACKS) expect(packSheet(p)).toBeNull();
+  });
+
+  it("a sheet is served from the game's own assets, six kinds wide and two sides tall", () => {
+    for (const p of SHEET_PACKS) {
+      expect(packSheet(p)).toBe(`/chess/assets/packs/${p}.png`);
+      const file = join(packsDir, `${p}.png`);
+      expect(existsSync(file), `${p} has no sheet at ${file}`).toBe(true);
+      const { width, height } = pngSize(file);
+      // Six square cells across, two down: the CSS places a piece by kind and side in fifths and halves.
+      expect(width, `${p}: ${width}×${height}`).toBe(3 * height);
+      expect(width % 6).toBe(0);
+    }
+  });
+
+  it("every sheet on disk is a pack, and every pack's board is kept so the cut can be redone", () => {
+    const onDisk = readdirSync(packsDir).filter((f) => f.endsWith(".png")).map((f) => f.replace(/\.png$/, ""));
+    expect([...onDisk].sort()).toEqual([...SHEET_PACKS].sort());
+    for (const p of SHEET_PACKS) expect(existsSync(join(boardsDir, `${p}.jpg`)), `${p} has no source board`).toBe(true);
+  });
+
+  it("an image pack draws no glyph — the sheet is the piece", () => {
+    for (const p of SHEET_PACKS) for (const k of [1, 2, 3, 4, 5, 6]) expect(pieceGlyph(p, k)).toBe("");
   });
 });
 

@@ -786,19 +786,40 @@ export function setMahjongDimBlocked(on: boolean): void {
 
 // ---------- Chess (the piece pack — mock F Q8, phase 10b) ----------
 
-/** The packs that ship: Classic (outlined glyphs) and Bold (heavier, flat, shadowed). Emoji is later. */
-export type ChessPack = "classic" | "bold" | "emoji";
+/**
+ * The packs that ship. Three glyph packs — Classic (outlined symbols), Bold
+ * (heavier, flat, shadowed), Emoji (a court on a coloured token) — and six
+ * painted sets cut from a board each (2026-09-10; `chess-pieces.ts` names
+ * their sheets, `tools/chess-packs/` holds the boards and the cut).
+ */
+export type ChessPack =
+  | "classic"
+  | "bold"
+  | "emoji"
+  | "garden"
+  | "arcade"
+  | "ancients"
+  | "frontier"
+  | "tides"
+  | "diner";
 
 /** The pack list as Settings shows it — Classic first, because it is the default. */
 export const CHESS_PACKS: ReadonlyArray<{ readonly value: ChessPack; readonly label: string; readonly hint: string }> = [
   { value: "classic", label: "Classic", hint: "The outlined set." },
   { value: "bold", label: "Bold", hint: "Heavier pieces, flat, with a shadow." },
   { value: "emoji", label: "Emoji", hint: "A court of emoji, each on a token in its side's colour." },
+  { value: "garden", label: "Garden", hint: "Fairies and unicorns against the thorn court." },
+  { value: "arcade", label: "Arcade", hint: "Pixel heroes against a pixel horde." },
+  { value: "ancients", label: "Ancients", hint: "The Nile's court against the Sun's." },
+  { value: "frontier", label: "Frontier", hint: "Lawmen and settlers against the outlaws." },
+  { value: "tides", label: "Tides", hint: "Merfolk and seahorses against the deep." },
+  { value: "diner", label: "Diner", hint: "The kitchen against the drive-thru." },
 ];
 
 /** Pure resolver: a stored pack that ships wins, else Classic. */
 export function resolveChessPack(stored: string | null): ChessPack {
-  return stored === "bold" || stored === "classic" || stored === "emoji" ? stored : "classic";
+  const hit = CHESS_PACKS.find((p) => p.value === stored);
+  return hit ? hit.value : "classic";
 }
 
 /** The chosen piece pack — **Classic by default**. */

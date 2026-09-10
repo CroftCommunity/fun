@@ -447,8 +447,8 @@ test("chess 10b: the pack row in Settings — Classic by default, Bold marks the
   await expect(page.locator('.chess-board[data-pack="classic"]')).toHaveCount(1);
   await page.locator('.gf-verb[data-verb="settings"]').click();
   const row = page.locator('.gf-sheet [data-setting="pack"]');
-  await expect(row.locator(".sheet-choice-opt input")).toHaveCount(3);
-  await expect(row.locator(".sheet-choice-opt")).toContainText(["Classic", "Bold", "Emoji"]);
+  await expect(row.locator(".sheet-choice-opt input")).toHaveCount(9);
+  await expect(row.locator(".sheet-choice-opt")).toContainText(["Classic", "Bold", "Emoji", "Garden", "Arcade", "Ancients", "Frontier", "Tides", "Diner"]);
   await row.locator('input[value="bold"]').check();
   await expect(page.locator('.chess-board[data-pack="bold"]')).toHaveCount(1);
   expect(await page.evaluate(() => localStorage.getItem("fun-chess-pack"))).toBe("bold");
@@ -507,4 +507,49 @@ test("chess 10b: the Emoji pack — a court of emoji on a token coloured by side
   await page.locator('.chess-square[data-sq="12"]').click();
   await page.locator('.chess-square[data-sq="28"]').click();
   await expect(page.locator('.chess-square[data-sq="28"] .chess-piece')).toHaveText("💂");
+});
+
+test("chess: a painted set — the sheet is served and decodes, every piece is a cell of it by kind and side, and the pack is remembered", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/chess/?seed=7");
+  await ready(page);
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await page.locator('.gf-sheet [data-setting="pack"] input[value="tides"]').check();
+  const board = page.locator('.chess-board[data-pack="tides"][data-art="sheet"]');
+  await expect(board).toHaveCount(1);
+  expect(await page.evaluate(() => localStorage.getItem("fun-chess-pack"))).toBe("tides");
+  // No glyph: the sheet is the piece, and every one of the 32 draws from it.
+  const pieces = page.locator(".chess-square .chess-piece");
+  await expect(pieces).toHaveCount(32);
+  for (const t of await pieces.allTextContents()) expect(t).toBe("");
+  const sheet = "/chess/assets/packs/tides.png";
+  expect(await pieces.first().evaluate((n) => getComputedStyle(n).backgroundImage)).toContain(sheet);
+  // The sheet is served as a PNG and decodes to six cells across, two down.
+  const res = await page.request.get(sheet);
+  expect(res.status()).toBe(200);
+  expect(res.headers()["content-type"]).toContain("image/png");
+  const decoded = await page.evaluate(async (src) => {
+    const img = new Image();
+    img.src = src;
+    await img.decode();
+    return { w: img.naturalWidth, h: img.naturalHeight };
+  }, sheet);
+  expect(decoded.w).toBe(3 * decoded.h);
+  // Kind and side pick the cell: the white king is the sheet's top-right corner, a black pawn its bottom-left.
+  const pos = (sel: string) => page.locator(sel).first().evaluate((n) => getComputedStyle(n).backgroundPosition);
+  expect(await pos('.chess-piece.a[data-kind="6"]')).toBe("100% 0%");
+  expect(await pos('.chess-piece.b[data-kind="1"]')).toBe("0% 100%");
+  expect(await pos('.chess-piece.a[data-kind="2"]')).toBe("20% 0%");
+  // A piece is a visible box, not a collapsed empty span.
+  const box = await pieces.first().boundingBox();
+  expect(box!.width).toBeGreaterThan(30);
+  expect(box!.height).toBeGreaterThan(30);
+  await page.reload();
+  await ready(page);
+  await expect(board).toHaveCount(1);
+  // Back to Classic: the glyphs return and no board carries a sheet.
+  await page.locator('.gf-verb[data-verb="settings"]').click();
+  await page.locator('.gf-sheet [data-setting="pack"] input[value="classic"]').check();
+  await expect(page.locator(".chess-board[data-art]")).toHaveCount(0);
+  await expect(page.locator(".chess-piece.a").first()).toHaveText("♟");
 });

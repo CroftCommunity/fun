@@ -12,6 +12,11 @@ earlier is in `git log`.
 
 ## 2026-09
 
+- 2026-09-10 **chess:** six painted piece sets under Settings → Pieces — Garden, Arcade,
+  Ancients, Frontier, Tides and Diner — each cut from a painted starting position into a
+  sprite sheet, chosen the same way as Classic, Bold and Emoji and remembered. A set is
+  fetched only when it is chosen; the board, the rules and the record never see one.
+  (plan chess-painted-sets)
 - 2026-09-08 **looseends:** from level 8 an arrow can be tied to a neighbour — a lock on its
   head, a dashed tie to the arrow holding it. It stays put even with a clear lane until that
   arrow has left; tapping it lights the key and costs nothing. One tie at level 8, eight by

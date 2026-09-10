@@ -20,6 +20,7 @@ const TYPES = {
   ".map": "application/json",
   ".woff2": "font/woff2",
   ".jpg": "image/jpeg",
+  ".png": "image/png", // the chess piece sheets (2026-09-10) — the first PNG the shelf serves
 };
 
 createServer(async (req, res) => {
