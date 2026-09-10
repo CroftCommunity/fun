@@ -12,12 +12,28 @@ import type { ChessPack } from "../../settings.js";
 const CLASSIC = ["", "♟", "♞", "♝", "♜", "♛", "♚"] as const;
 const EMOJI = ["", "💂", "🐴", "🧙", "🏰", "👸", "🤴"] as const;
 
-/** The glyph table per pack, indexed by kind. */
+const NONE: readonly string[] = [];
+
+/** The painted sets, in the order Settings lists them — each has a sheet on disk. */
+export const IMAGE_PACKS = ["garden", "arcade", "ancients", "frontier", "tides", "diner"] as const;
+
+/** The glyph table per pack, indexed by kind. A painted pack has no glyphs. */
 export const PACK_GLYPHS: Readonly<Record<ChessPack, readonly string[]>> = {
   classic: CLASSIC,
   bold: CLASSIC,
   emoji: EMOJI,
+  garden: NONE,
+  arcade: NONE,
+  ancients: NONE,
+  frontier: NONE,
+  tides: NONE,
+  diner: NONE,
 };
+
+/** The sprite sheet a painted pack draws from, served beside the game's art; null for a glyph pack. */
+export function packSheet(pack: ChessPack): string | null {
+  return (IMAGE_PACKS as readonly string[]).includes(pack) ? `/chess/assets/packs/${pack}.png` : null;
+}
 
 /** The glyph a pack draws for a kind — the empty string for an empty square or an unknown kind. */
 export function pieceGlyph(pack: ChessPack, kind: number): string {

@@ -50,7 +50,7 @@ import {
   type MoveAssessment,
   type SideCode,
 } from "./chess-wasm.js";
-import { pieceGlyph } from "./chess-pieces.js";
+import { packSheet, pieceGlyph } from "./chess-pieces.js";
 
 declare global {
   interface Window {
@@ -607,10 +607,11 @@ export function chessModule(): GameModule {
 
   // ---------- rendering ----------
 
+  // The kind rides on the node so a painted pack's CSS can pick its sheet cell.
   const pieceNode = (v: number): HTMLElement =>
     el(
       "span",
-      { class: `chess-piece ${ownerOf(v) === 1 ? "a" : "b"}`, "aria-hidden": "true" },
+      { class: `chess-piece ${ownerOf(v) === 1 ? "a" : "b"}`, "data-kind": String(kindOf(v)), "aria-hidden": "true" },
       pieceGlyph(pack, kindOf(v)),
     );
 
@@ -647,6 +648,12 @@ export function chessModule(): GameModule {
       "aria-label": interactive ? "Chess board" : "Final board",
       "data-pack": pack,
     });
+    // A painted pack: the board carries its sheet, the CSS places each piece by kind and side.
+    const sheet = packSheet(pack);
+    if (sheet !== null) {
+      boardEl.dataset["art"] = "sheet";
+      boardEl.style.setProperty("--chs-sheet", `url("${sheet}")`);
+    }
     const canPlay =
       interactive && !thinking && !ending && !gameOver() && humanToMove() && !pendingPromotion;
     const targets = new Set(

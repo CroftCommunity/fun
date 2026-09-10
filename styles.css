@@ -5370,6 +5370,29 @@ dialog.signin-sheet::backdrop { background: rgba(0, 0, 0, 0.45); }
 }
 .chess-board[data-pack="emoji"] .chess-piece.a { background: var(--chs-a); border-color: var(--chs-a-ink); }
 .chess-board[data-pack="emoji"] .chess-piece.b { background: var(--chs-b); border-color: var(--chs-b-ink); }
+/* The painted sets (2026-09-10): one sprite sheet per pack, cut from a painted
+   starting position by tools/chess-packs/extract.py — six kinds across, White
+   over Black. The board sets --chs-sheet (chess.ts, from chess-pieces.ts) and
+   the piece picks its cell by kind and side. A background-image on a rule that
+   matches nothing never loads, so a sheet is fetched only once its pack is chosen. */
+.chess-board[data-art="sheet"] .chess-piece {
+  display: block;
+  width: calc(var(--chs-cell) * 0.96);
+  height: calc(var(--chs-cell) * 0.96);
+  background-image: var(--chs-sheet);
+  background-size: 600% 200%;
+  background-repeat: no-repeat;
+  text-shadow: none;
+  filter: drop-shadow(0 2px 1px rgb(0 0 0 / 35%));
+}
+.chess-board[data-art="sheet"] .chess-piece.a { background-position-y: 0%; }
+.chess-board[data-art="sheet"] .chess-piece.b { background-position-y: 100%; }
+.chess-board[data-art="sheet"] .chess-piece[data-kind="1"] { background-position-x: 0%; }
+.chess-board[data-art="sheet"] .chess-piece[data-kind="2"] { background-position-x: 20%; }
+.chess-board[data-art="sheet"] .chess-piece[data-kind="3"] { background-position-x: 40%; }
+.chess-board[data-art="sheet"] .chess-piece[data-kind="4"] { background-position-x: 60%; }
+.chess-board[data-art="sheet"] .chess-piece[data-kind="5"] { background-position-x: 80%; }
+.chess-board[data-art="sheet"] .chess-piece[data-kind="6"] { background-position-x: 100%; }
 .chess-square.selectable { cursor: pointer; }
 .chess-square.target { cursor: pointer; }
 .chess-square.target::after {

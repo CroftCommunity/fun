@@ -21,7 +21,7 @@ export const CHESS_GUIDE: Guide = {
         },
         {
           kind: "prose",
-          text: "You choose which side you play — White (which opens), Black, or random — and how strong The Engine is (Easy, Medium, Hard, or Expert) on the start screen, or from the New game button under the board. Both choices are remembered for next time. Playing Black turns the board so your pieces are at the bottom.",
+          text: "You choose which side you play — White (which opens), Black, or random — and how strong The Engine is (Easy, Medium, Hard, or Expert) on the start screen, or from the New game button under the board. Both choices are remembered for next time. Playing Black turns the board so your pieces are at the bottom. Settings → Pieces changes the set on the board — three drawn sets and six painted ones, from a fairy garden to a diner — at once and without touching the game.",
         },
         {
           kind: "shot",
