@@ -161,6 +161,22 @@ vitest. Assert them with Playwright `boundingBox()` across **both** projects
 
 ## Lessons log
 
+### 2026-09-14 — the frame's first check on a real phone, and how it was driven
+
+- **What was owed:** the game-frame plan shipped Phases 2a (the shelf header is one row on
+  every game page) and 5a (poster → play → leave → the continue card) against Playwright's
+  engines only; the Samsung check sat in the device queue for two weeks.
+- **Measured:** on the Samsung SM-S947U1 (Chrome 152, viewport 384 css px, the live site)
+  `.chrome-header` is **63.9 px** on othello, checkers, chess, 2048, solitaire and dots
+  (the test's rule is ≤ 66; two rows were 110). Othello: poster, Play, two moves, the tab
+  killed, reopened — the continue card reads "Move 4 · level 4–4" and Continue restores the
+  64-cell board. Screens matched the engines.
+- **Rule:** a device check that is a *measurement* or a *state* is a script, not a thumb —
+  `adb forward tcp:9222 localabstract:chrome_devtools_remote`, then Playwright
+  `connectOverCDP("http://127.0.0.1:9222")` drives the phone's own Chrome with the same
+  locators the e2e uses. Keep the thumb for what only a thumb can judge (feel, glyph
+  legibility, a colour in daylight); everything else in the queue is one script away.
+
 ### 2026-09-08 — the desktop poster cropped the splash's lettering
 
 - **Symptom:** owner: "2048 splash on desktop is way off screen" — the poster's art showed

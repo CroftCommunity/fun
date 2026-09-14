@@ -251,6 +251,15 @@ that **finished**. It is not free, and whether it pays is a property of the game
 | budget bite rate | 0% of moves | 28–38% of moves | 0% of moves | **0 of 960 plies** | Expert's 150k cap bites the p95 tail |
 | outcome | **reverted, ships nothing** | shipped, free speed | **rejected — every iteration returns the same values** | **rejected — the budget never truncates a search** | **shipped — the first verdict that differs by depth** (measured 2026-08-30, 50 positions: deepened/fixed nodes 1.465 / 1.125 / 0.818 / 0.628 at d2–d5) |
 
+**The chess ladder on a phone (2026-09-14).** The same harness that produced the Chromium
+column (`spike/chess-latency/wasm-time.mjs`) ran in the Samsung SM-S947U1's Chrome 152 over
+adb-forwarded DevTools (`wasm-time-phone.mjs`, `results-samsung.txt`): Easy 6/16/16 ·
+Medium 43/66/68 · Hard 140/165/183 · Expert 216/257/282 ms median/p95/worst, 0 of 50
+positions over 400 ms, ~690k nodes/s — within 5–10% of laptop Chromium. So the budgets
+picked on a laptop hold on a phone, and the lever recorded for the other case (the Expert
+cap 150k → 100k) stays unpulled. A phone measurement is the cheap kind of device check: the
+harness is the test, the phone is a browser at the end of a USB cable.
+
 Dots is the third answer, and a different kind of one. Its capped search only ever
 runs in the first four plies, where no box can reach three sides — so measured at
 depths 1, 2, 4, 6 and 8, at every position it can reach, the set of distinct move
