@@ -752,7 +752,7 @@ decision as evidence rather than opinion.
     (out of the workspace, out of the gate); the table goes into Verified
     Assumptions and beside the constants in `chess-solver/src/live.rs`. The
     50-position FEN set is `keep-as-fixture` for Phase 4's latency measurement.
-  - [device: android=samsung] — the phone half of the timing.
+  - [device done 2026-09-14: android=samsung] — the phone half of the timing: `spike/chess-latency/results-samsung.txt`, same harness over adb-forwarded DevTools (`wasm-time-phone.mjs`); Expert p95 257 ms, 0/50 over 400 ms — the ladder holds on the phone.
 
 - [ ] **D3: Does iterative deepening pay in chess, on *our* ordering?** *(Deferred
   to Phase 4 by design.)* It depends on the generator's move order and the TT
@@ -1218,7 +1218,7 @@ inside `i32`), and this phase runs `cargo test -p chess-solver` **in debug once*
 and records the time — closing the thread for this crate on day one. Second: a TT
 keyed without the halfmove clock returns a draw-score for a position that is not
 yet a draw; the key includes the clock bucket where it matters (≥ 90).
-[device: android=samsung] — the wasm latency table.
+[device done 2026-09-14: android=samsung — `results-samsung.txt` beside the Chromium column] — the wasm latency table.
 **Done when:**
 1. **Behavioral:** the puzzles are found and exact; the minimax cross-check agrees
    on all 20; the latency table is recorded with the `deepen` verdict.
@@ -2316,9 +2316,9 @@ native (M-series) per level med/p95/worst ms: Easy d2 5/53/137 · Medium d3
 bar, so the budgets were cut and re-measured. **Chromium (playwright), the
 provisional ladder: Easy d2/10k = 6/15/16 · Medium d3/40k = 40/64/66 ·
 Hard d4/100k = 132/159/170 · Expert d5/150k = 204/242/258, 0/50 over
-400 ms, ~730k nps.** The Samsung half stays owed [device: android=samsung];
-if the phone's Expert p95 exceeds 400 ms the recorded lever is the cap
-(150k → 100k), a constant.
+400 ms, ~730k nps.** The Samsung half: [device done 2026-09-14: android=samsung] — **Samsung SM-S947U1, Chrome 152, the same harness over adb-forwarded DevTools:** Easy 6/16/16 · Medium 43/66/68 · Hard 140/165/183 · Expert 216/257/282 ms, **0/50 over 400 ms, ~690k nps** — within 5–10% of laptop Chromium, so the cap lever (150k → 100k) is NOT pulled.
+(The recorded lever, had the phone's Expert p95 exceeded 400 ms, was that
+cap — a constant.)
 
 **Three performance findings, each measured before believed:**
 1. **The mobility term was 2× the whole engine.** `heuristic` calling

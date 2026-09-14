@@ -47,9 +47,11 @@ the same debt in one place. Fulfil by editing the tag on its line in
 
 - [ ] **The tap flow, the picker at 44px, the glyphs in both themes** — both
   Androids. `[device: android x2]`
-- [ ] **The Samsung half of the latency table** — `spike/chess-latency/` on the
-  phone, beside Phase 4's Chromium column (the same harness, so the two columns
-  are comparable). `[device: android=samsung]`
+- [x] **The Samsung half of the latency table** — _done 2026-09-14_:
+  `spike/chess-latency/results-samsung.txt` (Chrome 152 on the SM-S947U1, the same
+  harness over adb-forwarded DevTools, `wasm-time-phone.mjs`). Expert p95 257 ms,
+  0/50 over 400 ms, ~690k nps — within 5–10% of laptop Chromium; the cap lever
+  stays at 150k. `[device done 2026-09-14: android=samsung]`
 - [ ] **D5 — Unicode glyphs or an SVG set.** Pieces are Unicode glyphs
   (filled shapes for both sides, CSS-coloured with an outline); whether they read
   on the phones is the device answer still owed. If they do not, the swap is one
