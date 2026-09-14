@@ -1,0 +1,6 @@
+Samsung SM-S947U1 (Chrome 152), chess-solver search_root — Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Mobile Safari/537.36
+level   depth  cap      median  p95   worst  over400  nps
+Easy    2      10000       6.2   15.7   16.3  0/50     700221
+Medium  3      40000      42.6   65.5   68.2  0/50     667412
+Hard    4      100000    139.9  165.3  182.5  0/50     692142
+Expert  5      150000    215.7  256.6  282.2  0/50     684065

@@ -1514,7 +1514,7 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
   open the ⋯ menu first; (6) the matrix's placeholder loop saw the continue card on the
   second skin (the `?play=1` visit had written the store) — it now scans `.gf-start`,
   which is either card, both surfaces.
-- Green: `npm run e2e` **639/639** (both engines, 1.3m), unit 223+, typecheck, lint, hex [device: android=samsung]
+- Green: `npm run e2e` **639/639** (both engines, 1.3m), unit 223+, typecheck, lint, hex [device done 2026-09-14: android=samsung] — on the SM-S947U1 (Chrome 152, viewport 384 css px, fun.croft.ing) the `.chrome-header` measured **63.9 px on othello, checkers, chess, 2048, solitaire and dots** (rule: ≤ 66), and the Othello flow ran end to end: poster → Play → two moves → tab killed → reopen shows the continue card “Move 4 · level 4–4” → Continue restores the 64-cell board
   scan. **Owed:** the Samsung check (Phases 2a and 5a) — no device session; see Phase 6.
 
 ### Phase 4 — executed 2026-08-30
@@ -1583,7 +1583,7 @@ Added by Pass 3 (2026-08-30) — **not yet reviewed by the owner**:
   `[hidden]` → `.gf-menu[hidden] { display:none }`; (3) the how-to page's "← Back to the
   game" reuses `.chrome-header .newtab`, which the header cleanup deleted — axe flagged
   the unstyled blue link on both dark skins; the rule is restored with a comment.
-- Green: `tests/game-frame.spec.ts` 10/10 both engines; `npm run smoke` 45/45; typecheck, [device: android=samsung]
+- Green: `tests/game-frame.spec.ts` 10/10 both engines; `npm run smoke` 45/45; typecheck, [device done 2026-09-14: android=samsung] — Phases 2a and 5a checked on the phone together; the 2a line above carries the numbers
   lint, hex scan. **Not done:** the Samsung check under Validation — no device session in
   this run; recorded as owed, to be done with Phase 5a's device check.
 
