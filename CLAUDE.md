@@ -295,3 +295,10 @@ worktree — `git -C fun worktree add ../worktrees/fun/<slug> -b claude/<slug>` 
 this checkout (peer sessions stage with `git add -A`; loose files get swept into unrelated
 commits). Contested surfaces here — claim in `CroftC/.coordination/claims/` before
 touching: **landing on `main`** (the shared shelf chrome and `pond-*` substrate). Full protocol and the reasons behind it: `CroftC/.claude/COORDINATION.md`.
+
+**Landing here: `gh pr merge --auto` lands IMMEDIATELY.** This repo has no required status
+checks, so GitHub treats an `--auto` merge as mergeable on the spot (observed 2026-09-08: PR
+#82 merged while `build`/`rust`/`wasm` were still pending; main's deploy run then carried the
+verification). "Merge when green" therefore means: wait for `gh pr checks` to show every
+check passed, THEN `gh pr merge --merge …` without `--auto`. If `--auto` was already used,
+verify the landing by content on `origin/main` and watch main's deploy run.
