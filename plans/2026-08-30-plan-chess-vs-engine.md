@@ -1218,7 +1218,7 @@ inside `i32`), and this phase runs `cargo test -p chess-solver` **in debug once*
 and records the time — closing the thread for this crate on day one. Second: a TT
 keyed without the halfmove clock returns a draw-score for a position that is not
 yet a draw; the key includes the clock bucket where it matters (≥ 90).
-[device done 2026-09-14: android=samsung — `results-samsung.txt` beside the Chromium column] — the wasm latency table.
+[device done 2026-09-14: android=samsung] — `results-samsung.txt` beside the Chromium column — the wasm latency table.
 **Done when:**
 1. **Behavioral:** the puzzles are found and exact; the minimax cross-check agrees
    on all 20; the latency table is recorded with the `deepen` verdict.
