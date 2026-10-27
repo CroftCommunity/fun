@@ -1,6 +1,7 @@
 # Plan — Mahjong: tile-matching solitaire, Tier-1
 
-**Status:** Phases 0–6 COMPLETE (2026-08-30) — gate green, PR open, awaiting merge. Branch
+**Status:** LANDED 2026-08-30 (`28fc66f`) — the history below is the build record.
+Build-time status: Phases 0–6 COMPLETE (2026-08-30) — gate green, PR open, awaiting merge. Branch
 `claude/mahjong`; worktree `CroftC/worktrees/mahjong/fun`. Follow-ons: D4 (themed tile
 sets); an owed device pass on the Turtle at phone size `[device: android x2]`.
 

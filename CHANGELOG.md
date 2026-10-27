@@ -5,14 +5,14 @@ landing *is* releasing: sections are months, each entry dated by its landing. Pe
 `CroftC/.claude/CHANGELOGS.md`, the branch that changes something a player runs adds its
 entry here before it lands. Contexts are the shelf's chrome and the individual games.
 
-Contexts: shelf · mahjong · looseends · color-sort · align · 2048 · bubble · checkers · chess · wyrdle · trio-tumble · othello · cribbage · furrow · dots · drop4 · blockdoku · orchard · sinker · solitaire
+Contexts: shelf · mahjong · looseends · color-sort · align · 2048 · bubble · checkers · chess · wyrdle · trio-tumble · othello · cribbage · furrow · dots · drop4 · blockdoku · orchard · sinker · solitaire · every-game · frame · tooling
 
 Started 2026-08-29; the August entries below are the landings of that month, and everything
 earlier is in `git log`.
 
 ## 2026-09
 
-- 2026-09-10 **chess:** six painted piece sets under Settings → Pieces — Garden, Arcade,
+- 2026-09-09 **chess:** six painted piece sets under Settings → Pieces — Garden, Arcade,
   Ancients, Frontier, Tides and Diner — each cut from a painted starting position into a
   sprite sheet, chosen the same way as Classic, Bold and Emoji and remembered. A set is
   fetched only when it is chosen; the board, the rules and the record never see one.
@@ -25,33 +25,34 @@ earlier is in `git log`.
 - 2026-09-08 **chess:** a third piece pack, Emoji — a court (💂 🐴 🧙 🏰 👸 🤴) on a round
   token in its side's colour — under Settings → Pieces beside Classic and Bold. The board,
   the rules and the record never see a pack. (mock F Q8: "Emoji later")
-- 2026-09-08 **every poster:** on a desktop the art is the whole splash at its own shape — a
+- 2026-09-08 **every-game:** on a desktop every poster's art is the whole splash at its own shape — a
   poster's lettering sits at its foot, and the half-width column cropped it away (2048 on a
   short window lost its bottom third); the setup and Play centre in the room beside it.
   (owner, 2026-09-08)
-- 2026-09-08 **checkers, chess, cribbage:** more life. A moved man or piece slides in from the
+- 2026-09-08 **every-game:** more life in checkers, chess and cribbage. A moved man or piece slides in from the
   square it left; the cribbage show calls the hand's or the crib's total, a hand of nothing is
   a nineteen, and muggins names what was taken. (beats follow-up)
 - 2026-09-08 **bubble:** the launcher chips left the HUD — the canvas has drawn the loaded and
   the next piece since the fruit landed — so a phone's board is taller; they still name the
   pieces for a screen reader.
-- 2026-09-08 **every poster:** a shelf name split at its colon shows the title with the subtitle
+- 2026-09-08 **every-game:** on every poster, a shelf name split at its colon shows the title with the subtitle
   beside it, so "Trio Tumble  Jewel Drop" is one line and its poster fits a phone again.
-- 2026-09-08 **every poster:** the title and pitch sit on a translucent, blurred panel over
+- 2026-09-08 **every-game:** on every poster, the title and pitch sit on a translucent, blurred panel over
   the art. The splash carries its own lettering, and the pitch set straight on it was
   unreadable (Trio Tumble, Dots on a phone). (owner review of PR #82)
-- 2026-09-08 **furrow, trio tumble, solitaire, bubble, cribbage:** the rest of the fill. Each
+- 2026-09-08 **every-game:** the rest of the fill, for Furrow, Trio Tumble, solitaire, Bubble and
+  cribbage. Each
   now sizes from the stage the way the eight grids do: Furrow's pits across from the width
   (a desktop board was 448px wide in a 960px stage), Trio Tumble's gems from the short side,
   solitaire's cards from the width (real card size on a desktop), Bubble's canvas from the
   height with its 22rem cap gone, cribbage's table and cards from the width. Every how-to
   shot regenerated — the ground changed every stage. (mock F2.6–F2.7, phase 4, play-surface)
-- 2026-09-08 **gate:** `tools/stale-shots.sh` runs first and names any game whose module
+- 2026-09-08 **tooling:** the gate's `tools/stale-shots.sh` runs first and names any game whose module
   changed against `origin/main` without a how-to shot of its own changing (PR #79 landed
   eight resized boards with every shot stale). No `origin/main` — CI's shallow checkout —
   means nothing to compare, and it says so.
-- 2026-09-08 **drop 4, othello, checkers, chess, dots, furrow, cribbage:** life on the versus
-  boards. One vocabulary of beats, played from the move the core already resolved: Drop 4's
+- 2026-09-08 **every-game:** life on the versus boards — Drop 4, Othello, checkers, chess, Dots,
+  Furrow and cribbage. One vocabulary of beats, played from the move the core already resolved: Drop 4's
   disc falls into its slot and settles; Othello's turned discs flip over, outward from the
   play, and four or more get their count; a taken man or piece shrinks out where it stood
   (checkers, chess); a crowning says "King!", a check says "Check!"; a closed box pulses and a
@@ -65,14 +66,14 @@ earlier is in `git log`.
   44px and more from the stage's height and nothing scrolls. Settings → Board: Auto / Across /
   Upright; Auto follows the screen's shape, so a desktop stays across. The core's pit order
   never changes — only the CSS turns. (mock F Q5, phase 8, play-surface)
-- 2026-09-08 **loose ends:** level 1 is a puzzle. The campaign curve is rebased — ten arrows
+- 2026-09-08 **looseends:** level 1 is a puzzle. The campaign curve is rebased — ten arrows
   on a 6×8 with snakes of 3–5 at level 1, ~16 by the end of Easy, the top of the curve where
   it was (68 on 18×26) — so the first board is a knot to read rather than three arrows on a
   5×6. Golden vectors re-recorded; the daily board is untouched; solved levels stay solved.
   (mock F Q10, phase 11, play-surface)
-- 2026-09-08 **guide shots:** the Furrow result step taps through one evaluate and waits for
+- 2026-09-08 **tooling:** the guide shots' Furrow result step taps through one evaluate and waits for
   the core to take the move, so a re-rendered pit can no longer slip out from under the tap.
-- 2026-09-08 **2048, Align, every game:** one shape for hand controls. Settings → Every game
+- 2026-09-08 **every-game:** one shape for hand controls, 2048 and Align first. Settings → Every game
   gains **On-screen controls: Auto / On / Off** — Auto shows a pad on a touch screen and hides
   it where there is a keyboard; swipes and keys always work. 2048's arrow pad and Align's
   buttons are the same pad: translucent 60–64px targets over the game's ground. Align's is
@@ -80,11 +81,11 @@ earlier is in `git log`.
   beneath the well, never over it, and the well itself now takes a tap to rotate, a flick
   down to drop, a flick sideways to move. With the pad off, 2048's tiles take its room.
   (mock F Q3 + Q4, phase 7, play-surface)
-- 2026-09-08 **every game:** the stage carries the game's own ground — a pool of the board's
+- 2026-09-08 **every-game:** the stage carries the game's own ground — a pool of the board's
   colour under the board and a faint vignette at the edges, so the room around a felt table is
   green and the room around a mancala board is wood. The frame holds the hook; the colour is
   the game's (ADR-0003). (mock F Q2, phase 6, play-surface)
-- 2026-09-08 **every poster:** a setup choice with three or fewer options is a segmented
+- 2026-09-08 **every-game:** on every poster, a setup choice with three or fewer options is a segmented
   control — one row of segments with the chosen option's note under it — instead of three
   44px lines, so the Trio Tumble and chess posters fit a 390×844 phone without scrolling.
   (mock F Q6, phase 5, play-surface)
@@ -198,7 +199,7 @@ earlier is in `git log`.
   leaves (a ResizeObserver), not by CSS percentage. `height: 100%` of the flexed row
   never settled on CI's Linux WebKit — the pad moved every frame and no tap was
   "stable" — while macOS WebKit and Chromium were fine. Same sizes as before on both.
-- 2026-08-30 **orchard-drop:** inside the frame. Score, best and the next fruit are the
+- 2026-08-30 **orchard:** inside the frame. Score, best and the next fruit are the
   meters (told only when they change, not every frame); Daily or Free play is the New
   game card, and the chip says which; the rules sentence is a toast. A `?seed=` link is
   a free-play run of that seed, as on every other game. No continue card: the run is

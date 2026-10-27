@@ -381,14 +381,19 @@ A top-out / "End run" leads with a verification-forward result and a
 self-verifying `?r=` share. No solver: every seed is playable.
 Plan: `plans/2026-08-01-align-falling-blocks.md`.
 
-## Identity (light/dark)
+## Identity (skins)
 
-The pond has its own playful **card-table** identity on croft-pwa's token architecture: a green **felt**
-play surface, warm **ivory cards** with classic red/black suits, a **brass-gold** accent, moss for the
-verifiable win, rust for a failed verification. `tokens.css` is the only file with raw hex; every
-text/UI pair clears WCAG AA in both light and dark (asserted by `tests/tokens.test.ts`, and axe runs in
-both themes in `tests/theme.spec.ts`). A header toggle (`☾`/`☀`) flips the theme with no flash of the
-wrong one (pre-paint inline script). Full palette, roles, and recorded ratios: `docs/DESIGN.md`.
+The pond's look is a **skin**, on croft-pwa's token architecture. Since M2 (2026-08-28, `ef172c9`)
+light and dark are not a theme switch but entries in the skin registry, `src/skins.ts`: two
+**families** — **Gallery of Worlds** (the default) and **The Pond** — each with a day and a night skin.
+The header's ⚙ Appearance panel picks the family; the header's `☾`/`☀` control flips to the family's
+other palette. A pre-paint inline script, generated from the registry by `tools/skin-init.mjs`, stamps
+`[data-skin]` before first paint, so the wrong palette never flashes. A skin reaches **chrome roles
+only**; board surfaces and every per-game palette are game-owned
+(`docs/adr/0001-chrome-and-game-tokens.md`). `tokens.css` is the only file with raw hex; every
+text/UI pair clears WCAG AA in every skin (asserted by `tests/tokens.test.ts`), and axe runs in both of
+a family's palettes in `tests/skin.spec.ts`. Families, palettes, roles, and recorded ratios:
+`docs/DESIGN.md`.
 
 Each game has a **How to play** guide (a header link → `/how-to/?game=<id>`) with generated screenshots
 and a plain walkthrough — starting with the interaction model (you tap a source then a destination; you
