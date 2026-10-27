@@ -7,6 +7,12 @@
 > the two piles and why: its § "Two piles". Plan status lives on each plan's `Status:`
 > line; `docs/STATE-OF-PLAY.md` is the dated narrative, not the work list.
 
+## Open
+
+- [ ] **`security / deps` is red: 2 blocking (npm devDependency trees — vite, vitest, brace-expansion — and block-buffer in the Rust lockfiles).** Triaged in the workspace-wide
+  advisory pass, croft-stack first: the handoff prompt is croft-stack `TODO.md` § Open,
+  "Advisory triage, workspace-wide" (filed 2026-10-27).
+
 ## Mocks (`CroftC/.claude/MOCKS.md`)
 
 - **The four direction sketches carry no version and no baseline** — `mocks/b-worlds.html`,

@@ -1,6 +1,8 @@
 # Chess vs the engine — the sixth adversarial game, and the first whose rules are the weight
 
-**Status:** READY TO EXECUTE — Pass 1 (plan development) 2026-08-30; Pass 2 (gap
+**Status:** LANDED 2026-08-30 (#76, `43d065b`) — the history below is the build record. Phase 13 (the device pass) is still partly owed —
+the open `[device: …]` tags are listed in `TODO/chess.md`.
+Build-time status: READY TO EXECUTE — Pass 1 (plan development) 2026-08-30; Pass 2 (gap
 analysis) 2026-08-30; Pass 3 (quality gates) 2026-08-30. Every open question is
 owner-confirmed and none is BLOCKING-unresolved; the two PHASE-GATED items gate Phases 2
 and 9 and are already reflected in those phases. **Phase 0 executed 2026-08-30**

@@ -1,6 +1,7 @@
 # Plan — the play surface: the board fills the stage, the door opens, one shape for hand controls
 
-**Status:** **Pass 2 EXECUTED, 2026-09-08 — every phase built on `claude/play-surface-2`; PR open,
+**Status:** **LANDED 2026-09-08 (#82, `c1f9e9f`)** — the history below is the build record.
+Build-time status: **Pass 2 EXECUTED, 2026-09-08 — every phase built on `claude/play-surface-2`; PR open,
 merge pending the owner.** Phases 1–3 landed 2026-09-05 (PR #79); phase 10a and Mahjong's track
 2026-09-05 (#80, #81); phases 4, 5, 6, 7, 8, 9, 10b, 11 and 12 built 2026-09-08 at the mock's
 recommendations (owner: "do these TDD first"), each with its Done-when below. Review Log at the

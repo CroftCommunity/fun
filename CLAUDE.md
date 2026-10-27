@@ -200,7 +200,8 @@ at them and add what's specific to this repo. Git identity: chasemp
   is attribution, so it tracks the model rather than this line: a newer model
   updates it here as part of its first commit rather than signing a predecessor's
   name. (Was pinned to Opus 4.8 until 2026-08-07, Opus 5 until 2026-08-29, Fable 5
-  until 2026-09-08.) Don't push/PR unless asked.
+  until 2026-09-08.) Commit on a `claude/*` branch, push and open the PR without asking; ask
+  before merging (`CroftC/.claude/COORDINATION.md`).
 - **No stubs; built means wired means tested.** A game isn't done until it's
   reachable from its `/<id>/` URL through the drawer registry, with a wiring
   test that goes through the entry point (BUILDING-GAMES §8).
@@ -251,7 +252,8 @@ rendering a control row):
   directory structure**, with the data side keeping full Tier-1 discipline
   (golden vectors, mutation testing). The sim side pins behaviour with
   **tolerance probes** instead. Standard is **`docs/BUILDING-GAMES.md` §11**;
-  **Emoji Wars** (`levelforge`, matter-js) is the reference implementation.
+  **Emoji Wars** (matter-js) is the reference implementation; it lives in its own repo,
+  `CroftCommunity/levelforge`, and its move into fun is backlog (`TODO/emojiwars.md`).
   This tier is a decision, not a default — for Emoji Wars a deterministic path
   was measured, found to work, and declined on cost (see §11).
 
@@ -291,9 +293,10 @@ directory. Do not let one game's mechanics leak into another's files.
 ## Concurrent sessions (workspace norm)
 
 Multiple agent sessions share the `CroftC/` workspace. Do multi-turn work in a dedicated
-worktree — `git -C fun worktree add ../worktrees/fun/<slug> -b claude/<slug>` — never in
-this checkout (peer sessions stage with `git add -A`; loose files get swept into unrelated
-commits). Contested surfaces here — claim in `CroftC/.coordination/claims/` before
+worktree — `git -C fun worktree add ../worktrees/<feature>/fun -b claude/<feature>` — never in
+this checkout (stage by path, never `git add -A`; loose files in a shared checkout get swept
+into unrelated commits). Commit on a `claude/*` branch, push and open the PR without asking;
+ask before merging (`CroftC/.claude/COORDINATION.md`). Contested surfaces here — claim in `CroftC/.coordination/claims/` before
 touching: **landing on `main`** (the shared shelf chrome and `pond-*` substrate). Full protocol and the reasons behind it: `CroftC/.claude/COORDINATION.md`.
 
 **Landing here: `gh pr merge --auto` lands IMMEDIATELY.** This repo has no required status

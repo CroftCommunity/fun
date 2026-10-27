@@ -1,6 +1,7 @@
 # Plan — a music transport in the shelf header
 
-**Status:** Phases 0–3 COMPLETE (2026-08-29); Phase 4 (gate + PR) in progress.
+**Status:** LANDED 2026-08-29 (`825a7fc`) — the history below is the build record.
+Build-time status: Phases 0–3 COMPLETE (2026-08-29); Phase 4 (gate + PR) in progress.
 
 Branch `claude/music-bar`; worktree `CroftC/worktrees/music-bar/fun`.
 

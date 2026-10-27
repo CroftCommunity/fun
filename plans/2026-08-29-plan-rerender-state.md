@@ -1,6 +1,7 @@
 # Plan — a re-render must not discard what the player did
 
-**Status:** Phases 0–4 COMPLETE (2026-08-29). Phase 5 (gate + land) in progress.
+**Status:** LANDED 2026-08-29 (`7cc2bd8`) — the history below is the build record.
+Build-time status: Phases 0–4 COMPLETE (2026-08-29). Phase 5 (gate + land) in progress.
 Worktree moved to `worktrees/rerender-state/fun` when the feature-workspace layout
 landed mid-flight (`CroftC` 4d472bd).
 

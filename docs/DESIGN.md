@@ -52,8 +52,8 @@ Every text/UI pair below clears **WCAG AA** — ≥4.5:1 for body text, ≥3:1 f
 large text and UI indicators — in **both** themes. The ratios are recomputed
 from `tokens.css` by `tests/tokens.test.ts`, so a future colour tweak that
 breaks a floor fails the gate rather than shipping an illegible surface, and
-`tests/theme.spec.ts` runs axe against the live home page and the solitaire
-board in **both** themes.
+`tests/skin.spec.ts` runs axe against the live home page and the solitaire
+board in **both** of a skin family's palettes (day and night).
 
 ### Semantic roles
 
